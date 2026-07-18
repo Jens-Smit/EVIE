@@ -1,0 +1,6 @@
+symfony_ai:
+    platforms:
+        mistral:
+            api_key: '%env(MISTRAL_API_KEY)%'
+            api_url: '%env(MISTRAL_API_URL)%'
+            default_model: 'mistral-medium'
