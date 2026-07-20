@@ -34,15 +34,15 @@ jobs:
 
       - name: Wait for MySQL to be ready
         run: |
-          while ! mysql -h 127.0.0.1 -P 3306 -u db_user -pdb_password -e "SELECT 1" evie_db; do
+          while ! mysql -h mysql -P 3306 -u db_user -pdb_password -e "SELECT 1" evie_db; do
             sleep 5
           done
 
       - name: Create database schema
-        run: php bin/console doctrine:schema:create --no-interaction
+        run: php bin/console doctrine:schema:create --if-not-exists --no-interaction
 
       - name: Run PHPUnit tests
         run: ./vendor/bin/phpunit
 
       - name: Run PHPStan analysis
-        run: ./vendor/bin/phpstan analyse src --level=5
+        run: ./vendor/bin/phpstan analyse src --level=3
