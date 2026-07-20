@@ -1,4 +1,4 @@
-⁹name: PHPUnit Tests
+name: PHPUnit Tests
 
 on: [push, pull_request]
 
