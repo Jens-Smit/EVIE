@@ -19,10 +19,10 @@
         "doctrine/doctrine-bundle": "^2.10",
         "doctrine/doctrine-migrations-bundle": "^3.3",
         "symfony/maker-bundle": "^1.50",
-        "symfony/ai-bundle": "^1.0"
+        "symfony/ai-bundle": "^0.11.1"
     },
     "require-dev": {
-        "symfony/test-pack": "^2.0",
+        "symfony/test-pack": "^1.2",
         "phpunit/phpunit": "^10.0",
         "phpstan/phpstan": "^1.10"
     },
