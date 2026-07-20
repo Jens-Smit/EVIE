@@ -31,6 +31,11 @@ jobs:
 
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
+      
+      - name: Fix missing Symfony structure
+        run: |
+          composer require symfony/console --no-update
+          composer update --no-scripts
 
       - name: Wait for MySQL to be ready
         run: |
