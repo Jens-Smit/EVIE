@@ -30,15 +30,11 @@ jobs:
           coverage: none
 
       - name: Install dependencies
-        run: |
-          if [ ! -f "composer.lock" ]; then
-            composer update --prefer-stable --no-progress
-          fi
-          composer install --prefer-dist --no-progress
+        run: composer install --prefer-dist --no-progress
 
       - name: Wait for MySQL to be ready
         run: |
-          while ! mysql -h mysql -P 3306 -u db_user -pdb_password -e "SELECT 1" evie_db; do
+          while ! mysql -h 127.0.0.1 -P 3306 -u db_user -pdb_password -e "SELECT 1" evie_db; do
             sleep 5
           done
 
