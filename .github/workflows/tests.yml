@@ -30,7 +30,11 @@ jobs:
           coverage: none
 
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress
+        run: |
+          if [ ! -f "composer.lock" ]; then
+            composer update --prefer-stable --no-progress
+          fi
+          composer install --prefer-dist --no-progress
 
       - name: Wait for MySQL to be ready
         run: |
