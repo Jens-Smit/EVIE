@@ -18,7 +18,10 @@
         "symfony/orm-pack": "^2.0",
         "doctrine/doctrine-bundle": "^2.10",
         "doctrine/doctrine-migrations-bundle": "^3.3",
-        "symfony/maker-bundle": "^1.50"
+        "symfony/maker-bundle": "^1.50",
+        "symfony/ai-bundle": "^0.11.1",
+        "symfony/ai-agent": "^0.11",
+        "symfony/ai-store": "^0.11"
     },
     "require-dev": {
         "symfony/test-pack": "^1.2",
@@ -37,6 +40,6 @@
         "optimize-autoloader": true,
         "sort-packages": true
     },
-    "minimum-stability": "stable",
+    "minimum-stability": "dev",
     "prefer-stable": true
 }
