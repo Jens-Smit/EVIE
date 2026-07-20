@@ -1,4 +1,4 @@
-name: PHPUnit Tests
+⁹name: PHPUnit Tests
 
 on: [push, pull_request]
 
@@ -37,6 +37,9 @@ jobs:
           while ! mysql -h 127.0.0.1 -P 3306 -u db_user -pdb_password -e "SELECT 1" evie_db; do
             sleep 5
           done
+          
+      - name: Debug file structure
+        run: ls -R  # Listet alle Dateien rekursiv auf, damit du siehst, wo bin/console liegt
 
       - name: Create database schema
         run: php bin/console doctrine:schema:create --if-not-exists --no-interaction
