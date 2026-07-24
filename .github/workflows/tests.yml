@@ -32,10 +32,11 @@ jobs:
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
 
-      - name: Fix missing Symfony structure
+      - name: Ensure Symfony console exists
         run: |
-          composer require symfony/console --no-update
-          composer update --no-scripts
+          if [ ! -f bin/console ]; then
+            composer require symfony/console
+          fi
 
       - name: Wait for MySQL to be ready
         run: |
@@ -44,10 +45,10 @@ jobs:
           done
           
       - name: Debug file structure
-        run: ls -R  # Listet alle Dateien rekursiv auf, damit du siehst, wo bin/console liegt
+        run: ls -R
 
       - name: Create database schema
-        run: php bin/console doctrine:schema:create --if-not-exists --no-interaction
+        run: ./bin/console doctrine:schema:create --if-not-exists --no-interaction
 
       - name: Run PHPUnit tests
         run: ./vendor/bin/phpunit
