@@ -36,7 +36,6 @@ jobs:
         run: |
           if [ ! -f bin/console ]; then
             mkdir -p bin
-            # Download standard Symfony bin/console
             curl -s https://raw.githubusercontent.com/symfony/symfony/6.4/src/Symfony/Bundle/FrameworkBundle/Resources/bin/console -o bin/console
             chmod +x bin/console
           fi
@@ -54,6 +53,8 @@ jobs:
         run: php $GITHUB_WORKSPACE/bin/console doctrine:schema:create --if-not-exists --no-interaction
 
       - name: Run PHPUnit tests
+        env:
+          KERNEL_CLASS: AppKernel
         run: ./vendor/bin/phpunit
 
       - name: Run PHPStan analysis
