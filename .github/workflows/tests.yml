@@ -31,33 +31,27 @@ jobs:
 
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
-        working-directory: ./
 
       - name: Ensure Symfony console exists
         run: |
           if [ ! -f bin/console ]; then
             composer require symfony/console
           fi
-        working-directory: ./
 
       - name: Wait for MySQL to be ready
         run: |
           while ! mysql -h 127.0.0.1 -P 3306 -u db_user -pdb_password -e "SELECT 1" evie_db; do
             sleep 5
           done
-
+          
       - name: Debug file structure
         run: ls -R
-        working-directory: ./
 
       - name: Create database schema
-        run: php bin/console doctrine:schema:create --if-not-exists --no-interaction
-        working-directory: ./
+        run: php $GITHUB_WORKSPACE/bin/console doctrine:schema:create --if-not-exists --no-interaction
 
       - name: Run PHPUnit tests
         run: ./vendor/bin/phpunit
-        working-directory: ./
 
       - name: Run PHPStan analysis
         run: ./vendor/bin/phpstan analyse src --level=3
-        working-directory: ./
