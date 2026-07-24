@@ -30,7 +30,10 @@ jobs:
           coverage: none
 
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --no-cache
+        run: composer install --prefer-dist --no-progress
+
+      - name: Update autoloader
+        run: composer dump-autoload
 
       - name: Ensure bin/console exists
         run: |
