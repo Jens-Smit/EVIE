@@ -33,7 +33,7 @@ jobs:
         run: composer install --prefer-dist --no-progress
 
       - name: Ensure Symfony HTTP Kernel is installed
-        run: composer require symfony/http-kernel symfony/framework-bundle --no-update
+        run: composer require symfony/http-kernel symfony/framework-bundle
 
       - name: Update autoloader
         run: composer dump-autoload
