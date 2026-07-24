@@ -29,6 +29,9 @@ jobs:
           extensions: mbstring, xml, pdo, pdo_mysql
           coverage: none
 
+      - name: Remove composer.lock to force update
+        run: rm -f composer.lock
+
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
 
