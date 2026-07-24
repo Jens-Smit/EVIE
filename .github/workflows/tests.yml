@@ -30,7 +30,7 @@ jobs:
           coverage: none
 
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress
+        run: composer install --prefer-dist --no-progress --no-cache
 
       - name: Ensure bin/console exists
         run: |
@@ -54,7 +54,7 @@ jobs:
 
       - name: Run PHPUnit tests
         env:
-          KERNEL_CLASS: AppKernel
+          KERNEL_CLASS: App\Kernel
         run: ./vendor/bin/phpunit
 
       - name: Run PHPStan analysis
