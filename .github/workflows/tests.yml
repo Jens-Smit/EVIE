@@ -32,6 +32,9 @@ jobs:
       - name: Install dependencies
         run: composer install --prefer-dist --no-progress
 
+      - name: Ensure Symfony HTTP Kernel is installed
+        run: composer require symfony/http-kernel symfony/framework-bundle --no-update
+
       - name: Update autoloader
         run: composer dump-autoload
 
