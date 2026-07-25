@@ -7,7 +7,6 @@ ai:
         orchestrator:
             platform: 'ai.platform.mistral'
             model: 'mistral-small-latest'
-            track_token_usage: true
             prompt:
                 text: 'Du bist der Orchestrator-Agent von EVIE. Du planst und delegierst, führst aber keine Aufgaben direkt aus.'
                 include_tools: true
