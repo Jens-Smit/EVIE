@@ -23,7 +23,8 @@
         "symfony/ai-agent": "^0.11",
         "symfony/ai-store": "^0.11",
         "symfony/ai-postgres-store": "^0.11",
-        "symfony/ai-mistral-platform": "^0.11"
+        "symfony/ai-mistral-platform": "^0.11",
+        "nelmio/api-doc-bundle": "^4.0"
     },
     "require-dev": {
         "phpunit/phpunit": "^10.0",
