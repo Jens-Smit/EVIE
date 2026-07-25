@@ -26,5 +26,10 @@ services:
     App\AI\Onboarding\ContextStoreManager:
         public: true
 
+    # Registrierung des HitlToolCallListener als Event-Listener
+    App\AI\Security\HitlToolCallListener:
+        tags:
+            - { name: 'kernel.event_listener', event: 'Symfony\AI\Agent\Toolbox\Event\ToolCallArgumentsResolved', method: '__invoke' }
+
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
