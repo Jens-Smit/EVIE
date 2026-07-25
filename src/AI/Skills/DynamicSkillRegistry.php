@@ -4,9 +4,11 @@ namespace App\AI\Skills;
 
 use App\Entity\ToolDefinition;
 use App\Repository\ToolDefinitionRepository;
-use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 
-#[Autoconfigure(tags: ['ai.skill_registry'])]
+/**
+ * DynamicSkillRegistry verwaltet die verfügbaren Tools.
+ * Er lädt freigegebene Tools aus der Datenbank und stellt Metadaten für den DynamicToolDispatcher bereit.
+ */
 class DynamicSkillRegistry
 {
     private ToolDefinitionRepository $toolDefinitionRepo;
@@ -19,64 +21,40 @@ class DynamicSkillRegistry
     }
 
     /**
-     * Loads all approved tools from the database.
+     * Lädt alle freigegebenen Tools aus der Datenbank.
      */
     public function loadTools(): void
     {
         $toolDefinitions = $this->toolDefinitionRepo->findBy(['status' => 'approved']);
         
         foreach ($toolDefinitions as $toolDefinition) {
-            $this->tools[$toolDefinition->getName()] = $this->createToolFromDefinition($toolDefinition);
+            $this->tools[$toolDefinition->getName()] = $toolDefinition;
         }
     }
 
     /**
-     * Creates a tool instance from a ToolDefinition entity.
-     */
-    private function createToolFromDefinition(ToolDefinition $toolDefinition): object
-    {
-        // This is a placeholder for the actual tool creation logic
-        // In a real implementation, this would create a dynamic proxy or instance
-        // based on the schema and parameters defined in the ToolDefinition
-        
-        return new class($toolDefinition) {
-            private ToolDefinition $definition;
-
-            public function __construct(ToolDefinition $definition)
-            {
-                $this->definition = $definition;
-            }
-
-            public function execute(string $prompt, string $userIdentifier): array
-            {
-                // Placeholder execution logic
-                return [
-                    'tool' => $this->definition->getName(),
-                    'prompt' => $prompt,
-                    'user' => $userIdentifier,
-                    'result' => 'Executed ' . $this->definition->getName() . ' with prompt: ' . $prompt
-                ];
-            }
-
-            public function getDefinition(): ToolDefinition
-            {
-                return $this->definition;
-            }
-        };
-    }
-
-    /**
-     * Returns all available tools.
+     * Gibt alle verfügbaren Tools als Metadaten zurück.
+     * @return array<string, array{name: string, description: string, schema: array, status: string}>
      */
     public function getAvailableTools(): array
     {
-        return $this->tools;
+        $availableTools = [];
+        foreach ($this->tools as $name => $toolDefinition) {
+            $availableTools[$name] = [
+                'name' => $toolDefinition->getName(),
+                'description' => $toolDefinition->getDescription(),
+                'schema' => $toolDefinition->getSchema(),
+                'status' => $toolDefinition->getStatus(),
+            ];
+        }
+        return $availableTools;
     }
 
     /**
-     * Returns a specific tool by name.
+     * Gibt ein bestimmtes Tool als Metadaten zurück.
+     * @throws \InvalidArgumentException Falls das Tool nicht gefunden wurde
      */
-    public function getTool(string $toolName): object
+    public function getTool(string $toolName): ToolDefinition
     {
         if (!isset($this->tools[$toolName])) {
             throw new \InvalidArgumentException(sprintf(
@@ -89,20 +67,46 @@ class DynamicSkillRegistry
     }
 
     /**
-     * Adds a new tool to the registry.
+     * Fügt ein neues Tool zum Registry hinzu.
      */
     public function addTool(ToolDefinition $toolDefinition): void
     {
         if ($toolDefinition->isApproved()) {
-            $this->tools[$toolDefinition->getName()] = $this->createToolFromDefinition($toolDefinition);
+            $this->tools[$toolDefinition->getName()] = $toolDefinition;
         }
     }
 
     /**
-     * Removes a tool from the registry.
+     * Entfernt ein Tool aus dem Registry.
      */
     public function removeTool(string $toolName): void
     {
         unset($this->tools[$toolName]);
+    }
+
+    /**
+     * Prüft, ob ein Tool verfügbar ist.
+     */
+    public function hasTool(string $toolName): bool
+    {
+        return isset($this->tools[$toolName]);
+    }
+
+    /**
+     * Gibt die Metadaten eines Tools zurück.
+     */
+    public function getToolMetadata(string $toolName): ?array
+    {
+        if (!$this->hasTool($toolName)) {
+            return null;
+        }
+
+        $toolDefinition = $this->tools[$toolName];
+        return [
+            'name' => $toolDefinition->getName(),
+            'description' => $toolDefinition->getDescription(),
+            'schema' => $toolDefinition->getSchema(),
+            'status' => $toolDefinition->getStatus(),
+        ];
     }
 }
