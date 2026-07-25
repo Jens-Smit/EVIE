@@ -17,7 +17,7 @@ final class ContextMemoryProvider implements MemoryProviderInterface
     /**
      * Lädt den Kontext für einen Benutzer und gibt ihn als Memory zurück.
      */
-    public function loadMemory(Input $input): array
+    public function load(Input $input): array
     {
         $userIdentifier = $input->options['user_identifier'] ?? 'unknown';
         $context = $this->contextStore->loadContext($userIdentifier);
