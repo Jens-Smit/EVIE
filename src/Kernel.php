@@ -2,8 +2,8 @@
 
 namespace App;
 
-use SymfonyBundleFrameworkBundleKernelMicroKernelTrait;
-use SymfonyComponentHttpKernelKernel as BaseKernel;
+use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
+use Symfony\Component\HttpKernel\Kernel as BaseKernel;
 
 class Kernel extends BaseKernel
 {
