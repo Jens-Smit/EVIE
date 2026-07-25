@@ -2,6 +2,57 @@ ai:
     platform:
         mistral:
             api_key: '%env(MISTRAL_API_KEY)%'
+
     agent:
-        default:
+        orchestrator:
+            platform: 'ai.platform.mistral'
             model: 'mistral-small-latest'
+            track_token_usage: true
+            prompt:
+                text: 'Du bist der Orchestrator-Agent von EVIE. Du planst und delegierst, führst aber keine Aufgaben direkt aus.'
+                include_tools: true
+            memory:
+                service: 'App\AI\Onboarding\ContextMemoryProvider'
+            tools:
+                - service: 'App\AI\Skills\Executor\GenericToolExecutor'
+                  name: 'generic_tool_executor'
+                  description: 'Führt freigegebene, dynamisch registrierte Tools aus.'
+
+        research:
+            platform: 'ai.platform.mistral'
+            model: 'mistral-small-latest'
+            tools: false
+
+    multi_agent:
+        evie:
+            orchestrator: 'orchestrator'
+            handoffs:
+                research: ['recherche', 'suche', 'research']
+            fallback: 'orchestrator'
+
+    message_store:
+        evie_dialog:
+            cache:
+                service: 'cache.app'
+                key: 'evie_dialog'
+
+    chat:
+        evie:
+            agent: 'ai.agent.orchestrator'
+            message_store: 'ai.message_store.cache.evie_dialog'
+
+    vectorizer:
+        mistral_embed:
+            platform: 'ai.platform.mistral'
+            model: 'mistral-embed'
+
+    store:
+        postgres:
+            onboarding:
+                table: 'onboarding_embeddings'
+
+    indexer:
+        onboarding:
+            loader: 'Symfony\AI\Store\Document\Loader\InMemoryLoader'
+            vectorizer: 'ai.vectorizer.mistral_embed'
+            store: 'ai.store.postgres.onboarding'
