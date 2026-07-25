@@ -16,7 +16,7 @@ jobs:
           MYSQL_PASSWORD: db_password
         ports:
           - 3306:3306
-        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+        options: --health-cmd="mysqladmin ping -h 127.0.0.1 -u root -proot" --health-interval=10s --health-timeout=5s --health-retries=10
 
     steps:
       - name: Checkout code
@@ -29,38 +29,23 @@ jobs:
           extensions: mbstring, xml, pdo, pdo_mysql
           coverage: none
 
-      - name: Remove composer.lock to force update
-        run: rm -f composer.lock
-
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress
-
-      - name: Update autoloader
-        run: composer dump-autoload
-
-      - name: Ensure bin/console exists
         run: |
-          if [ ! -f bin/console ]; then
-            mkdir -p bin
-            curl -s https://raw.githubusercontent.com/symfony/symfony/6.4/src/Symfony/Bundle/FrameworkBundle/Resources/bin/console -o bin/console
-            chmod +x bin/console
+          if [ ! -f "composer.lock" ]; then
+            composer update --prefer-stable --no-progress
           fi
+          composer install --prefer-dist --no-progress
 
       - name: Wait for MySQL to be ready
         run: |
           while ! mysql -h 127.0.0.1 -P 3306 -u db_user -pdb_password -e "SELECT 1" evie_db; do
-            sleep 5
+            sleep 10
           done
-          
-      - name: Debug file structure
-        run: ls -R
 
       - name: Create database schema
-        run: php $GITHUB_WORKSPACE/bin/console doctrine:schema:create --if-not-exists --no-interaction
+        run: php bin/console doctrine:schema:create --if-not-exists --no-interaction
 
       - name: Run PHPUnit tests
-        env:
-          KERNEL_CLASS: App\Kernel
         run: ./vendor/bin/phpunit
 
       - name: Run PHPStan analysis
