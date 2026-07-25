@@ -48,6 +48,7 @@ ai:
     store:
         postgres:
             onboarding:
+                dbal_connection: 'default'
                 table_name: 'onboarding_embeddings'
 
     indexer:
