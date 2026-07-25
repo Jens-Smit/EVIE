@@ -30,8 +30,8 @@ ai:
             fallback: 'orchestrator'
 
     message_store:
-        evie_dialog:
-            cache:
+        cache:
+            evie_dialog:
                 service: 'cache.app'
                 key: 'evie_dialog'
 
