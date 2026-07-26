@@ -1,0 +1,89 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}EVIE - Dialogverlauf{% endblock %}
+
+{% block body %}
+<div class="card">
+    <h2 class="card-title">Dialogverlauf</h2>
+    
+    {% if history is defined and history|length > 0 %}
+        <div class="mb-3">
+            <label for="user-filter">Benutzer filtern:</label>
+            <select id="user-filter" class="form-group">
+                <option value="">Alle Benutzer</option>
+                {% for user in users %}
+                    <option value="{{ user }}">{{ user }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="mb-3">
+            <label for="date-filter">Datum filtern:</label>
+            <input type="date" id="date-filter" class="form-group">
+        </div>
+        
+        <div id="history-container">
+            {% for entry in history %}
+                <div class="card mb-3" data-user="{{ entry.userIdentifier }}" data-date="{{ entry.timestamp|date('Y-m-d') }}">
+                    <div class="card-title">
+                        {{ entry.timestamp|date('d.m.Y H:i:s') }}
+                        <span class="badge badge-approved">{{ entry.userIdentifier }}</span>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <strong>Benutzer:</strong> {{ entry.userIdentifier }}
+                    </div>
+                    
+                    <div class="mb-2">
+                        <strong>Anfrage:</strong>
+                        <div class="message user">{{ entry.prompt }}</div>
+                    </div>
+                    
+                    <div class="mb-2">
+                        <strong>Antwort:</strong>
+                        <div class="message agent">{{ entry.response }}</div>
+                    </div>
+                    
+                    <div class="text-center mt-2">
+                        <a href="{{ path('agent_dialog') }}?history={{ entry.id }}" class="btn btn-secondary">
+                            Dialog fortsetzen
+                        </a>
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <p class="text-center">Keine Dialoge in der Geschichte gefunden.</p>
+    {% endif %}
+</div>
+
+{% block scripts %}
+<script>
+// Filter functionality for history
+const userFilter = document.getElementById('user-filter');
+const dateFilter = document.getElementById('date-filter');
+const historyContainer = document.getElementById('history-container');
+
+if (userFilter && dateFilter && historyContainer) {
+    function filterHistory() {
+        const userValue = userFilter.value;
+        const dateValue = dateFilter.value;
+        
+        historyContainer.querySelectorAll('.card').forEach(card => {
+            const userMatch = !userValue || card.dataset.user === userValue;
+            const dateMatch = !dateValue || card.dataset.date === dateValue;
+            
+            if (userMatch && dateMatch) {
+                card.style.display = 'block';
+            } else {
+                card.style.display = 'none';
+            }
+        });
+    }
+    
+    userFilter.addEventListener('change', filterHistory);
+    dateFilter.addEventListener('change', filterHistory);
+}
+</script>
+{% endblock %}
+{% endblock %}
