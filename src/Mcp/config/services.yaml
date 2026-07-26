@@ -18,7 +18,7 @@ services:
             $toolExecutor: '@App\Mcp\Toolbox\McpToolExecutor'
             $cache: '@cache.app'
             $logger: '@monolog.logger.mcp'
-            $serverAliases: !php/const App\Mcp\DependencyInjection\Configuration::DEFAULT_SERVER_ALIASES
+            $serverAliases: '%evie_mcp.servers|keys'
             $cacheTtl: '%evie_mcp.cache_ttl%'
 
     # Autoconfiguration for all MCP classes
