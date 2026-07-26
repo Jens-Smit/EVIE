@@ -3,38 +3,121 @@
 {% block title %}EVIE - Ausstehende Tools{% endblock %}
 
 {% block body %}
-<div class="container">
-    <div class="card">
-        <h1 class="card-title">Ausstehende Tools</h1>
-        <p>Hier siehst du Tools, die auf deine Freigabe warten.</p>
+    <div class="bg-white rounded-lg shadow p-6">
+        <h1 class="text-2xl font-bold text-secondary mb-4">Ausstehende Tools</h1>
+        <p class="text-gray-700 mb-6">Hier siehst du Tools, die auf deine Freigabe warten.</p>
 
         {% if tools is defined and tools|length > 0 %}
-            {% for tool in tools %}
-                <div class="card mb-2">
-                    <h3>{{ tool.name }}</h3>
-                    <p>{{ tool.description }}</p>
-                    <p><small>Angefragt von: {{ tool.requester }} | {{ tool.timestamp|date('d.m.Y H:i') }}</small></p>
-                    <div class="mt-2">
-                        <button 
-                            class="btn btn-success approve-tool" 
-                            data-tool-id="{{ tool.id }}"
-                        >
-                            Freigeben
-                        </button>
-                        <button 
-                            class="btn btn-danger reject-tool" 
-                            data-tool-id="{{ tool.id }}"
-                        >
-                            Ablehnen
-                        </button>
+            <div class="space-y-4">
+                {% for tool in tools %}
+                    <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                        <h3 class="text-lg font-bold text-secondary mb-2">{{ tool.name }}</h3>
+                        <p class="text-gray-700 mb-2">{{ tool.description }}</p>
+                        <p class="text-sm text-gray-500 mb-4">
+                            Anfragt von: <strong>{{ tool.requester }}</strong> | 
+                            {{ tool.timestamp|date('d.m.Y H:i') }}
+                        </p>
+                        <div class="flex gap-2">
+                            <button 
+                                class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition approve-tool"
+                                data-tool-id="{{ tool.id }}"
+                            >
+                                Freigeben
+                            </button>
+                            <button 
+                                class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition reject-tool"
+                                data-tool-id="{{ tool.id }}"
+                            >
+                                Ablehnen
+                            </button>
+                        </div>
                     </div>
-                </div>
-            {% endfor %}
+                {% endfor %}
+            </div>
         {% else %}
-            <div class="alert alert-info">
+            <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded-lg">
                 Keine ausstehenden Tools.
             </div>
         {% endif %}
     </div>
-</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+// Tool-Freigabe-Funktionalität
+function initToolApproval() {
+    const approveButtons = document.querySelectorAll('.approve-tool');
+    const rejectButtons = document.querySelectorAll('.reject-tool');
+
+    approveButtons.forEach(button => {
+        button.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const toolId = button.dataset.toolId;
+            await handleToolAction(toolId, 'approve', button);
+        });
+    });
+
+    rejectButtons.forEach(button => {
+        button.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const toolId = button.dataset.toolId;
+            await handleToolAction(toolId, 'reject', button);
+        });
+    });
+}
+
+async function handleToolAction(toolId, action, button) {
+    const originalBtnText = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner"></span> Verarbeite...';
+
+    try {
+        const response = await fetch(`/api/tools/${toolId}/${action}`, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        // Zeige Erfolgmeldung
+        const alert = document.createElement('div');
+        alert.className = `bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded-lg mb-4`;
+        alert.textContent = data.message || `Tool erfolgreich ${action === 'approve' ? 'freigegeben' : 'abgelehnt'}`;
+        
+        const container = button.closest('.bg-gray-50') || document.querySelector('main');
+        container.prepend(alert);
+
+        // Entferne die Tool-Karte nach erfolgreicher Aktion
+        if (action === 'approve' || action === 'reject') {
+            setTimeout(() => {
+                button.closest('.bg-gray-50').remove();
+            }, 1000);
+        }
+
+    } catch (error) {
+        console.error('Fehler bei der Tool-Aktion:', error);
+        const alert = document.createElement('div');
+        alert.className = `bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4`;
+        alert.textContent = `Fehler: ${error.message}`;
+        document.querySelector('main').prepend(alert);
+    } finally {
+        button.disabled = false;
+        button.innerHTML = originalBtnText;
+    }
+}
+
+// Initialisiere beim Laden
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', initToolApproval);
+} else {
+    initToolApproval();
+}
+</script>
 {% endblock %}
