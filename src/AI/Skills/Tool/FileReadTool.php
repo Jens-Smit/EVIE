@@ -2,7 +2,7 @@
 
 namespace App\AI\Skills\Tool;
 
-use Symfony\AI\Agent\Tool\AsTool;
+use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 
 /**
  * Tool zum Lesen von Dateien.
