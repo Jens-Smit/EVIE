@@ -12,7 +12,7 @@ use Symfony\AI\Agent\Tool\AsTool;
     name: 'weather',
     description: 'Liefert Wetterdaten für eine Stadt.'
 )]
-final class WeatherTool implements ToolInterface
+final class WeatherTool
 {
     public function __invoke(array $parameters = []): array
     {
@@ -24,15 +24,5 @@ final class WeatherTool implements ToolInterface
             'temperature' => 22,
             'city' => $city,
         ];
-    }
-
-    public function getName(): string
-    {
-        return 'weather';
-    }
-
-    public function getDescription(): string
-    {
-        return 'Liefert Wetterdaten für eine Stadt.';
     }
 }
