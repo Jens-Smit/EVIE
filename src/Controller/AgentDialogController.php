@@ -11,6 +11,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Psr\Log\LoggerInterface;
 
 #[Route('/api/agent')]
 final class AgentDialogController
@@ -20,6 +21,7 @@ final class AgentDialogController
         private readonly AgentInterface $agent,
         private readonly ContextStoreManager $contextStore,
         private readonly AgentHistoryRepository $historyRepo,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -33,6 +35,9 @@ final class AgentDialogController
         $userMessage = $payload['message'] ?? null;
         $userIdentifier = $payload['user_identifier'] ?? null;
 
+        // Debugging: Logge die empfangenen Daten
+        $this->logger->debug('AgentDialogController::dialog - Empfangene Payload:', $payload);
+
         if (!$userMessage || !$userIdentifier) {
             return new JsonResponse(
                 ['error' => 'Felder "message" und "user_identifier" sind erforderlich.'],
@@ -41,18 +46,45 @@ final class AgentDialogController
         }
 
         $systemPrompt = $this->contextStore->getSystemPrompt($userIdentifier);
+        
+        // Debugging: Logge den System-Prompt
+        $this->logger->debug('AgentDialogController::dialog - System-Prompt:', ['prompt' => $systemPrompt]);
 
         $messages = new MessageBag(
             Message::forSystem($systemPrompt),
             Message::ofUser($userMessage),
         );
 
-        $result = $this->agent->call($messages, ['user_identifier' => $userIdentifier]);
-
-        return new JsonResponse([
-            'response' => $result->getContent(),
-            'token_usage' => $result->getMetadata()->get('token_usage'),
+        // Debugging: Logge die Nachrichten
+        $this->logger->debug('AgentDialogController::dialog - Nachrichten:', [
+            'system' => $systemPrompt,
+            'user' => $userMessage,
         ]);
+
+        try {
+            $result = $this->agent->call($messages, ['user_identifier' => $userIdentifier]);
+
+            // Debugging: Logge das Ergebnis
+            $this->logger->debug('AgentDialogController::dialog - Ergebnis:', [
+                'content' => $result->getContent(),
+                'metadata' => $result->getMetadata()->all(),
+            ]);
+
+            return new JsonResponse([
+                'response' => $result->getContent(),
+                'token_usage' => $result->getMetadata()->get('token_usage'),
+            ]);
+        } catch (\Exception $e) {
+            // Debugging: Logge den Fehler
+            $this->logger->error('AgentDialogController::dialog - Fehler:', [
+                'exception' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return new JsonResponse([
+                'error' => 'Ein Fehler ist aufgetreten: ' . $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
     /**
