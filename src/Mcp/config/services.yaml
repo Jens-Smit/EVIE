@@ -1,0 +1,29 @@
+# MCP Client services
+services:
+    # Client and Server Manager
+    App\Mcp\Client\McpServerManager:
+        arguments:
+            $serverConfigs: '%evie_mcp.servers%'
+            $logger: '@monolog.logger.mcp'
+
+    # Toolbox Integration
+    App\Mcp\Toolbox\McpToolExecutor:
+        arguments:
+            $serverManager: '@App\Mcp\Client\McpServerManager'
+            $logger: '@monolog.logger.mcp'
+
+    App\Mcp\Toolbox\McpToolFactory:
+        arguments:
+            $serverManager: '@App\Mcp\Client\McpServerManager'
+            $toolExecutor: '@App\Mcp\Toolbox\McpToolExecutor'
+            $cache: '@cache.app'
+            $logger: '@monolog.logger.mcp'
+            $serverAliases: !php/const App\Mcp\DependencyInjection\Configuration::DEFAULT_SERVER_ALIASES
+            $cacheTtl: '%evie_mcp.cache_ttl%'
+
+    # Autoconfiguration for all MCP classes
+    App\Mcp\:
+        resource: '../'
+        exclude: '../{DependencyInjection,config}'
+        autowire: true
+        autoconfigure: true
