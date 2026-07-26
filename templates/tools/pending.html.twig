@@ -1,0 +1,40 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}EVIE - Ausstehende Tools{% endblock %}
+
+{% block body %}
+<div class="container">
+    <div class="card">
+        <h1 class="card-title">Ausstehende Tools</h1>
+        <p>Hier siehst du Tools, die auf deine Freigabe warten.</p>
+
+        {% if tools is defined and tools|length > 0 %}
+            {% for tool in tools %}
+                <div class="card mb-2">
+                    <h3>{{ tool.name }}</h3>
+                    <p>{{ tool.description }}</p>
+                    <p><small>Angefragt von: {{ tool.requester }} | {{ tool.timestamp|date('d.m.Y H:i') }}</small></p>
+                    <div class="mt-2">
+                        <button 
+                            class="btn btn-success approve-tool" 
+                            data-tool-id="{{ tool.id }}"
+                        >
+                            Freigeben
+                        </button>
+                        <button 
+                            class="btn btn-danger reject-tool" 
+                            data-tool-id="{{ tool.id }}"
+                        >
+                            Ablehnen
+                        </button>
+                    </div>
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="alert alert-info">
+                Keine ausstehenden Tools.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
