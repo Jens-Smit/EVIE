@@ -62,7 +62,9 @@ final class AgentDialogController
         ]);
 
         try {
-            $result = $this->agent->call($messages, ['user_identifier' => $userIdentifier]);
+            // Rufe den Agenten auf, OHNE user_identifier im options-Array
+            // Der user_identifier wird nur für die interne Context-Verwaltung genutzt
+            $result = $this->agent->call($messages);
 
             // Debugging: Logge das Ergebnis
             $this->logger->debug('AgentDialogController::dialog - Ergebnis:', [
