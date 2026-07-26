@@ -1,23 +1,20 @@
-# config/packages/mcp.yaml
 mcp:
-    # App-Metadaten (optional)
+    # App-Metadaten
     app: 'evie'
     version: '1.0.0'
     description: 'EVIE - Selbst-evolvierender AI-Agent mit MCP-Fähigkeiten'
     website_url: 'https://github.com/Jens-Smit/EVIE'
 
-    # Client-Transports (ersetzt die alte "servers"-Konfiguration)
+    # Client-Transports für MCP-Server
     client_transports:
         # Playwright-MCP (Browser-Automatisierung)
         playwright:
-            transport: 'stdio'
-            stdio:
-                command: 'npx'
-                arguments: ['-y', '@modelcontextprotocol/server-playwright']
+            transport: 'http'
+            http:
+                url: 'http://mcp-playwright:3000'
 
         # Filesystem-MCP (Dateisystem-Zugriff)
         filesystem:
-            transport: 'stdio'
-            stdio:
-                command: 'npx'
-                arguments: ['-y', '@modelcontextprotocol/server-filesystem', '/var/evie/sandbox']
+            transport: 'http'
+            http:
+                url: 'http://mcp-filesystem:3000'
