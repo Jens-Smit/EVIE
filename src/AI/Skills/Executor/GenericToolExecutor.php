@@ -2,36 +2,58 @@
 
 namespace App\AI\Skills\Executor;
 
+use App\AI\Skills\Tool\ToolRegistry;
 use App\AI\Security\SecurityGuard;
-use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
+use Symfony\AI\Agent\Tool\ToolInterface;
 
-#[Autoconfigure(tags: ['ai.tool_executor'])]
-class GenericToolExecutor
+/**
+ * Dispatcher für dynamisch registrierte Tools.
+ * Wird vom Agenten aufgerufen, um Tools auszuführen.
+ */
+final class GenericToolExecutor implements ToolInterface
 {
-    private SecurityGuard $securityGuard;
-
-    public function __construct(SecurityGuard $securityGuard)
-    {
-        $this->securityGuard = $securityGuard;
-    }
+    public function __construct(
+        private ToolRegistry $toolRegistry,
+        private SecurityGuard $securityGuard
+    ) {}
 
     /**
-     * Executes a generic tool with the given parameters.
+     * Wird vom Symfony AI-Agenten aufgerufen.
      */
-    public function execute(string $toolName, array $parameters = []): array
+    public function __invoke(string $toolName, array $parameters = []): array
     {
         // Validate the tool configuration
         if (!$this->securityGuard->validateToolConfiguration($parameters)) {
             throw new \RuntimeException('Tool configuration failed security validation.');
         }
 
-        // Simulate tool execution based on tool name
-        return match ($toolName) {
-            'GenericApiExecutor' => $this->executeApiCall($parameters),
-            'FileSystemReadExecutor' => $this->executeFileRead($parameters),
-            'DatabaseQueryExecutor' => $this->executeDatabaseQuery($parameters),
-            default => throw new \InvalidArgumentException(sprintf('Unknown tool: %s', $toolName)),
-        };
+        $tool = $this->toolRegistry->get($toolName);
+        return $tool($parameters);
+    }
+
+    /**
+     * Gibt den Namen des Tools zurück.
+     */
+    public function getName(): string
+    {
+        return 'generic_tool_executor';
+    }
+
+    /**
+     * Gibt eine Beschreibung des Tools zurück.
+     */
+    public function getDescription(): string
+    {
+        return 'Führt dynamisch registrierte Tools aus.';
+    }
+
+    /**
+     * Executes a generic tool with the given parameters.
+     * @deprecated Use __invoke() instead for Symfony AI compatibility.
+     */
+    public function execute(string $toolName, array $parameters = []): array
+    {
+        return $this->__invoke($toolName, $parameters);
     }
 
     /**
