@@ -12,7 +12,7 @@ use Symfony\AI\Agent\Tool\AsTool;
     name: 'file_read',
     description: 'Liest den Inhalt einer Datei.'
 )]
-final class FileReadTool implements ToolInterface
+final class FileReadTool
 {
     public function __invoke(array $parameters = []): array
     {
@@ -28,15 +28,5 @@ final class FileReadTool implements ToolInterface
             'path' => $filePath,
             'content' => $content,
         ];
-    }
-
-    public function getName(): string
-    {
-        return 'file_read';
-    }
-
-    public function getDescription(): string
-    {
-        return 'Liest den Inhalt einer Datei.';
     }
 }
