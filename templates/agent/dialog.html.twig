@@ -3,44 +3,47 @@
 {% block title %}EVIE - AI Dialog{% endblock %}
 
 {% block body %}
-<div class="card">
-    <h2 class="card-title">AI-Agent Dialog</h2>
-    
-    <div class="chat-container" id="chat-container">
-        {% if messages is defined and messages|length > 0 %}
-            {% for message in messages %}
-                <div class="message {{ message.role }}">
-                    {{ message.content }}
+<div class="container">
+    <div class="card">
+        <h1 class="card-title">AI Agent Dialog</h1>
+        <p>Stelle dem EVIE-Agenten eine Frage oder gib ihm eine Aufgabe.</p>
+        
+        <div class="chat-container" id="chat-container">
+            {% if messages is defined and messages|length > 0 %}
+                {% for message in messages %}
+                    <div class="message {{ message.role }}">
+                        {{ message.content }}
+                    </div>
+                {% endfor %}
+            {% else %}
+                <div class="message system">
+                    Starte eine Konversation mit dem AI-Agenten.
                 </div>
-            {% endfor %}
-        {% else %}
-            <div class="message system">
-                Beginnen Sie eine Unterhaltung mit dem AI-Agenten. Stellen Sie eine Frage oder geben Sie eine Anweisung ein.
+            {% endif %}
+        </div>
+
+        <form id="chat-form" action="{{ path('agent_dialog') }}" method="post" class="mt-2">
+            <div class="form-group">
+                <label for="prompt">Deine Nachricht:</label>
+                <textarea 
+                    id="prompt" 
+                    name="prompt" 
+                    class="form-group" 
+                    placeholder="Was möchtest du den Agenten fragen?"
+                    required
+                ></textarea>
             </div>
-        {% endif %}
+            <button type="submit" class="btn">Senden</button>
+        </form>
     </div>
     
-    <form id="chat-form" action="{{ path('agent_dialog') }}" method="post">
-        <div class="form-group">
-            <label for="prompt">Ihre Nachricht:</label>
-            <textarea 
-                name="prompt" 
-                id="prompt" 
-                rows="3" 
-                placeholder="Geben Sie Ihre Nachricht an den AI-Agenten ein..." 
-                required
-            ></textarea>
-        </div>
-        <button type="submit" class="btn btn-primary">Nachricht senden</button>
-    </form>
-</div>
-
-<div class="card mt-3">
-    <h2 class="card-title">Hinweise</h2>
-    <ul>
-        <li>Der Agent antwortet basierend auf seinen Trainingsdaten und dem aktuellen Kontext.</li>
-        <li>Für komplexe Anfragen kann die Antwort etwas länger dauern.</li>
-        <li>Alle Dialoge werden in Ihrem Verlauf gespeichert.</li>
-    </ul>
+    <div class="card mt-3">
+        <h2 class="card-title">Hinweise</h2>
+        <ul>
+            <li>Der Agent antwortet basierend auf seinen Trainingsdaten und dem aktuellen Kontext.</li>
+            <li>Für komplexe Anfragen kann die Antwort etwas länger dauern.</li>
+            <li>Alle Dialoge werden in Ihrem Verlauf gespeichert.</li>
+        </ul>
+    </div>
 </div>
 {% endblock %}
