@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  # Playwright-MCP (Browser-Automatisierung)
+  mcp-playwright:
+    image: ghcr.io/modelcontextprotocol/server-playwright:latest
+    container_name: evie-mcp-playwright
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+    # Netzwerk-Isolation: Kein Zugriff auf interne Netzwerke
+    network_mode: bridge
+    # Volumes für Persistenz (falls nötig)
+    volumes:
+      - ./mcp-data/playwright:/data
+
+  # Filesystem-MCP (Dateisystem-Zugriff)
+  mcp-filesystem:
+    image: ghcr.io/modelcontextprotocol/server-filesystem:latest
+    container_name: evie-mcp-filesystem
+    restart: unless-stopped
+    environment:
+      - NODE_ENV=production
+      - MCP_FILESYSTEM_ROOT=/var/evie/sandbox  # Nur dieser Pfad ist zugänglich!
+    # Netzwerk-Isolation
+    network_mode: bridge
+    # Volume für den Sandbox-Pfad (Read-Only für Sicherheit)
+    volumes:
+      - ./mcp-data/sandbox:/var/evie/sandbox:ro
+      - ./mcp-data/filesystem:/data
