@@ -1,0 +1,14 @@
+framework:
+    rate_limiter:
+        agent_tool_calls:
+            policy: 'sliding_window'
+            limit: 30
+            interval: '10 minutes'
+        agent_web_actions:
+            policy: 'sliding_window'
+            limit: 10
+            interval: '10 minutes'
+        agent_mail_send:
+            policy: 'fixed_window'
+            limit: 20
+            interval: '1 day'
