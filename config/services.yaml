@@ -31,5 +31,5 @@ services:
         tags:
             - { name: 'kernel.event_listener', event: 'Symfony\AI\Agent\Toolbox\Event\ToolCallArgumentsResolved', method: '__invoke' }
 
-    # add more service definitions when explicit configuration is needed
-    # please note that last definitions always *replace* previous ones
+    # Registrierung des OnboardingLoader als Service
+    App\AI\Loader\OnboardingLoader: ~
