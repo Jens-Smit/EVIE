@@ -10,6 +10,9 @@ use Symfony\Component\Config\Definition\ConfigurationInterface;
  */
 final class Configuration implements ConfigurationInterface
 {
+    /** @var array<string> */
+    public const DEFAULT_SERVER_ALIASES = ['filesystem', 'playwright'];
+
     public function getConfigTreeBuilder(): TreeBuilder
     {
         $treeBuilder = new TreeBuilder('evie_mcp');
