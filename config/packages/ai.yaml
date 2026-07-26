@@ -13,9 +13,8 @@ ai:
             memory:
                 service: 'App\AI\Onboarding\ContextMemoryProvider'
             tools:
-                - service: 'App\AI\Skills\Executor\GenericToolExecutor'
-                  name: 'generic_tool_executor'
-                  description: 'Führt freigegebene, dynamisch registrierte Tools aus.'
+                - { service: 'App\AI\Skills\Tool\WeatherTool' }
+                - { service: 'App\AI\Skills\Tool\FileReadTool' }
 
         research:
             platform: 'ai.platform.mistral'
@@ -46,15 +45,13 @@ ai:
             model: 'mistral-embed'
 
     store:
-        postgres:
-            onboarding:
-                dbal_connection: 'doctrine.dbal.default_connection'  # ✅ Korrekte Service-ID
-                table_name: 'onboarding_embeddings'
-
-
+        onboarding:
+            type: 'postgres'
+            dbal_connection: 'doctrine.dbal.default_connection'
+            table_name: 'onboarding_embeddings'
 
     indexer:
         onboarding:
             loader: 'App\AI\Loader\OnboardingLoader'
             vectorizer: 'ai.vectorizer.mistral_embed'
-            store: 'ai.store.postgres.onboarding'
+            store: 'ai.store.onboarding'
