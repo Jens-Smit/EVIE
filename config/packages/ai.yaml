@@ -53,6 +53,6 @@ ai:
 
     indexer:
         onboarding:
-            loader: 'Symfony\AI\Store\Document\Loader\InMemoryLoader'
+            loader: 'App\AI\Loader\OnboardingLoader'
             vectorizer: 'ai.vectorizer.mistral_embed'
             store: 'ai.store.postgres.onboarding'
