@@ -46,13 +46,13 @@ ai:
             model: 'mistral-embed'
 
     store:
-        postgres:
-            onboarding:
-                dbal_connection: 'default'
-                table_name: 'onboarding_embeddings'
+        onboarding:
+            type: 'postgres'
+            dbal_connection: 'doctrine.dbal.default_connection'
+            table_name: 'onboarding_embeddings'
 
     indexer:
         onboarding:
             loader: 'App\AI\Loader\OnboardingLoader'
             vectorizer: 'ai.vectorizer.mistral_embed'
-            store: 'ai.store.postgres.onboarding'
+            store: 'ai.store.onboarding'
