@@ -1,30 +1,109 @@
-version: '3.8'
-
 services:
-  # Playwright-MCP (Browser-Automatisierung)
   mcp-playwright:
-    image: ghcr.io/modelcontextprotocol/server-playwright:latest
+    image: mcr.microsoft.com/playwright:v1.55.0-noble
     container_name: evie-mcp-playwright
-    restart: unless-stopped
-    environment:
-      - NODE_ENV=production
-    # Netzwerk-Isolation: Kein Zugriff auf interne Netzwerke
-    network_mode: bridge
-    # Volumes für Persistenz (falls nötig)
-    volumes:
-      - ./mcp-data/playwright:/data
 
-  # Filesystem-MCP (Dateisystem-Zugriff)
-  mcp-filesystem:
-    image: ghcr.io/modelcontextprotocol/server-filesystem:latest
-    container_name: evie-mcp-filesystem
     restart: unless-stopped
+
+    init: true
+
+    working_dir: /app
+
+    command:
+      - sh
+      - -c
+      - |
+        npx -y @modelcontextprotocol/server-playwright
+
     environment:
-      - NODE_ENV=production
-      - MCP_FILESYSTEM_ROOT=/var/evie/sandbox  # Nur dieser Pfad ist zugänglich!
-    # Netzwerk-Isolation
-    network_mode: bridge
-    # Volume für den Sandbox-Pfad (Read-Only für Sicherheit)
+      NODE_ENV: production
+      HOME: /tmp
+
+    tmpfs:
+      - /tmp
+
+    shm_size: "2gb"
+
+    security_opt:
+      - no-new-privileges:true
+
+    cap_drop:
+      - ALL
+
+    networks:
+      - mcp
+
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f server-playwright >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+    mem_limit: 2g
+    cpus: "2.0"
+
+
+  mcp-filesystem:
+    image: node:22-alpine
+
+    container_name: evie-mcp-filesystem
+
+    restart: unless-stopped
+
+    init: true
+
+    working_dir: /app
+
+    command:
+      - sh
+      - -c
+      - |
+        npx -y @modelcontextprotocol/server-filesystem /sandbox
+
+    environment:
+      NODE_ENV: production
+
+    read_only: true
+
     volumes:
-      - ./mcp-data/sandbox:/var/evie/sandbox:ro
-      - ./mcp-data/filesystem:/data
+      - ./mcp-data/sandbox:/sandbox:ro
+
+    tmpfs:
+      - /tmp
+
+    security_opt:
+      - no-new-privileges:true
+
+    cap_drop:
+      - ALL
+
+    networks:
+      - mcp
+
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep node >/dev/null || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
+
+    mem_limit: 512m
+    cpus: "0.5"
+
+
+networks:
+  mcp:
+    name: evie-mcp
+    driver: bridge
