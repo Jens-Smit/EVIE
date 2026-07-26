@@ -33,3 +33,11 @@ services:
 
     # Registrierung des OnboardingLoader als Service
     App\AI\Loader\OnboardingLoader: ~
+
+    # ToolRegistry als Service
+    App\AI\Skills\Tool\ToolRegistry: ~
+
+    # Automatische Registrierung aller Tools mit dem Tag 'ai.tool'
+    App\AI\Skills\Tool\:
+        resource: '../src/AI/Skills/Tool/'
+        tags: ['ai.tool']
