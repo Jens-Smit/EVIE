@@ -48,8 +48,10 @@ ai:
     store:
         postgres:
             onboarding:
-                dbal_connection: 'default'
+                dbal_connection: 'doctrine.dbal.default_connection'  # ✅ Korrekte Service-ID
                 table_name: 'onboarding_embeddings'
+
+
 
     indexer:
         onboarding:
