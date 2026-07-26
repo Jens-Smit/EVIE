@@ -4,30 +4,72 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>{% block title %}EVIE - AI Agent{% endblock %}</title>
-    <link rel="stylesheet" href="{{ asset('assets/styles/app.css') }}">
+    
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Custom Tailwind Config (optional) -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4a6fa5',
+                        secondary: '#166088',
+                        accent: '#4fc3f7',
+                    }
+                }
+            }
+        }
+    </script>
+    
     {% block styles %}{% endblock %}
 </head>
-<body>
-    <header>
-        <div class="header-container">
-            <h1 class="logo">EVIE</h1>
-            <nav class="nav-menu">
-                <a href="{{ path('app_home') }}" class="nav-link">Home</a>
-                <a href="{{ path('agent_dialog') }}" class="nav-link">AI Dialog</a>
-                <a href="{{ path('frontend_agent_history') }}" class="nav-link">Verlauf</a>
-                <a href="{{ path('tools_pending') }}" class="nav-link">Tools</a>
-            </nav>
+
+<body class="bg-gray-100 font-sans leading-normal tracking-normal">
+    <!-- Header -->
+    <header class="bg-secondary text-white shadow-md">
+        <div class="container mx-auto px-6 py-3">
+            <div class="flex justify-between items-center">
+                <h1 class="text-2xl font-bold">EVIE</h1>
+                <nav class="flex gap-4">
+                    <a href="{{ path('app_home') }}" class="px-4 py-2 rounded hover:bg-white/20 transition">Home</a>
+                    <a href="{{ path('frontend_agent_dialog') }}" class="px-4 py-2 rounded hover:bg-white/20 transition">AI Dialog</a>
+                    <a href="{{ path('frontend_agent_history') }}" class="px-4 py-2 rounded hover:bg-white/20 transition">Verlauf</a>
+                    <a href="{{ path('frontend_tools_pending') }}" class="px-4 py-2 rounded hover:bg-white/20 transition">Tools</a>
+                </nav>
+            </div>
         </div>
     </header>
 
-    <main class="main-container">
+    <!-- Main Content -->
+    <main class="container mx-auto px-6 py-8 min-h-[calc(100vh-120px)]">
         {% block body %}{% endblock %}
     </main>
 
-    <footer class="footer">
+    <!-- Footer -->
+    <footer class="bg-secondary text-white text-center py-4 mt-8">
         <p>&copy; {{ 'now'|date('Y') }} - EVIE AI Agent System</p>
     </footer>
 
+    <!-- Spinner Animation (for buttons) -->
+    <style>
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        .spinner {
+            display: inline-block;
+            width: 16px;
+            height: 16px;
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 1s ease-in-out infinite;
+        }
+    </style>
+
+    <!-- JavaScript -->
     <script src="{{ asset('assets/scripts/app.js') }}"></script>
     {% block scripts %}{% endblock %}
 </body>
