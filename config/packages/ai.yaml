@@ -46,17 +46,10 @@ ai:
             model: 'mistral-embed'
 
     store:
-
         postgres:
             onboarding:
                 dbal_connection: 'doctrine.dbal.default_connection'  # ✅ Korrekte Service-ID
                 table_name: 'onboarding_embeddings'
-
-        onboarding:
-            type: 'postgres'
-            dbal_connection: 'doctrine.dbal.default_connection'
-            table_name: 'onboarding_embeddings'
-
 
 
 
@@ -64,4 +57,4 @@ ai:
         onboarding:
             loader: 'App\AI\Loader\OnboardingLoader'
             vectorizer: 'ai.vectorizer.mistral_embed'
-            store: 'ai.store.onboarding'
+            store: 'ai.store.postgres.onboarding'
