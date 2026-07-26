@@ -1,0 +1,46 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}EVIE - AI Dialog{% endblock %}
+
+{% block body %}
+<div class="card">
+    <h2 class="card-title">AI-Agent Dialog</h2>
+    
+    <div class="chat-container" id="chat-container">
+        {% if messages is defined and messages|length > 0 %}
+            {% for message in messages %}
+                <div class="message {{ message.role }}">
+                    {{ message.content }}
+                </div>
+            {% endfor %}
+        {% else %}
+            <div class="message system">
+                Beginnen Sie eine Unterhaltung mit dem AI-Agenten. Stellen Sie eine Frage oder geben Sie eine Anweisung ein.
+            </div>
+        {% endif %}
+    </div>
+    
+    <form id="chat-form" action="{{ path('agent_dialog') }}" method="post">
+        <div class="form-group">
+            <label for="prompt">Ihre Nachricht:</label>
+            <textarea 
+                name="prompt" 
+                id="prompt" 
+                rows="3" 
+                placeholder="Geben Sie Ihre Nachricht an den AI-Agenten ein..." 
+                required
+            ></textarea>
+        </div>
+        <button type="submit" class="btn btn-primary">Nachricht senden</button>
+    </form>
+</div>
+
+<div class="card mt-3">
+    <h2 class="card-title">Hinweise</h2>
+    <ul>
+        <li>Der Agent antwortet basierend auf seinen Trainingsdaten und dem aktuellen Kontext.</li>
+        <li>Für komplexe Anfragen kann die Antwort etwas länger dauern.</li>
+        <li>Alle Dialoge werden in Ihrem Verlauf gespeichert.</li>
+    </ul>
+</div>
+{% endblock %}

@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}EVIE - AI Agent{% endblock %}</title>
+    <link rel="stylesheet" href="{{ asset('assets/styles/app.css') }}">
+    {% block styles %}{% endblock %}
+</head>
+<body>
+    <header>
+        <div class="header-container">
+            <h1 class="logo">EVIE</h1>
+            <nav class="nav-menu">
+                <a href="{{ path('app_home') }}" class="nav-link">Home</a>
+                <a href="{{ path('agent_dialog') }}" class="nav-link">AI Dialog</a>
+                <a href="{{ path('agent_history') }}" class="nav-link">Verlauf</a>
+                <a href="{{ path('tools_pending') }}" class="nav-link">Tools</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="main-container">
+        {% block body %}{% endblock %}
+    </main>
+
+    <footer class="footer">
+        <p>&copy; {{ 'now'|date('Y') }} - EVIE AI Agent System</p>
+    </footer>
+
+    <script src="{{ asset('assets/scripts/app.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>
