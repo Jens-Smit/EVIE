@@ -2,7 +2,6 @@
 
 namespace App;
 
-use Symfony\AI\AiBundle\AiBundle;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
 use Symfony\Component\HttpKernel\Kernel as BaseKernel;
 
@@ -15,11 +14,5 @@ class Kernel extends BaseKernel
      *
      * @return array<string, string>
      */
-    protected function getContainerExtensionClasses(): array
-    {
-        return [
-            \App\Mcp\DependencyInjection\EvieMcpExtension::class => ['evie_mcp'],
-            AiBundle::class => ['ai'],
-        ];
-    }
+   
 }
