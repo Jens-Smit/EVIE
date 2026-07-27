@@ -1,6 +1,6 @@
-evie_mcp:
-    cache_ttl: 300
-    servers:
+parameters:
+    evie_mcp.cache_ttl: 300
+    evie_mcp.servers:
         filesystem:
             transport: 'stdio'
             command: 'npx'
