@@ -23,6 +23,7 @@ final class EvieMcpExtension extends Extension
         $container->setParameter('evie_mcp.cache_ttl', $config['cache_ttl']);
         $container->setParameter('evie_mcp.timeout', $config['timeout']);
         $container->setParameter('evie_mcp.servers', $config['servers']);
+        $container->setParameter('evie_mcp.server_aliases', array_keys($config['servers']));
 
         // Load services
         $loader = new YamlFileLoader($container, new FileLocator(__DIR__.'/../../config'));
