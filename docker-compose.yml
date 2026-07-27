@@ -1,16 +1,10 @@
 services:
     mcp-playwright:
-        build:
-            context: .
-            dockerfile: Dockerfile.mcp
-        command: npx -y @modelcontextprotocol/server-playwright
+        image: ghcr.io/modelcontextprotocol/server-playwright:latest
         networks: [mcp_isolated]
 
     mcp-filesystem:
-        build:
-            context: .
-            dockerfile: Dockerfile.mcp
-        command: npx -y @modelcontextprotocol/server-filesystem /sandbox
+        image: ghcr.io/modelcontextprotocol/server-filesystem:latest
         volumes:
             - ./var/mcp-sandbox:/sandbox:rw
         networks: [mcp_isolated]
