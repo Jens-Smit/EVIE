@@ -19,9 +19,10 @@ final class EvieMcpExtension extends Extension implements ConfigurationInterface
         // Set parameters
         $container->setParameter('evie_mcp.cache_ttl', $config['cache_ttl']);
         $container->setParameter('evie_mcp.servers', $config['servers']);
+        $container->setParameter('evie_mcp.server_aliases', array_keys($config['servers']));
 
-        // Load services
-        $loader = new YamlFileLoader($container, new FileLocator(__DIR__.'/../../config'));
+        // Load services from the bundle's Resources/config directory
+        $loader = new YamlFileLoader($container, new FileLocator(__DIR__.'/../../Resources/config'));
         $loader->load('services.yaml');
     }
 
