@@ -7,6 +7,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\AI\Agent\AgentInterface;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
+use Symfony\AI\Platform\Message\ResultMessage;
 
 class OrchestratorAgentTest extends TestCase
 {
@@ -26,8 +27,9 @@ class OrchestratorAgentTest extends TestCase
         $expectedResponse = 'Daten wurden analysiert.';
 
         $messageBag = new MessageBag(Message::ofUser($userMessage));
-        $resultMessage = $this->createMock(Message::class);
-        $resultMessage->method('getContent')->willReturn($expectedResponse);
+        $resultMessage = $this->createConfiguredMock(ResultMessage::class, [
+            'getContent' => $expectedResponse,
+        ]);
 
         $this->agent->expects($this->once())
             ->method('call')
@@ -49,8 +51,9 @@ class OrchestratorAgentTest extends TestCase
         $expectedResponse = 'Excel-Tool wird benötigt.';
 
         $messageBag = new MessageBag(Message::ofUser($userMessage));
-        $resultMessage = $this->createMock(Message::class);
-        $resultMessage->method('getContent')->willReturn($expectedResponse);
+        $resultMessage = $this->createConfiguredMock(ResultMessage::class, [
+            'getContent' => $expectedResponse,
+        ]);
 
         $this->agent->expects($this->once())
             ->method('call')
@@ -72,8 +75,9 @@ class OrchestratorAgentTest extends TestCase
         $expectedResponse = 'ExcelParserTool wird benötigt.';
 
         $messageBag = new MessageBag(Message::ofUser($userMessage));
-        $resultMessage = $this->createMock(Message::class);
-        $resultMessage->method('getContent')->willReturn($expectedResponse);
+        $resultMessage = $this->createConfiguredMock(ResultMessage::class, [
+            'getContent' => $expectedResponse,
+        ]);
 
         $this->agent->expects($this->once())
             ->method('call')
@@ -95,8 +99,9 @@ class OrchestratorAgentTest extends TestCase
         $expectedResponse = 'DataAnalyzerTool wird benötigt.';
 
         $messageBag = new MessageBag(Message::ofUser($userMessage));
-        $resultMessage = $this->createMock(Message::class);
-        $resultMessage->method('getContent')->willReturn($expectedResponse);
+        $resultMessage = $this->createConfiguredMock(ResultMessage::class, [
+            'getContent' => $expectedResponse,
+        ]);
 
         $this->agent->expects($this->once())
             ->method('call')
