@@ -22,6 +22,7 @@ class DynamicSkillRegistryTest extends TestCase
     {
         $toolDefinition = new ToolDefinition();
         $toolDefinition->setName('TestTool');
+        $toolDefinition->setDescription('Test description');
         $toolDefinition->setStatus('approved');
         $toolDefinition->setSchema(['type' => 'object']);
 
@@ -39,6 +40,7 @@ class DynamicSkillRegistryTest extends TestCase
     {
         $toolDefinition = new ToolDefinition();
         $toolDefinition->setName('TestTool');
+        $toolDefinition->setDescription('Test description');
         $toolDefinition->setStatus('approved');
         $toolDefinition->setSchema(['type' => 'object']);
 
@@ -68,6 +70,7 @@ class DynamicSkillRegistryTest extends TestCase
     {
         $toolDefinition = new ToolDefinition();
         $toolDefinition->setName('NewTool');
+        $toolDefinition->setDescription('New tool description');
         $toolDefinition->setStatus('approved');
         $toolDefinition->setSchema(['type' => 'object']);
 
@@ -81,6 +84,7 @@ class DynamicSkillRegistryTest extends TestCase
     {
         $toolDefinition = new ToolDefinition();
         $toolDefinition->setName('TestTool');
+        $toolDefinition->setDescription('Test description');
         $toolDefinition->setStatus('approved');
         $toolDefinition->setSchema(['type' => 'object']);
 
