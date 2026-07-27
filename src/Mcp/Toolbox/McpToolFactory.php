@@ -10,6 +10,10 @@ use Symfony\AI\Agent\Toolbox\Tool\Tool;
 use Symfony\Contracts\Cache\CacheInterface;
 use Psr\Log\LoggerInterface;
 
+/**
+ * Factory for creating MCP tools as Symfony AI tools.
+ * Implements ToolFactoryInterface to integrate with Symfony AI Agent toolbox.
+ */
 final class McpToolFactory implements ToolFactoryInterface
 {
     /** @var array<string> */
