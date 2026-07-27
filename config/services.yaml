@@ -4,6 +4,26 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    evie_mcp.cache_ttl: 300
+    evie_mcp.servers:
+        filesystem:
+            transport: 'stdio'
+            command: 'npx'
+            arguments:
+                - '-y'
+                - '@modelcontextprotocol/server-filesystem'
+                - '%kernel.project_dir%/var/mcp-sandbox'
+
+        playwright:
+            transport: 'stdio'
+            command: 'npx'
+            arguments:
+                - '-y'
+                - '@modelcontextprotocol/server-playwright'
+
+        github:
+            transport: 'http'
+            url: '%env(GITHUB_MCP_URL)%'
 
 services:
     # default configuration for services in *this* file
@@ -46,7 +66,6 @@ services:
     App\Mcp\Client\McpServerManager:
         arguments:
             $serverConfigs: '%evie_mcp.servers%'
-            $mcpLogger: '@monolog.logger.mcp'
 
     App\Mcp\Toolbox\McpToolFactory:
         arguments:
@@ -54,12 +73,10 @@ services:
             $cache: '@cache.app'
             $serverAliases: ['filesystem', 'playwright', 'github']
             $cacheTtl: '%evie_mcp.cache_ttl%'
-            $mcpLogger: '@monolog.logger.mcp'
 
     App\Mcp\Toolbox\McpToolExecutor:
         arguments:
             $serverManager: '@App\Mcp\Client\McpServerManager'
-            $mcpLogger: '@monolog.logger.mcp'
 
     App\AI\Agent\EvieToolboxFactory:
         arguments:
