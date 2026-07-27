@@ -1,10 +1,8 @@
 <?php
+// src/Mcp/Exception/McpToolNotFoundException.php
 
 namespace App\Mcp\Exception;
 
-/**
- * Exception thrown when a requested MCP tool is not found.
- */
 final class McpToolNotFoundException extends \RuntimeException
 {
     public static function forTool(string $toolName, string $serverAlias = null): self
