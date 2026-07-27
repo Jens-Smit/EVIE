@@ -41,3 +41,32 @@ services:
     App\AI\Skills\Tool\:
         resource: '../src/AI/Skills/Tool/'
         tags: ['ai.tool']
+
+    # MCP Services
+    App\Mcp\Client\McpServerManager:
+        arguments:
+            $serverConfigs: '%evie_mcp.servers%'
+            $mcpLogger: '@monolog.logger.mcp'
+
+    App\Mcp\Toolbox\McpToolFactory:
+        arguments:
+            $serverManager: '@App\Mcp\Client\McpServerManager'
+            $cache: '@cache.app'
+            $serverAliases: ['filesystem', 'playwright', 'github']
+            $cacheTtl: '%evie_mcp.cache_ttl%'
+            $mcpLogger: '@monolog.logger.mcp'
+
+    App\Mcp\Toolbox\McpToolExecutor:
+        arguments:
+            $serverManager: '@App\Mcp\Client\McpServerManager'
+            $mcpLogger: '@monolog.logger.mcp'
+
+    App\AI\Agent\EvieToolboxFactory:
+        arguments:
+            $mcpToolFactory: '@App\Mcp\Toolbox\McpToolFactory'
+            $nativeTools: !tagged_iterator ai.tool
+
+    # Monolog Logger für MCP
+    monolog.logger.mcp:
+        parent: monolog.logger
+        tags: ['name' => 'mcp']
