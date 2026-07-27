@@ -1,18 +1,15 @@
 <?php
+// src/Mcp/Toolbox/McpToolFactory.php
 
 namespace App\Mcp\Toolbox;
 
 use App\Mcp\Client\McpServerManager;
-use App\Mcp\Exception\McpToolNotFoundException;
+use App\Mcp\Toolbox\McpToolExecutor;
 use Symfony\AI\Agent\Toolbox\ToolFactory\ToolFactoryInterface;
 use Symfony\AI\Agent\Toolbox\Tool\Tool;
 use Symfony\Contracts\Cache\CacheInterface;
 use Psr\Log\LoggerInterface;
 
-/**
- * Factory for creating MCP tools as Symfony AI tools.
- * Implements ToolFactoryInterface to integrate with Symfony AI Agent toolbox.
- */
 final class McpToolFactory implements ToolFactoryInterface
 {
     /** @var array<string> */
