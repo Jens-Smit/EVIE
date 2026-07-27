@@ -1,0 +1,8 @@
+parameters:
+    evie_mcp.servers:
+        playwright:
+            transport: http
+            url: 'http://localhost:8931/mcp'
+        filesystem:
+            transport: http
+            url: 'http://127.0.0.1:8123'
