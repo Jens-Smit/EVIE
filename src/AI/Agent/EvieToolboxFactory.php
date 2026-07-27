@@ -8,6 +8,9 @@ use Symfony\AI\Agent\Toolbox\Toolbox;
 use Symfony\AI\Agent\Toolbox\ToolFactory\ChainFactory;
 use Symfony\AI\Agent\Toolbox\ToolFactory\ReflectionToolFactory;
 
+/**
+ * Factory for creating the EVIE toolbox, combining MCP and native tools.
+ */
 final class EvieToolboxFactory
 {
     public function __construct(
@@ -16,6 +19,9 @@ final class EvieToolboxFactory
     ) {
     }
 
+    /**
+     * Creates a toolbox combining MCP and native tools.
+     */
     public function create(): Toolbox
     {
         $reflectionFactory = new ReflectionToolFactory();
