@@ -1,4 +1,5 @@
 <?php
+// src/Mcp/Toolbox/McpToolExecutor.php
 
 namespace App\Mcp\Toolbox;
 
@@ -8,10 +9,6 @@ use App\Mcp\Exception\McpToolNotFoundException;
 use App\Mcp\Exception\McpServerUnavailableException;
 use Psr\Log\LoggerInterface;
 
-/**
- * Executes MCP tool calls and handles errors appropriately.
- * This class is used by McpToolFactory to provide the executor for each MCP tool.
- */
 final class McpToolExecutor
 {
     public function __construct(
@@ -20,15 +17,6 @@ final class McpToolExecutor
     ) {
     }
 
-    /**
-     * Executes an MCP tool with the given arguments.
-     *
-     * @param string $serverAlias The alias of the MCP server.
-     * @param string $toolName The name of the tool on the MCP server.
-     * @param array<string, mixed> $arguments The arguments for the tool.
-     * @return mixed The result of the tool execution.
-     * @throws McpToolExecutionFailed If the tool execution fails.
-     */
     public function execute(string $serverAlias, string $toolName, array $arguments = []): mixed
     {
         try {
