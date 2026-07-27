@@ -41,3 +41,14 @@ services:
     App\AI\Skills\Tool\:
         resource: '../src/AI/Skills/Tool/'
         tags: ['ai.tool']
+
+    # MCP Server Manager (für direkte Tool-Aufrufe, falls benötigt)
+    App\Mcp\Client\McpServerManager:
+        arguments:
+            $serverConfigs: '%evie_mcp.servers%'
+            $mcpLogger: '@monolog.logger.mcp'
+
+    # Monolog Logger für MCP
+    monolog.logger.mcp:
+        parent: monolog.logger
+        tags: ['name' => 'mcp']
