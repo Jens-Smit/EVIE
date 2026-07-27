@@ -1,13 +1,10 @@
 <?php
+// src/Mcp/Exception/McpToolExecutionFailed.php
 
 namespace App\Mcp\Exception;
 
 use Symfony\AI\Agent\Toolbox\Exception\ToolExecutionExceptionInterface;
 
-/**
- * Exception thrown when an MCP tool execution fails.
- * Implements ToolExecutionExceptionInterface for proper error handling in Symfony AI Agent.
- */
 final class McpToolExecutionFailed extends \RuntimeException implements ToolExecutionExceptionInterface
 {
     public function __construct(
@@ -19,9 +16,6 @@ final class McpToolExecutionFailed extends \RuntimeException implements ToolExec
         parent::__construct($message, 0, $previous);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getToolCallResult(): string
     {
         return sprintf(
