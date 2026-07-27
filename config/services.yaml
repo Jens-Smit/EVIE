@@ -4,6 +4,26 @@
 # Put parameters here that don't need to change on each machine where the app is deployed
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
+    evie_mcp.cache_ttl: 300
+    evie_mcp.servers:
+        filesystem:
+            transport: 'stdio'
+            command: 'npx'
+            arguments:
+                - '-y'
+                - '@modelcontextprotocol/server-filesystem'
+                - '%kernel.project_dir%/var/mcp-sandbox'
+
+        playwright:
+            transport: 'stdio'
+            command: 'npx'
+            arguments:
+                - '-y'
+                - '@modelcontextprotocol/server-playwright'
+
+        github:
+            transport: 'http'
+            url: '%env(GITHUB_MCP_URL)%'
 
 services:
     # default configuration for services in *this* file
@@ -19,7 +39,6 @@ services:
             - '../src/DependencyInjection/'
             - '../src/Entity/'
             - '../src/Kernel.php'
-            - '../src/Mcp/'  # Exclude MCP classes as they are handled by the bundle
 
     App\AI\Skills\DynamicSkillRegistry:
         public: true
@@ -42,3 +61,24 @@ services:
     App\AI\Skills\Tool\:
         resource: '../src/AI/Skills/Tool/'
         tags: ['ai.tool']
+
+    # MCP Services
+    App\Mcp\Client\McpServerManager:
+        arguments:
+            $serverConfigs: '%evie_mcp.servers%'
+
+    App\Mcp\Toolbox\McpToolFactory:
+        arguments:
+            $serverManager: '@App\Mcp\Client\McpServerManager'
+            $cache: '@cache.app'
+            $serverAliases: ['filesystem', 'playwright', 'github']
+            $cacheTtl: '%evie_mcp.cache_ttl%'
+
+    App\Mcp\Toolbox\McpToolExecutor:
+        arguments:
+            $serverManager: '@App\Mcp\Client\McpServerManager'
+
+    App\AI\Agent\EvieToolboxFactory:
+        arguments:
+            $mcpToolFactory: '@App\Mcp\Toolbox\McpToolFactory'
+            $nativeTools: !tagged_iterator ai.tool
