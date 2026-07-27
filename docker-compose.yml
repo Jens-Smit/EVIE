@@ -44,4 +44,4 @@ services:
 
 networks:
     mcp_isolated:
-        internal: true
+        internal: false   

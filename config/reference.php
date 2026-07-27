@@ -1927,6 +1927,15 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         store?: string|Param, // Service name of store // Default: "Symfony\\AI\\Store\\StoreInterface"
  *     }>,
  * }
+ * @psalm-type EvieMcpConfig = array{
+ *     cache_ttl?: int|Param, // Cache TTL for MCP tools (in seconds). // Default: 300
+ *     servers?: array<string, array{ // Default: []
+ *         transport?: "stdio"|"http"|Param,
+ *         command?: scalar|Param|null, // Command for STDIO transport. // Default: null
+ *         arguments?: list<scalar|Param|null>,
+ *         url?: scalar|Param|null, // URL for HTTP transport. // Default: null
+ *     }>,
+ * }
  * @psalm-type ConfigType = array{
  *     imports?: ImportsConfig,
  *     parameters?: ParametersConfig,
@@ -1938,6 +1947,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *     security?: SecurityConfig,
  *     monolog?: MonologConfig,
  *     ai?: AiConfig,
+ *     evie_mcp?: EvieMcpConfig,
  *     "when@dev"?: array{
  *         imports?: ImportsConfig,
  *         parameters?: ParametersConfig,

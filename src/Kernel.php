@@ -30,11 +30,15 @@ class Kernel extends BaseKernel
      */
     public function registerBundles(): iterable
     {
-        $bundles = parent::registerBundles();
+        // 1. Lade die regulären Bundles aus der config/bundles.php
+        $contents = require $this->getProjectDir().'/config/bundles.php';
+        foreach ($contents as $class => $envs) {
+            if ($envs[$this->environment] ?? $envs['all'] ?? false) {
+                yield new $class();
+            }
+        }
         
-        // Manually register EvieMcpBundle
-        $bundles[] = new \App\Mcp\EvieMcpBundle();
-        
-        return $bundles;
+        // 2. Registriere dein eigenes Bundle manuell per yield
+        yield new \App\Mcp\EvieMcpBundle();
     }
 }

@@ -22,13 +22,14 @@ final class EvieMcpExtension extends Extension implements ConfigurationInterface
         $container->setParameter('evie_mcp.server_aliases', array_keys($config['servers']));
 
         // Load services from the bundle's Resources/config directory
-        $loader = new YamlFileLoader($container, new FileLocator(__DIR__.'/../../Resources/config'));
+        $loader = new YamlFileLoader($container, new FileLocator(__DIR__.'/../Resources/config'));
         $loader->load('services.yaml');
     }
 
     public function getConfigTreeBuilder(): TreeBuilder
     {
         $treeBuilder = new TreeBuilder('evie_mcp');
+        
         $treeBuilder->getRootNode()
             ->children()
                 ->integerNode('cache_ttl')
@@ -48,11 +49,15 @@ final class EvieMcpExtension extends Extension implements ConfigurationInterface
                                 ->defaultNull()
                                 ->info('Command for STDIO transport.')
                             ->end()
+                            
+                            // --- HIER WURDE ES KORRIGIERT ---
                             ->arrayNode('arguments')
-                                ->scalarPrototype()
-                                ->defaultValue([])
                                 ->info('Arguments for STDIO transport command.')
-                            ->end()
+                                ->defaultValue([])
+                                ->scalarPrototype()->end() // Schließt den Prototype
+                            ->end() // Schließt das Array "arguments"
+                            // --------------------------------
+                            
                             ->scalarNode('url')
                                 ->defaultNull()
                                 ->info('URL for HTTP transport.')
