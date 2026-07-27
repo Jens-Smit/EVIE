@@ -1,0 +1,16 @@
+services:
+    mcp-playwright:
+        image: node:20-alpine
+        command: npx -y @modelcontextprotocol/server-playwright
+        networks: [mcp_isolated]
+
+    mcp-filesystem:
+        image: node:20-alpine
+        command: npx -y @modelcontextprotocol/server-filesystem /sandbox
+        volumes:
+            - ./var/mcp-sandbox:/sandbox:rw
+        networks: [mcp_isolated]
+
+networks:
+    mcp_isolated:
+        internal: true
