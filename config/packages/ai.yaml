@@ -3,16 +3,6 @@ ai:
         mistral:
             api_key: '%env(MISTRAL_API_KEY)%'
 
-    # MCP-Server-Konfiguration (native Integration)
-    mcp:
-        servers:
-            playwright:
-                transport: http
-                url: 'http://localhost:8931/mcp'
-            filesystem:
-                transport: http
-                url: 'http://127.0.0.1:8123'
-
     agent:
         orchestrator:            
             platform: 'ai.platform.mistral'
@@ -22,8 +12,10 @@ ai:
                 include_tools: true
             memory:
                 service: 'App\AI\Onboarding\ContextMemoryProvider'
-            # Tools werden automatisch aus den MCP-Servern geladen
-            tools: false
+            tools:
+                - service: 'App\Mcp\Toolbox\McpToolExecutor'
+                  name: 'mcp_tool_executor'
+                  description: 'Führt MCP-Tools aus den konfigurierten Servern aus.'
 
         research:
             platform: 'ai.platform.mistral'
