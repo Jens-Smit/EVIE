@@ -1,4 +1,5 @@
 <?php
+// src/Mcp/Toolbox/McpRemoteToolMetadata.php
 
 namespace App\Mcp\Toolbox;
 
