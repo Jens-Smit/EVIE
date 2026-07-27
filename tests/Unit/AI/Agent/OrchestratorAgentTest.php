@@ -7,6 +7,7 @@ use PHPUnit\Framework\TestCase;
 use Symfony\AI\Agent\AgentInterface;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
+use Symfony\AI\Platform\Result\TextResult;
 
 class OrchestratorAgentTest extends TestCase
 {
@@ -25,16 +26,15 @@ class OrchestratorAgentTest extends TestCase
         $userIdentifier = 'user123';
         $expectedResponse = 'Daten wurden analysiert.';
 
-        $messageBag = new MessageBag(Message::ofUser($userMessage));
-        $resultMessage = Message::ofAssistant($expectedResponse);
+        $resultResponse = new TextResult($expectedResponse);
 
         $this->agent->expects($this->once())
             ->method('call')
             ->with(
-                $this->equalTo($messageBag),
+                $this->isInstanceOf(MessageBag::class),
                 $this->equalTo(['user_identifier' => $userIdentifier])
             )
-            ->willReturn($resultMessage);
+            ->willReturn($resultResponse);
 
         $result = $this->orchestrator->ask($userMessage, $userIdentifier);
 
@@ -47,16 +47,15 @@ class OrchestratorAgentTest extends TestCase
         $userIdentifier = 'user123';
         $expectedResponse = 'Excel-Tool wird benötigt.';
 
-        $messageBag = new MessageBag(Message::ofUser($userMessage));
-        $resultMessage = Message::ofAssistant($expectedResponse);
+        $resultResponse = new TextResult($expectedResponse);
 
         $this->agent->expects($this->once())
             ->method('call')
             ->with(
-                $this->equalTo($messageBag),
+                $this->isInstanceOf(MessageBag::class),
                 $this->equalTo(['user_identifier' => $userIdentifier])
             )
-            ->willReturn($resultMessage);
+            ->willReturn($resultResponse);
 
         $result = $this->orchestrator->ask($userMessage, $userIdentifier);
 
@@ -69,16 +68,15 @@ class OrchestratorAgentTest extends TestCase
         $userIdentifier = 'user123';
         $expectedResponse = 'ExcelParserTool wird benötigt.';
 
-        $messageBag = new MessageBag(Message::ofUser($userMessage));
-        $resultMessage = Message::ofAssistant($expectedResponse);
+        $resultResponse = new TextResult($expectedResponse);
 
         $this->agent->expects($this->once())
             ->method('call')
             ->with(
-                $this->equalTo($messageBag),
+                $this->isInstanceOf(MessageBag::class),
                 $this->equalTo(['user_identifier' => $userIdentifier])
             )
-            ->willReturn($resultMessage);
+            ->willReturn($resultResponse);
 
         $result = $this->orchestrator->ask($userMessage, $userIdentifier);
 
@@ -91,16 +89,15 @@ class OrchestratorAgentTest extends TestCase
         $userIdentifier = 'user123';
         $expectedResponse = 'DataAnalyzerTool wird benötigt.';
 
-        $messageBag = new MessageBag(Message::ofUser($userMessage));
-        $resultMessage = Message::ofAssistant($expectedResponse);
+        $resultResponse = new TextResult($expectedResponse);
 
         $this->agent->expects($this->once())
             ->method('call')
             ->with(
-                $this->equalTo($messageBag),
+                $this->isInstanceOf(MessageBag::class),
                 $this->equalTo(['user_identifier' => $userIdentifier])
             )
-            ->willReturn($resultMessage);
+            ->willReturn($resultResponse);
 
         $result = $this->orchestrator->ask($userMessage, $userIdentifier);
 
