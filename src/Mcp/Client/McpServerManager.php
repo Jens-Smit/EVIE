@@ -1,17 +1,14 @@
 <?php
+// src/Mcp/Client/McpServerManager.php
 
 namespace App\Mcp\Client;
 
-use App\Mcp\Exception\McpServerUnavailableException;
-use App\Mcp\Exception\McpToolNotFoundException;
 use Mcp\Client;
 use Mcp\Client\Transport\StdioTransport;
 use Mcp\Client\Transport\HttpTransport;
+use App\Mcp\Exception\McpServerUnavailableException;
 use Psr\Log\LoggerInterface;
 
-/**
- * Manages MCP server connections and provides tool discovery/calling capabilities.
- */
 final class McpServerManager
 {
     /** @var array<string, Client> */
@@ -31,11 +28,6 @@ final class McpServerManager
     ) {
     }
 
-    /**
-     * Gets or creates a client for the given server alias.
-     *
-     * @throws McpServerUnavailableException If the server is unknown or fails to connect.
-     */
     public function getClient(string $serverAlias): Client
     {
         if (isset($this->clients[$serverAlias])) {
@@ -44,7 +36,7 @@ final class McpServerManager
 
         $config = $this->serverConfigs[$serverAlias] ?? null;
         if (!$config) {
-            throw McpServerUnavailableException::unknownServer($serverAlias);
+            throw new McpServerUnavailableException(sprintf('Unbekannter MCP-Server "%s".', $serverAlias));
         }
 
         $client = Client::builder()
@@ -53,29 +45,28 @@ final class McpServerManager
             ->setRequestTimeout(120)
             ->build();
 
-        $transport = $this->createTransport($config);
+        $transport = match ($config['transport']) {
+            'stdio' => new StdioTransport(
+                command: $config['command'],
+                args: $config['arguments'] ?? [],
+            ),
+            'http' => new HttpTransport($config['url']),
+        };
 
         try {
             $client->connect($transport);
             $this->logger->info('Connected to MCP server: {server}', ['server' => $serverAlias]);
         } catch (\Throwable $e) {
-            throw McpServerUnavailableException::connectionFailed(
-                $serverAlias,
-                $e->getMessage(),
-                $e
+            throw new McpServerUnavailableException(
+                sprintf('MCP-Server "%s" nicht erreichbar: %s', $serverAlias, $e->getMessage()),
+                previous: $e,
             );
         }
 
         return $this->clients[$serverAlias] = $client;
     }
 
-    /**
-     * Lists all tools available on the specified server.
-     *
-     * @param string $serverAlias The server alias.
-     * @return array<string, array{name: string, description: string, inputSchema: array}>
-     * @throws McpServerUnavailableException If the server is unavailable.
-     */
+    /** @return array<string, array{name: string, description: string, inputSchema: array}> */
     public function listToolsFor(string $serverAlias): array
     {
         $client = $this->getClient($serverAlias);
@@ -98,16 +89,6 @@ final class McpServerManager
         return $result;
     }
 
-    /**
-     * Calls a tool on the specified server.
-     *
-     * @param string $serverAlias The server alias.
-     * @param string $toolName The name of the tool to call.
-     * @param array<string, mixed> $arguments The arguments for the tool.
-     * @return mixed The result of the tool call.
-     * @throws McpServerUnavailableException If the server is unavailable.
-     * @throws McpToolNotFoundException If the tool is not found.
-     */
     public function callTool(string $serverAlias, string $toolName, array $arguments = []): mixed
     {
         $client = $this->getClient($serverAlias);
@@ -121,13 +102,12 @@ final class McpServerManager
         try {
             return $client->callTool($toolName, $arguments);
         } catch (\InvalidArgumentException $e) {
-            throw McpToolNotFoundException::forTool($toolName, $serverAlias);
+            throw new \App\Mcp\Exception\McpToolNotFoundException(
+                sprintf('Tool "%s" not found on server "%s".', $toolName, $serverAlias)
+            );
         }
     }
 
-    /**
-     * Disconnects all clients.
-     */
     public function disconnectAll(): void
     {
         foreach ($this->clients as $serverAlias => $client) {
@@ -142,25 +122,5 @@ final class McpServerManager
             }
         }
         $this->clients = [];
-    }
-
-    /**
-     * Creates a transport based on the server configuration.
-     *
-     * @throws McpServerUnavailableException If the transport type is unsupported.
-     */
-    private function createTransport(array $config): StdioTransport|HttpTransport
-    {
-        return match ($config['transport']) {
-            'stdio' => new StdioTransport(
-                command: $config['command'] ?? '',
-                args: $config['arguments'] ?? [],
-            ),
-            'http' => new HttpTransport($config['url'] ?? ''),
-            default => throw McpServerUnavailableException::connectionFailed(
-                $config['transport'],
-                sprintf('Unsupported transport type: %s', $config['transport'])
-            ),
-        };
     }
 }
