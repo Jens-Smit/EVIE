@@ -16,9 +16,6 @@ doctrine:
                 dir: '%kernel.project_dir%/src/Entity'
                 prefix: 'App\Entity'
                 alias: App
-                # Exkludiere src/Mcp/ von der Doctrine-Mapping-Suche
-                exclude:
-                    - '%kernel.project_dir%/src/Mcp/'
 
 when@test:
     doctrine:
