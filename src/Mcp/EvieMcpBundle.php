@@ -1,4 +1,5 @@
 <?php
+// src/Mcp/EvieMcpBundle.php
 
 namespace App\Mcp;
 
