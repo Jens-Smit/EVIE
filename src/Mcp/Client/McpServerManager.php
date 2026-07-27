@@ -121,10 +121,7 @@ final class McpServerManager
         try {
             return $client->callTool($toolName, $arguments);
         } catch (\InvalidArgumentException $e) {
-            throw new \App\Mcp\Exception\McpToolNotFoundException(
-                $toolName,
-                $serverAlias
-            );
+            throw \App\Mcp\Exception\McpToolNotFoundException::forTool($toolName, $serverAlias);
         }
     }
 
