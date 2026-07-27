@@ -6,7 +6,6 @@ namespace App\Mcp\Toolbox;
 use App\Mcp\Client\McpServerManager;
 use Symfony\AI\Agent\Toolbox\ToolFactory\ToolFactoryInterface;
 use Symfony\Contracts\Cache\CacheInterface;
-use Psr\Log\LoggerInterface;
 
 final class McpToolFactory implements ToolFactoryInterface
 {
@@ -16,7 +15,6 @@ final class McpToolFactory implements ToolFactoryInterface
         private readonly CacheInterface $cache,
         private readonly array $serverAliases,
         private readonly int $cacheTtl = 300,
-        private readonly LoggerInterface $mcpLogger,
     ) {
     }
 
@@ -29,7 +27,6 @@ final class McpToolFactory implements ToolFactoryInterface
             );
 
             foreach ($tools as $toolName => $tool) {
-                $this->mcpLogger->debug(sprintf('Tool "%s" von Server "%s" wird registriert.', $toolName, $alias));
                 yield new McpRemoteToolMetadata(
                     name: sprintf('%s_%s', $alias, $toolName),
                     description: $tool['description'],
