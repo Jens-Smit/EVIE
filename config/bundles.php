@@ -10,5 +10,4 @@ return [
     Symfony\Bundle\DebugBundle\DebugBundle::class => ['dev' => true],
     Symfony\Bundle\WebProfilerBundle\WebProfilerBundle::class => ['dev' => true],
     Symfony\AI\AiBundle\AiBundle::class => ['all' => true],
-    App\Mcp\EvieMcpBundle::class => ['all' => true],
 ];
