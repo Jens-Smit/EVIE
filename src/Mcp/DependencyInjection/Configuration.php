@@ -1,4 +1,5 @@
 <?php
+// src/Mcp/DependencyInjection/Configuration.php
 
 namespace App\Mcp\DependencyInjection;
 
