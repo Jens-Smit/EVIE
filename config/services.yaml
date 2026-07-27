@@ -48,7 +48,7 @@ services:
             $serverConfigs: '%evie_mcp.servers%'
             $mcpLogger: '@monolog.logger.mcp'
 
-    # Monolog Logger für MCP
+    # Monolog Logger für MCP (optional, für Debugging und Fehlerprotokollierung)
     monolog.logger.mcp:
         parent: monolog.logger
-        tags: ['name' => 'mcp']
+        tags: ['name: mcp']
