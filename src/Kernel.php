@@ -18,7 +18,6 @@ class Kernel extends BaseKernel
     protected function getContainerExtensionClasses(): array
     {
         return [
-            \App\Mcp\DependencyInjection\EvieMcpExtension::class => ['evie_mcp'],
             AiBundle::class => ['ai'],
         ];
     }
