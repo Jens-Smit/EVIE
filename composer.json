@@ -23,6 +23,7 @@
         "symfony/ai-cache-message-store": "0.11.0",
         "symfony/ai-chat": "0.11.0",
         "symfony/ai-firecrawl-tool": "0.11.0",
+        "symfony/ai-gemini-platform": "^0.11.0",
         "symfony/ai-mistral-platform": "0.11.1",
         "symfony/ai-postgres-store": "0.11.0",
         "symfony/ai-store": "0.11.0",
