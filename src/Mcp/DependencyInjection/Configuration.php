@@ -1,4 +1,5 @@
 <?php
+// src/Mcp/DependencyInjection/Configuration.php
 
 namespace App\Mcp\DependencyInjection;
 
@@ -10,9 +11,6 @@ use Symfony\Component\Config\Definition\ConfigurationInterface;
  */
 final class Configuration implements ConfigurationInterface
 {
-    /** @var array<string> */
-    public const DEFAULT_SERVER_ALIASES = ['filesystem', 'playwright'];
-
     public function getConfigTreeBuilder(): TreeBuilder
     {
         $treeBuilder = new TreeBuilder('evie_mcp');
@@ -22,10 +20,6 @@ final class Configuration implements ConfigurationInterface
                 ->integerNode('cache_ttl')
                     ->defaultValue(300)
                     ->info('Cache TTL for MCP tools (in seconds).')
-                ->end()
-                ->integerNode('timeout')
-                    ->defaultValue(60)
-                    ->info('Timeout for MCP transport (in seconds).')
                 ->end()
                 ->arrayNode('servers')
                     ->useAttributeAsKey('name')

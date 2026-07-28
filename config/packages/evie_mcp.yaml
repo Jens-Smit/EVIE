@@ -1,31 +1,14 @@
 evie_mcp:
-    cache_ttl: 300  # 5 minutes cache for tools
-    timeout: 60      # Timeout for transport (seconds)
-
+    cache_ttl: 300
     servers:
-        # Filesystem-MCP (STDIO transport)
         filesystem:
-            transport: 'stdio'
-            command: 'npx'
-            arguments:
-                - '-y'
-                - '@modelcontextprotocol/server-filesystem'
-                - '%kernel.project_dir%/var/mcp-sandbox'
+            transport: 'http'
+            url: 'http://127.0.0.1:8123'
 
-        # Playwright-MCP (STDIO transport)
         playwright:
-            transport: 'stdio'
-            command: 'npx'
-            arguments:
-                - '-y'
-                - '@modelcontextprotocol/server-playwright'
+            transport: 'http'
+            url: 'http://localhost:8931/mcp'
 
-        # GitHub-MCP (HTTP transport, example for Docker)
-        # github:
-        #     transport: 'http'
-        #     url: '%env(GITHUB_MCP_URL)%'
-
-        # Docker-MCP (HTTP transport, example for Docker)
-        # docker:
-        #     transport: 'http'
-        #     url: '%env(DOCKER_MCP_URL)%'
+        github:
+            transport: 'http'
+            url: '%env(GITHUB_MCP_URL)%'

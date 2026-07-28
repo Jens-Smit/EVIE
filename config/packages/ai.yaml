@@ -13,21 +13,9 @@ ai:
             memory:
                 service: 'App\AI\Onboarding\ContextMemoryProvider'
             tools:
-                - service: 'mcp.client.playwright.tool.navigate'
-                  name: 'browser_navigate'
-                  description: 'Öffnet eine URL im kontrollierten Browser-Sandbox-Container.'
-
-                - service: 'mcp.client.playwright.tool.click'
-                  name: 'browser_click'
-                  description: 'Klickt ein Element auf der aktuell geöffneten Seite.'
-
-                - service: 'mcp.client.filesystem.tool.read'
-                  name: 'filesystem_read'
-                  description: 'Liest eine Datei aus dem Sandbox-Verzeichnis.'
-
-                - service: 'mcp.client.filesystem.tool.list'
-                  name: 'filesystem_list'
-                  description: 'Listet Dateien im Sandbox-Verzeichnis auf.'
+                - service: 'App\Mcp\Toolbox\McpToolExecutor'
+                  name: 'mcp_tool_executor'
+                  description: 'Führt MCP-Tools aus den konfigurierten Servern aus.'
 
         research:
             platform: 'ai.platform.mistral'

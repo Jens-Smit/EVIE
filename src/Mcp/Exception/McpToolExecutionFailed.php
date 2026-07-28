@@ -1,4 +1,5 @@
 <?php
+// src/Mcp/Exception/McpToolExecutionFailed.php
 
 namespace App\Mcp\Exception;
 

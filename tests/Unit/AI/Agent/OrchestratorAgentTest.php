@@ -2,85 +2,105 @@
 
 namespace App\Tests\Unit\AI\Agent;
 
-use App\AI\Agent\OrchestratorAgent;
-use App\AI\Skills\DynamicSkillRegistry;
-use App\AI\Onboarding\ContextStoreManager;
+use App\AI\Agent\OrchestratorDialogService;
 use PHPUnit\Framework\TestCase;
+use Symfony\AI\Agent\AgentInterface;
+use Symfony\AI\Platform\Message\Message;
+use Symfony\AI\Platform\Message\MessageBag;
+use Symfony\AI\Platform\Result\TextResult;
 
 class OrchestratorAgentTest extends TestCase
 {
-    private OrchestratorAgent $orchestrator;
-    private DynamicSkillRegistry $skillRegistry;
-    private ContextStoreManager $contextStore;
+    private OrchestratorDialogService $orchestrator;
+    private AgentInterface $agent;
 
     protected function setUp(): void
     {
-        $this->skillRegistry = $this->createMock(DynamicSkillRegistry::class);
-        $this->contextStore = $this->createMock(ContextStoreManager::class);
-        
-        $this->orchestrator = new OrchestratorAgent(
-            $this->skillRegistry,
-            $this->contextStore
-        );
+        $this->agent = $this->createMock(AgentInterface::class);
+        $this->orchestrator = new OrchestratorDialogService($this->agent);
     }
 
     public function testHandlePromptWithAvailableTools(): void
     {
-        $prompt = 'Analysiere diese Daten';
+        $userMessage = 'Analysiere diese Daten';
         $userIdentifier = 'user123';
-        $context = ['user_type' => 'Business'];
+        $expectedResponse = 'Daten wurden analysiert.';
 
-        $this->contextStore->method('loadContext')
-            ->with($userIdentifier)
-            ->willReturn($context);
+        $resultResponse = new TextResult($expectedResponse);
 
-        $this->skillRegistry->method('getAvailableTools')
-            ->willReturn([
-                'DataAnalyzerTool' => $this->createMock(\stdClass::class),
-            ]);
+        $this->agent->expects($this->once())
+            ->method('call')
+            ->with(
+                $this->isInstanceOf(MessageBag::class),
+                $this->equalTo(['user_identifier' => $userIdentifier])
+            )
+            ->willReturn($resultResponse);
 
-        $result = $this->orchestrator->handlePrompt($prompt, $userIdentifier);
+        $result = $this->orchestrator->ask($userMessage, $userIdentifier);
 
-        $this->assertEquals('execute_tools', $result['action']);
-        $this->assertContains('DataAnalyzerTool', $result['available_tools']);
+        $this->assertEquals($expectedResponse, $result);
     }
 
     public function testHandlePromptWithMissingTools(): void
     {
-        $prompt = 'Analysiere diese Excel-Datei';
+        $userMessage = 'Analysiere diese Excel-Datei';
         $userIdentifier = 'user123';
-        $context = ['user_type' => 'Business'];
+        $expectedResponse = 'Excel-Tool wird benötigt.';
 
-        $this->contextStore->method('loadContext')
-            ->with($userIdentifier)
-            ->willReturn($context);
+        $resultResponse = new TextResult($expectedResponse);
 
-        $this->skillRegistry->method('getAvailableTools')
-            ->willReturn([]);
+        $this->agent->expects($this->once())
+            ->method('call')
+            ->with(
+                $this->isInstanceOf(MessageBag::class),
+                $this->equalTo(['user_identifier' => $userIdentifier])
+            )
+            ->willReturn($resultResponse);
 
-        $result = $this->orchestrator->handlePrompt($prompt, $userIdentifier);
+        $result = $this->orchestrator->ask($userMessage, $userIdentifier);
 
-        $this->assertEquals('trigger_tool_creation', $result['action']);
-        $this->assertContains('ExcelParserTool', $result['missing_tools_list']);
+        $this->assertEquals($expectedResponse, $result);
     }
 
     public function testAnalyzePromptForExcel(): void
     {
-        $prompt = 'Analysiere diese Excel-Datei';
-        $context = [];
+        $userMessage = 'Analysiere diese Excel-Datei';
+        $userIdentifier = 'user123';
+        $expectedResponse = 'ExcelParserTool wird benötigt.';
 
-        $result = $this->orchestrator->handlePrompt($prompt, 'user123');
+        $resultResponse = new TextResult($expectedResponse);
 
-        $this->assertContains('ExcelParserTool', $result['required_tools']);
+        $this->agent->expects($this->once())
+            ->method('call')
+            ->with(
+                $this->isInstanceOf(MessageBag::class),
+                $this->equalTo(['user_identifier' => $userIdentifier])
+            )
+            ->willReturn($resultResponse);
+
+        $result = $this->orchestrator->ask($userMessage, $userIdentifier);
+
+        $this->assertStringContainsString('ExcelParserTool', $result);
     }
 
     public function testAnalyzePromptForAnalysis(): void
     {
-        $prompt = 'Ich möchte eine Datenanalyse durchführen';
-        $context = [];
+        $userMessage = 'Ich möchte eine Datenanalyse durchführen';
+        $userIdentifier = 'user123';
+        $expectedResponse = 'DataAnalyzerTool wird benötigt.';
 
-        $result = $this->orchestrator->handlePrompt($prompt, 'user123');
+        $resultResponse = new TextResult($expectedResponse);
 
-        $this->assertContains('DataAnalyzerTool', $result['required_tools']);
+        $this->agent->expects($this->once())
+            ->method('call')
+            ->with(
+                $this->isInstanceOf(MessageBag::class),
+                $this->equalTo(['user_identifier' => $userIdentifier])
+            )
+            ->willReturn($resultResponse);
+
+        $result = $this->orchestrator->ask($userMessage, $userIdentifier);
+
+        $this->assertStringContainsString('DataAnalyzerTool', $result);
     }
 }
