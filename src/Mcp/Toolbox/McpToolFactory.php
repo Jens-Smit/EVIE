@@ -4,10 +4,9 @@
 namespace App\Mcp\Toolbox;
 
 use App\Mcp\Client\McpServerManager;
-use Symfony\AI\Agent\Toolbox\ToolFactory\ToolFactoryInterface;
 use Symfony\Contracts\Cache\CacheInterface;
 
-final class McpToolFactory implements ToolFactoryInterface
+final class McpToolFactory
 {
     /** @param string[] $serverAliases */
     public function __construct(
@@ -18,6 +17,10 @@ final class McpToolFactory implements ToolFactoryInterface
     ) {
     }
 
+    /**
+     * Gibt alle Tools für alle Server zurück (für die Toolbox).
+     * @return iterable<McpRemoteToolMetadata>
+     */
     public function getTools(): iterable
     {
         foreach ($this->serverAliases as $alias) {
