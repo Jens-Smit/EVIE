@@ -2,7 +2,6 @@ ai:
     platform:
         mistral:
             api_key: '%env(MISTRAL_API_KEY)%'
-            base_url: '%env(MISTRAL_API_URL)%'
         gemini:
             api_key: '%env(GEMINI_API_KEY)%'
 
