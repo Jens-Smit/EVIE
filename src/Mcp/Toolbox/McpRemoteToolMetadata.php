@@ -4,6 +4,7 @@
 namespace App\Mcp\Toolbox;
 
 use Symfony\AI\Agent\Toolbox\Tool\ToolInterface;
+use Symfony\AI\Platform\Tool\ExecutionReference;
 
 final class McpRemoteToolMetadata implements ToolInterface
 {
@@ -39,5 +40,17 @@ final class McpRemoteToolMetadata implements ToolInterface
     public function getRemoteName(): string
     {
         return $this->remoteName;
+    }
+
+    public function getExecutionReference(): ExecutionReference
+    {
+        return new ExecutionReference(
+            McpToolExecutor::class,
+            'execute',
+            [
+                'serverAlias' => $this->serverAlias,
+                'toolName' => $this->remoteName,
+            ]
+        );
     }
 }
