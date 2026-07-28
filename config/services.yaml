@@ -49,12 +49,12 @@ services:
             $serverConfigs:
                 filesystem:
                     transport: 'stdio'
-                    command: 'npx -y @modelcontextprotocol/server-filesystem %kernel.project_dir%/var/mcp-sandbox'
-                    arguments: []
+                    command: 'npx'
+                    arguments: ['-y', '%env(MCP_FILESYSTEM_PACKAGE)%', '%kernel.project_dir%/var/mcp-sandbox']
                 playwright:
                     transport: 'stdio'
-                    command: 'npx -y @modelcontextprotocol/server-playwright'
-                    arguments: []
+                    command: 'npx'
+                    arguments: ['-y', '%env(MCP_PLAYWRIGHT_PACKAGE)%']
                 github:
                     transport: 'http'
                     url: '%env(GITHUB_MCP_URL)%'
