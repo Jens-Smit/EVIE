@@ -14,14 +14,14 @@ ai:
             memory:
                 service: 'App\AI\Onboarding\ContextMemoryProvider'
             tools:
-<<<<<<< Updated upstream
+
                 - service: 'App\Mcp\Toolbox\McpToolExecutor'
                   name: 'mcp_tool_executor'
                   description: 'Führt MCP-Tools aus den konfigurierten Servern aus.'
-=======
+
                 - { service: 'App\AI\Skills\Tool\WeatherTool' }
                 - { service: 'App\AI\Skills\Tool\FileReadTool' }
->>>>>>> Stashed changes
+
 
         research:
             platform: 'ai.platform.mistral'

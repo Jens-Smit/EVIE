@@ -1984,6 +1984,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         twig?: TwigConfig,
  *         security?: SecurityConfig,
  *         monolog?: MonologConfig,
+ *         web_profiler?: WebProfilerConfig,
  *         ai?: AiConfig,
  *     },
  *     ...<string, ExtensionType|array{ // extra keys must follow the when@%env% pattern or match an extension alias

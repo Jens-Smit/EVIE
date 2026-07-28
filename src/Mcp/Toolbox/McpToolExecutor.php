@@ -13,7 +13,7 @@ final class McpToolExecutor
     ) {
     }
 
-    public function execute(string $serverAlias, string $toolName, array $arguments = []): mixed
+    public function __invoke(string $serverAlias, string $toolName, array $arguments = []): mixed
     {
         try {
             return $this->serverManager->callTool($serverAlias, $toolName, $arguments);
