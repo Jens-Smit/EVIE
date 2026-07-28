@@ -74,11 +74,15 @@ services:
             $serverAliases: ['filesystem', 'playwright', 'github']
             $cacheTtl: '%evie_mcp.cache_ttl%'
 
+    App\Mcp\Toolbox\McpToolFactoryWrapper:
+        arguments:
+            $mcpToolFactory: '@App\Mcp\Toolbox\McpToolFactory'
+
     App\Mcp\Toolbox\McpToolExecutor:
         arguments:
             $serverManager: '@App\Mcp\Client\McpServerManager'
 
     App\AI\Agent\EvieToolboxFactory:
         arguments:
-            $mcpToolFactory: '@App\Mcp\Toolbox\McpToolFactory'
+            $mcpToolFactory: '@App\Mcp\Toolbox\McpToolFactoryWrapper'
             $nativeTools: !tagged_iterator ai.tool
