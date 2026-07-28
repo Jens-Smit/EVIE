@@ -5,16 +5,6 @@
 # https://symfony.com/doc/current/best_practices.html#use-parameters-for-application-configuration
 parameters:
     evie_mcp.cache_ttl: 300
-    evie_mcp.servers:
-        filesystem:
-            transport: 'stdio'
-            command: 'npx'
-        playwright:
-            transport: 'stdio'
-            command: 'npx'
-        github:
-            transport: 'http'
-            url: '%env(GITHUB_MCP_URL)%'
 
 services:
     # default configuration for services in *this* file
@@ -59,12 +49,12 @@ services:
             $serverConfigs:
                 filesystem:
                     transport: 'stdio'
-                    command: 'npx'
-                    arguments: ['-y', '!php/const:@modelcontextprotocol/server-filesystem', '%kernel.project_dir%/var/mcp-sandbox']
+                    command: 'npx -y @modelcontextprotocol/server-filesystem %kernel.project_dir%/var/mcp-sandbox'
+                    arguments: []
                 playwright:
                     transport: 'stdio'
-                    command: 'npx'
-                    arguments: ['-y', '!php/const:@modelcontextprotocol/server-playwright']
+                    command: 'npx -y @modelcontextprotocol/server-playwright'
+                    arguments: []
                 github:
                     transport: 'http'
                     url: '%env(GITHUB_MCP_URL)%'
