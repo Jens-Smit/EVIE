@@ -2,10 +2,11 @@ ai:
     platform:
         mistral:
             api_key: '%env(MISTRAL_API_KEY)%'
+        gemini:
+            api_key: '%env(GEMINI_API_KEY)%'
 
     agent:
         orchestrator:
-            
             platform: 'ai.platform.mistral'
             model: 'mistral-small-latest'
             prompt:
@@ -14,18 +15,21 @@ ai:
             memory:
                 service: 'App\AI\Onboarding\ContextMemoryProvider'
             tools:
-
                 - service: 'App\Mcp\Toolbox\McpToolExecutor'
                   name: 'mcp_tool_executor'
                   description: 'Führt MCP-Tools aus den konfigurierten Servern aus.'
-
                 - { service: 'App\AI\Skills\Tool\WeatherTool' }
                 - { service: 'App\AI\Skills\Tool\FileReadTool' }
-
 
         research:
             platform: 'ai.platform.mistral'
             model: 'mistral-small-latest'
+            tools: false
+
+        fallback:
+            platform: 'ai.platform.gemini'
+            model: 'gemini-1.5-flash'
+            prompt: 'Du bist der Fallback-Agent für EVIE. Beantworte Fragen direkt, falls Mistral nicht verfügbar ist.'
             tools: false
 
     multi_agent:
@@ -33,7 +37,7 @@ ai:
             orchestrator: 'orchestrator'
             handoffs:
                 research: ['recherche', 'suche', 'research']
-            fallback: 'orchestrator'
+            fallback: 'fallback'
 
     message_store:
         cache:
