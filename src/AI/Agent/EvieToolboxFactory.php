@@ -19,6 +19,7 @@ final class EvieToolboxFactory
     public function create(): Toolbox
     {
         $reflectionFactory = new ReflectionToolFactory();
+        // ChainFactory akzeptiert Factories mit `getTool()`-Methode (kein Interface nötig)
         $chainFactory = new ChainFactory([
             $this->mcpToolFactory,
             $reflectionFactory,

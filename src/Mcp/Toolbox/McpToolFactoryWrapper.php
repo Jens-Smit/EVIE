@@ -3,10 +3,9 @@
 
 namespace App\Mcp\Toolbox;
 
-use Symfony\AI\Agent\Toolbox\ToolFactory\ToolFactoryInterface;
 use Symfony\AI\Agent\Toolbox\Exception\ToolException;
 
-final class McpToolFactoryWrapper implements ToolFactoryInterface
+final class McpToolFactoryWrapper
 {
     public function __construct(private readonly McpToolFactory $mcpToolFactory) {}
 
@@ -29,7 +28,6 @@ final class McpToolFactoryWrapper implements ToolFactoryInterface
         }
 
         // Falls keine spezifische Referenz gefunden wurde, gebe alle Tools zurück.
-        // (Dies ist ein Fallback und nicht ideal, aber funktioniert mit ChainFactory.)
         foreach ($this->mcpToolFactory->getTools() as $tool) {
             yield $tool;
         }
