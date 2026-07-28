@@ -9,17 +9,12 @@ parameters:
         filesystem:
             transport: 'stdio'
             command: 'npx'
-            arguments:
-                - '-y'
-                - '@modelcontextprotocol/server-filesystem'
-                - '%kernel.project_dir%/var/mcp-sandbox'
+            arguments: ['-y', '@modelcontextprotocol/server-filesystem', '%kernel.project_dir%/var/mcp-sandbox']
 
         playwright:
             transport: 'stdio'
             command: 'npx'
-            arguments:
-                - '-y'
-                - '@modelcontextprotocol/server-playwright'
+            arguments: ['-y', '@modelcontextprotocol/server-playwright']
 
         github:
             transport: 'http'
