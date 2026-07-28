@@ -9,13 +9,9 @@ parameters:
         filesystem:
             transport: 'stdio'
             command: 'npx'
-            arguments: ['-y', '@modelcontextprotocol/server-filesystem', '%kernel.project_dir%/var/mcp-sandbox']
-
         playwright:
             transport: 'stdio'
             command: 'npx'
-            arguments: ['-y', '@modelcontextprotocol/server-playwright']
-
         github:
             transport: 'http'
             url: '%env(GITHUB_MCP_URL)%'
@@ -60,7 +56,18 @@ services:
     # MCP Services
     App\Mcp\Client\McpServerManager:
         arguments:
-            $serverConfigs: '%evie_mcp.servers%'
+            $serverConfigs:
+                filesystem:
+                    transport: 'stdio'
+                    command: 'npx'
+                    arguments: ['-y', '@modelcontextprotocol/server-filesystem', '%kernel.project_dir%/var/mcp-sandbox']
+                playwright:
+                    transport: 'stdio'
+                    command: 'npx'
+                    arguments: ['-y', '@modelcontextprotocol/server-playwright']
+                github:
+                    transport: 'http'
+                    url: '%env(GITHUB_MCP_URL)%'
 
     App\Mcp\Toolbox\McpToolFactory:
         arguments:
