@@ -15,10 +15,6 @@ parameters:
         github:
             transport: 'http'
             url: '%env(GITHUB_MCP_URL)%'
-    
-    # Separate parameters for arguments to avoid @ symbol resolution
-    evie_mcp.servers.filesystem.arguments: ['-y', '@modelcontextprotocol/server-filesystem', '%kernel.project_dir%/var/mcp-sandbox']
-    evie_mcp.servers.playwright.arguments: ['-y', '@modelcontextprotocol/server-playwright']
 
 services:
     # default configuration for services in *this* file
@@ -64,11 +60,11 @@ services:
                 filesystem:
                     transport: 'stdio'
                     command: 'npx'
-                    arguments: '%evie_mcp.servers.filesystem.arguments%'
+                    arguments: ['-y', '!php/const:@modelcontextprotocol/server-filesystem', '%kernel.project_dir%/var/mcp-sandbox']
                 playwright:
                     transport: 'stdio'
                     command: 'npx'
-                    arguments: '%evie_mcp.servers.playwright.arguments%'
+                    arguments: ['-y', '!php/const:@modelcontextprotocol/server-playwright']
                 github:
                     transport: 'http'
                     url: '%env(GITHUB_MCP_URL)%'
