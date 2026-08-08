@@ -2,7 +2,10 @@
 namespace App\Controller;
 
 use App\AI\Onboarding\ContextStoreManager;
+use App\Entity\AgentHistory;
+use App\Entity\UserProfile;
 use App\Repository\AgentHistoryRepository;
+use App\Repository\UserProfileRepository;
 use Symfony\AI\Agent\AgentInterface;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
@@ -21,32 +24,43 @@ final class AgentDialogController
         private readonly AgentInterface $agent,
         private readonly ContextStoreManager $contextStore,
         private readonly AgentHistoryRepository $historyRepo,
+        private readonly UserProfileRepository $userProfileRepo,
         private readonly LoggerInterface $logger,
     ) {
     }
 
     /**
      * Einzelner, zustandsloser Dialog-Turn mit dem Orchestrator-Agenten.
+     * Speichert die Interaktion in der Datenbank.
      */
     #[Route('/dialog', name: 'agent_dialog', methods: ['POST'])]
     public function dialog(Request $request): JsonResponse
     {
         $payload = $request->toArray();
         $userMessage = $payload['message'] ?? null;
-        $userIdentifier = $payload['user_identifier'] ?? null;
+        $userIdentifier = $payload['user_identifier'] ?? 'default_user';
 
         // Debugging: Logge die empfangenen Daten
         $this->logger->debug('AgentDialogController::dialog - Empfangene Payload:', $payload);
 
-        if (!$userMessage || !$userIdentifier) {
+        if (!$userMessage) {
             return new JsonResponse(
-                ['error' => 'Felder "message" und "user_identifier" sind erforderlich.'],
+                ['error' => 'Feld "message" ist erforderlich.'],
                 Response::HTTP_BAD_REQUEST
             );
         }
 
+        // Lade oder erstelle UserProfile
+        $userProfile = $this->userProfileRepo->findOneBy(['userIdentifier' => $userIdentifier]);
+        if (!$userProfile) {
+            $userProfile = new UserProfile();
+            $userProfile->setUserIdentifier($userIdentifier);
+            $userProfile->setUserType('unknown'); // Standardwert
+            $this->userProfileRepo->save($userProfile, true); // Sofort speichern
+        }
+
         $systemPrompt = $this->contextStore->getSystemPrompt($userIdentifier);
-        
+
         // Debugging: Logge den System-Prompt
         $this->logger->debug('AgentDialogController::dialog - System-Prompt:', ['prompt' => $systemPrompt]);
 
@@ -62,8 +76,7 @@ final class AgentDialogController
         ]);
 
         try {
-            // Rufe den Agenten auf, OHNE user_identifier im options-Array
-            // Der user_identifier wird nur für die interne Context-Verwaltung genutzt
+            // Rufe den Agenten auf
             $result = $this->agent->call($messages);
 
             // Debugging: Logge das Ergebnis
@@ -72,11 +85,31 @@ final class AgentDialogController
                 'metadata' => $result->getMetadata()->all(),
             ]);
 
+            // Speichere die Interaktion in der Datenbank
+            $historyEntry = new AgentHistory();
+            $historyEntry->setAgentName('orchestrator');
+            $historyEntry->setAction(['type' => 'dialog']);
+            $historyEntry->setInput(['message' => $userMessage]);
+            $historyEntry->setOutput(['response' => $result->getContent()]);
+            $historyEntry->setStatus('success');
+            $historyEntry->setUserProfile($userProfile);
+            $this->historyRepo->save($historyEntry, true); // Sofort speichern
+
             return new JsonResponse([
                 'response' => $result->getContent(),
                 'token_usage' => $result->getMetadata()->get('token_usage'),
             ]);
         } catch (\Exception $e) {
+            // Speichere fehlgeschlagene Interaktion
+            $historyEntry = new AgentHistory();
+            $historyEntry->setAgentName('orchestrator');
+            $historyEntry->setAction(['type' => 'dialog']);
+            $historyEntry->setInput(['message' => $userMessage]);
+            $historyEntry->setOutput(['error' => $e->getMessage()]);
+            $historyEntry->setStatus('failed');
+            $historyEntry->setUserProfile($userProfile);
+            $this->historyRepo->save($historyEntry, true);
+
             // Debugging: Logge den Fehler
             $this->logger->error('AgentDialogController::dialog - Fehler:', [
                 'exception' => $e->getMessage(),
@@ -102,6 +135,8 @@ final class AgentDialogController
                 'agent' => $entry->getAgentName(),
                 'status' => $entry->getStatus(),
                 'executed_at' => $entry->getExecutedAt()->format(DATE_ATOM),
+                'input' => $entry->getInput(),
+                'output' => $entry->getOutput(),
             ],
             $entries
         ));
