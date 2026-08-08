@@ -19,9 +19,20 @@ function initChatForm() {
     const chatForm = document.getElementById('chat-form');
     if (!chatForm) return;
 
+    // Verhindere doppelte Anfragen durch eine Request-ID
+    let lastRequestId = null;
+
     chatForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         
+        // Generiere eine eindeutige Request-ID, um Duplikate zu verhindern
+        const requestId = Date.now().toString() + Math.random().toString(36).substring(2);
+        if (lastRequestId === requestId) {
+            console.log('Doppelte Anfrage erkannt, ignoriere.');
+            return;
+        }
+        lastRequestId = requestId;
+
         const formData = new FormData(chatForm);
         const prompt = formData.get('prompt');
         if (!prompt) return;
@@ -29,11 +40,13 @@ function initChatForm() {
         // Zeige User-Nachricht sofort an
         const chatContainer = document.getElementById('chat-container');
         const userMessage = document.createElement('div');
-        userMessage.className = 'message user';
-        userMessage.textContent = prompt;
+        userMessage.className = 'mb-4 max-w-[80%] ml-auto text-right';
+        userMessage.innerHTML = `
+            <div class="inline-block p-4 rounded-lg bg-primary text-white">
+                ${escapeHtml(prompt)}
+            </div>
+        `;
         chatContainer.appendChild(userMessage);
-        
-        // Scroll zum Ende
         chatContainer.scrollTop = chatContainer.scrollHeight;
 
         // Deaktiviere Button während des Ladens
@@ -43,13 +56,18 @@ function initChatForm() {
         submitBtn.innerHTML = '<span class="spinner"></span> Warte...';
 
         try {
-            const response = await fetch(chatForm.action, {
+            // Rufe die API direkt auf
+            const response = await fetch('/api/agent/dialog', {
                 method: 'POST',
-                body: formData,
                 headers: {
+                    'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'X-Requested-With': 'XMLHttpRequest'
+                    'X-Request-ID': requestId, // Sende die Request-ID mit
                 },
+                body: JSON.stringify({
+                    message: prompt,
+                    user_identifier: 'default_user', // Ersetze durch echte Benutzer-ID
+                }),
             });
 
             if (!response.ok) {
@@ -60,18 +78,24 @@ function initChatForm() {
             
             // Zeige Agenten-Antwort an
             const agentMessage = document.createElement('div');
-            agentMessage.className = 'message agent';
-            agentMessage.textContent = data.response || 'Keine Antwort erhalten';
+            agentMessage.className = 'mb-4 max-w-[80%] mr-auto';
+            agentMessage.innerHTML = `
+                <div class="inline-block p-4 rounded-lg bg-gray-200 text-gray-800">
+                    ${escapeHtml(data.response || 'Keine Antwort erhalten')}
+                </div>
+            `;
             chatContainer.appendChild(agentMessage);
-            
-            // Scroll zum Ende
             chatContainer.scrollTop = chatContainer.scrollHeight;
 
         } catch (error) {
             console.error('Fehler beim Senden der Nachricht:', error);
             const errorMessage = document.createElement('div');
-            errorMessage.className = 'message system';
-            errorMessage.textContent = `Fehler: ${error.message}`;
+            errorMessage.className = 'mb-4 max-w-[80%] mx-auto text-center';
+            errorMessage.innerHTML = `
+                <div class="inline-block p-4 rounded-lg bg-red-200 text-red-800">
+                    Fehler: ${escapeHtml(error.message)}
+                </div>
+            `;
             chatContainer.appendChild(errorMessage);
             chatContainer.scrollTop = chatContainer.scrollHeight;
         } finally {
@@ -79,8 +103,16 @@ function initChatForm() {
             submitBtn.disabled = false;
             submitBtn.innerHTML = originalBtnText;
             chatForm.reset();
+            lastRequestId = null; // Zurücksetzen für nächste Anfrage
         }
     });
+}
+
+// Hilfsfunktion: HTML escapen
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
 }
 
 // Tool-Freigabe-Funktionalität
