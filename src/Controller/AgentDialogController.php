@@ -32,16 +32,27 @@ final class AgentDialogController
     /**
      * Einzelner, zustandsloser Dialog-Turn mit dem Orchestrator-Agenten.
      * Speichert die Interaktion in der Datenbank.
+     * Unterstützt sowohl JSON- als auch FormData-Anfragen.
      */
     #[Route('/dialog', name: 'agent_dialog', methods: ['POST'])]
     public function dialog(Request $request): JsonResponse
     {
+        // Versuche, JSON-Payload zu parsen
         $payload = $request->toArray();
+        
+        // Falls JSON leer ist, versuche FormData (für HTML-Formular-Submissions)
+        if (empty($payload)) {
+            $payload = [
+                'message' => $request->request->get('prompt'),
+                'user_identifier' => $request->request->get('user_identifier', 'default_user'),
+            ];
+            $this->logger->debug('AgentDialogController::dialog - FormData erkannt:', $payload);
+        } else {
+            $this->logger->debug('AgentDialogController::dialog - JSON-Payload erkannt:', $payload);
+        }
+
         $userMessage = $payload['message'] ?? null;
         $userIdentifier = $payload['user_identifier'] ?? 'default_user';
-
-        // Debugging: Logge die empfangenen Daten
-        $this->logger->debug('AgentDialogController::dialog - Empfangene Payload:', $payload);
 
         if (!$userMessage) {
             return new JsonResponse(
