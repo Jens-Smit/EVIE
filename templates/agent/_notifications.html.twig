@@ -1,0 +1,160 @@
+<!-- templates/agent/_notifications.html.twig -->
+{% if app.session.flashBag.has('pending_tools') %}
+<div class="evie-notifications" data-controller="evie-notifications">
+    <div class="evie-notification-toast" data-evie-notifications-target="toast">
+        {% for tool in app.session.flashBag.get('pending_tools') %}
+            <div class="evie-notification evie-notification-pending" 
+                 data-tool-id="{{ tool.id }}" 
+                 data-tool-name="{{ tool.name }}">
+                <div class="evie-notification-header">
+                    <span class="evie-notification-icon">🤖</span>
+                    <h4 class="evie-notification-title">Neues Tool wartet auf Freigabe</h4>
+                </div>
+                <div class="evie-notification-body">
+                    <p><strong>{{ tool.name }}</strong></p>
+                    <p>{{ tool.description|slice(0, 100) }}...</p>
+                </div>
+                <div class="evie-notification-actions">
+                    <button class="evie-btn evie-btn-approve" 
+                            data-action="evie-notifications#approveTool"
+                            data-tool-id="{{ tool.id }}">
+                        👍 Freigeben
+                    </button>
+                    <button class="evie-btn evie-btn-reject" 
+                            data-action="evie-notifications#rejectTool"
+                            data-tool-id="{{ tool.id }}">
+                        👎 Ablehnen
+                    </button>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}
+
+<!-- CSS für Benachrichtigungen -->
+<style>
+    .evie-notifications {
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        z-index: 10000;
+        max-width: 400px;
+    }
+
+    .evie-notification-toast {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .evie-notification {
+        background: white;
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        padding: 15px;
+        border-left: 4px solid #ffc107;
+        animation: slideIn 0.3s ease-out;
+    }
+
+    .evie-notification-pending {
+        border-left-color: #ffc107;
+    }
+
+    .evie-notification-approved {
+        border-left-color: #28a745;
+    }
+
+    .evie-notification-rejected {
+        border-left-color: #dc3545;
+    }
+
+    .evie-notification-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+
+    .evie-notification-icon {
+        font-size: 20px;
+    }
+
+    .evie-notification-title {
+        margin: 0;
+        font-size: 16px;
+        font-weight: 600;
+        color: #333;
+    }
+
+    .evie-notification-body {
+        margin-bottom: 15px;
+        font-size: 14px;
+        color: #666;
+    }
+
+    .evie-notification-body p {
+        margin: 5px 0;
+    }
+
+    .evie-notification-actions {
+        display: flex;
+        gap: 10px;
+        justify-content: flex-end;
+    }
+
+    .evie-btn {
+        padding: 8px 16px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 14px;
+        font-weight: 500;
+        transition: all 0.2s;
+    }
+
+    .evie-btn-approve {
+        background: #28a745;
+        color: white;
+    }
+
+    .evie-btn-approve:hover {
+        background: #218838;
+    }
+
+    .evie-btn-reject {
+        background: #dc3545;
+        color: white;
+    }
+
+    .evie-btn-reject:hover {
+        background: #c82333;
+    }
+
+    @keyframes slideIn {
+        from {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to {
+            transform: translateX(0);
+            opacity: 1;
+        }
+    }
+
+    /* Animation für ausblenden */
+    .evie-notification.fade-out {
+        animation: slideOut 0.3s ease-in forwards;
+    }
+
+    @keyframes slideOut {
+        from {
+            transform: translateX(0);
+            opacity: 1;
+        }
+        to {
+            transform: translateX(100%);
+            opacity: 0;
+        }
+    }
+</style>
