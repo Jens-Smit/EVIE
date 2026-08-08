@@ -87,7 +87,61 @@ services:
         arguments:
             $serverManager: '@App\Mcp\Client\McpServerManager'
 
+    # ========================================================================
+    # AI-Agent Services (NEU)
+    # ========================================================================
+
+    # Orchestrator Dialog Service (erweitert)
+    App\AI\Agent\OrchestratorDialogService:
+        arguments:
+            $toolGenerator: '@App\AI\Skills\ToolDefinitionGenerator'
+            $dispatcher: '@event_dispatcher'
+            $logger: '@logger'
+
+    # Dynamic Skill Registry
+    App\AI\Skills\DynamicSkillRegistry:
+        arguments:
+            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
+
+    # Tool Definition Generator
+    App\AI\Skills\ToolDefinitionGenerator:
+        arguments:
+            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
+            $platform: '@ai.platform.mistral'
+        tags: ['ai.tool_generator']
+
+    # Dynamic Tool Factory
+    App\AI\Skills\Tool\DynamicToolFactory:
+        arguments:
+            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
+            $logger: '@logger'
+        tags: ['ai.tool']
+
+    # Evie Toolbox Factory (aktualisiert)
     App\AI\Agent\EvieToolboxFactory:
         arguments:
             $mcpToolFactory: '@App\Mcp\Toolbox\McpToolFactoryWrapper'
             $nativeTools: !tagged_iterator ai.tool
+            $dynamicSkillRegistry: '@App\AI\Skills\DynamicSkillRegistry'
+            $dynamicToolFactory: '@App\AI\Skills\Tool\DynamicToolFactory'
+
+    # Sub-Agent Factory (neu implementiert)
+    App\AI\Agent\SubAgentFactory:
+        arguments:
+            $agentFactory: '@ai.agent_factory'
+            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
+            $dynamicSkillRegistry: '@App\AI\Skills\DynamicSkillRegistry'
+            $logger: '@logger'
+
+    # ========================================================================
+    # Event Listener
+    # ========================================================================
+
+    # Pending Tool Approval Listener
+    App\EventListener\PendingToolApprovalListener:
+        arguments:
+            $notifier: '@notifier'
+            $urlGenerator: '@router'
+            $logger: '@logger'
+        tags:
+            - { name: 'kernel.event_listener', event: 'ai.tool.pending_approval', method: 'onPendingToolApproval' }

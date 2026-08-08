@@ -1,70 +1,177 @@
 <?php
+// src/Controller/ToolApprovalController.php
 
 namespace App\Controller;
 
-use App\AI\Skills\ToolDefinitionGenerator;
+use App\Entity\ToolDefinition;
 use App\Repository\ToolDefinitionRepository;
+use App\AI\Skills\DynamicSkillRegistry;
+use App\Event\PendingToolApprovalEvent;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\Routing\Attribute\Route;
-use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use Psr\Log\LoggerInterface;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
-#[Route('/api/tools')]
-final class ToolApprovalController
+/**
+ * Controller für die Freigabe und Ablehnung von Tools.
+ * Unterstützt sowohl HTML- als auch AJAX-Anfragen.
+ */
+final class ToolApprovalController extends AbstractController
 {
     public function __construct(
-        private readonly ToolDefinitionRepository $toolDefinitionRepo,
-        private readonly ToolDefinitionGenerator $toolGenerator,
+        private ToolDefinitionRepository $toolDefinitionRepo,
+        private DynamicSkillRegistry $dynamicSkillRegistry,
+        private EventDispatcherInterface $dispatcher,
+        private UrlGeneratorInterface $urlGenerator,
+        private LoggerInterface $logger,
     ) {
     }
 
     /**
-     * Blueprint Phase 4: "simple UI/API-Route zur Genehmigung von Pending-Tools".
+     * Liste aller ausstehenden Tool-Freigaben.
      */
-    #[Route('/pending', name: 'tools_pending', methods: ['GET'])]
-    public function pending(): JsonResponse
+    #[Route('/tools/pending', name: 'app_tool_pending_list')]
+    public function listPending(Request $request): Response
     {
-        $pending = $this->toolDefinitionRepo->findBy(['status' => 'pending_approval']);
+        $pendingTools = $this->toolDefinitionRepo->findBy([
+            'status' => ['pending', 'pending_approval'],
+        ]);
 
-        return new JsonResponse(array_map(
-            static fn ($tool) => [
-                'id' => $tool->getId(),
-                'name' => $tool->getName(),
-                'description' => $tool->getDescription(),
-                'schema' => $tool->getSchema(),
-            ],
-            $pending
-        ));
-    }
-
-    #[IsGranted('ROLE_USER')]
-    #[Route('/{id}/approve', name: 'tools_approve', methods: ['POST'])]
-    public function approve(int $id): JsonResponse
-    {
-        $tool = $this->toolDefinitionRepo->find($id);
-
-        if (!$tool) {
-            return new JsonResponse(['error' => 'Tool nicht gefunden.'], Response::HTTP_NOT_FOUND);
+        if ($request->isXmlHttpRequest() || $request->headers->get('Accept') === 'application/json') {
+            return $this->json([
+                'success' => true,
+                'tools' => array_map(function (ToolDefinition $tool) {
+                    return [
+                        'id' => $tool->getId(),
+                        'name' => $tool->getName(),
+                        'description' => $tool->getDescription(),
+                        'created_at' => $tool->getCreatedAt()?->format('Y-m-d H:i:s'),
+                        'schema' => $tool->getSchema(),
+                    ];
+                }, $pendingTools),
+            ]);
         }
 
-        $this->toolGenerator->approveTool($tool);
-
-        return new JsonResponse(['status' => 'approved', 'name' => $tool->getName()]);
+        // Für HTML-Anfragen: Render Template
+        return $this->render('agent/pending_tools.html.twig', [
+            'pendingTools' => $pendingTools,
+        ]);
     }
 
-    #[IsGranted('ROLE_USER')]
-    #[Route('/{id}/reject', name: 'tools_reject', methods: ['POST'])]
-    public function reject(int $id): JsonResponse
-    {
-        $tool = $this->toolDefinitionRepo->find($id);
-
-        if (!$tool) {
-            return new JsonResponse(['error' => 'Tool nicht gefunden.'], Response::HTTP_NOT_FOUND);
+    /**
+     * Freigabe oder Ablehnung eines Tools.
+     */
+    #[Route('/tools/{id}/{action}', name: 'app_tool_approval', 
+        requirements: ['action' => 'approve|reject'],
+        methods: ['POST'])
+    public function handleApproval(
+        ToolDefinition $toolDefinition,
+        string $action,
+        Request $request
+    ): Response {
+        // Prüfe, ob das Tool im richtigen Status ist
+        if (!in_array($toolDefinition->getStatus(), ['pending', 'pending_approval'])) {
+            return $this->json([
+                'success' => false,
+                'message' => 'Dieses Tool ist nicht mehr zur Freigabe verfügbar.',
+            ], Response::HTTP_BAD_REQUEST);
         }
 
-        $tool->setStatus('rejected');
-        $this->toolDefinitionRepo->save($tool, true);
+        // Führe die Aktion aus
+        if ($action === 'approve') {
+            $toolDefinition->setStatus('approved');
+            $toolDefinition->setApprovedAt(new \DateTimeImmutable());
+            
+            // Füge das Tool zum DynamicSkillRegistry hinzu
+            $this->dynamicSkillRegistry->addTool($toolDefinition);
+            
+            $this->logger->info('Tool freigegeben', [
+                'tool_id' => $toolDefinition->getId(),
+                'tool_name' => $toolDefinition->getName(),
+            ]);
 
-        return new JsonResponse(['status' => 'rejected', 'name' => $tool->getName()]);
+            $message = 'Tool wurde erfolgreich freigegeben!';
+        } else {
+            $toolDefinition->setStatus('rejected');
+            $toolDefinition->setRejectedAt(new \DateTimeImmutable());
+            
+            $this->logger->info('Tool abgelehnt', [
+                'tool_id' => $toolDefinition->getId(),
+                'tool_name' => $toolDefinition->getName(),
+            ]);
+
+            $message = 'Tool wurde abgelehnt.';
+        }
+
+        // Speichere die Änderungen
+        $this->toolDefinitionRepo->save($toolDefinition, true);
+
+        // Dispatch Event für weitere Aktionen (z. B. Benachrichtigung)
+        $this->dispatcher->dispatch(new PendingToolApprovalEvent($toolDefinition, 'system'));
+
+        // Antwort basierend auf dem Request-Typ
+        if ($request->isXmlHttpRequest() || $request->headers->get('Accept') === 'application/json') {
+            return $this->json([
+                'success' => true,
+                'status' => $action,
+                'tool_id' => $toolDefinition->getId(),
+                'tool_name' => $toolDefinition->getName(),
+                'message' => $message,
+            ]);
+        }
+
+        // Für HTML-Anfragen: Weiterleitung
+        $this->addFlash('success', $message);
+        return $this->redirectToRoute('app_tool_pending_list');
+    }
+
+    /**
+     * Zeigt die Details eines Tools an (für die Freigabe-Oberfläche).
+     */
+    #[Route('/tools/{id}/show', name: 'app_tool_show')]
+    public function showTool(ToolDefinition $toolDefinition): Response
+    {
+        return $this->render('agent/tool_detail.html.twig', [
+            'tool' => $toolDefinition,
+        ]);
+    }
+
+    /**
+     * API-Endpoint für die Abfrage des Status eines Tools.
+     */
+    #[Route('/api/tools/{id}/status', name: 'app_tool_status', methods: ['GET'])]
+    public function getToolStatus(ToolDefinition $toolDefinition): JsonResponse
+    {
+        return $this->json([
+            'id' => $toolDefinition->getId(),
+            'name' => $toolDefinition->getName(),
+            'status' => $toolDefinition->getStatus(),
+            'description' => $toolDefinition->getDescription(),
+            'created_at' => $toolDefinition->getCreatedAt()?->format('c'),
+            'approved_at' => $toolDefinition->getApprovedAt()?->format('c'),
+            'rejected_at' => $toolDefinition->getRejectedAt()?->format('c'),
+        ]);
+    }
+
+    /**
+     * API-Endpoint für die Freigabe eines Tools (AJAX).
+     */
+    #[Route('/api/tools/{id}/approve', name: 'app_tool_approve_api', methods: ['POST'])]
+    public function approveToolApi(ToolDefinition $toolDefinition, Request $request): JsonResponse
+    {
+        return $this->handleApproval($toolDefinition, 'approve', $request);
+    }
+
+    /**
+     * API-Endpoint für die Ablehnung eines Tools (AJAX).
+     */
+    #[Route('/api/tools/{id}/reject', name: 'app_tool_reject_api', methods: ['POST'])]
+    public function rejectToolApi(ToolDefinition $toolDefinition, Request $request): JsonResponse
+    {
+        return $this->handleApproval($toolDefinition, 'reject', $request);
     }
 }
