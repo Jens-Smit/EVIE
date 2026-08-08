@@ -14,6 +14,50 @@ function init() {
     initNavigation();
 }
 
+// Hilfsfunktion: HTML escapen
+function escapeHtml(text) {
+    const div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Hilfsfunktion: Prüfe, ob ein String JSON ist
+function isJson(str) {
+    try {
+        JSON.parse(str);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+// Hilfsfunktion: Formatiere die Agenten-Antwort
+function formatAgentResponse(response) {
+    if (!response) {
+        return '<p>Keine Antwort erhalten</p>';
+    }
+
+    // 1. JSON-Daten
+    if (isJson(response)) {
+        try {
+            const data = JSON.parse(response);
+            if (Array.isArray(data) || (typeof data === 'object' && data !== null)) {
+                return `<pre class="language-json"><code>${escapeHtml(JSON.stringify(data, null, 2))}</code></pre>`;
+            }
+        } catch (e) {
+            // Kein gültiges JSON, weiter mit Markdown
+        }
+    }
+
+    // 2. Markdown (inkl. Code-Blöcke, Tabellen, Listen)
+    if (typeof marked !== 'undefined') {
+        return marked.parse(response);
+    }
+
+    // 3. Fallback: Einfacher Text
+    return `<p>${escapeHtml(response)}</p>`;
+}
+
 // Chat-Formular für AI-Agenten
 function initChatForm() {
     const chatForm = document.getElementById('chat-form');
@@ -45,9 +89,9 @@ function initChatForm() {
         // Zeige User-Nachricht sofort an
         const chatContainer = document.getElementById('chat-container');
         const userMessage = document.createElement('div');
-        userMessage.className = 'mb-4 max-w-[80%] ml-auto text-right';
+        userMessage.className = 'chat-message user';
         userMessage.innerHTML = `
-            <div class="inline-block p-4 rounded-lg bg-primary text-white">
+            <div class="message-bubble user">
                 ${escapeHtml(prompt)}
             </div>
         `;
@@ -83,21 +127,26 @@ function initChatForm() {
             
             // Zeige Agenten-Antwort an
             const agentMessage = document.createElement('div');
-            agentMessage.className = 'mb-4 max-w-[80%] mr-auto';
+            agentMessage.className = 'chat-message agent';
             agentMessage.innerHTML = `
-                <div class="inline-block p-4 rounded-lg bg-gray-200 text-gray-800">
-                    ${escapeHtml(data.response || 'Keine Antwort erhalten')}
+                <div class="message-bubble agent">
+                    ${formatAgentResponse(data.response || 'Keine Antwort erhalten')}
                 </div>
             `;
             chatContainer.appendChild(agentMessage);
             chatContainer.scrollTop = chatContainer.scrollHeight;
 
+            // Highlight.js nach dem Rendern ausführen
+            if (typeof hljs !== 'undefined') {
+                hljs.highlightAll();
+            }
+
         } catch (error) {
             console.error('Fehler beim Senden der Nachricht:', error);
             const errorMessage = document.createElement('div');
-            errorMessage.className = 'mb-4 max-w-[80%] mx-auto text-center';
+            errorMessage.className = 'chat-message system';
             errorMessage.innerHTML = `
-                <div class="inline-block p-4 rounded-lg bg-red-200 text-red-800">
+                <div class="message-bubble system">
                     Fehler: ${escapeHtml(error.message)}
                 </div>
             `;
@@ -111,13 +160,6 @@ function initChatForm() {
             lastRequestId = null; // Zurücksetzen für nächste Anfrage
         }
     });
-}
-
-// Hilfsfunktion: HTML escapen
-function escapeHtml(text) {
-    const div = document.createElement('div');
-    div.textContent = text;
-    return div.innerHTML;
 }
 
 // Tool-Freigabe-Funktionalität
@@ -164,25 +206,31 @@ async function handleToolAction(toolId, action, button) {
         
         // Zeige Erfolgmeldung
         const alert = document.createElement('div');
-        alert.className = `alert alert-success`;
+        alert.className = `alert alert-success p-4 rounded-lg bg-green-100 text-green-800`;
         alert.textContent = data.message || `Tool erfolgreich ${action === 'approve' ? 'freigegeben' : 'abgelehnt'}`;
         
         const container = button.closest('.card') || document.querySelector('.main-container');
-        container.prepend(alert);
+        if (container) {
+            container.prepend(alert);
+        }
 
         // Entferne die Tool-Karte nach erfolgreicher Aktion
         if (action === 'approve' || action === 'reject') {
             setTimeout(() => {
-                button.closest('.card').remove();
+                const card = button.closest('.card');
+                if (card) card.remove();
             }, 1000);
         }
 
     } catch (error) {
         console.error('Fehler bei der Tool-Aktion:', error);
         const alert = document.createElement('div');
-        alert.className = `alert alert-error`;
+        alert.className = `alert alert-error p-4 rounded-lg bg-red-100 text-red-800`;
         alert.textContent = `Fehler: ${error.message}`;
-        document.querySelector('.main-container').prepend(alert);
+        const mainContainer = document.querySelector('.main-container');
+        if (mainContainer) {
+            mainContainer.prepend(alert);
+        }
     } finally {
         button.disabled = false;
         button.innerHTML = originalBtnText;
