@@ -35,6 +35,8 @@ function initChatForm() {
 
         const formData = new FormData(chatForm);
         const prompt = formData.get('prompt');
+        const userIdentifier = formData.get('user_identifier') || 'default_user';
+        
         if (!prompt) return;
 
         // Zeige User-Nachricht sofort an
@@ -56,17 +58,17 @@ function initChatForm() {
         submitBtn.innerHTML = '<span class="spinner"></span> Warte...';
 
         try {
-            // Rufe die API direkt auf
+            // Sende die Anfrage als JSON an die API
             const response = await fetch('/api/agent/dialog', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'Accept': 'application/json',
-                    'X-Request-ID': requestId, // Sende die Request-ID mit
+                    'X-Request-ID': requestId,
                 },
                 body: JSON.stringify({
                     message: prompt,
-                    user_identifier: 'default_user', // Ersetze durch echte Benutzer-ID
+                    user_identifier: userIdentifier,
                 }),
             });
 
