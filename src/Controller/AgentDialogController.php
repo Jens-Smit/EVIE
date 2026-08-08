@@ -32,23 +32,31 @@ final class AgentDialogController
     /**
      * Einzelner, zustandsloser Dialog-Turn mit dem Orchestrator-Agenten.
      * Speichert die Interaktion in der Datenbank.
-     * Unterstützt sowohl JSON- als auch FormData-Anfragen.
+     * Unterstützt JSON, FormData und URL-encoded Anfragen.
      */
     #[Route('/dialog', name: 'agent_dialog', methods: ['POST'])]
     public function dialog(Request $request): JsonResponse
     {
-        // Versuche, JSON-Payload zu parsen
-        $payload = $request->toArray();
+        // Versuche, JSON-Payload zu parsen (für fetch-Anfragen)
+        $payload = [];
         
-        // Falls JSON leer ist, versuche FormData (für HTML-Formular-Submissions)
-        if (empty($payload)) {
-            $payload = [
-                'message' => $request->request->get('prompt'),
-                'user_identifier' => $request->request->get('user_identifier', 'default_user'),
-            ];
-            $this->logger->debug('AgentDialogController::dialog - FormData erkannt:', $payload);
-        } else {
-            $this->logger->debug('AgentDialogController::dialog - JSON-Payload erkannt:', $payload);
+        // 1. Prüfe auf JSON (Content-Type: application/json)
+        if ($request->isMethod('POST')) {
+            $contentType = $request->headers->get('Content-Type', '');
+            
+            // JSON-Payload
+            if (str_contains($contentType, 'application/json')) {
+                $payload = $request->toArray();
+                $this->logger->debug('AgentDialogController::dialog - JSON-Payload erkannt:', $payload);
+            }
+            // FormData oder URL-encoded (Content-Type: application/x-www-form-urlencoded oder multipart/form-data)
+            else {
+                $payload = [
+                    'message' => $request->request->get('prompt'),
+                    'user_identifier' => $request->request->get('user_identifier', 'default_user'),
+                ];
+                $this->logger->debug('AgentDialogController::dialog - FormData erkannt:', $payload);
+            }
         }
 
         $userMessage = $payload['message'] ?? null;
@@ -71,8 +79,6 @@ final class AgentDialogController
         }
 
         $systemPrompt = $this->contextStore->getSystemPrompt($userIdentifier);
-
-        // Debugging: Logge den System-Prompt
         $this->logger->debug('AgentDialogController::dialog - System-Prompt:', ['prompt' => $systemPrompt]);
 
         $messages = new MessageBag(
@@ -80,17 +86,14 @@ final class AgentDialogController
             Message::ofUser($userMessage),
         );
 
-        // Debugging: Logge die Nachrichten
         $this->logger->debug('AgentDialogController::dialog - Nachrichten:', [
             'system' => $systemPrompt,
             'user' => $userMessage,
         ]);
 
         try {
-            // Rufe den Agenten auf
             $result = $this->agent->call($messages);
 
-            // Debugging: Logge das Ergebnis
             $this->logger->debug('AgentDialogController::dialog - Ergebnis:', [
                 'content' => $result->getContent(),
                 'metadata' => $result->getMetadata()->all(),
@@ -104,14 +107,13 @@ final class AgentDialogController
             $historyEntry->setOutput(['response' => $result->getContent()]);
             $historyEntry->setStatus('success');
             $historyEntry->setUserProfile($userProfile);
-            $this->historyRepo->save($historyEntry, true); // Sofort speichern
+            $this->historyRepo->save($historyEntry, true);
 
             return new JsonResponse([
                 'response' => $result->getContent(),
                 'token_usage' => $result->getMetadata()->get('token_usage'),
             ]);
         } catch (\Exception $e) {
-            // Speichere fehlgeschlagene Interaktion
             $historyEntry = new AgentHistory();
             $historyEntry->setAgentName('orchestrator');
             $historyEntry->setAction(['type' => 'dialog']);
@@ -121,7 +123,6 @@ final class AgentDialogController
             $historyEntry->setUserProfile($userProfile);
             $this->historyRepo->save($historyEntry, true);
 
-            // Debugging: Logge den Fehler
             $this->logger->error('AgentDialogController::dialog - Fehler:', [
                 'exception' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
