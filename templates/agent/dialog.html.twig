@@ -32,7 +32,7 @@
         </div>
 
         <!-- Chat Form -->
-        <form id="chat-form" action="{{ path('agent_dialog') }}" method="post" class="space-y-4">
+        <form id="chat-form" method="post" class="space-y-4">
             <div>
                 <label for="prompt" class="block text-sm font-medium text-gray-700 mb-1">Deine Nachricht:</label>
                 <textarea 
@@ -43,6 +43,7 @@
                     required
                 ></textarea>
             </div>
+            <input type="hidden" name="user_identifier" value="default_user">
             <button 
                 type="submit" 
                 class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-secondary transition flex items-center gap-2"
