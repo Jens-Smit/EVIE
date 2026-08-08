@@ -23,7 +23,7 @@
         }
     </script>
     
-    {% block styles %}{% endblock %}
+    {% block stylesheets %}{% endblock %}
 </head>
 
 <body class="bg-gray-100 font-sans leading-normal tracking-normal">
@@ -70,7 +70,6 @@
     </style>
 
     <!-- JavaScript -->
-    <script src="{{ asset('assets/scripts/app.js') }}"></script>
-    {% block scripts %}{% endblock %}
+    {% block javascripts %}{% endblock %}
 </body>
 </html>
