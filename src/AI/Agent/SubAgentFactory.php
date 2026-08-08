@@ -6,9 +6,10 @@ namespace App\AI\Agent;
 use App\Entity\ToolDefinition;
 use App\Repository\ToolDefinitionRepository;
 use App\AI\Skills\DynamicSkillRegistry;
-use Symfony\AI\Agent\AgentInterface;
-use Symfony\AI\Agent\AgentFactoryInterface;
 use Psr\Log\LoggerInterface;
+use Symfony\AI\Agent\Agent;
+use Symfony\AI\Agent\AgentInterface;
+use Symfony\AI\Platform\PlatformInterface;
 
 /**
  * Factory für die dynamische Erstellung von Sub-Agenten.
@@ -18,7 +19,7 @@ use Psr\Log\LoggerInterface;
 final readonly class SubAgentFactory
 {
     public function __construct(
-        private AgentFactoryInterface $agentFactory,
+        private PlatformInterface $platform,
         private ToolDefinitionRepository $toolDefinitionRepo,
         private DynamicSkillRegistry $dynamicSkillRegistry,
         private LoggerInterface $logger,
@@ -33,7 +34,6 @@ final readonly class SubAgentFactory
         string $role,
         string $model = 'mistral-small-latest',
         array $tools = [],
-        string $platformService = 'ai.platform.mistral',
     ): AgentInterface {
         $this->logger->info('Erstelle neuen Sub-Agenten', [
             'name' => $name,
@@ -41,20 +41,14 @@ final readonly class SubAgentFactory
             'tools' => $tools,
         ]);
 
-        // 1. Agent-Konfiguration erstellen
-        $agentConfig = [
-            'name' => $name,
-            'role' => $role,
-            'platform' => $platformService,
-            'model' => $model,
-            'prompt' => $this->generatePromptForRole($role),
-            'tools' => $this->resolveTools($tools),
-        ];
+        // Agent direkt instanziieren (es gibt keinen AgentFactoryService im Symfony AI Bundle)
+        $agent = new Agent(
+            platform: $this->platform,
+            model: $model,
+            name: $name,
+        );
 
-        // 2. Agent erstellen
-        $agent = $this->agentFactory->create($agentConfig);
-
-        // 3. Sub-Agent im DynamicSkillRegistry registrieren (als Tool für den Orchestrator)
+        // Sub-Agent im DynamicSkillRegistry registrieren (als Tool für den Orchestrator)
         $this->registerAsTool($name, $role, $agent);
 
         $this->logger->info('Sub-Agent erstellt', [
@@ -63,38 +57,6 @@ final readonly class SubAgentFactory
         ]);
 
         return $agent;
-    }
-
-    /**
-     * Löst die Tool-Referenzen auf (kann Tool-Namen oder ToolDefinition-IDs sein).
-     */
-    private function resolveTools(array $tools): array
-    {
-        $resolvedTools = [];
-
-        foreach ($tools as $tool) {
-            // Falls es ein Tool-Name ist
-            if (is_string($tool)) {
-                if ($this->dynamicSkillRegistry->hasTool($tool)) {
-                    $resolvedTools[] = $this->dynamicSkillRegistry->getTool($tool);
-                } else {
-                    $this->logger->warning('Tool nicht gefunden', ['tool_name' => $tool]);
-                }
-            }
-            // Falls es eine ToolDefinition-ID ist
-            elseif (is_int($tool)) {
-                $toolDefinition = $this->toolDefinitionRepo->find($tool);
-                if ($toolDefinition && $toolDefinition->isApproved()) {
-                    $resolvedTools[] = $toolDefinition;
-                }
-            }
-            // Falls es bereits ein ToolInterface ist
-            elseif ($tool instanceof \App\AI\Skills\Tool\ToolInterface) {
-                $resolvedTools[] = $tool;
-            }
-        }
-
-        return $resolvedTools;
     }
 
     /**

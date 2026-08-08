@@ -30,10 +30,14 @@ final readonly class OrchestratorDialogService
     public function ask(string $userMessage, string $userIdentifier): string
     {
         $messages = new MessageBag(
+            Message::forSystem(sprintf(
+                'Aktueller Nutzer: %s. Nutze diese Information für personalisierte Antworten.',
+                $userIdentifier
+            )),
             Message::ofUser($userMessage),
         );
 
-        $result = $this->agent->call($messages, ['user_identifier' => $userIdentifier]);
+        $result = $this->agent->call($messages);
         $responseContent = $result->getContent();
 
         // Prüfe, ob Mistral sagt, dass kein Tool gefunden wurde

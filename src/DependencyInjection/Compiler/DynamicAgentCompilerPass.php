@@ -33,8 +33,8 @@ final class DynamicAgentCompilerPass implements CompilerPassInterface
             $this->registerDynamicTool($container, $toolDef);
         }
 
-        // 4. Registriere Sub-Agenten (falls in der Konfiguration definiert)
-        $this->registerSubAgents($container);
+        // 4. Sub-Agenten werden bereits über config/packages/ai.yaml statisch registriert.
+        //    Die Services werden vom Symfony AI Bundle als 'ai.agent.<name>' erstellt.
     }
 
     /**
@@ -87,61 +87,4 @@ final class DynamicAgentCompilerPass implements CompilerPassInterface
         $container->setDefinition($serviceId, $definition);
     }
 
-    /**
-     * Registriert Sub-Agenten aus der Konfiguration.
-     */
-    private function registerSubAgents(ContainerBuilder $container): void
-    {
-        // Lade die AI-Konfiguration
-        if (!$container->hasParameter('ai.agent')) {
-            return;
-        }
-
-        $agentConfig = $container->getParameter('ai.agent');
-
-        // Registriere jeden Sub-Agenten als Service
-        foreach ($agentConfig as $agentName => $config) {
-            // Überspringe den Orchestrator
-            if ($agentName === 'orchestrator') {
-                continue;
-            }
-
-            $this->registerSubAgentService($container, $agentName, $config);
-        }
-    }
-
-    /**
-     * Registriert einen einzelnen Sub-Agenten als Service.
-     */
-    private function registerSubAgentService(
-        ContainerBuilder $container,
-        string $agentName,
-        array $config
-    ): void {
-        $serviceId = 'ai.agent.' . $agentName;
-
-        // Prüfe, ob der Service bereits existiert
-        if ($container->has($serviceId)) {
-            return;
-        }
-
-        // Erstelle eine Definition für den Sub-Agenten
-        $definition = new Definition();
-        $definition->setClass('Symfony\AI\Agent\Agent');
-        $definition->setFactory([new Reference('ai.agent_factory'), 'create']);
-        $definition->setArguments([
-            [
-                'name' => $agentName,
-                'platform' => $config['platform'] ?? 'ai.platform.mistral',
-                'model' => $config['model'] ?? 'mistral-small-latest',
-                'prompt' => $config['prompt'] ?? '',
-                'tools' => $config['tools'] ?? [],
-            ],
-        ]);
-        $definition->addTag('ai.agent');
-        $definition->addTag('container.hot_path');
-
-        // Registriere den Service
-        $container->setDefinition($serviceId, $definition);
-    }
 }

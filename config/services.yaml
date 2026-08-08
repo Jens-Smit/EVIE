@@ -49,9 +49,13 @@ services:
     App\AI\Skills\Tool\ToolRegistry: ~
 
     # Automatische Registrierung aller Tools mit dem Tag 'ai.tool'
+    # Tools werden automatisch über das #[AsTool]-Attribute mit 'ai.tool' getaggt.
     App\AI\Skills\Tool\:
         resource: '../src/AI/Skills/Tool/'
-        tags: ['ai.tool']
+        exclude:
+            - '../src/AI/Skills/Tool/DynamicToolFactory.php'
+            - '../src/AI/Skills/Tool/ToolInterface.php'
+            - '../src/AI/Skills/Tool/ToolRegistry.php'
 
     # MCP Services
     App\Mcp\Client\McpServerManager:
@@ -108,12 +112,11 @@ services:
             $platform: '@ai.platform.mistral'
         tags: ['ai.tool_generator']
 
-    # Dynamic Tool Factory
+    # Dynamic Tool Factory (kein direktes Tool, daher kein ai.tool-Tag)
     App\AI\Skills\Tool\DynamicToolFactory:
         arguments:
             $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
             $logger: '@logger'
-        tags: ['ai.tool']
 
     # Evie Toolbox Factory (aktualisiert)
     App\AI\Agent\EvieToolboxFactory:
@@ -126,7 +129,7 @@ services:
     # Sub-Agent Factory (neu implementiert)
     App\AI\Agent\SubAgentFactory:
         arguments:
-            $agentFactory: '@ai.agent_factory'
+            $platform: '@ai.platform.mistral'
             $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
             $dynamicSkillRegistry: '@App\AI\Skills\DynamicSkillRegistry'
             $logger: '@logger'

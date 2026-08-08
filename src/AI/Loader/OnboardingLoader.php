@@ -3,7 +3,7 @@
 namespace App\AI\Loader;
 
 use Symfony\AI\Store\Document\TextDocument;
-use Symfony\AI\Store\Document\Loader\LoaderInterface;
+use Symfony\AI\Store\Document\LoaderInterface;
 
 /**
  * Lädt Onboarding-Dokumente für den Indexer.
@@ -14,12 +14,12 @@ final class OnboardingLoader implements LoaderInterface
     {
         yield new TextDocument(
             id: 'welcome',
-            text: 'Willkommen bei EVIE.'
+            content: 'Willkommen bei EVIE.'
         );
 
         yield new TextDocument(
             id: 'company',
-            text: 'Der Benutzer kann sein Unternehmen anlegen.'
+            content: 'Der Benutzer kann sein Unternehmen anlegen.'
         );
     }
 }

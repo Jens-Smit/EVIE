@@ -20,8 +20,6 @@ ai:
                   description: 'Führt MCP-Tools aus den konfigurierten Servern aus.'
                 - { service: 'App\AI\Skills\Tool\WeatherTool' }
                 - { service: 'App\AI\Skills\Tool\FileReadTool' }
-                - { service: 'App\AI\Skills\Tool\DynamicToolFactory' }
-                - { service: 'App\AI\Agent\SubAgentFactory' }
 
         research:
             platform: 'ai.platform.mistral'
