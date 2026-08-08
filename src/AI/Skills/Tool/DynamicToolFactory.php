@@ -5,18 +5,13 @@ namespace App\AI\Skills\Tool;
 
 use App\Entity\ToolDefinition;
 use App\Repository\ToolDefinitionRepository;
-use Symfony\AI\Agent\Tool\ToolInterface;
-use Symfony\AI\Agent\Toolbox\ToolFactory\ToolFactoryInterface;
-use Symfony\AI\Agent\Context\AgentContext;
-use Symfony\Component\DependencyInjection\Attribute\AsTool;
 use Psr\Log\LoggerInterface;
 
 /**
  * Factory für dynamisch generierte Tools.
  * Wandelt ToolDefinition-Entitäten in ausführbare ToolInterface-Implementierungen um.
  */
-#[AsTool(name: 'dynamic_tool_factory')]
-final readonly class DynamicToolFactory implements ToolFactoryInterface
+final readonly class DynamicToolFactory
 {
     public function __construct(
         private ToolDefinitionRepository $toolDefinitionRepo,
@@ -53,7 +48,7 @@ final readonly class DynamicToolFactory implements ToolFactoryInterface
              * Führt ein dynamisches Tool aus.
              * Erwartet den Tool-Namen als Parameter.
              */
-            public function execute(array $parameters, AgentContext $context): string
+            public function __invoke(array $parameters = []): array
             {
                 // 1. Tool-Name aus Parametern extrahieren
                 if (!isset($parameters['tool_name'])) {
@@ -81,7 +76,7 @@ final readonly class DynamicToolFactory implements ToolFactoryInterface
                 ]);
 
                 // 3. Tool ausführen
-                return $this->executeTool($toolDefinition, $parameters, $context);
+                return $this->executeTool($toolDefinition, $parameters);
             }
 
             /**
@@ -89,9 +84,8 @@ final readonly class DynamicToolFactory implements ToolFactoryInterface
              */
             private function executeTool(
                 ToolDefinition $toolDefinition,
-                array $parameters,
-                AgentContext $context
-            ): string {
+                array $parameters
+            ): array {
                 // 1. Validierung der Parameter gegen das Schema
                 $this->validateParameters($toolDefinition, $parameters);
 
@@ -99,11 +93,10 @@ final readonly class DynamicToolFactory implements ToolFactoryInterface
                 $result = $this->runToolLogic($toolDefinition, $parameters);
 
                 // 3. Ergebnis zurückgeben
-                return sprintf(
-                    "Tool '%s' wurde erfolgreich ausgeführt.\n\nErgebnis: %s",
-                    $toolDefinition->getName(),
-                    is_array($result) ? json_encode($result, JSON_PRETTY_PRINT) : $result
-                );
+                return [
+                    'tool' => $toolDefinition->getName(),
+                    'result' => $result,
+                ];
             }
 
             /**

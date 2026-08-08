@@ -5,11 +5,11 @@ namespace App\AI\Agent;
 
 use App\AI\Skills\DynamicSkillRegistry;
 use App\AI\Skills\Tool\DynamicToolFactory;
+use App\AI\Skills\Tool\ToolInterface;
 use App\Mcp\Toolbox\McpToolFactoryWrapper;
 use Symfony\AI\Agent\Toolbox\Toolbox;
 use Symfony\AI\Agent\Toolbox\ToolFactory\ChainFactory;
 use Symfony\AI\Agent\Toolbox\ToolFactory\ReflectionToolFactory;
-use Symfony\AI\Agent\Tool\ToolInterface;
 
 /**
  * Factory für die Toolbox des EVIE-Agenten.
@@ -80,14 +80,14 @@ final class EvieToolboxFactory
                     return $this->metadata['description'] ?? 'Dynamisch generiertes Tool';
                 }
 
-                public function execute(array $parameters, \Symfony\AI\Agent\Context\AgentContext $context): string
+                public function __invoke(array $parameters = []): array
                 {
                     // Führe das Tool über die DynamicToolFactory aus
                     $tool = $this->dynamicToolFactory->getTool();
-                    return $tool->execute([
+                    return $tool([
                         'tool_name' => $this->toolName,
                         ...$parameters,
-                    ], $context);
+                    ]);
                 }
             };
 
@@ -95,6 +95,6 @@ final class EvieToolboxFactory
         }
 
         // 3. Toolbox mit allen Tools erstellen
-        return new Toolbox($chainFactory, $allTools);
+        return new Toolbox($allTools, $chainFactory);
     }
 }

@@ -34,9 +34,6 @@ services:
             - '../src/Entity/'
             - '../src/Kernel.php'
 
-    App\AI\Skills\DynamicSkillRegistry:
-        public: true
-
     App\AI\Onboarding\ContextStoreManager:
         public: true
 
@@ -100,6 +97,7 @@ services:
 
     # Dynamic Skill Registry
     App\AI\Skills\DynamicSkillRegistry:
+        public: true
         arguments:
             $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
 

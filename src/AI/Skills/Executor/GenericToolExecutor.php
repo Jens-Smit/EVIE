@@ -2,9 +2,9 @@
 
 namespace App\AI\Skills\Executor;
 
+use App\AI\Skills\Tool\ToolInterface;
 use App\AI\Skills\Tool\ToolRegistry;
 use App\AI\Security\SecurityGuard;
-use Symfony\AI\Agent\Tool\ToolInterface;
 
 /**
  * Dispatcher für dynamisch registrierte Tools.
@@ -20,8 +20,14 @@ final class GenericToolExecutor implements ToolInterface
     /**
      * Wird vom Symfony AI-Agenten aufgerufen.
      */
-    public function __invoke(string $toolName, array $parameters = []): array
+    public function __invoke(array $parameters = []): array
     {
+        // Tool-Name aus den Parametern extrahieren
+        $toolName = $parameters['tool_name'] ?? ($parameters['name'] ?? null);
+        if (!$toolName) {
+            throw new \InvalidArgumentException('Parameter "tool_name" ist erforderlich.');
+        }
+
         // Validate the tool configuration
         if (!$this->securityGuard->validateToolConfiguration($parameters)) {
             throw new \RuntimeException('Tool configuration failed security validation.');
@@ -53,7 +59,7 @@ final class GenericToolExecutor implements ToolInterface
      */
     public function execute(string $toolName, array $parameters = []): array
     {
-        return $this->__invoke($toolName, $parameters);
+        return $this->__invoke(['tool_name' => $toolName, ...$parameters]);
     }
 
     /**

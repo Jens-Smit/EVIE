@@ -3,7 +3,7 @@
 
 namespace App\Mcp\Toolbox;
 
-use Symfony\AI\Agent\Toolbox\Tool\ToolInterface;
+use App\AI\Skills\Tool\ToolInterface;
 use Symfony\AI\Platform\Tool\ExecutionReference;
 
 final class McpRemoteToolMetadata implements ToolInterface
@@ -25,6 +25,15 @@ final class McpRemoteToolMetadata implements ToolInterface
     public function getDescription(): string
     {
         return $this->description;
+    }
+
+    public function __invoke(array $parameters = []): array
+    {
+        return [
+            'server' => $this->serverAlias,
+            'tool' => $this->remoteName,
+            'parameters' => $parameters,
+        ];
     }
 
     public function getInputSchema(): array

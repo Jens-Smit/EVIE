@@ -65,9 +65,7 @@ final class ToolApprovalController extends AbstractController
     /**
      * Freigabe oder Ablehnung eines Tools.
      */
-    #[Route('/tools/{id}/{action}', name: 'app_tool_approval', 
-        requirements: ['action' => 'approve|reject'],
-        methods: ['POST'])
+    #[Route('/tools/{id}/{action}', name: 'app_tool_approval', requirements: ['action' => 'approve|reject'], methods: ['POST'])]
     public function handleApproval(
         ToolDefinition $toolDefinition,
         string $action,

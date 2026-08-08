@@ -89,7 +89,7 @@ final readonly class SubAgentFactory
                 }
             }
             // Falls es bereits ein ToolInterface ist
-            elseif ($tool instanceof \Symfony\AI\Agent\Tool\ToolInterface) {
+            elseif ($tool instanceof \App\AI\Skills\Tool\ToolInterface) {
                 $resolvedTools[] = $tool;
             }
         }
