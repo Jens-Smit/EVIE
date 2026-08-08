@@ -7,6 +7,7 @@ use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: UserProfileRepository::class)]
 #[ORM\Table(name: 'user_profiles')]
+#[ORM\UniqueConstraint(name: 'UNIQ_USER_IDENTIFIER', columns: ['user_identifier'])]
 class UserProfile
 {
     #[ORM\Id]
@@ -23,7 +24,7 @@ class UserProfile
     #[ORM\Column(type: 'text', nullable: true)]
     private ?string $contextEmbedding = null;
 
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(length: 255, unique: true)]
     private string $userIdentifier;
 
     #[ORM\Column(type: 'datetime_immutable')]
