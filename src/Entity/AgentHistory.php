@@ -33,7 +33,7 @@ class AgentHistory
     #[ORM\Column(type: 'datetime_immutable')]
     private \DateTimeImmutable $executedAt;
 
-    #[ORM\ManyToOne(targetEntity: UserProfile::class)]
+    #[ORM\ManyToOne(targetEntity: UserProfile::class, inversedBy: 'agentHistories')]
     #[ORM\JoinColumn(nullable: false)]
     private UserProfile $userProfile;
 
