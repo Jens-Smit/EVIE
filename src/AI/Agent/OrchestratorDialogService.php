@@ -30,17 +30,13 @@ final readonly class OrchestratorDialogService
     public function ask(string $userMessage, string $userIdentifier): string
     {
         $messages = new MessageBag(
-            Message::forSystem(sprintf(
-                'Aktueller Nutzer: %s. Nutze diese Information für personalisierte Antworten.',
-                $userIdentifier
-            )),
             Message::ofUser($userMessage),
         );
 
-        $result = $this->agent->call($messages);
+        $result = $this->agent->call($messages, ['user_identifier' => $userIdentifier]);
         $responseContent = $result->getContent();
 
-        // Prüfe, ob Mistral sagt, dass kein Tool gefunden wurde
+        // Prüfe, ob Mistral sagt, dass kein Tool gefunden wurde ODER eine Tool-Entwicklung anbietet
         if ($this->isNoToolFoundResponse($responseContent)) {
             return $this->handleToolNotFound($userMessage, $userIdentifier);
         }
@@ -49,11 +45,12 @@ final readonly class OrchestratorDialogService
     }
 
     /**
-     * Prüft, ob die Antwort darauf hindeutet, dass kein Tool gefunden wurde.
+     * Prüft, ob die Antwort darauf hindeutet, dass kein Tool gefunden wurde ODER eine Tool-Entwicklung nötig ist.
      */
     private function isNoToolFoundResponse(string $response): bool
     {
         $noToolIndicators = [
+            // Direkte "Nein"-Antworten
             'ich kann diese anfrage nicht ausführen',
             'es tut mir leid, aber ich kann',
             'kein passendes tool',
@@ -66,6 +63,22 @@ final readonly class OrchestratorDialogService
             'kein tool verfügbar',
             'ich habe kein passendes tool',
             'kein tool gefunden',
+            
+            // Antworten, die auf Tool-Entwicklung hindeuten
+            'ich werde ein tool entwickeln',
+            'ich kann ein tool entwickeln',
+            'möchtest du, dass ich ein tool entwickle',
+            'um deine anfrage umzusetzen, werde ich ein tool entwickeln',
+            'ich brauche etwas mehr kontext, um ein passendes tool',
+            'soll ich das tool direkt auf einer webseite anwenden',
+            'ich kann dir auch ein skript vorlegen',
+            'lass mich wissen, wie du vorgehen möchtest',
+            
+            // Generische "Ich verstehe nicht"-Antworten
+            'ich verstehe deine anfrage, aber',
+            'ich brauche mehr informationen',
+            'könntest du bitte genauer beschreiben',
+            'was das tool können soll',
         ];
 
         $responseLower = strtolower($response);
@@ -142,19 +155,5 @@ final readonly class OrchestratorDialogService
         
         // Füge einen Kontext hinzu
         return sprintf("Tool zur Ausführung der folgenden Aufgabe: %s", $description);
-    }
-
-    /**
-     * Behandelt allgemeine Fehler.
-     */
-    private function handleGeneralError(\Exception $e, string $userMessage): string
-    {
-        $this->logger->error('Allgemeiner Fehler im Orchestrator: ' . $e->getMessage(), [
-            'exception' => $e,
-            'user_message' => $userMessage,
-        ]);
-
-        return "Es ist ein Fehler aufgetreten: " . $e->getMessage() . "\n\n" .
-               "Bitte versuche es erneut oder kontaktiere den Administrator.";
     }
 }

@@ -34,8 +34,29 @@ services:
             - '../src/Entity/'
             - '../src/Kernel.php'
 
+    App\AI\Skills\DynamicSkillRegistry:
+        public: true
+
     App\AI\Onboarding\ContextStoreManager:
         public: true
+
+    # ========================================================================
+    # AI-Agent Services (KORRIGIERT)
+    # ========================================================================
+
+    # Orchestrator Dialog Service - EXPLIZITE KONFIGURATION
+    App\AI\Agent\OrchestratorDialogService:
+        arguments:
+            $agent: '@ai.agent.orchestrator'
+            $toolGenerator: '@App\AI\Skills\ToolDefinitionGenerator'
+            $dispatcher: '@event_dispatcher'
+            $logger: '@logger'
+
+    # Tool Definition Generator - EXPLIZITE KONFIGURATION (Autoconfigure entfernt)
+    App\AI\Skills\ToolDefinitionGenerator:
+        arguments:
+            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
+            $platform: '@ai.platform.mistral'
 
     # Registrierung des HitlToolCallListener als Event-Listener
     App\AI\Security\HitlToolCallListener:
@@ -49,13 +70,9 @@ services:
     App\AI\Skills\Tool\ToolRegistry: ~
 
     # Automatische Registrierung aller Tools mit dem Tag 'ai.tool'
-    # Tools werden automatisch über das #[AsTool]-Attribute mit 'ai.tool' getaggt.
     App\AI\Skills\Tool\:
         resource: '../src/AI/Skills/Tool/'
-        exclude:
-            - '../src/AI/Skills/Tool/DynamicToolFactory.php'
-            - '../src/AI/Skills/Tool/ToolInterface.php'
-            - '../src/AI/Skills/Tool/ToolRegistry.php'
+        tags: ['ai.tool']
 
     # MCP Services
     App\Mcp\Client\McpServerManager:
@@ -88,36 +105,6 @@ services:
         arguments:
             $serverManager: '@App\Mcp\Client\McpServerManager'
 
-    # ========================================================================
-    # AI-Agent Services (NEU)
-    # ========================================================================
-
-    # Orchestrator Dialog Service (erweitert)
-    App\AI\Agent\OrchestratorDialogService:
-        arguments:
-            $toolGenerator: '@App\AI\Skills\ToolDefinitionGenerator'
-            $dispatcher: '@event_dispatcher'
-            $logger: '@logger'
-
-    # Dynamic Skill Registry
-    App\AI\Skills\DynamicSkillRegistry:
-        public: true
-        arguments:
-            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
-
-    # Tool Definition Generator
-    App\AI\Skills\ToolDefinitionGenerator:
-        arguments:
-            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
-            $platform: '@ai.platform.mistral'
-        tags: ['ai.tool_generator']
-
-    # Dynamic Tool Factory (kein direktes Tool, daher kein ai.tool-Tag)
-    App\AI\Skills\Tool\DynamicToolFactory:
-        arguments:
-            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
-            $logger: '@logger'
-
     # Evie Toolbox Factory (aktualisiert)
     App\AI\Agent\EvieToolboxFactory:
         arguments:
@@ -129,10 +116,22 @@ services:
     # Sub-Agent Factory (neu implementiert)
     App\AI\Agent\SubAgentFactory:
         arguments:
-            $platform: '@ai.platform.mistral'
+            $agentFactory: '@ai.agent_factory'
             $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
             $dynamicSkillRegistry: '@App\AI\Skills\DynamicSkillRegistry'
             $logger: '@logger'
+
+    # Dynamic Tool Factory
+    App\AI\Skills\Tool\DynamicToolFactory:
+        arguments:
+            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
+            $logger: '@logger'
+        tags: ['ai.tool']
+
+    # Dynamic Skill Registry
+    App\AI\Skills\DynamicSkillRegistry:
+        arguments:
+            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
 
     # ========================================================================
     # Event Listener

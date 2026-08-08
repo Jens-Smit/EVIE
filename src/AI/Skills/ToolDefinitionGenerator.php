@@ -1,14 +1,15 @@
 <?php
-
 namespace App\AI\Skills;
 
 use App\Entity\ToolDefinition;
 use App\Repository\ToolDefinitionRepository;
 use Symfony\AI\Platform\PlatformInterface;
 use Symfony\AI\Platform\Response\ResponseFormatFactory;
-use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
 
-#[Autoconfigure(tags: ['ai.tool_generator'])]
+/**
+ * Generiert Tool-Definitionen basierend auf User-Anfragen.
+ * Nutzt Mistral, um JSON-Schemata für neue Tools zu erstellen.
+ */
 class ToolDefinitionGenerator
 {
     private ToolDefinitionRepository $toolDefinitionRepo;
