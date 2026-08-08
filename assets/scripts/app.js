@@ -37,7 +37,10 @@ function initChatForm() {
         const prompt = formData.get('prompt');
         const userIdentifier = formData.get('user_identifier') || 'default_user';
         
-        if (!prompt) return;
+        if (!prompt) {
+            console.error('Keine Nachricht eingegeben.');
+            return;
+        }
 
         // Zeige User-Nachricht sofort an
         const chatContainer = document.getElementById('chat-container');
@@ -59,7 +62,7 @@ function initChatForm() {
 
         try {
             // Sende die Anfrage als JSON an die API
-            const response = await fetch('/api/agent/dialog', {
+            const response = await fetch(chatForm.action, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
