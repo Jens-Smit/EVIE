@@ -45,7 +45,7 @@ class AgentHistoryRepository extends ServiceEntityRepository
     /**
      * Finds all actions for a specific user.
      */
-    public function findByUser(string $userIdentifier): array
+    public function findByUserIdentifier(string $userIdentifier): array
     {
         return $this->createQueryBuilder('a')
             ->join('a.userProfile', 'u')
