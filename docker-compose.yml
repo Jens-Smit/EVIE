@@ -42,6 +42,29 @@ services:
             start_period: 15s
         restart: unless-stopped
 
+    # PostgreSQL für EVIE (falls nicht bereits vorhanden)
+    evie-db:
+        image: postgres:15-alpine
+        container_name: evie-db
+        environment:
+            POSTGRES_DB: evie
+            POSTGRES_USER: evie
+            POSTGRES_PASSWORD: evie_password
+        ports:
+            - "5432:5432"
+        volumes:
+            - evie-db-data:/var/lib/postgresql/data
+        networks: [mcp_isolated]
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U evie"]
+            interval: 10s
+            timeout: 5s
+            retries: 5
+        restart: unless-stopped
+
 networks:
     mcp_isolated:
-        internal: false   
+        internal: false
+
+volumes:
+    evie-db-data:
