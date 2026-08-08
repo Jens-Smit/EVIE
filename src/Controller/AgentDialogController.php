@@ -1,6 +1,7 @@
 <?php
 namespace App\Controller;
 
+use App\AI\Agent\OrchestratorDialogService;
 use App\AI\Onboarding\ContextStoreManager;
 use App\Entity\AgentHistory;
 use App\Entity\UserProfile;
@@ -22,6 +23,7 @@ final class AgentDialogController
     public function __construct(
         #[Autowire(service: 'ai.agent.orchestrator')]
         private readonly AgentInterface $agent,
+        private readonly OrchestratorDialogService $orchestratorDialogService,
         private readonly ContextStoreManager $contextStore,
         private readonly AgentHistoryRepository $historyRepo,
         private readonly UserProfileRepository $userProfileRepo,
@@ -81,38 +83,43 @@ final class AgentDialogController
         $systemPrompt = $this->contextStore->getSystemPrompt($userIdentifier);
         $this->logger->debug('AgentDialogController::dialog - System-Prompt:', ['prompt' => $systemPrompt]);
 
-        $messages = new MessageBag(
-            Message::forSystem($systemPrompt),
-            Message::ofUser($userMessage),
-        );
-
-        $this->logger->debug('AgentDialogController::dialog - Nachrichten:', [
-            'system' => $systemPrompt,
-            'user' => $userMessage,
-        ]);
-
         try {
-            $result = $this->agent->call($messages);
+            // NUTZE OrchestratorDialogService statt direkten Agent-Aufruf
+            $response = $this->orchestratorDialogService->ask($userMessage, $userIdentifier);
 
             $this->logger->debug('AgentDialogController::dialog - Ergebnis:', [
-                'content' => $result->getContent(),
-                'metadata' => $result->getMetadata()->all(),
+                'content' => $response,
             ]);
 
-            // Speichere die Interaktion in der Datenbank
+            // Prüfe, ob es eine Tool-Generierungsanfrage ist
+            if ($this->isToolGenerationRequest($response)) {
+                // Speichere als "pending_tool"-Status
+                $historyEntry = new AgentHistory();
+                $historyEntry->setAgentName('orchestrator');
+                $historyEntry->setAction(['type' => 'tool_generation_request']);
+                $historyEntry->setInput(['message' => $userMessage]);
+                $historyEntry->setOutput(['response' => $response]);
+                $historyEntry->setStatus('pending_tool_approval');
+                $historyEntry->setUserProfile($userProfile);
+                $this->historyRepo->save($historyEntry, true);
+
+                return new JsonResponse([
+                    'response' => $response,
+                    'requires_tool_approval' => true,
+                ]);
+            }
+
+            // Normale Antwort
             $historyEntry = new AgentHistory();
             $historyEntry->setAgentName('orchestrator');
             $historyEntry->setAction(['type' => 'dialog']);
             $historyEntry->setInput(['message' => $userMessage]);
-            $historyEntry->setOutput(['response' => $result->getContent()]);
+            $historyEntry->setOutput(['response' => $response]);
             $historyEntry->setStatus('success');
             $historyEntry->setUserProfile($userProfile);
             $this->historyRepo->save($historyEntry, true);
 
-            return new JsonResponse([
-                'response' => $result->getContent(),
-                'token_usage' => $result->getMetadata()->get('token_usage'),
-            ]);
+            return new JsonResponse(['response' => $response]);
         } catch (\Exception $e) {
             $historyEntry = new AgentHistory();
             $historyEntry->setAgentName('orchestrator');
@@ -132,6 +139,16 @@ final class AgentDialogController
                 'error' => 'Ein Fehler ist aufgetreten: ' . $e->getMessage(),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+    }
+
+    /**
+     * Prüft, ob die Antwort eine Tool-Generierungsanfrage ist.
+     */
+    private function isToolGenerationRequest(string $response): bool
+    {
+        return str_contains($response, 'Neues Tool wartet auf Freigabe') ||
+               str_contains($response, 'Tool entworfen') ||
+               str_contains($response, 'Bitte genehmige dieses Tool');
     }
 
     /**

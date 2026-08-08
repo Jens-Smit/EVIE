@@ -29,46 +29,44 @@ final readonly class OrchestratorDialogService
      */
     public function ask(string $userMessage, string $userIdentifier): string
     {
-        try {
-            $messages = new MessageBag(
-                Message::ofUser($userMessage),
-            );
+        $messages = new MessageBag(
+            Message::ofUser($userMessage),
+        );
 
-            $result = $this->agent->call($messages, ['user_identifier' => $userIdentifier]);
-            return $result->getContent();
+        $result = $this->agent->call($messages, ['user_identifier' => $userIdentifier]);
+        $responseContent = $result->getContent();
 
-        } catch (\Exception $e) {
-            $this->logger->error('Orchestrator error: ' . $e->getMessage());
-
-            // Prüfe, ob es sich um ein "Tool nicht gefunden"-Problem handelt
-            if ($this->isToolNotFoundError($e)) {
-                return $this->handleToolNotFound($userMessage, $userIdentifier);
-            }
-
-            // Für andere Fehler: Standard-Fallback
-            return $this->handleGeneralError($e, $userMessage);
+        // Prüfe, ob Mistral sagt, dass kein Tool gefunden wurde
+        if ($this->isNoToolFoundResponse($responseContent)) {
+            return $this->handleToolNotFound($userMessage, $userIdentifier);
         }
+
+        return $responseContent;
     }
 
     /**
-     * Prüft, ob der Fehler darauf hindeutet, dass kein passendes Tool gefunden wurde.
+     * Prüft, ob die Antwort darauf hindeutet, dass kein Tool gefunden wurde.
      */
-    private function isToolNotFoundError(\Exception $e): bool
+    private function isNoToolFoundResponse(string $response): bool
     {
-        $errorMessage = strtolower($e->getMessage());
-        
-        // Prüfe auf typische Fehlertexte
-        $toolNotFoundIndicators = [
-            'no tool found',
+        $noToolIndicators = [
+            'ich kann diese anfrage nicht ausführen',
+            'es tut mir leid, aber ich kann',
+            'kein passendes tool',
+            'keine passende funktion',
+            'kann diese aufgabe nicht erledigen',
+            'nicht verfügbar',
+            'keine ressourcen',
+            'keine schnittstellen',
+            'ich kann kein tool entwickeln',
+            'kein tool verfügbar',
+            'ich habe kein passendes tool',
             'kein tool gefunden',
-            'tool not available',
-            'unknown tool',
-            'cannot find tool',
-            'no matching tool',
         ];
 
-        foreach ($toolNotFoundIndicators as $indicator) {
-            if (str_contains($errorMessage, $indicator)) {
+        $responseLower = strtolower($response);
+        foreach ($noToolIndicators as $indicator) {
+            if (str_contains($responseLower, $indicator)) {
                 return true;
             }
         }
