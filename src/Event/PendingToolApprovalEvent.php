@@ -1,29 +1,27 @@
 <?php
+// src/Event/PendingToolApprovalEvent.php
 
 namespace App\Event;
 
 use App\Entity\ToolDefinition;
 use Symfony\Contracts\EventDispatcher\Event;
 
-class PendingToolApprovalEvent extends Event
+/**
+ * Event, das ausgelöst wird, wenn ein neues Tool generiert wurde und auf Freigabe wartet.
+ */
+final class PendingToolApprovalEvent extends Event
 {
-    public const NAME = 'pending_tool_approval';
+    public const NAME = 'ai.tool.pending_approval';
 
     public function __construct(
         private ToolDefinition $toolDefinition,
-        private string $prompt,
-        private string $userIdentifier
+        private string $userIdentifier,
     ) {
     }
 
     public function getToolDefinition(): ToolDefinition
     {
         return $this->toolDefinition;
-    }
-
-    public function getPrompt(): string
-    {
-        return $this->prompt;
     }
 
     public function getUserIdentifier(): string
