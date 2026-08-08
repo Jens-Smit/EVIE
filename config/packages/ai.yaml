@@ -7,8 +7,8 @@ ai:
 
     agent:
         orchestrator:
-            platform: 'ai.platform.gemini'
-            model: 'gemini-2.5-flash'
+            platform: 'ai.platform.mistral'
+            model: 'mistral-small-latest'
             prompt:
                 text: 'Du bist der Orchestrator-Agent von EVIE. Du planst und delegierst, führst aber keine Aufgaben direkt aus.'
                 include_tools: true
@@ -27,8 +27,8 @@ ai:
             tools: false
 
         fallback:
-            platform: 'ai.platform.gemini'
-            model: 'gemini-2.5-flash'
+            platform: 'ai.platform.mistral'
+            model: 'mistral-small-latest'
             prompt: 'Du bist der Fallback-Agent für EVIE. Beantworte Fragen direkt, falls Mistral nicht verfügbar ist.'
             tools: false
 
