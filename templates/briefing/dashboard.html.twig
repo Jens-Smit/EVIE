@@ -1,0 +1,294 @@
+{# templates/briefing/dashboard.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}EVIE - Unternehmens-Dashboard{% endblock %}
+
+{% block stylesheets %}
+    {{ parent() }}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js">
+{% endblock %}
+
+{% block body %}
+<div class="container mx-auto px-6 py-8">
+    <h1 class="text-3xl font-bold text-secondary mb-6">EVIE - Unternehmens-Dashboard</h1>
+
+    {# Tägliches Briefing #}
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <h2 class="text-2xl font-bold text-primary mb-4">📅 Tägliches Briefing</h2>
+
+        {# Abgeschlossene Aufgaben #}
+        <div class="mb-6">
+            <h3 class="text-xl font-semibold mb-3">✅ Abgeschlossene Aufgaben</h3>
+            {% if dailyBriefing.sections.completed_tasks|length > 0 %}
+                <div class="space-y-2">
+                    {% for task in dailyBriefing.sections.completed_tasks %}
+                        <div class="bg-gray-50 p-3 rounded-lg border-l-4 border-green-500">
+                            <p class="font-medium">{{ task.description }}</p>
+                            <p class="text-sm text-gray-600">
+                                Agent: {{ task.agent }} |
+                                {{ task.executed_at }} |
+                                Dauer: {{ task.duration }}
+                            </p>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-gray-500">Keine abgeschlossenen Aufgaben heute.</p>
+            {% endif %}
+        </div>
+
+        {# Ausstehende Entscheidungen #}
+        <div class="mb-6">
+            <h3 class="text-xl font-semibold mb-3">⏳ Ausstehende Entscheidungen</h3>
+            {% if dailyBriefing.sections.pending_decisions|length > 0 %}
+                <div class="space-y-2">
+                    {% for decision in dailyBriefing.sections.pending_decisions %}
+                        <div class="bg-yellow-50 p-3 rounded-lg border-l-4 border-yellow-500">
+                            <p class="font-medium">{{ decision.description }}</p>
+                            <p class="text-sm text-gray-600">
+                                Typ: {{ decision.type }} |
+                                {{ decision.created_at }}
+                            </p>
+                            <div class="mt-2 flex gap-2">
+                                <button class="bg-green-500 text-white px-3 py-1 rounded text-sm approve-decision"
+                                        data-decision-id="{{ decision.id }}">
+                                    Genehmigen
+                                </button>
+                                <button class="bg-red-500 text-white px-3 py-1 rounded text-sm reject-decision"
+                                        data-decision-id="{{ decision.id }}">
+                                    Ablehnen
+                                </button>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-gray-500">Keine ausstehenden Entscheidungen.</p>
+            {% endif %}
+        </div>
+
+        {# Empfehlungen #}
+        <div>
+            <h3 class="text-xl font-semibold mb-3">💡 Empfehlungen</h3>
+            {% if dailyBriefing.sections.recommendations|length > 0 %}
+                <div class="space-y-2">
+                    {% for recommendation in dailyBriefing.sections.recommendations %}
+                        <div class="bg-blue-50 p-3 rounded-lg border-l-4 border-blue-500">
+                            <p class="font-medium">{{ recommendation.description }}</p>
+                            <p class="text-sm text-gray-600">Priorität: {{ recommendation.priority }}</p>
+                            {% if recommendation.action %}
+                                <a href="{{ recommendation.action }}" class="text-blue-600 underline mt-1 inline-block">
+                                    Zur Aktion
+                                </a>
+                            {% endif %}
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-gray-500">Keine Empfehlungen.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    {# Wöchentliches Strategie-Briefing #}
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <h2 class="text-2xl font-bold text-primary mb-4">📊 Wöchentliches Strategie-Briefing</h2>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {# Statistiken #}
+            <div>
+                <h3 class="text-lg font-semibold mb-3">📈 Statistiken</h3>
+                <canvas id="toolUsageChart" width="400" height="200"></canvas>
+            </div>
+
+            {# Strategische Analyse #}
+            <div>
+                <h3 class="text-lg font-semibold mb-3">🎯 Strategische Analyse</h3>
+                <div class="space-y-4">
+                    <div>
+                        <h4 class="font-medium">Chancen:</h4>
+                        <ul class="list-disc list-inside text-sm text-green-600">
+                            {% for opportunity in weeklyBriefing.sections.strategic_analysis.opportunities %}
+                                <li>{{ opportunity }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                    <div>
+                        <h4 class="font-medium">Risiken:</h4>
+                        <ul class="list-disc list-inside text-sm text-red-600">
+                            {% for risk in weeklyBriefing.sections.strategic_analysis.risks %}
+                                <li>{{ risk }}</li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Anstehende Aufgaben #}
+        <div class="mt-6">
+            <h3 class="text-lg font-semibold mb-3">📋 Anstehende Aufgaben</h3>
+            {% if weeklyBriefing.sections.upcoming_tasks|length > 0 %}
+                <div class="space-y-2">
+                    {% for task in weeklyBriefing.sections.upcoming_tasks %}
+                        <div class="bg-purple-50 p-3 rounded-lg border-l-4 border-purple-500">
+                            <p class="font-medium">{{ task.description }}</p>
+                            <p class="text-sm text-gray-600">
+                                Fällig: {{ task.due_date }} |
+                                Priorität: {{ task.priority }}
+                            </p>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-gray-500">Keine anstehenden Aufgaben.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    {# Aktive Workflows #}
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-2xl font-bold text-primary mb-4">🔄 Aktive Workflows</h2>
+        {% if dailyBriefing.sections.active_workflows|length > 0 %}
+            <div class="space-y-4">
+                {% for workflow in dailyBriefing.sections.active_workflows %}
+                    <div class="bg-purple-50 p-4 rounded-lg border-l-4 border-purple-500">
+                        <h3 class="font-bold">{{ workflow.task }}</h3>
+                        <p class="text-sm text-gray-600 mt-1">Status: {{ workflow.status }}</p>
+                        <div class="mt-2 bg-gray-100 p-2 rounded">
+                            <div class="w-full bg-gray-200 rounded-full h-2.5">
+                                <div class="bg-purple-600 h-2.5 rounded-full"
+                                     style="width: {{ workflow.progress }}%"></div>
+                            </div>
+                            <p class="text-xs text-gray-500 mt-1">
+                                Fortschritt: {{ workflow.progress }}% |
+                                Geschätzte Dauer: {{ workflow.estimated_duration }} |
+                                Risikostufe: {{ workflow.risk_level }}
+                            </p>
+                        </div>
+                        <div class="mt-2">
+                            <a href="#" class="text-purple-600 text-sm hover:underline">
+                                Details anzeigen →
+                            </a>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-gray-500">Keine aktiven Workflows.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <script>
+    // Initialisiere Charts
+    document.addEventListener('DOMContentLoaded', function() {
+        // Tool-Nutzungs-Chart
+        const ctx = document.getElementById('toolUsageChart');
+        if (ctx) {
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: ['Genehmigt', 'Ausstehend', 'Abgelehnt'],
+                    datasets: [{
+                        label: 'Tools',
+                        data: [
+                            {{ dailyBriefing.sections.tool_statistics.approved_tools }},
+                            {{ dailyBriefing.sections.tool_statistics.pending_tools }},
+                            {{ dailyBriefing.sections.tool_statistics.rejected_tools }}
+                        ],
+                        backgroundColor: [
+                            'rgba(16, 185, 129, 0.7)',
+                            'rgba(245, 158, 11, 0.7)',
+                            'rgba(239, 68, 68, 0.7)'
+                        ],
+                        borderColor: [
+                            'rgba(16, 185, 129, 1)',
+                            'rgba(245, 158, 11, 1)',
+                            'rgba(239, 68, 68, 1)'
+                        ],
+                        borderWidth: 1
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    scales: {
+                        y: {
+                            beginAtZero: true
+                        }
+                    }
+                }
+            });
+        }
+
+        // Entscheidung-Handler
+        document.querySelectorAll('.approve-decision').forEach(button => {
+            button.addEventListener('click', function() {
+                const decisionId = this.getAttribute('data-decision-id');
+                approveDecision(decisionId, this.closest('.bg-yellow-50'));
+            });
+        });
+
+        document.querySelectorAll('.reject-decision').forEach(button => {
+            button.addEventListener('click', function() {
+                const decisionId = this.getAttribute('data-decision-id');
+                rejectDecision(decisionId, this.closest('.bg-yellow-50'));
+            });
+        });
+    });
+
+    // Globale Funktionen für Entscheidungen
+    function approveDecision(decisionId, container) {
+        fetch(`/api/decisions/${decisionId}/approve`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showNotification('Entscheidung genehmigt!', 'success');
+                if (container) container.remove();
+            } else {
+                showNotification('Fehler beim Genehmigen', 'error');
+            }
+        })
+        .catch(error => {
+            showNotification('Fehler: ' + error.message, 'error');
+        });
+    }
+
+    function rejectDecision(decisionId, container) {
+        const reason = prompt('Begründung für die Ablehnung:');
+        if (!reason) return;
+
+        fetch(`/api/decisions/${decisionId}/reject`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ reason: reason })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showNotification('Entscheidung abgelehnt', 'info');
+                if (container) container.remove();
+            } else {
+                showNotification('Fehler beim Ablehnen', 'error');
+            }
+        })
+        .catch(error => {
+            showNotification('Fehler: ' + error.message, 'error');
+        });
+    }
+    </script>
+{% endblock %}
