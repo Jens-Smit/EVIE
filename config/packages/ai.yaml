@@ -1,65 +1,229 @@
+# Symfony AI Bundle Configuration for EVIE
+# This configuration follows the official Symfony AI best practices
+# Reference: https://symfony.com/doc/current/ai/bundles/ai-bundle.html
+
 ai:
     platform:
         mistral:
             api_key: '%env(MISTRAL_API_KEY)%'
         gemini:
             api_key: '%env(GEMINI_API_KEY)%'
+        # Firecrawl for web search capabilities
+        firecrawl:
+            api_key: '%env(FIRECRAWL_API_KEY)%'
 
     agent:
+        # Main orchestrator agent - plans and delegates but doesn't execute
         orchestrator:
             platform: 'ai.platform.mistral'
             model: 'mistral-small-latest'
             prompt:
-                text: 'Du bist der Orchestrator-Agent von EVIE. Du planst und delegierst, führst aber keine Aufgaben direkt aus.'
+                text: |
+                    Du bist der Orchestrator-Agent von EVIE, einem selbst-evolvierenden AI-Agenten-System.
+                    
+                    **Deine Rolle:**
+                    - Analysiere User-Anfragen und entscheide, ob ein passendes Tool oder Sub-Agent existiert
+                    - Falls kein Tool existiert, schlage die Erstellung eines neuen Tools vor
+                    - Delegiere Aufgaben an spezialisierte Sub-Agenten
+                    - Führe KEINE Aufgaben direkt aus - du bist nur der Koordinator
+                    
+                    **Verfügbare Sub-Agenten:**
+                    - website_researcher: Für Webseiten-Recherche und Inhaltszusammenfassung
+                    - data_analyst: Für Datenanalyse und statistische Auswertungen
+                    - code_assistant: Für Code-Analyse und Generierung
+                    - document_processor: Für Dokumentenverarbeitung (PDF, Excel, etc.)
+                    
+                    **Tool-Erkennungslogik:**
+                    Falls du feststellst, dass kein passendes Tool für eine Anfrage existiert,
+                    antworte mit: "TOOL_NOT_FOUND: [kurze Beschreibung der fehlenden Fähigkeit]"
+                    
+                    **Wichtig:**
+                    - Nutze die verfügbaren Tools und Sub-Agenten optimal
+                    - Sei präzise in deiner Analyse
+                    - Gib klare Empfehlungen für neue Tools
                 include_tools: true
             memory:
                 service: 'App\AI\Onboarding\ContextMemoryProvider'
             tools:
+                # MCP Tools
                 - service: 'App\Mcp\Toolbox\McpToolExecutor'
                   name: 'mcp_tool_executor'
                   description: 'Führt MCP-Tools aus den konfigurierten Servern aus.'
+                
+                # Sub-Agenten als Tools registrieren
+                - agent: 'website_researcher'
+                  name: 'website_researcher'
+                  description: 'Sub-Agent für Webseiten-Recherche und Inhaltszusammenfassung'
+                
+                - agent: 'data_analyst'
+                  name: 'data_analyst'
+                  description: 'Sub-Agent für Datenanalyse und statistische Auswertungen'
+                
+                - agent: 'code_assistant'
+                  name: 'code_assistant'
+                  description: 'Sub-Agent für Code-Analyse und Generierung'
+                
+                - agent: 'document_processor'
+                  name: 'document_processor'
+                  description: 'Sub-Agent für Dokumentenverarbeitung'
+                
+                # Statische Tools
                 - { service: 'App\AI\Skills\Tool\WeatherTool' }
                 - { service: 'App\AI\Skills\Tool\FileReadTool' }
+                - { service: 'App\AI\Skills\Tool\DataAnalyzerTool' }
+                - { service: 'App\AI\Skills\Tool\ExcelParserTool' }
+                - { service: 'App\AI\Skills\Tool\UserTypeLookupTool' }
+                
+                # Dynamische Tools aus der Datenbank
+                - service: 'App\AI\Skills\DynamicToolDispatcher'
+                  name: 'dynamic_tool_executor'
+                  description: 'Führt dynamisch generierte Tools aus der Datenbank aus.'
 
-        research:
+        # Website Research Agent - für Webseiten-Analyse
+        website_researcher:
             platform: 'ai.platform.mistral'
-            model: 'mistral-small-latest'
+            model: 'mistral-large-latest'
+            prompt:
+                text: |
+                    Du bist ein spezialisierter Sub-Agent für Webseiten-Recherche und Inhaltszusammenfassung.
+                    
+                    **Deine Aufgaben:**
+                    - Durchsuche Webseiten nach spezifischen Informationen
+                    - Fasse Inhalte zusammen (Impressum, Kontakte, Geschäftszweck, etc.)
+                    - Extrahiere strukturierte Daten aus Webinhalten
+                    - Nutze die verfügbaren MCP-Tools für Web-Recherche
+                    
+                    **Verfügbare Tools:**
+                    - firecrawl_search: Durchsuche Webseiten
+                    - web_search: Allgemeine Websuche
+                    - text_analysis: Analysiere und fasse Texte zusammen
+                include_tools: true
+            tools:
+                - 'Symfony\AI\Agent\Bridge\Firecrawl\Firecrawl'
+                - 'Symfony\AI\Agent\Bridge\Tavily\Tavily'
+                - { service: 'App\AI\Skills\Tool\FileReadTool' }
+
+        # Data Analysis Agent
+        data_analyst:
+            platform: 'ai.platform.mistral'
+            model: 'mistral-large-latest'
+            prompt: |
+                Du bist ein spezialisierter Sub-Agent für Datenanalyse und statistische Auswertungen.
+                Analysiere Daten, erkenne Muster und liefere Erkenntnisse.
+            tools:
+                - { service: 'App\AI\Skills\Tool\DataAnalyzerTool' }
+                - { service: 'App\AI\Skills\Tool\ExcelParserTool' }
+
+        # Code Assistant Agent
+        code_assistant:
+            platform: 'ai.platform.mistral'
+            model: 'mistral-large-latest'
+            prompt: |
+                Du bist ein spezialisierter Sub-Agent für Code-Analyse, Generierung und Review.
+                Analysiere Code, schlage Verbesserungen vor und generiere neuen Code.
             tools: false
 
+        # Document Processor Agent
+        document_processor:
+            platform: 'ai.platform.mistral'
+            model: 'mistral-large-latest'
+            prompt: |
+                Du bist ein spezialisierter Sub-Agent für Dokumentenverarbeitung.
+                Verarbeite PDFs, Excel-Dateien und andere Dokumente.
+            tools:
+                - { service: 'App\AI\Skills\Tool\FileReadTool' }
+                - { service: 'App\AI\Skills\Tool\ExcelParserTool' }
+
+        # Fallback Agent
         fallback:
             platform: 'ai.platform.mistral'
             model: 'mistral-small-latest'
-            prompt: 'Du bist der Fallback-Agent für EVIE. Beantworte Fragen direkt, falls Mistral nicht verfügbar ist.'
+            prompt: |
+                Du bist der Fallback-Agent für EVIE.
+                Beantworte Fragen direkt, falls kein spezialisierter Agent oder Tool verfügbar ist.
             tools: false
 
     multi_agent:
         evie:
             orchestrator: 'orchestrator'
             handoffs:
-                research: ['recherche', 'suche', 'research']
+                # Webseiten-Recherche
+                website_researcher: 
+                    - 'webseite'
+                    - 'website'
+                    - 'recherche'
+                    - 'suche'
+                    - 'research'
+                    - 'durchsuchen'
+                    - 'zusammenfassen'
+                    - 'impressum'
+                    - 'kontakte'
+                    - 'geschäftszweck'
+                    - 'standort'
+                    - 'branche'
+                    - 'visiongastro'
+                    
+                # Datenanalyse
+                data_analyst:
+                    - 'daten'
+                    - 'analyse'
+                    - 'statistik'
+                    - 'auswertung'
+                    - 'zahlen'
+                    - 'diagramm'
+                    
+                # Code-Assistenz
+                code_assistant:
+                    - 'code'
+                    - 'programm'
+                    - 'skript'
+                    - 'funktion'
+                    - 'klassen'
+                    - 'php'
+                    - 'symfony'
+                    
+                # Dokumentenverarbeitung
+                document_processor:
+                    - 'dokument'
+                    - 'pdf'
+                    - 'excel'
+                    - 'datei'
+                    - 'verarbeiten'
             fallback: 'fallback'
 
+    # Message Store für Dialogverlauf
     message_store:
         cache:
             evie_dialog:
                 service: 'cache.app'
                 key: 'evie_dialog'
 
+    # Chat-Konfiguration
     chat:
         evie:
             agent: 'ai.agent.orchestrator'
             message_store: 'ai.message_store.cache.evie_dialog'
 
+    # Vectorizer für Embeddings
     vectorizer:
         mistral_embed:
             platform: 'ai.platform.mistral'
             model: 'mistral-embed'
 
+    # Store für RAG (Retrieval Augmented Generation)
     store:
         postgres:
             onboarding:
                 dbal_connection: 'doctrine.dbal.default_connection'
                 table_name: 'onboarding_embeddings'
+            
+        # Store für Tool-Definitionen
+        tool_definitions:
+            postgres:
+                dbal_connection: 'doctrine.dbal.default_connection'
+                table_name: 'tool_definitions'
+
+    # Indexer für Dokumenten-Indexierung
     indexer:
         onboarding:
             loader: 'App\AI\Loader\OnboardingLoader'
