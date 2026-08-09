@@ -1,0 +1,33 @@
+{
+  "name": "evie",
+  "version": "1.0.0",
+  "description": "EVIE ist ein **AI-Agenten-System**, das auf Symfony und dem Symfony AI Bundle basiert. Es ermöglicht die Interaktion mit einem KI-Agenten, speichert Dialogverläufe in einer Datenbank und unterstützt Tools mit Human-in-the-Loop (HITL) Freigabe.",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build:css": "tailwindcss -i ./assets/styles/tailwind.css -o ./public/assets/styles/tailwind-compiled.css --minify",
+    "watch:css": "tailwindcss -i ./assets/styles/tailwind.css -o ./public/assets/styles/tailwind-compiled.css --watch",
+    "build": "npm run build:css"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Jens-Smit/EVIE.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Jens-Smit/EVIE/issues"
+  },
+  "homepage": "https://github.com/Jens-Smit/EVIE#readme",
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.3.3",
+    "autoprefixer": "^10.5.4",
+    "postcss": "^8.5.26",
+    "tailwindcss": "^4.3.3"
+  }
+}

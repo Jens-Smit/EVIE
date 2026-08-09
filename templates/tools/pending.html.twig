@@ -7,6 +7,17 @@
         <h1 class="text-2xl font-bold text-secondary mb-4">Ausstehende Tools</h1>
         <p class="text-gray-700 mb-6">Hier siehst du Tools, die auf deine Freigabe warten.</p>
 
+        <script>
+            // Debug-Informationen nur anzeigen, wenn tools im Twig-Kontext verfügbar ist
+            {% if tools is defined %}
+            console.log('DEBUG: Tools-Array definiert: ja');
+            console.log('DEBUG: Tools-Array Länge:', {{ tools|length }});
+            {% else %}
+            console.log('DEBUG: Tools-Array definiert: nein');
+            {% endif %}
+        </script>
+        
+
         {% if tools is defined and tools|length > 0 %}
             <div class="space-y-4">
                 {% for tool in tools %}
@@ -14,17 +25,17 @@
                         <h3 class="text-lg font-bold text-secondary mb-2">{{ tool.name }}</h3>
                         <p class="text-gray-700 mb-2">{{ tool.description }}</p>
                         <p class="text-sm text-gray-500 mb-4">
-                            Anfragt von: <strong>{{ tool.requester }}</strong> | 
-                            {{ tool.timestamp|date('d.m.Y H:i') }}
+                            Anfragt von: <strong>{{ tool.requester }}</strong> |
+                            {{ tool.timestamp is not null ? tool.timestamp|date('d.m.Y H:i') : 'Unbekannt' }}
                         </p>
                         <div class="flex gap-2">
-                            <button 
+                            <button
                                 class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition approve-tool"
                                 data-tool-id="{{ tool.id }}"
                             >
                                 Freigeben
                             </button>
-                            <button 
+                            <button
                                 class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition reject-tool"
                                 data-tool-id="{{ tool.id }}"
                             >
@@ -35,8 +46,33 @@
                 {% endfor %}
             </div>
         {% else %}
-            <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded-lg">
-                Keine ausstehenden Tools.
+            <!-- DEBUG: Temporäres Test-Tool hinzufügen, um die Button-Funktionalität zu testen -->
+            <div class="space-y-4">
+                <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <h3 class="text-lg font-bold text-secondary mb-2">TEST-TOOL (Debug)</h3>
+                    <p class="text-gray-700 mb-2">Dies ist ein temporäres Test-Tool, um die Button-Funktionalität zu überprüfen.</p>
+                    <p class="text-sm text-gray-500 mb-4">
+                        Anfragt von: <strong>System</strong> |
+                        {{ 'now'|date('d.m.Y H:i') }}
+                    </p>
+                    <div class="flex gap-2">
+                        <button
+                            class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition approve-tool"
+                            data-tool-id="999"
+                        >
+                            Freigeben (Test)
+                        </button>
+                        <button
+                            class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition reject-tool"
+                            data-tool-id="999"
+                        >
+                            Ablehnen (Test)
+                        </button>
+                    </div>
+                </div>
+            </div>
+            <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded-lg mt-4">
+                <strong>Hinweis:</strong> Dies ist ein Debug-Test-Tool. Die echten ausstehenden Tools werden nicht angezeigt, weil der Controller sie nicht findet.
             </div>
         {% endif %}
     </div>
@@ -46,10 +82,16 @@
 <script>
 // Tool-Freigabe-Funktionalität
 function initToolApproval() {
+    console.log('DEBUG: Initialisiere Tool-Freigabe-Funktionalität');
+
     const approveButtons = document.querySelectorAll('.approve-tool');
     const rejectButtons = document.querySelectorAll('.reject-tool');
 
+    console.log('DEBUG: Gefundene Freigabe-Buttons:', approveButtons.length);
+    console.log('DEBUG: Gefundene Ablehnungs-Buttons:', rejectButtons.length);
+
     approveButtons.forEach(button => {
+        console.log('DEBUG: Registriere Event-Listener für Freigabe-Button mit Tool-ID:', button.dataset.toolId);
         button.addEventListener('click', async (e) => {
             e.preventDefault();
             const toolId = button.dataset.toolId;
@@ -58,12 +100,15 @@ function initToolApproval() {
     });
 
     rejectButtons.forEach(button => {
+        console.log('DEBUG: Registriere Event-Listener für Ablehnungs-Button mit Tool-ID:', button.dataset.toolId);
         button.addEventListener('click', async (e) => {
             e.preventDefault();
             const toolId = button.dataset.toolId;
             await handleToolAction(toolId, 'reject', button);
         });
     });
+
+    console.log('DEBUG: Event-Listener-Registrierung abgeschlossen');
 }
 
 async function handleToolAction(toolId, action, button) {
@@ -71,14 +116,32 @@ async function handleToolAction(toolId, action, button) {
     button.disabled = true;
     button.innerHTML = '<span class="spinner"></span> Verarbeite...';
 
+    console.log('DEBUG: Button geklickt - Aktion:', action, 'Tool-ID:', toolId);
+
     try {
-        const response = await fetch(`/api/tools/${toolId}/${action}`, {
+        // Verwende die korrekten API-Endpunkte
+        const url = action === 'approve'
+            ? `/api/tools/${toolId}/approve`
+            : `/api/tools/${toolId}/reject`;
+
+        console.log('DEBUG: URL wird aufgerufen:', url);
+
+        // Hole den CSRF-Token aus dem Meta-Tag
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+        console.log('DEBUG: CSRF-Token:', csrfToken ? 'vorhanden' : 'FEHLT');
+
+        console.log('DEBUG: Starte Fetch-Anfrage...');
+        const response = await fetch(url, {
             method: 'POST',
             headers: {
                 'Accept': 'application/json',
                 'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': csrfToken,
             },
         });
+
+        console.log('DEBUG: Antwort erhalten, Status:', response.status);
 
         if (!response.ok) {
             throw new Error(`HTTP error! status: ${response.status}`);
@@ -102,12 +165,15 @@ async function handleToolAction(toolId, action, button) {
         }
 
     } catch (error) {
-        console.error('Fehler bei der Tool-Aktion:', error);
+        console.error('DEBUG: Fehler bei der Tool-Aktion:', error);
+        console.error('DEBUG: Fehlerdetails:', error.stack);
+
         const alert = document.createElement('div');
         alert.className = `bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded-lg mb-4`;
         alert.textContent = `Fehler: ${error.message}`;
         document.querySelector('main').prepend(alert);
     } finally {
+        console.log('DEBUG: Aktion abgeschlossen, Button zurückgesetzt');
         button.disabled = false;
         button.innerHTML = originalBtnText;
     }

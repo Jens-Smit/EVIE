@@ -39,8 +39,8 @@ final readonly class OrchestratorDialogService
      */
     public function ask(string $userMessage, string $userIdentifier): string
     {
-        // Erzeuge strukturierte Nachrichten mit JSON-Enforcement
-        $messages = $this->jsonResponseEnforcer->createStructuredPrompt($userMessage, 'orchestrator');
+        // Temporär deaktiviert, da der Orchestrator-Prompt in ai.yaml jetzt JSON erzwingt
+        $messages = new MessageBag(Message::ofUser($userMessage));
 
         try {
             $result = $this->agent->call($messages);
@@ -319,25 +319,19 @@ final readonly class OrchestratorDialogService
      */
     private function generateUserResponse(ToolDefinition $toolDefinition, AgentInterface $subAgent): string
     {
-        $approvalUrl = $this->urlGenerator->generate('app_tool_approve_api', [
-            'id' => $toolDefinition->getId(),
-        ], UrlGeneratorInterface::ABSOLUTE_URL);
-
-        $rejectUrl = $this->urlGenerator->generate('app_tool_reject_api', [
-            'id' => $toolDefinition->getId(),
-        ], UrlGeneratorInterface::ABSOLUTE_URL);
-
         return sprintf(
             "Ich habe kein passendes Tool für deine Anfrage gefunden. \n\n" .
             "Ich habe jedoch einen **%s** Sub-Agenten identifiziert, der diese Aufgabe übernehmen kann. \n\n" .
             "Ich habe ein neues Tool mit dem Namen **'%s'** entworfen, das diese Aufgabe erfüllen könnte. \n\n" .
-            "👉 [Tool jetzt freigeben](%s) \n\n" .
-            "👎 [Tool ablehnen](%s) \n\n" .
+            "👉 **Tool freigeben:** Bitte besuche die [Tools-Verwaltung](%s) und genehmige das Tool mit der ID %d. \n\n" .
+            "👎 **Tool ablehnen:** Bitte besuche die [Tools-Verwaltung](%s) und lehne das Tool mit der ID %d ab. \n\n" .
             "**Tool-Beschreibung:** %s",
             $subAgent->getName(),
             $toolDefinition->getName(),
-            $approvalUrl,
-            $rejectUrl,
+            $this->urlGenerator->generate('app_tool_pending_list', [], UrlGeneratorInterface::ABSOLUTE_URL),
+            $toolDefinition->getId(),
+            $this->urlGenerator->generate('app_tool_pending_list', [], UrlGeneratorInterface::ABSOLUTE_URL),
+            $toolDefinition->getId(),
             $toolDefinition->getDescription()
         );
     }
@@ -486,22 +480,24 @@ final readonly class OrchestratorDialogService
     {
         $responseData = json_decode($responseContent, true);
         $subAgentType = $responseData['subagent'] ?? 'website_researcher';
-        $taskDescription = $responseData['task_description'] ?? $userMessage;
+        $task = $responseData['task'] ?? $userMessage;
 
         $this->logger->info('Sub-Agent-Delegation erkannt', [
             'subagent' => $subAgentType,
-            'task' => $taskDescription
+            'task' => $task
         ]);
 
-        // Erstelle den passenden Sub-Agenten
+        // 1. Sub-Agent erstellen
         $subAgent = $this->determineAndCreateSubAgent($userMessage);
 
-        return sprintf(
-            "Deine Anfrage wurde an den **%s** Sub-Agenten delegiert. " .
-            "Der Agent wird die folgende Aufgabe bearbeiten: **%s**",
-            $subAgent->getName(),
-            $taskDescription
-        );
+        // 2. Aufgabe an den Sub-Agenten delegieren
+        $messages = new MessageBag(Message::ofUser($task));
+
+        // 3. Sub-Agent ausführen
+        $result = $subAgent->call($messages);
+
+        // 4. Ergebnis zurückgeben
+        return $result->getContent();
     }
 
     /**

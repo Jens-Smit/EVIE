@@ -12,17 +12,3 @@ agent_history:
     controller: App\Controller\AgentDialogController::history
     methods: GET
 
-tools_pending:
-    path: /api/tools/pending
-    controller: App\Controller\ToolApprovalController::pending
-    methods: GET
-
-tools_approve:
-    path: /api/tools/{id}/approve
-    controller: App\Controller\ToolApprovalController::approve
-    methods: POST
-
-tools_reject:
-    path: /api/tools/{id}/reject
-    controller: App\Controller\ToolApprovalController::reject
-    methods: POST
