@@ -33,7 +33,7 @@ final readonly class OrchestratorDialogService
             Message::ofUser($userMessage),
         );
 
-        $result = $this->agent->call($messages, ['user_identifier' => $userIdentifier]);
+        $result = $this->agent->call($messages);
         $responseContent = $result->getContent();
 
         // Prüfe, ob Mistral sagt, dass kein Tool gefunden wurde ODER eine Tool-Entwicklung anbietet

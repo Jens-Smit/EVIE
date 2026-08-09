@@ -4,11 +4,9 @@ namespace App\Tests\Unit\AI\Agent;
 
 use App\AI\Agent\OrchestratorDialogService;
 use App\AI\Skills\ToolDefinitionGenerator;
-use App\Event\PendingToolApprovalEvent;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
 use Symfony\AI\Agent\AgentInterface;
-use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
 use Symfony\AI\Platform\Result\TextResult;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
@@ -47,13 +45,10 @@ class OrchestratorAgentTest extends TestCase
         $this->agent->expects($this->once())
             ->method('call')
             ->with(
-                $this->callback(function (MessageBag $messages) use ($userIdentifier) {
-                    $systemMessage = $messages->getMessages()[0] ?? null;
-                    $userMessage = $messages->getMessages()[1] ?? null;
-
-                    return $systemMessage !== null
-                        && $userMessage !== null
-                        && str_contains((string) $systemMessage->getContent(), $userIdentifier);
+                $this->callback(function (MessageBag $messages) use ($userMessage) {
+                    $messagesArr = $messages->getMessages();
+                    return count($messagesArr) === 1
+                        && $messagesArr[0]->asText() === $userMessage;
                 })
             )
             ->willReturn($resultResponse);
@@ -74,13 +69,10 @@ class OrchestratorAgentTest extends TestCase
         $this->agent->expects($this->once())
             ->method('call')
             ->with(
-                $this->callback(function (MessageBag $messages) use ($userIdentifier) {
-                    $systemMessage = $messages->getMessages()[0] ?? null;
-                    $userMessage = $messages->getMessages()[1] ?? null;
-
-                    return $systemMessage !== null
-                        && $userMessage !== null
-                        && str_contains((string) $systemMessage->getContent(), $userIdentifier);
+                $this->callback(function (MessageBag $messages) use ($userMessage) {
+                    $messagesArr = $messages->getMessages();
+                    return count($messagesArr) === 1
+                        && $messagesArr[0]->asText() === $userMessage;
                 })
             )
             ->willReturn($resultResponse);
@@ -101,13 +93,10 @@ class OrchestratorAgentTest extends TestCase
         $this->agent->expects($this->once())
             ->method('call')
             ->with(
-                $this->callback(function (MessageBag $messages) use ($userIdentifier) {
-                    $systemMessage = $messages->getMessages()[0] ?? null;
-                    $userMessage = $messages->getMessages()[1] ?? null;
-
-                    return $systemMessage !== null
-                        && $userMessage !== null
-                        && str_contains((string) $systemMessage->getContent(), $userIdentifier);
+                $this->callback(function (MessageBag $messages) use ($userMessage) {
+                    $messagesArr = $messages->getMessages();
+                    return count($messagesArr) === 1
+                        && $messagesArr[0]->asText() === $userMessage;
                 })
             )
             ->willReturn($resultResponse);
@@ -128,13 +117,10 @@ class OrchestratorAgentTest extends TestCase
         $this->agent->expects($this->once())
             ->method('call')
             ->with(
-                $this->callback(function (MessageBag $messages) use ($userIdentifier) {
-                    $systemMessage = $messages->getMessages()[0] ?? null;
-                    $userMessage = $messages->getMessages()[1] ?? null;
-
-                    return $systemMessage !== null
-                        && $userMessage !== null
-                        && str_contains((string) $systemMessage->getContent(), $userIdentifier);
+                $this->callback(function (MessageBag $messages) use ($userMessage) {
+                    $messagesArr = $messages->getMessages();
+                    return count($messagesArr) === 1
+                        && $messagesArr[0]->asText() === $userMessage;
                 })
             )
             ->willReturn($resultResponse);

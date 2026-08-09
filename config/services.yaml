@@ -34,9 +34,6 @@ services:
             - '../src/Entity/'
             - '../src/Kernel.php'
 
-    App\AI\Skills\DynamicSkillRegistry:
-        public: true
-
     App\AI\Onboarding\ContextStoreManager:
         public: true
 
@@ -116,7 +113,7 @@ services:
     # Sub-Agent Factory (neu implementiert)
     App\AI\Agent\SubAgentFactory:
         arguments:
-            $agentFactory: '@ai.agent_factory'
+            $platform: '@ai.platform.mistral'
             $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
             $dynamicSkillRegistry: '@App\AI\Skills\DynamicSkillRegistry'
             $logger: '@logger'

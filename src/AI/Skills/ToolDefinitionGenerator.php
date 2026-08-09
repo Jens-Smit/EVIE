@@ -3,8 +3,9 @@ namespace App\AI\Skills;
 
 use App\Entity\ToolDefinition;
 use App\Repository\ToolDefinitionRepository;
+use Symfony\AI\Platform\Message\Message;
+use Symfony\AI\Platform\Message\MessageBag;
 use Symfony\AI\Platform\PlatformInterface;
-use Symfony\AI\Platform\Response\ResponseFormatFactory;
 
 /**
  * Generiert Tool-Definitionen basierend auf User-Anfragen.
@@ -60,11 +61,11 @@ class ToolDefinitionGenerator
         );
 
         // Use the platform to get a structured response
-        $responseFormat = ResponseFormatFactory::createJson();
-        $response = $this->platform->generate($prompt, $responseFormat);
+        $messages = new MessageBag(Message::ofUser($prompt));
+        $response = $this->platform->invoke('mistral-small-latest', $messages)->asText();
 
         // Parse the response to get the schema
-        $schema = json_decode($response->getContent(), true);
+        $schema = json_decode($response, true);
 
         // Ensure the schema is valid
         if (!isset($schema['type']) || $schema['type'] !== 'object') {
