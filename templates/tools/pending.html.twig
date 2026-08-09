@@ -1,3 +1,4 @@
+{# templates/tools/pending.html.twig #}
 {% extends 'base.html.twig' %}
 
 {% block title %}EVIE - Ausstehende Tools{% endblock %}
@@ -10,7 +11,7 @@
         {% if tools is defined and tools|length > 0 %}
             <div class="space-y-4">
                 {% for tool in tools %}
-                    <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
+                    <div class="bg-gray-50 rounded-lg p-4 border border-gray-200 tool-item">
                         <h3 class="text-lg font-bold text-secondary mb-2">{{ tool.name }}</h3>
                         <p class="text-gray-700 mb-2">{{ tool.description }}</p>
                         <p class="text-sm text-gray-500 mb-4">
@@ -44,24 +45,4 @@
 
 {% block javascripts %}
     {{ parent() }}
-    <script>
-    // Tool Approval Handler
-    document.addEventListener('DOMContentLoaded', function() {
-        // Approve Tool
-        document.querySelectorAll('.approve-tool').forEach(button => {
-            button.addEventListener('click', function() {
-                const toolId = this.getAttribute('data-tool-id');
-                approveTool(toolId, this.closest('.bg-gray-50'));
-            });
-        });
-        
-        // Reject Tool
-        document.querySelectorAll('.reject-tool').forEach(button => {
-            button.addEventListener('click', function() {
-                const toolId = this.getAttribute('data-tool-id');
-                rejectTool(toolId, this.closest('.bg-gray-50'));
-            });
-        });
-    });
-    </script>
 {% endblock %}
