@@ -51,14 +51,18 @@ services:
             $logger: '@logger'
             $platform: '@ai.platform.mistral'
             $urlGenerator: '@router'
+            $jsonResponseEnforcer: '@App\AI\Response\JsonResponseEnforcer'
+            $faultTolerantValidator: '@App\AI\Response\FaultTolerantValidator'
 
-    # Tool Definition Generator
+    # Tool Definition Generator - UPDATED with ToolCategoryRepository
     App\AI\Skills\ToolDefinitionGenerator:
         arguments:
             $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
+            $toolCategoryRepo: '@App\Repository\ToolCategoryRepository'
             $platform: '@ai.platform.mistral'
+            $logger: '@logger'
 
-    # Sub-Agent Factory - WICHTIG für Tool-Delegation
+    # Sub-Agent Factory
     App\AI\Agent\SubAgentFactory:
         arguments:
             $platform: '@ai.platform.mistral'
@@ -98,18 +102,52 @@ services:
         resource: '../src/AI/Skills/Tool/'
         tags: ['ai.tool']
 
-    # Firecrawl Tool (Web-Scraping) - kein Platform, sondern ein Tool
+    # Firecrawl Tool (Web-Scraping)
     Symfony\AI\Agent\Bridge\Firecrawl\Firecrawl:
         arguments:
             $apiKey: '%env(FIRECRAWL_API_KEY)%'
             $endpoint: 'https://api.firecrawl.dev'
         tags: ['ai.tool']
 
-    # Tavily Tool (Web-Suche) - kein Platform, sondern ein Tool
+    # Tavily Tool (Web-Suche)
     Symfony\AI\Agent\Bridge\Tavily\Tavily:
         arguments:
             $apiKey: '%env(TAVILY_API_KEY)%'
         tags: ['ai.tool']
+
+    # ========================================================================
+    # Strategy & Workflow Services
+    # ========================================================================
+
+    App\AI\Strategy\StrategyManager:
+        arguments:
+            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
+            $subAgentFactory: '@App\AI\Agent\SubAgentFactory'
+            $platform: '@ai.platform.mistral'
+            $logger: '@logger'
+
+    App\AI\Workflow\WorkflowOrchestrator:
+        arguments:
+            $strategyManager: '@App\AI\Strategy\StrategyManager'
+            $subAgentFactory: '@App\AI\Agent\SubAgentFactory'
+            $historyRepo: '@App\Repository\AgentHistoryRepository'
+            $logger: '@logger'
+
+    # ========================================================================
+    # Decision & Briefing Services
+    # ========================================================================
+
+    App\AI\Decision\DecisionManager:
+        arguments:
+            $decisionLogRepo: '@App\Repository\DecisionLogRepository'
+            $logger: '@logger'
+
+    App\AI\Briefing\BriefingManager:
+        arguments:
+            $historyRepo: '@App\Repository\AgentHistoryRepository'
+            $decisionManager: '@App\AI\Decision\DecisionManager'
+            $workflowOrchestrator: '@App\AI\Workflow\WorkflowOrchestrator'
+            $logger: '@logger'
 
     # ========================================================================
     # MCP Services
@@ -149,7 +187,6 @@ services:
     # Toolbox Factory
     # ========================================================================
 
-    # Evie Toolbox Factory - aktualisiert mit SubAgentFactory
     App\AI\Agent\EvieToolboxFactory:
         arguments:
             $mcpToolFactory: '@App\Mcp\Toolbox\McpToolFactoryWrapper'
@@ -161,7 +198,6 @@ services:
     # Event Listener
     # ========================================================================
 
-    # Pending Tool Approval Listener - aktualisiert mit DynamicSkillRegistry
     App\EventListener\PendingToolApprovalListener:
         arguments:
             $notifier: '@notifier'
@@ -176,7 +212,6 @@ services:
     # Controller Services
     # ========================================================================
 
-    # Tool Approval Controller
     App\Controller\ToolApprovalController:
         arguments:
             $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
@@ -184,6 +219,16 @@ services:
             $dispatcher: '@event_dispatcher'
             $urlGenerator: '@router'
             $logger: '@logger'
+        tags: ['controller.service_arguments']
+
+    App\Controller\BriefingController:
+        arguments:
+            $briefingManager: '@App\AI\Briefing\BriefingManager'
+        tags: ['controller.service_arguments']
+
+    App\Controller\DecisionController:
+        arguments:
+            $decisionManager: '@App\AI\Decision\DecisionManager'
         tags: ['controller.service_arguments']
 
     # ========================================================================
@@ -196,7 +241,6 @@ services:
             $securityGuard: '@App\AI\Security\SecurityGuard'
         tags: ['ai.tool']
 
-    # Dynamic Tool Dispatcher
     App\AI\Skills\Tool\DynamicToolDispatcher:
         arguments:
             $skillRegistry: '@App\AI\Skills\DynamicSkillRegistry'
@@ -204,7 +248,7 @@ services:
         tags: ['ai.tool']
 
     # ========================================================================
-    # JSON Response Enforcer - für strukturierte LLM-Antworten
+    # JSON Response Enforcer
     # ========================================================================
     App\AI\Response\JsonResponseEnforcer:
         arguments:
@@ -213,17 +257,11 @@ services:
             $responseNormalizer: '@App\AI\Response\ResponseNormalizer'
         tags: ['container.hot_path']
 
-    # ========================================================================
-    # Response Normalizer - für JSON-Reparatur und Fallback-Handling
-    # ========================================================================
     App\AI\Response\ResponseNormalizer:
         arguments:
             $logger: '@logger'
         tags: ['container.hot_path']
 
-    # ========================================================================
-    # Fault Tolerant Validator - für robuste Validierung und Fehlerbehandlung
-    # ========================================================================
     App\AI\Response\FaultTolerantValidator:
         arguments:
             $logger: '@logger'
@@ -231,7 +269,7 @@ services:
         tags: ['container.hot_path']
 
     # ========================================================================
-    # Sub-Agent Dispatcher - für intelligente Aufgabenverteilung
+    # Sub-Agent Dispatcher
     # ========================================================================
     App\AI\Agent\SubAgentDispatcher:
         arguments:
@@ -248,7 +286,7 @@ services:
         tags: ['container.hot_path']
 
     # ========================================================================
-    # Response Pipeline - für End-to-End-Antwortverarbeitung
+    # Response Pipeline
     # ========================================================================
     App\AI\Response\ResponsePipeline:
         arguments:
