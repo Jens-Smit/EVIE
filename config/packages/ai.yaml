@@ -1,6 +1,7 @@
 # Symfony AI Bundle Configuration for EVIE
 # This configuration follows the official Symfony AI best practices
 # Reference: https://symfony.com/doc/current/ai/bundles/ai-bundle.html
+# UPDATED: Added 6 new sub-agents for enterprise functions
 
 ai:
     platform:
@@ -10,32 +11,39 @@ ai:
             api_key: '%env(GEMINI_API_KEY)%'
 
     agent:
-        # Main orchestrator agent - plans and delegates but doesn't execute
+        # Main orchestrator agent - analyzes requests and delegates to sub-agents
         orchestrator:
             platform: 'ai.platform.mistral'
             model: 'mistral-small-latest'
             prompt:
                 text: |
-                    Du bist der Orchestrator-Agent von EVIE. ANTWORTE IMMER IM JSON-FORMAT!
-
-                    **Erlaubte Antworttypen:**
-
-                    1. **Sub-Agent-Delegation:**
-                    {"type": "subagent_delegation", "subagent": "website_researcher|data_analyst|code_assistant|document_processor", "task": "Aufgabenbeschreibung", "reason": "Begründung"}
-
-                    2. **Tool-Aufruf:**
-                    {"type": "tool_call", "tool_name": "tool_name", "parameters": {}}
-
-                    3. **Kein Tool gefunden:**
-                    {"type": "no_tool_found", "missing_capability": "Beschreibung", "suggested_tool": "Name"}
-
-                    4. **Direkte Antwort:**
-                    {"type": "dialog", "content": "Antworttext", "intent": "intent"}
-
+                    Du bist der Orchestrator-Agent von EVIE, einem selbst-evolvierenden AI-Agenten-System.
+                    
+                    **Deine Rolle:**
+                    - Analysiere User-Anfragen und entscheide, ob ein passendes Tool oder Sub-Agent existiert
+                    - Falls kein Tool existiert, schlage die Erstellung eines neuen Tools vor
+                    - Delegiere Aufgaben an spezialisierte Sub-Agenten
+                    - Führe KEINE Aufgaben direkt aus - du bist nur der Koordinator
+                    
+                    **Verfügbare Sub-Agenten:**
+                    - website_researcher: Für Webseiten-Recherche und Inhaltszusammenfassung
+                    - data_analyst: Für Datenanalyse und statistische Auswertungen
+                    - code_assistant: Für Code-Analyse, Generierung und Review
+                    - document_processor: Für Dokumentenverarbeitung (PDF, Excel, etc.)
+                    - communication_manager: Für E-Mails, LinkedIn, Slack und andere Kommunikation
+                    - api_integration: Für API-Anbindungen, OAuth, REST, GraphQL
+                    - project_manager: Für Projektmanagement und Aufgabenverwaltung
+                    - finance_manager: Für Buchhaltung, Rechnungen, Finanzen
+                    - hr_manager: Für Personalwesen und Mitarbeiterverwaltung
+                    - marketing_manager: Für Marketing, Kampagnen, Social Media
+                    - ceo_assistant: Für Strategie, Planung und Entscheidungen
+                    
                     **WICHTIG:**
-                    - NUTZE IMMER eines dieser JSON-Schemata
-                    - Antworte NIE mit Freitext
-                    - Falls du unsicher bist, nutze "no_tool_found"
+                    - Nutze die verfügbaren Tools und Sub-Agenten optimal
+                    - Sei präzise in deiner Analyse
+                    - Gib klare Empfehlungen für neue Tools
+                    - Antworte IMMER im JSON-Format:
+                      {"type": "subagent_delegation|tool_call|no_tool_found|dialog", "subagent": "agent_name", "task": "Aufgabenbeschreibung", "reason": "Begründung"}
                 include_tools: true
             memory:
                 service: 'App\AI\Onboarding\ContextMemoryProvider'
@@ -56,11 +64,39 @@ ai:
                 
                 - agent: 'code_assistant'
                   name: 'code_assistant'
-                  description: 'Sub-Agent für Code-Analyse und Generierung'
+                  description: 'Sub-Agent für Code-Analyse, Generierung und Review'
                 
                 - agent: 'document_processor'
                   name: 'document_processor'
                   description: 'Sub-Agent für Dokumentenverarbeitung'
+                
+                - agent: 'communication_manager'
+                  name: 'communication_manager'
+                  description: 'Sub-Agent für Kommunikation (E-Mails, LinkedIn, Slack)'
+                
+                - agent: 'api_integration'
+                  name: 'api_integration'
+                  description: 'Sub-Agent für API-Integrationen (OAuth, REST, GraphQL)'
+                
+                - agent: 'project_manager'
+                  name: 'project_manager'
+                  description: 'Sub-Agent für Projektmanagement'
+                
+                - agent: 'finance_manager'
+                  name: 'finance_manager'
+                  description: 'Sub-Agent für Finanzverwaltung'
+                
+                - agent: 'hr_manager'
+                  name: 'hr_manager'
+                  description: 'Sub-Agent für Personalwesen'
+                
+                - agent: 'marketing_manager'
+                  name: 'marketing_manager'
+                  description: 'Sub-Agent für Marketing'
+                
+                - agent: 'ceo_assistant'
+                  name: 'ceo_assistant'
+                  description: 'Sub-Agent für Strategie, Planung und Entscheidungen'
                 
                 # Statische Tools
                 - { service: 'App\AI\Skills\Tool\WeatherTool' }
@@ -74,7 +110,7 @@ ai:
                   name: 'dynamic_tool_executor'
                   description: 'Führt dynamisch generierte Tools aus der Datenbank aus.'
 
-        # Website Research Agent - für Webseiten-Analyse
+        # Website Research Agent
         website_researcher:
             platform: 'ai.platform.mistral'
             model: 'mistral-large-latest'
@@ -84,15 +120,21 @@ ai:
                     
                     **Deine Aufgaben:**
                     - Durchsuche Webseiten nach spezifischen Informationen
-                    - Fasse Inhalte zusammen (Impressum, Kontakte, Geschäftszweck, etc.)
-                    - Extrahiere strukturierte Daten aus Webinhalten
+                    - Extrahiere Impressum, Kontakte, Geschäftszweck, Standort und Branche
+                    - Fasse Inhalte strukturiert zusammen
                     - Nutze die verfügbaren MCP-Tools für Web-Recherche
                     
-                    **Verfügbare Tools:**
-                    - firecrawl_search: Durchsuche Webseiten
-                    - web_search: Allgemeine Websuche
-                    - text_analysis: Analysiere und fasse Texte zusammen
-                include_tools: true
+                    **ANTWORTE IMMER IM JSON-FORMAT:**
+                    {
+                        "type": "website_research_result",
+                        "url": "durchsuchte URL",
+                        "impressum": {"firma": "...", "adresse": "...", "kontakt": "..."},
+                        "kontakte": [{"name": "...", "email": "...", "telefon": "..."}],
+                        "geschäftszweck": "...",
+                        "standort": "...",
+                        "branche": "...",
+                        "zusammenfassung": "..."
+                    }
             tools:
                 - 'Symfony\AI\Agent\Bridge\Firecrawl\Firecrawl'
                 - 'Symfony\AI\Agent\Bridge\Tavily\Tavily'
@@ -105,6 +147,7 @@ ai:
             prompt: |
                 Du bist ein spezialisierter Sub-Agent für Datenanalyse und statistische Auswertungen.
                 Analysiere Daten, erkenne Muster und liefere Erkenntnisse.
+                ANTWORTE IMMER IM JSON-FORMAT: {"type":"data_analysis_result","findings":["..."],"statistics":{},"summary":"..."}
             tools:
                 - { service: 'App\AI\Skills\Tool\DataAnalyzerTool' }
                 - { service: 'App\AI\Skills\Tool\ExcelParserTool' }
@@ -116,6 +159,7 @@ ai:
             prompt: |
                 Du bist ein spezialisierter Sub-Agent für Code-Analyse, Generierung und Review.
                 Analysiere Code, schlage Verbesserungen vor und generiere neuen Code.
+                ANTWORTE IMMER IM JSON-FORMAT: {"type":"code_result","analysis":"...","suggestions":["..."],"generated_code":"..."}
             tools: false
 
         # Document Processor Agent
@@ -125,9 +169,91 @@ ai:
             prompt: |
                 Du bist ein spezialisierter Sub-Agent für Dokumentenverarbeitung.
                 Verarbeite PDFs, Excel-Dateien und andere Dokumente.
+                ANTWORTE IMMER IM JSON-FORMAT: {"type":"document_result","extracted_data":{},"summary":"...","file_type":"..."}
             tools:
                 - { service: 'App\AI\Skills\Tool\FileReadTool' }
                 - { service: 'App\AI\Skills\Tool\ExcelParserTool' }
+
+        # Communication Manager Agent
+        communication_manager:
+            platform: 'ai.platform.mistral'
+            model: 'mistral-large-latest'
+            prompt: |
+                Du bist der Communication Manager von EVIE.
+                Verwalte E-Mails, Nachrichten, LinkedIn und andere Kommunikation.
+                ANTWORTE IMMER IM JSON-FORMAT: {"type":"communication_result","action":"send_email|read_emails|send_linkedin_message","status":"success|failed","details":{},"message":"..."}
+            tools:
+                - { service: 'App\AI\Skills\Tool\EmailTool' }
+                - { service: 'App\AI\Skills\Tool\LinkedInTool' }
+
+        # API Integration Agent
+        api_integration:
+            platform: 'ai.platform.mistral'
+            model: 'mistral-large-latest'
+            prompt: |
+                Du bist der API Integration Agent von EVIE.
+                Binde externe APIs an, verwalte OAuth und Authentifizierung.
+                ANTWORTE IMMER IM JSON-FORMAT: {"type":"api_result","action":"authenticate|call_api|get_data","endpoint":"...","method":"GET|POST|PUT|DELETE","status":"success|failed","data":{}}
+            tools:
+                - { service: 'App\AI\Skills\Tool\OAuthTool' }
+                - { service: 'App\AI\Skills\Tool\RestApiTool' }
+
+        # Project Manager Agent
+        project_manager:
+            platform: 'ai.platform.mistral'
+            model: 'mistral-large-latest'
+            prompt: |
+                Du bist der Project Manager von EVIE.
+                Verwalte Aufgaben, Termine, Ressourcen und Projekte.
+                ANTWORTE IMMER IM JSON-FORMAT.
+            tools: false
+
+        # Finance Manager Agent
+        finance_manager:
+            platform: 'ai.platform.mistral'
+            model: 'mistral-large-latest'
+            prompt: |
+                Du bist der Finance Manager von EVIE.
+                Verwalte Buchhaltung, Rechnungen, Zahlungen.
+                ANTWORTE IMMER IM JSON-FORMAT.
+            tools: false
+
+        # HR Manager Agent
+        hr_manager:
+            platform: 'ai.platform.mistral'
+            model: 'mistral-large-latest'
+            prompt: |
+                Du bist der HR Manager von EVIE.
+                Verwalte Mitarbeiter, Gehälter, Verträge.
+                ANTWORTE IMMER IM JSON-FORMAT.
+            tools: false
+
+        # Marketing Manager Agent
+        marketing_manager:
+            platform: 'ai.platform.mistral'
+            model: 'mistral-large-latest'
+            prompt: |
+                Du bist der Marketing Manager von EVIE.
+                Verwalte Kampagnen, Social Media, Content.
+                ANTWORTE IMMER IM JSON-FORMAT.
+            tools: false
+
+        # CEO Assistant Agent (koordiniert alle anderen)
+        ceo_assistant:
+            platform: 'ai.platform.mistral'
+            model: 'mistral-large-latest'
+            prompt: |
+                Du bist der CEO Assistant von EVIE.
+                Entwickle Strategien, treffe Entscheidungen, priorisiere Aufgaben.
+                Nutze andere Sub-Agenten für spezifische Aufgaben.
+                ANTWORTE IMMER IM JSON-FORMAT: {"type":"strategy_result|decision|task_prioritization","strategy":{},"decision":{},"tasks":[]}
+            tools:
+                - agent: 'communication_manager'
+                - agent: 'api_integration'
+                - agent: 'project_manager'
+                - agent: 'finance_manager'
+                - agent: 'hr_manager'
+                - agent: 'marketing_manager'
 
         # Fallback Agent
         fallback:
@@ -138,6 +264,7 @@ ai:
                 Beantworte Fragen direkt, falls kein spezialisierter Agent oder Tool verfügbar ist.
             tools: false
 
+    # Multi-Agent Orchestration
     multi_agent:
         evie:
             orchestrator: 'orchestrator'
@@ -157,7 +284,7 @@ ai:
                     - 'standort'
                     - 'branche'
                     - 'visiongastro'
-                    
+                
                 # Datenanalyse
                 data_analyst:
                     - 'daten'
@@ -166,7 +293,7 @@ ai:
                     - 'auswertung'
                     - 'zahlen'
                     - 'diagramm'
-                    
+                
                 # Code-Assistenz
                 code_assistant:
                     - 'code'
@@ -176,7 +303,8 @@ ai:
                     - 'klassen'
                     - 'php'
                     - 'symfony'
-                    
+                    - 'entwickeln'
+                
                 # Dokumentenverarbeitung
                 document_processor:
                     - 'dokument'
@@ -184,6 +312,60 @@ ai:
                     - 'excel'
                     - 'datei'
                     - 'verarbeiten'
+                    - 'lesen'
+                    - 'extrahieren'
+                
+                # Kommunikation
+                communication_manager:
+                    - 'mail'
+                    - 'email'
+                    - 'nachricht'
+                    - 'kommunikation'
+                    - 'linkedin'
+                    - 'slack'
+                    - 'twilio'
+                
+                # API-Integration
+                api_integration:
+                    - 'api'
+                    - 'oauth'
+                    - 'auth'
+                    - 'authentifizierung'
+                    - 'rest'
+                    - 'graphql'
+                    - 'endpoint'
+                
+                # Projektmanagement
+                project_manager:
+                    - 'projekt'
+                    - 'aufgabe'
+                    - 'termin'
+                    - 'ressource'
+                    - 'planung'
+                
+                # Finanzen
+                finance_manager:
+                    - 'finanzen'
+                    - 'buchhaltung'
+                    - 'rechnung'
+                    - 'zahlung'
+                    - 'geld'
+                
+                # Personalwesen
+                hr_manager:
+                    - 'mitarbeiter'
+                    - 'personal'
+                    - 'gehalt'
+                    - 'vertrag'
+                    - 'hr'
+                
+                # Marketing
+                marketing_manager:
+                    - 'marketing'
+                    - 'kampagne'
+                    - 'social media'
+                    - 'content'
+                    - 'werbung'
             fallback: 'fallback'
 
     # Message Store für Dialogverlauf
