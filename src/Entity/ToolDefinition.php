@@ -25,7 +25,7 @@ class ToolDefinition
     private string $description;
 
     #[ORM\Column(length: 50)]
-    private string $status = 'pending'; // pending, approved, rejected
+    private string $status = 'pending'; // pending, approved, rejected, pending_approval
 
     #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $parameters = null;
@@ -35,6 +35,12 @@ class ToolDefinition
 
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $updatedAt = null;
+
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $approvedAt = null;
+
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $rejectedAt = null;
 
     public function __construct()
     {
@@ -123,8 +129,40 @@ class ToolDefinition
         return $this;
     }
 
+    public function getApprovedAt(): ?\DateTimeImmutable
+    {
+        return $this->approvedAt;
+    }
+
+    public function setApprovedAt(?\DateTimeImmutable $approvedAt): static
+    {
+        $this->approvedAt = $approvedAt;
+        return $this;
+    }
+
+    public function getRejectedAt(): ?\DateTimeImmutable
+    {
+        return $this->rejectedAt;
+    }
+
+    public function setRejectedAt(?\DateTimeImmutable $rejectedAt): static
+    {
+        $this->rejectedAt = $rejectedAt;
+        return $this;
+    }
+
     public function isApproved(): bool
     {
         return $this->status === 'approved';
+    }
+
+    public function isPending(): bool
+    {
+        return in_array($this->status, ['pending', 'pending_approval']);
+    }
+
+    public function isRejected(): bool
+    {
+        return $this->status === 'rejected';
     }
 }
