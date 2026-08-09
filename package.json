@@ -8,8 +8,8 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build:css": "tailwindcss -i ./assets/styles/tailwind.css -o ./public/assets/styles/tailwind-compiled.css --minify",
-    "watch:css": "tailwindcss -i ./assets/styles/tailwind.css -o ./public/assets/styles/tailwind-compiled.css --watch",
+    "build:css": "node build-tailwind.js",
+    "watch:css": "node build-tailwind.js",
     "build": "npm run build:css"
   },
   "repository": {
