@@ -42,6 +42,21 @@ class ToolDefinition
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $rejectedAt = null;
 
+    // NEUE FELDER FÜR LLM-BASIERTE TOOL-DEFINITION
+
+    #[ORM\ManyToOne(targetEntity: ToolCategory::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?ToolCategory $category = null;
+
+    #[ORM\Column(length: 50, nullable: true)]
+    private ?string $complexity = null; // low, medium, high
+
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $dependencies = null; // Abhängigkeiten wie ['http_client', 'firecrawl']
+
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $metadata = null; // Metadaten für Wiederverwendung
+
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
@@ -164,5 +179,51 @@ class ToolDefinition
     public function isRejected(): bool
     {
         return $this->status === 'rejected';
+    }
+
+    // NEUE GETTER/SETTER FÜR DIE NEUEN FELDER
+
+    public function getCategory(): ?ToolCategory
+    {
+        return $this->category;
+    }
+
+    public function setCategory(?ToolCategory $category): static
+    {
+        $this->category = $category;
+        return $this;
+    }
+
+    public function getComplexity(): ?string
+    {
+        return $this->complexity;
+    }
+
+    public function setComplexity(?string $complexity): static
+    {
+        $this->complexity = $complexity;
+        return $this;
+    }
+
+    public function getDependencies(): ?array
+    {
+        return $this->dependencies;
+    }
+
+    public function setDependencies(?array $dependencies): static
+    {
+        $this->dependencies = $dependencies;
+        return $this;
+    }
+
+    public function getMetadata(): ?array
+    {
+        return $this->metadata;
+    }
+
+    public function setMetadata(?array $metadata): static
+    {
+        $this->metadata = $metadata;
+        return $this;
     }
 }
