@@ -35,29 +35,27 @@ final readonly class SubAgentFactory
     public function createSubAgent(
         string $name,
         string $role,
-        string $model = 'mistral-small-latest',
+        string $model = 'mistral-large-latest',
         array $tools = [],
     ): AgentInterface {
-        $this->logger->info('Erstelle neuen Sub-Agenten mit Symfony AI Subagent', [
+        $this->logger->info('Erstelle neuen Sub-Agenten', [
             'name' => $name,
             'role' => $role,
-            'tools' => $tools,
         ]);
 
-        // Erstelle den Sub-Agenten
+        // Erstelle den Sub-Agenten MIT PROMPT!
         $subAgent = new Agent(
             platform: $this->platform,
             model: $model,
             name: $name,
-          #  prompt: $this->generatePromptForRole($role),
+            prompt: $this->generatePromptForRole($role),
         );
 
         // Sub-Agent im DynamicSkillRegistry als Tool registrieren
         $this->registerAsTool($name, $role, $subAgent);
 
-        $this->logger->info('Sub-Agent mit Symfony AI Subagent erstellt', [
+        $this->logger->info('Sub-Agent erstellt', [
             'name' => $name,
-            'agent_class' => get_class($subAgent),
         ]);
 
         return $subAgent;
@@ -70,7 +68,7 @@ final readonly class SubAgentFactory
     public function createSubAgentTool(
         string $name,
         string $role,
-        string $model = 'mistral-small-latest',
+        string $model = 'mistral-large-latest',
         array $tools = [],
     ): Subagent {
         $this->logger->info('Erstelle SubAgent-Tool für Orchestrator', [
@@ -78,12 +76,12 @@ final readonly class SubAgentFactory
             'role' => $role,
         ]);
 
-        // Erstelle den Sub-Agenten
+        // Erstelle den Sub-Agenten MIT PROMPT!
         $subAgent = new Agent(
             platform: $this->platform,
             model: $model,
             name: $name,
-          #  prompt: $this->generatePromptForRole($role),
+            prompt: $this->generatePromptForRole($role),
         );
 
         // Erstelle ein Subagent-Tool
@@ -92,12 +90,8 @@ final readonly class SubAgentFactory
         // Registriere in der Datenbank
         $toolDefinition = new ToolDefinition();
         $toolDefinition->setName('sub_agent_' . $name);
-        $toolDefinition->setDescription(sprintf(
-            'Sub-Agent für %s. Kann folgende Aufgaben übernehmen: %s',
-            $role,
-            implode(', ', $this->getCapabilitiesForRole($role))
-        ));
-        $toolDefinition->setStatus('approved'); // Sub-Agenten sind sofort freigegeben
+        $toolDefinition->setDescription('Sub-Agent für ' . $role);
+        $toolDefinition->setStatus('approved');
         $toolDefinition->setSchema([
             'type' => 'object',
             'properties' => [
@@ -119,8 +113,6 @@ final readonly class SubAgentFactory
         ]);
 
         $this->toolDefinitionRepo->save($toolDefinition, true);
-
-        // Füge zum DynamicSkillRegistry hinzu
         $this->dynamicSkillRegistry->addTool($toolDefinition);
 
         $this->logger->info('SubAgent-Tool registriert', [
@@ -137,21 +129,20 @@ final readonly class SubAgentFactory
     private function generatePromptForRole(string $role): string
     {
         $rolePrompts = [
-            'research' => 'Du bist ein Recherche-Spezialist. Deine Aufgabe ist es, Informationen zu finden, zu analysieren und zusammenzufassen. Nutze die verfügbaren Tools, um Webseiten zu durchsuchen, Daten zu extrahieren und Berichte zu erstellen.',
-            'analysis' => 'Du bist ein Datenanalyst. Deine Aufgabe ist es, Daten zu analysieren, Muster zu erkennen und Erkenntnisse zu liefern. Nutze mathematische und statistische Tools, um komplexe Analysen durchzuführen.',
-            'support' => 'Du bist ein Support-Agent. Deine Aufgabe ist es, User bei Problemen zu helfen, Fragen zu beantworten und Lösungen anzubieten. Sei freundlich und hilfsbereit.',
-            'coding' => 'Du bist ein Code-Assistent. Deine Aufgabe ist es, Code zu analysieren, zu verbessern und zu generieren. Nutze Tools für Code-Analyse, Testing und Deployment.',
-            'writing' => 'Du bist ein Schreib-Assistent. Deine Aufgabe ist es, Texte zu verfassen, zu verbessern und zu korrigieren. Achte auf Klarheit, Präzision und gute Struktur.',
-            'website_researcher' => 'Du bist ein spezialisierter Sub-Agent für Webseiten-Recherche und Inhaltszusammenfassung. Durchsuche Webseiten nach spezifischen Informationen wie Impressum, Kontakte, Geschäftszweck, Standort und Branche. Fasse Inhalte strukturiert zusammen.',
-            'data_analyst' => 'Du bist ein spezialisierter Sub-Agent für Datenanalyse und statistische Auswertungen. Analysiere Daten, erkenne Muster und liefere Erkenntnisse.',
-            'code_assistant' => 'Du bist ein spezialisierter Sub-Agent für Code-Analyse, Generierung und Review. Analysiere Code, schlage Verbesserungen vor und generiere neuen Code.',
-            'document_processor' => 'Du bist ein spezialisierter Sub-Agent für Dokumentenverarbeitung. Verarbeite PDFs, Excel-Dateien und andere Dokumente.',
+            'website_researcher' => 'Du bist ein spezialisierter Sub-Agent für Webseiten-Recherche. Deine Aufgabe: Durchsuche Webseiten nach Impressum, Kontakten, Geschäftszweck, Standort und Branche. Fasse die Informationen strukturiert zusammen. ANTWORTE IMMER IM FOLGENDEN JSON-FORMAT: {"type":"website_research_result","url":"URL","impressum":{"firma":"...","adresse":"...","kontakt":"..."},"kontakte":[{"name":"...","email":"...","telefon":"..."}],"geschäftszweck":"...","standort":"...","branche":"...","zusammenfassung":"..."}',
+            'data_analyst' => 'Du bist ein Datenanalyst. Analysiere Daten und liefere Erkenntnisse. ANTWORTE IMMER IM JSON-FORMAT: {"type":"data_analysis_result","findings":["..."],"statistics":{},"summary":"..."}',
+            'code_assistant' => 'Du bist ein Code-Assistent. Analysiere und generiere Code. ANTWORTE IMMER IM JSON-FORMAT: {"type":"code_result","analysis":"...","code":"..."}',
+            'document_processor' => 'Du bist ein Dokumenten-Prozessor. Verarbeite Dokumente. ANTWORTE IMMER IM JSON-FORMAT: {"type":"document_result","data":{},"summary":"..."}',
+            'communication_manager' => 'Du bist der Communication Manager von EVIE. Verwalte E-Mails, Nachrichten, LinkedIn und andere Kommunikation. ANTWORTE IMMER IM JSON-FORMAT: {"type":"communication_result","action":"send_email|read_emails|send_linkedin_message","status":"success|failed","details":{},"message":"..."}',
+            'api_integration' => 'Du bist der API Integration Agent von EVIE. Binde externe APIs an, verwalte OAuth und Authentifizierung. ANTWORTE IMMER IM JSON-FORMAT: {"type":"api_result","action":"authenticate|call_api|get_data","endpoint":"...","method":"GET|POST|PUT|DELETE","status":"success|failed","data":{}}',
+            'project_manager' => 'Du bist der Project Manager von EVIE. Verwalte Aufgaben, Termine, Ressourcen und Projekte. ANTWORTE IMMER IM JSON-FORMAT.',
+            'finance_manager' => 'Du bist der Finance Manager von EVIE. Verwalte Buchhaltung, Rechnungen, Zahlungen. ANTWORTE IMMER IM JSON-FORMAT.',
+            'hr_manager' => 'Du bist der HR Manager von EVIE. Verwalte Mitarbeiter, Gehälter, Verträge. ANTWORTE IMMER IM JSON-FORMAT.',
+            'marketing_manager' => 'Du bist der Marketing Manager von EVIE. Verwalte Kampagnen, Social Media, Content. ANTWORTE IMMER IM JSON-FORMAT.',
+            'ceo_assistant' => 'Du bist der CEO Assistant von EVIE. Entwickle Strategien, treffe Entscheidungen, priorisiere Aufgaben. Nutze andere Sub-Agenten für spezifische Aufgaben. ANTWORTE IMMER IM JSON-FORMAT: {"type":"strategy_result|decision|task_prioritization","strategy":{},"decision":{},"tasks":[]}',
         ];
 
-        return $rolePrompts[$role] ?? sprintf(
-            'Du bist ein Sub-Agent mit der Rolle: %s. Führe die zugewiesenen Aufgaben präzise und effizient aus.',
-            $role
-        );
+        return $rolePrompts[$role] ?? 'Du bist ein Sub-Agent. Führe Aufgaben aus. ANTWORTE IMMER IM JSON-FORMAT: {"type":"result","content":"..."}';
     }
 
     /**
@@ -159,14 +150,10 @@ final readonly class SubAgentFactory
      */
     private function registerAsTool(string $name, string $role, AgentInterface $agent): void
     {
-        // Erstelle eine ToolDefinition für den Sub-Agenten
         $toolDefinition = new ToolDefinition();
         $toolDefinition->setName('sub_agent_' . $name);
-        $toolDefinition->setDescription(sprintf(
-            'Sub-Agent für %s. Kann folgende Aufgaben übernehmen: %s',
-            $role,
-            implode(', ', $this->getCapabilitiesForRole($role))
-        ));
+        $toolDefinition->setDescription('Sub-Agent für ' . $role);
+        $toolDefinition->setStatus('approved');
         $toolDefinition->setSchema([
             'type' => 'object',
             'properties' => [
@@ -186,12 +173,8 @@ final readonly class SubAgentFactory
             ['name' => 'task', 'type' => 'string', 'required' => true, 'description' => 'Aufgabe für den Sub-Agenten'],
             ['name' => 'parameters', 'type' => 'object', 'required' => false, 'description' => 'Zusätzliche Parameter'],
         ]);
-        $toolDefinition->setStatus('approved'); // Sub-Agenten sind sofort freigegeben
 
-        // Speichere in der Datenbank
         $this->toolDefinitionRepo->save($toolDefinition, true);
-
-        // Füge zum DynamicSkillRegistry hinzu
         $this->dynamicSkillRegistry->addTool($toolDefinition);
 
         $this->logger->info('Sub-Agent als Tool registriert', [
@@ -201,47 +184,19 @@ final readonly class SubAgentFactory
     }
 
     /**
-     * Gibt die Fähigkeiten für eine Rolle zurück.
-     */
-    private function getCapabilitiesForRole(string $role): array
-    {
-        $capabilities = [
-            'research' => ['Webseiten durchsuchen', 'Daten extrahieren', 'Recherche durchführen', 'Zusammenfassungen erstellen'],
-            'analysis' => ['Daten analysieren', 'Statistiken berechnen', 'Muster erkennen', 'Berichte erstellen'],
-            'support' => ['Fragen beantworten', 'Probleme lösen', 'Anleitungen geben', 'Fehler analysieren'],
-            'coding' => ['Code analysieren', 'Code generieren', 'Tests durchführen', 'Deployment unterstützen'],
-            'writing' => ['Texte verfassen', 'Texte korrigieren', 'Inhalte strukturieren', 'Übersetzungen erstellen'],
-            'website_researcher' => [
-                'Webseiten durchsuchen und analysieren',
-                'Impressum extrahieren',
-                'Kontaktdaten identifizieren',
-                'Geschäftszweck ermitteln',
-                'Standortinformationen finden',
-                'Branchenzuordnung vornehmen',
-                'Inhalte zusammenfassen'
-            ],
-            'data_analyst' => ['Daten analysieren', 'Statistiken berechnen', 'Muster erkennen', 'Berichte erstellen'],
-            'code_assistant' => ['Code analysieren', 'Code generieren', 'Tests durchführen', 'Code review'],
-            'document_processor' => ['PDFs verarbeiten', 'Excel-Dateien analysieren', 'Dokumente extrahieren', 'Inhalte strukturieren'],
-        ];
-
-        return $capabilities[$role] ?? ['Allgemeine Aufgaben ausführen'];
-    }
-
-    /**
-     * Erstellt einen Sub-Agenten für Website-Recherche (spezifisches Beispiel).
+     * Erstellt einen Sub-Agenten für Website-Recherche
      */
     public function createWebsiteResearchAgent(): AgentInterface
     {
         return $this->createSubAgent(
             name: 'website_researcher',
             role: 'website_researcher',
-            model: 'mistral-large-latest', // Stärkeres Modell für Recherche
+            model: 'mistral-large-latest',
         );
     }
 
     /**
-     * Erstellt einen Sub-Agenten für Datenanalyse.
+     * Erstellt einen Sub-Agenten für Datenanalyse
      */
     public function createDataAnalysisAgent(): AgentInterface
     {
@@ -253,7 +208,7 @@ final readonly class SubAgentFactory
     }
 
     /**
-     * Erstellt einen Sub-Agenten für Code-Assistenz.
+     * Erstellt einen Sub-Agenten für Code-Assistenz
      */
     public function createCodeAssistantAgent(): AgentInterface
     {
@@ -265,7 +220,7 @@ final readonly class SubAgentFactory
     }
 
     /**
-     * Erstellt einen Sub-Agenten für Dokumentenverarbeitung.
+     * Erstellt einen Sub-Agenten für Dokumentenverarbeitung
      */
     public function createDocumentProcessorAgent(): AgentInterface
     {
@@ -277,7 +232,91 @@ final readonly class SubAgentFactory
     }
 
     /**
-     * Gibt alle verfügbaren Sub-Agenten zurück.
+     * Erstellt einen Communication Manager Agent
+     */
+    public function createCommunicationManagerAgent(): AgentInterface
+    {
+        return $this->createSubAgent(
+            name: 'communication_manager',
+            role: 'communication_manager',
+            model: 'mistral-large-latest',
+        );
+    }
+
+    /**
+     * Erstellt einen API Integration Agent
+     */
+    public function createApiIntegrationAgent(): AgentInterface
+    {
+        return $this->createSubAgent(
+            name: 'api_integration',
+            role: 'api_integration',
+            model: 'mistral-large-latest',
+        );
+    }
+
+    /**
+     * Erstellt einen Project Manager Agent
+     */
+    public function createProjectManagerAgent(): AgentInterface
+    {
+        return $this->createSubAgent(
+            name: 'project_manager',
+            role: 'project_manager',
+            model: 'mistral-large-latest',
+        );
+    }
+
+    /**
+     * Erstellt einen Finance Manager Agent
+     */
+    public function createFinanceManagerAgent(): AgentInterface
+    {
+        return $this->createSubAgent(
+            name: 'finance_manager',
+            role: 'finance_manager',
+            model: 'mistral-large-latest',
+        );
+    }
+
+    /**
+     * Erstellt einen HR Manager Agent
+     */
+    public function createHrManagerAgent(): AgentInterface
+    {
+        return $this->createSubAgent(
+            name: 'hr_manager',
+            role: 'hr_manager',
+            model: 'mistral-large-latest',
+        );
+    }
+
+    /**
+     * Erstellt einen Marketing Manager Agent
+     */
+    public function createMarketingManagerAgent(): AgentInterface
+    {
+        return $this->createSubAgent(
+            name: 'marketing_manager',
+            role: 'marketing_manager',
+            model: 'mistral-large-latest',
+        );
+    }
+
+    /**
+     * Erstellt den CEO Assistant Agent
+     */
+    public function createCeoAssistantAgent(): AgentInterface
+    {
+        return $this->createSubAgent(
+            name: 'ceo_assistant',
+            role: 'ceo_assistant',
+            model: 'mistral-large-latest',
+        );
+    }
+
+    /**
+     * Gibt alle verfügbaren Sub-Agenten zurück
      */
     public function getAvailableSubAgents(): array
     {
@@ -286,11 +325,18 @@ final readonly class SubAgentFactory
             'data_analyst' => $this->createDataAnalysisAgent(),
             'code_assistant' => $this->createCodeAssistantAgent(),
             'document_processor' => $this->createDocumentProcessorAgent(),
+            'communication_manager' => $this->createCommunicationManagerAgent(),
+            'api_integration' => $this->createApiIntegrationAgent(),
+            'project_manager' => $this->createProjectManagerAgent(),
+            'finance_manager' => $this->createFinanceManagerAgent(),
+            'hr_manager' => $this->createHrManagerAgent(),
+            'marketing_manager' => $this->createMarketingManagerAgent(),
+            'ceo_assistant' => $this->createCeoAssistantAgent(),
         ];
     }
 
     /**
-     * Erstellt alle Sub-Agenten als Tools für den Orchestrator.
+     * Erstellt alle Sub-Agenten als Tools für den Orchestrator
      */
     public function createAllSubAgentTools(): array
     {
