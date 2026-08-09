@@ -13,6 +13,7 @@ postcss([
       "./templates/**/*.html.twig",
       "./public/assets/**/*.js",
       "./public/**/*.html",
+      "./assets/**/*.css",
     ],
     theme: {
       extend: {
