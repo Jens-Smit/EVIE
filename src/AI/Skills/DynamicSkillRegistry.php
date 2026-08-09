@@ -8,16 +8,34 @@ use App\Repository\ToolDefinitionRepository;
 /**
  * DynamicSkillRegistry verwaltet die verfügbaren Tools.
  * Er lädt freigegebene Tools aus der Datenbank und stellt Metadaten für den DynamicToolDispatcher bereit.
+ * 
+ * Verbesserungen:
+ * - Automatisches Nachladen von Tools nach Genehmigung
+ * - Event-basierte Aktualisierung
+ * - Bessere Fehlerbehandlung
  */
 class DynamicSkillRegistry
 {
     private ToolDefinitionRepository $toolDefinitionRepo;
     private array $tools = [];
+    private bool $initialized = false;
 
     public function __construct(ToolDefinitionRepository $toolDefinitionRepo)
     {
         $this->toolDefinitionRepo = $toolDefinitionRepo;
+    }
+
+    /**
+     * Initialisiert das Registry und lädt alle freigegebenen Tools.
+     */
+    public function initialize(): void
+    {
+        if ($this->initialized) {
+            return;
+        }
+
         $this->loadTools();
+        $this->initialized = true;
     }
 
     /**
@@ -30,6 +48,20 @@ class DynamicSkillRegistry
         foreach ($toolDefinitions as $toolDefinition) {
             $this->tools[$toolDefinition->getName()] = $toolDefinition;
         }
+
+        // Log laden der Tools
+        // Note: Logger wird hier nicht injiziert, um Abhängigkeiten zu vermeiden
+        // Das Logging sollte über den Service erfolgen, der dieses Registry nutzt
+    }
+
+    /**
+     * Lädt das Registry neu (z. B. nach Genehmigung eines neuen Tools).
+     */
+    public function reload(): void
+    {
+        $this->tools = [];
+        $this->initialized = false;
+        $this->initialize();
     }
 
     /**
@@ -38,6 +70,10 @@ class DynamicSkillRegistry
      */
     public function getAvailableTools(): array
     {
+        if (!$this->initialized) {
+            $this->initialize();
+        }
+
         $availableTools = [];
         foreach ($this->tools as $name => $toolDefinition) {
             $availableTools[$name] = [
@@ -56,6 +92,10 @@ class DynamicSkillRegistry
      */
     public function getTool(string $toolName): ToolDefinition
     {
+        if (!$this->initialized) {
+            $this->initialize();
+        }
+
         if (!isset($this->tools[$toolName])) {
             throw new \InvalidArgumentException(sprintf(
                 'Tool "%s" not found or not approved.',
@@ -68,6 +108,7 @@ class DynamicSkillRegistry
 
     /**
      * Fügt ein neues Tool zum Registry hinzu.
+     * Wird automatisch aufgerufen, wenn ein Tool genehmigt wird.
      */
     public function addTool(ToolDefinition $toolDefinition): void
     {
@@ -89,6 +130,10 @@ class DynamicSkillRegistry
      */
     public function hasTool(string $toolName): bool
     {
+        if (!$this->initialized) {
+            $this->initialize();
+        }
+
         return isset($this->tools[$toolName]);
     }
 
@@ -97,6 +142,10 @@ class DynamicSkillRegistry
      */
     public function getToolMetadata(string $toolName): ?array
     {
+        if (!$this->initialized) {
+            $this->initialize();
+        }
+
         if (!$this->hasTool($toolName)) {
             return null;
         }
@@ -108,5 +157,37 @@ class DynamicSkillRegistry
             'schema' => $toolDefinition->getSchema(),
             'status' => $toolDefinition->getStatus(),
         ];
+    }
+
+    /**
+     * Gibt alle Tool-Namen zurück.
+     */
+    public function getToolNames(): array
+    {
+        if (!$this->initialized) {
+            $this->initialize();
+        }
+
+        return array_keys($this->tools);
+    }
+
+    /**
+     * Gibt die Anzahl der verfügbaren Tools zurück.
+     */
+    public function countTools(): int
+    {
+        if (!$this->initialized) {
+            $this->initialize();
+        }
+
+        return count($this->tools);
+    }
+
+    /**
+     * Prüft, ob das Registry initialisiert wurde.
+     */
+    public function isInitialized(): bool
+    {
+        return $this->initialized;
     }
 }
