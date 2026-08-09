@@ -190,11 +190,16 @@ async function handleToolAction(toolId, action, button) {
     button.innerHTML = '<span class="spinner"></span> Verarbeite...';
 
     try {
+        // Hole den CSRF-Token aus dem Meta-Tag
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
         const response = await fetch(`/api/tools/${toolId}/${action}`, {
             method: 'POST',
             headers: {
                 'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': csrfToken,
             },
         });
 
@@ -203,12 +208,12 @@ async function handleToolAction(toolId, action, button) {
         }
 
         const data = await response.json();
-        
+
         // Zeige Erfolgmeldung
         const alert = document.createElement('div');
         alert.className = `alert alert-success p-4 rounded-lg bg-green-100 text-green-800`;
         alert.textContent = data.message || `Tool erfolgreich ${action === 'approve' ? 'freigegeben' : 'abgelehnt'}`;
-        
+
         const container = button.closest('.card') || document.querySelector('.main-container');
         if (container) {
             container.prepend(alert);
