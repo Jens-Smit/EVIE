@@ -49,7 +49,7 @@ final readonly class SubAgentFactory
             platform: $this->platform,
             model: $model,
             name: $name,
-            prompt: $this->generatePromptForRole($role),
+          #  prompt: $this->generatePromptForRole($role),
         );
 
         // Sub-Agent im DynamicSkillRegistry als Tool registrieren
@@ -83,7 +83,7 @@ final readonly class SubAgentFactory
             platform: $this->platform,
             model: $model,
             name: $name,
-            prompt: $this->generatePromptForRole($role),
+          #  prompt: $this->generatePromptForRole($role),
         );
 
         // Erstelle ein Subagent-Tool

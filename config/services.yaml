@@ -98,6 +98,19 @@ services:
         resource: '../src/AI/Skills/Tool/'
         tags: ['ai.tool']
 
+    # Firecrawl Tool (Web-Scraping) - kein Platform, sondern ein Tool
+    Symfony\AI\Agent\Bridge\Firecrawl\Firecrawl:
+        arguments:
+            $apiKey: '%env(FIRECRAWL_API_KEY)%'
+            $endpoint: 'https://api.firecrawl.dev'
+        tags: ['ai.tool']
+
+    # Tavily Tool (Web-Suche) - kein Platform, sondern ein Tool
+    Symfony\AI\Agent\Bridge\Tavily\Tavily:
+        arguments:
+            $apiKey: '%env(TAVILY_API_KEY)%'
+        tags: ['ai.tool']
+
     # ========================================================================
     # MCP Services
     # ========================================================================
@@ -186,8 +199,61 @@ services:
     # Dynamic Tool Dispatcher
     App\AI\Skills\Tool\DynamicToolDispatcher:
         arguments:
-            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
-            $dynamicToolFactory: '@App\AI\Skills\Tool\DynamicToolFactory'
-            $subAgentFactory: '@App\AI\Agent\SubAgentFactory'
-            $logger: '@logger'
+            $skillRegistry: '@App\AI\Skills\DynamicSkillRegistry'
+            $securityGuard: '@App\AI\Security\SecurityGuard'
         tags: ['ai.tool']
+
+    # ========================================================================
+    # JSON Response Enforcer - für strukturierte LLM-Antworten
+    # ========================================================================
+    App\AI\Response\JsonResponseEnforcer:
+        arguments:
+            $platform: '@ai.platform.mistral'
+            $logger: '@logger'
+            $responseNormalizer: '@App\AI\Response\ResponseNormalizer'
+        tags: ['container.hot_path']
+
+    # ========================================================================
+    # Response Normalizer - für JSON-Reparatur und Fallback-Handling
+    # ========================================================================
+    App\AI\Response\ResponseNormalizer:
+        arguments:
+            $logger: '@logger'
+        tags: ['container.hot_path']
+
+    # ========================================================================
+    # Fault Tolerant Validator - für robuste Validierung und Fehlerbehandlung
+    # ========================================================================
+    App\AI\Response\FaultTolerantValidator:
+        arguments:
+            $logger: '@logger'
+            $responseNormalizer: '@App\AI\Response\ResponseNormalizer'
+        tags: ['container.hot_path']
+
+    # ========================================================================
+    # Sub-Agent Dispatcher - für intelligente Aufgabenverteilung
+    # ========================================================================
+    App\AI\Agent\SubAgentDispatcher:
+        arguments:
+            $platform: '@ai.platform.mistral'
+            $logger: '@logger'
+            $jsonResponseEnforcer: '@App\AI\Response\JsonResponseEnforcer'
+            $faultTolerantValidator: '@App\AI\Response\FaultTolerantValidator'
+            $toolGenerator: '@App\AI\Skills\ToolDefinitionGenerator'
+            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
+            $dispatcher: '@event_dispatcher'
+            $urlGenerator: '@router'
+            $firecrawl: '@Symfony\AI\Agent\Bridge\Firecrawl\Firecrawl'
+            $tavily: '@Symfony\AI\Agent\Bridge\Tavily\Tavily'
+        tags: ['container.hot_path']
+
+    # ========================================================================
+    # Response Pipeline - für End-to-End-Antwortverarbeitung
+    # ========================================================================
+    App\AI\Response\ResponsePipeline:
+        arguments:
+            $logger: '@logger'
+            $jsonResponseEnforcer: '@App\AI\Response\JsonResponseEnforcer'
+            $responseNormalizer: '@App\AI\Response\ResponseNormalizer'
+            $faultTolerantValidator: '@App\AI\Response\FaultTolerantValidator'
+        tags: ['container.hot_path']

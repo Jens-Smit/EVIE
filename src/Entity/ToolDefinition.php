@@ -18,8 +18,8 @@ class ToolDefinition
     #[ORM\Column(length: 255)]
     private string $name;
 
-    #[ORM\Column(type: Types::JSON)]
-    private array $schema;
+    #[ORM\Column(name: 'schema_definition', type: Types::JSON)]
+    private array $schemaDefinition;
 
     #[ORM\Column(length: 255)]
     private string $description;
@@ -65,12 +65,12 @@ class ToolDefinition
 
     public function getSchema(): array
     {
-        return $this->schema;
+        return $this->schemaDefinition;
     }
 
     public function setSchema(array $schema): static
     {
-        $this->schema = $schema;
+        $this->schemaDefinition = $schema;
         return $this;
     }
 

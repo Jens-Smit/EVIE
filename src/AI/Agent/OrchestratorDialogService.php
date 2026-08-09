@@ -4,6 +4,9 @@
 namespace App\AI\Agent;
 
 use App\AI\Skills\ToolDefinitionGenerator;
+use App\AI\Response\JsonResponseEnforcer;
+use App\AI\Response\FaultTolerantValidator;
+use App\Entity\ToolDefinition;
 use App\Event\PendingToolApprovalEvent;
 use Symfony\AI\Agent\AgentInterface;
 use Symfony\AI\Platform\Message\Message;
@@ -25,6 +28,8 @@ final readonly class OrchestratorDialogService
         private LoggerInterface $logger,
         private PlatformInterface $platform,
         private UrlGeneratorInterface $urlGenerator,
+        private JsonResponseEnforcer $jsonResponseEnforcer,
+        private FaultTolerantValidator $faultTolerantValidator,
     ) {
     }
 
@@ -34,26 +39,45 @@ final readonly class OrchestratorDialogService
      */
     public function ask(string $userMessage, string $userIdentifier): string
     {
-        $messages = new MessageBag(
-            Message::ofUser($userMessage),
-        );
+        // Erzeuge strukturierte Nachrichten mit JSON-Enforcement
+        $messages = $this->jsonResponseEnforcer->createStructuredPrompt($userMessage, 'orchestrator');
 
         try {
             $result = $this->agent->call($messages);
             $responseContent = $result->getContent();
 
-            // Prüfe, ob der Orchestrator ein Tool oder Sub-Agenten aufrufen möchte
-            // ODER ob er sagt, dass kein Tool gefunden wurde
-            if ($this->isNoToolFoundResponse($responseContent)) {
-                return $this->handleToolNotFound($userMessage, $userIdentifier);
+            $this->logger->debug('Orchestrator-Agent Antwort', [
+                'response' => $responseContent,
+                'is_valid_json' => $this->jsonResponseEnforcer->validateJsonResponse($responseContent)
+            ]);
+
+            // Prüfe, ob die Antwort gültiges JSON ist
+            if (!$this->jsonResponseEnforcer->validateJsonResponse($responseContent)) {
+                $this->logger->warning('Ungültige JSON-Antwort vom LLM, starte Fallback-Handling');
+                return $this->handleUnstructuredResponse($responseContent, $userMessage, $userIdentifier);
             }
 
-            // Prüfe, ob der Orchestrator einen Sub-Agenten vorschlägt
-            if ($this->isSubAgentSuggested($responseContent)) {
-                return $this->handleSubAgentSuggestion($userMessage, $userIdentifier);
-            }
+            // Extrahiere den Antworttyp
+            $responseType = $this->jsonResponseEnforcer->extractResponseType($responseContent);
 
-            return $responseContent;
+            // Behandle verschiedene Antworttypen
+            switch ($responseType) {
+                case 'tool_call':
+                    return $this->handleToolCallResponse($responseContent, $userMessage, $userIdentifier);
+
+                case 'subagent_delegation':
+                    return $this->handleSubAgentDelegation($responseContent, $userMessage, $userIdentifier);
+
+                case 'no_tool_found':
+                    return $this->handleToolNotFound($userMessage, $userIdentifier);
+
+                case 'dialog':
+                    return $this->handleDialogResponse($responseContent);
+
+                default:
+                    $this->logger->warning('Unbekannter Antworttyp', ['type' => $responseType]);
+                    return $this->handleUnstructuredResponse($responseContent, $userMessage, $userIdentifier);
+            }
         } catch (\Exception $e) {
             $this->logger->error('Fehler beim Aufruf des Orchestrator-Agenten: ' . $e->getMessage());
             return $this->handleToolNotFound($userMessage, $userIdentifier);
@@ -346,8 +370,154 @@ final readonly class OrchestratorDialogService
     {
         // Kürze die Nachricht auf eine sinnvolle Länge
         $description = substr($userMessage, 0, 200);
-        
+
         // Füge einen Kontext hinzu
         return sprintf("Tool zur Ausführung der folgenden Aufgabe: %s", $description);
+    }
+
+    /**
+     * Behandelt unstrukturierte Antworten vom LLM
+     */
+    private function handleUnstructuredResponse(string $responseContent, string $userMessage, string $userIdentifier): string
+    {
+        $this->logger->warning('Unstrukturierte LLM-Antwort erkannt, starte Fallback-Handling');
+
+        // Versuche, die Antwort zu analysieren und passende Aktion zu bestimmen
+        $responseLower = strtolower($responseContent);
+
+        // Prüfe auf Webseiten-Recherche-Anfragen
+        if (preg_match('/(webseite|website|recherche|suche|research|durchsuchen|zusammenfassen|impressum|kontakte|geschäftszweck|standort|branche|visiongastro)/i', $responseLower)) {
+            return $this->handleSubAgentSuggestion($userMessage, $userIdentifier);
+        }
+
+        // Prüfe auf Datenanalyse-Anfragen
+        if (preg_match('/(daten|analyse|statistik|auswertung|zahlen|diagramm)/i', $responseLower)) {
+            return $this->handleSubAgentSuggestion($userMessage, $userIdentifier);
+        }
+
+        // Prüfe auf Code-Anfragen
+        if (preg_match('/(code|programm|skript|funktion|klassen|php|symfony|entwickeln)/i', $responseLower)) {
+            return $this->handleSubAgentSuggestion($userMessage, $userIdentifier);
+        }
+
+        // Prüfe auf Dokumenten-Anfragen
+        if (preg_match('/(dokument|pdf|excel|datei|verarbeiten|lesen|extrahieren)/i', $responseLower)) {
+            return $this->handleSubAgentSuggestion($userMessage, $userIdentifier);
+        }
+
+        // Fallback: Erstelle ein Fallback-JSON-Schema
+        return $this->createFallbackJsonResponse($responseContent, $userMessage);
+    }
+
+    /**
+     * Erstellt eine Fallback-JSON-Antwort für unstrukturierte LLM-Antworten
+     */
+    private function createFallbackJsonResponse(string $llmResponse, string $userMessage): string
+    {
+        // Analysiere die User-Nachricht, um den Intent zu bestimmen
+        $intent = $this->determineIntentFromMessage($userMessage);
+
+        $fallbackResponse = [
+            'type' => 'dialog',
+            'content' => $llmResponse,
+            'status' => 'unstructured',
+            'intent' => $intent,
+            'suggested_action' => 'subagent_delegation',
+            'confidence' => 0.7,
+            'timestamp' => (new \DateTimeImmutable())->format(DATE_ATOM)
+        ];
+
+        return json_encode($fallbackResponse, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Bestimmt den Intent aus einer User-Nachricht
+     */
+    private function determineIntentFromMessage(string $message): string
+    {
+        $messageLower = strtolower($message);
+
+        if (preg_match('/(webseite|website|recherche|suche|research|durchsuchen|zusammenfassen)/i', $messageLower)) {
+            return 'website_research';
+        }
+
+        if (preg_match('/(daten|analyse|statistik|auswertung|zahlen|diagramm)/i', $messageLower)) {
+            return 'data_analysis';
+        }
+
+        if (preg_match('/(code|programm|skript|funktion|klassen|php|symfony|entwickeln)/i', $messageLower)) {
+            return 'code_assistance';
+        }
+
+        if (preg_match('/(dokument|pdf|excel|datei|verarbeiten|lesen|extrahieren)/i', $messageLower)) {
+            return 'document_processing';
+        }
+
+        return 'general_query';
+    }
+
+    /**
+     * Behandelt Tool-Call-Antworten
+     */
+    private function handleToolCallResponse(string $responseContent, string $userMessage, string $userIdentifier): string
+    {
+        $responseData = json_decode($responseContent, true);
+        $toolName = $responseData['tool_name'] ?? 'unknown';
+        $parameters = $responseData['parameters'] ?? [];
+
+        $this->logger->info('Tool-Call erkannt', [
+            'tool_name' => $toolName,
+            'parameters' => $parameters
+        ]);
+
+        // Hier würde normalerweise das Tool ausgeführt werden
+        // Für jetzt geben wir eine Bestätigung zurück
+        return sprintf(
+            "Tool-Aufruf erkannt: **%s** mit Parametern: %s. Die Ausführung wird vorbereitet.",
+            $toolName,
+            json_encode($parameters, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE)
+        );
+    }
+
+    /**
+     * Behandelt Sub-Agent-Delegation
+     */
+    private function handleSubAgentDelegation(string $responseContent, string $userMessage, string $userIdentifier): string
+    {
+        $responseData = json_decode($responseContent, true);
+        $subAgentType = $responseData['subagent'] ?? 'website_researcher';
+        $taskDescription = $responseData['task_description'] ?? $userMessage;
+
+        $this->logger->info('Sub-Agent-Delegation erkannt', [
+            'subagent' => $subAgentType,
+            'task' => $taskDescription
+        ]);
+
+        // Erstelle den passenden Sub-Agenten
+        $subAgent = $this->determineAndCreateSubAgent($userMessage);
+
+        return sprintf(
+            "Deine Anfrage wurde an den **%s** Sub-Agenten delegiert. " .
+            "Der Agent wird die folgende Aufgabe bearbeiten: **%s**",
+            $subAgent->getName(),
+            $taskDescription
+        );
+    }
+
+    /**
+     * Behandelt direkte Dialog-Antworten
+     */
+    private function handleDialogResponse(string $responseContent): string
+    {
+        $responseData = json_decode($responseContent, true);
+        $content = $responseData['content'] ?? 'Keine Antwort verfügbar';
+        $intent = $responseData['intent'] ?? 'general';
+
+        $this->logger->info('Dialog-Antwort erkannt', [
+            'intent' => $intent,
+            'content_length' => strlen($content)
+        ]);
+
+        return $content;
     }
 }

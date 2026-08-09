@@ -8,9 +8,6 @@ ai:
             api_key: '%env(MISTRAL_API_KEY)%'
         gemini:
             api_key: '%env(GEMINI_API_KEY)%'
-        # Firecrawl for web search capabilities
-        firecrawl:
-            api_key: '%env(FIRECRAWL_API_KEY)%'
 
     agent:
         # Main orchestrator agent - plans and delegates but doesn't execute
@@ -75,7 +72,7 @@ ai:
                 - { service: 'App\AI\Skills\Tool\UserTypeLookupTool' }
                 
                 # Dynamische Tools aus der Datenbank
-                - service: 'App\AI\Skills\DynamicToolDispatcher'
+                - service: 'App\AI\Skills\Tool\DynamicToolDispatcher'
                   name: 'dynamic_tool_executor'
                   description: 'Führt dynamisch generierte Tools aus der Datenbank aus.'
 
@@ -216,10 +213,9 @@ ai:
             onboarding:
                 dbal_connection: 'doctrine.dbal.default_connection'
                 table_name: 'onboarding_embeddings'
-            
-        # Store für Tool-Definitionen
-        tool_definitions:
-            postgres:
+
+            # Store für Tool-Definitionen
+            tool_definitions:
                 dbal_connection: 'doctrine.dbal.default_connection'
                 table_name: 'tool_definitions'
 

@@ -1927,6 +1927,11 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         store?: string|Param, // Service name of store // Default: "Symfony\\AI\\Store\\StoreInterface"
  *     }>,
  * }
+ * @psalm-type MakerConfig = array{
+ *     root_namespace?: scalar|Param|null, // Default: "App"
+ *     generate_final_classes?: bool|Param, // Default: true
+ *     generate_final_entities?: bool|Param, // Default: false
+ * }
  * @psalm-type EvieMcpConfig = array{
  *     cache_ttl?: int|Param, // Cache TTL for MCP tools (in seconds). // Default: 300
  *     servers?: array<string, array{ // Default: []
@@ -1961,6 +1966,7 @@ use Symfony\Component\Config\Loader\ParamConfigurator as Param;
  *         debug?: DebugConfig,
  *         web_profiler?: WebProfilerConfig,
  *         ai?: AiConfig,
+ *         maker?: MakerConfig,
  *     },
  *     "when@prod"?: array{
  *         imports?: ImportsConfig,
