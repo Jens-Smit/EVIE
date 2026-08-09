@@ -18,6 +18,7 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Controller für die Freigabe und Ablehnung von Tools.
+ * Implementiert den Human-in-the-Loop (HITL) Mechanismus für Tool-Genehmigung.
  * Unterstützt sowohl HTML- als auch AJAX-Anfragen.
  */
 final class ToolApprovalController extends AbstractController
@@ -44,6 +45,7 @@ final class ToolApprovalController extends AbstractController
         if ($request->isXmlHttpRequest() || $request->headers->get('Accept') === 'application/json') {
             return $this->json([
                 'success' => true,
+                'count' => count($pendingTools),
                 'tools' => array_map(function (ToolDefinition $tool) {
                     return [
                         'id' => $tool->getId(),
@@ -51,6 +53,9 @@ final class ToolApprovalController extends AbstractController
                         'description' => $tool->getDescription(),
                         'created_at' => $tool->getCreatedAt()?->format('Y-m-d H:i:s'),
                         'schema' => $tool->getSchema(),
+                        'approval_url' => $this->urlGenerator->generate('app_tool_approve_api', ['id' => $tool->getId()], UrlGeneratorInterface::ABSOLUTE_URL),
+                        'reject_url' => $this->urlGenerator->generate('app_tool_reject_api', ['id' => $tool->getId()], UrlGeneratorInterface::ABSOLUTE_URL),
+                        'show_url' => $this->urlGenerator->generate('app_tool_show', ['id' => $tool->getId()], UrlGeneratorInterface::ABSOLUTE_URL),
                     ];
                 }, $pendingTools),
             ]);
@@ -82,20 +87,20 @@ final class ToolApprovalController extends AbstractController
         // Führe die Aktion aus
         if ($action === 'approve') {
             $toolDefinition->setStatus('approved');
-            $toolDefinition->setApprovedAt(new \DateTimeImmutable());
+            $toolDefinition->setUpdatedAt(new \DateTimeImmutable());
             
             // Füge das Tool zum DynamicSkillRegistry hinzu
             $this->dynamicSkillRegistry->addTool($toolDefinition);
             
-            $this->logger->info('Tool freigegeben', [
+            $this->logger->info('Tool freigegeben und im Registry registriert', [
                 'tool_id' => $toolDefinition->getId(),
                 'tool_name' => $toolDefinition->getName(),
             ]);
 
-            $message = 'Tool wurde erfolgreich freigegeben!';
+            $message = 'Tool wurde erfolgreich freigegeben und steht jetzt zur Verfügung!';
         } else {
             $toolDefinition->setStatus('rejected');
-            $toolDefinition->setRejectedAt(new \DateTimeImmutable());
+            $toolDefinition->setUpdatedAt(new \DateTimeImmutable());
             
             $this->logger->info('Tool abgelehnt', [
                 'tool_id' => $toolDefinition->getId(),
@@ -135,6 +140,8 @@ final class ToolApprovalController extends AbstractController
     {
         return $this->render('agent/tool_detail.html.twig', [
             'tool' => $toolDefinition,
+            'approval_url' => $this->urlGenerator->generate('app_tool_approve_api', ['id' => $toolDefinition->getId()]),
+            'reject_url' => $this->urlGenerator->generate('app_tool_reject_api', ['id' => $toolDefinition->getId()]),
         ]);
     }
 
@@ -150,8 +157,7 @@ final class ToolApprovalController extends AbstractController
             'status' => $toolDefinition->getStatus(),
             'description' => $toolDefinition->getDescription(),
             'created_at' => $toolDefinition->getCreatedAt()?->format('c'),
-            'approved_at' => $toolDefinition->getApprovedAt()?->format('c'),
-            'rejected_at' => $toolDefinition->getRejectedAt()?->format('c'),
+            'updated_at' => $toolDefinition->getUpdatedAt()?->format('c'),
         ]);
     }
 
@@ -171,5 +177,84 @@ final class ToolApprovalController extends AbstractController
     public function rejectToolApi(ToolDefinition $toolDefinition, Request $request): JsonResponse
     {
         return $this->handleApproval($toolDefinition, 'reject', $request);
+    }
+
+    /**
+     * Listet alle genehmigten Tools auf.
+     */
+    #[Route('/api/tools/approved', name: 'app_tool_approved_list', methods: ['GET'])]
+    public function listApprovedTools(Request $request): JsonResponse
+    {
+        try {
+            $approvedTools = $this->toolDefinitionRepo->findBy(['status' => 'approved']);
+            
+            $toolsData = [];
+            foreach ($approvedTools as $tool) {
+                $toolsData[] = [
+                    'id' => $tool->getId(),
+                    'name' => $tool->getName(),
+                    'description' => $tool->getDescription(),
+                    'status' => $tool->getStatus(),
+                    'created_at' => $tool->getCreatedAt()?->format('Y-m-d H:i:s'),
+                ];
+            }
+
+            return $this->json([
+                'status' => 'success',
+                'count' => count($toolsData),
+                'tools' => $toolsData,
+            ]);
+        } catch (\Exception $e) {
+            $this->logger->error('Fehler beim Auflisten der genehmigten Tools: ' . $e->getMessage());
+            return $this->json([
+                'status' => 'error',
+                'message' => 'Fehler beim Auflisten der Tools',
+                'error' => $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Setzt den Status eines Tools zurück auf 'pending' (z. B. für Tests).
+     */
+    #[Route('/api/tools/{id}/reset', name: 'app_tool_reset', methods: ['POST'])]
+    public function resetToolStatus(int $id, Request $request): JsonResponse
+    {
+        try {
+            $tool = $this->toolDefinitionRepo->find($id);
+            
+            if (!$tool) {
+                return $this->json(['error' => 'Tool not found'], Response::HTTP_NOT_FOUND);
+            }
+
+            $tool->setStatus('pending');
+            $tool->setUpdatedAt(new \DateTimeImmutable());
+            $this->toolDefinitionRepo->save($tool, true);
+
+            // Aus dem Registry entfernen
+            $this->dynamicSkillRegistry->removeTool($tool->getName());
+
+            $this->logger->info('Tool-Status zurückgesetzt', [
+                'tool_id' => $id,
+                'tool_name' => $tool->getName(),
+            ]);
+
+            return $this->json([
+                'status' => 'success',
+                'message' => 'Tool-Status zurückgesetzt',
+                'tool' => [
+                    'id' => $tool->getId(),
+                    'name' => $tool->getName(),
+                    'status' => $tool->getStatus(),
+                ],
+            ]);
+        } catch (\Exception $e) {
+            $this->logger->error('Fehler beim Zurücksetzen des Tool-Status: ' . $e->getMessage());
+            return $this->json([
+                'status' => 'error',
+                'message' => 'Fehler beim Zurücksetzen des Tool-Status',
+                'error' => $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 }
