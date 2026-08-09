@@ -2,12 +2,35 @@
  * EVIE - AI Agent Chat Application
  */
 
+// Global notification container reference
+let notificationContainer = null;
+
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initChat);
+    document.addEventListener('DOMContentLoaded', initAll);
 } else {
-    initChat();
+    initAll();
 }
 
+/**
+ * Initialize all functionality
+ */
+function initAll() {
+    // Initialize notification container
+    notificationContainer = document.getElementById('notification-container');
+    if (!notificationContainer) {
+        notificationContainer = createNotificationContainer();
+    }
+    
+    // Initialize chat if on dialog page
+    initChat();
+    
+    // Initialize tool approval buttons if on pending tools page
+    initToolApproval();
+}
+
+/**
+ * Initialize chat functionality
+ */
 function initChat() {
     const chatForm = document.getElementById('chat-form');
     const chatContainer = document.getElementById('chat-container');
@@ -21,6 +44,32 @@ function initChat() {
     if (promptInput) promptInput.focus();
 }
 
+/**
+ * Initialize tool approval functionality
+ */
+function initToolApproval() {
+    // Approve buttons
+    document.querySelectorAll('.approve-tool').forEach(button => {
+        button.addEventListener('click', function() {
+            const toolId = this.getAttribute('data-tool-id');
+            const buttonContainer = this.closest('.bg-gray-50, .tool-item');
+            approveTool(toolId, buttonContainer);
+        });
+    });
+    
+    // Reject buttons
+    document.querySelectorAll('.reject-tool').forEach(button => {
+        button.addEventListener('click', function() {
+            const toolId = this.getAttribute('data-tool-id');
+            const buttonContainer = this.closest('.bg-gray-50, .tool-item');
+            rejectTool(toolId, buttonContainer);
+        });
+    });
+}
+
+/**
+ * Behandelt das Senden des Formulars
+ */
 function handleFormSubmit(event) {
     event.preventDefault();
     
@@ -43,6 +92,9 @@ function handleFormSubmit(event) {
     sendMessageToAgent(form, chatContainer, submitButton);
 }
 
+/**
+ * Sendet die Nachricht an den AI-Agenten
+ */
 function sendMessageToAgent(form, chatContainer, submitButton) {
     const formData = new FormData(form);
     const endpoint = form.action;
@@ -79,6 +131,9 @@ function sendMessageToAgent(form, chatContainer, submitButton) {
     });
 }
 
+/**
+ * Behandelt die Antwort des Agenten
+ */
 function handleAgentResponse(data, chatContainer) {
     let responseText = '';
     
@@ -95,10 +150,14 @@ function handleAgentResponse(data, chatContainer) {
     applyFormatting(chatContainer);
 }
 
+/**
+ * Erstellt einen Genehmigungs-Button für Tools
+ */
 function createApprovalButton(data) {
     const div = document.createElement('div');
     div.className = 'flex gap-2 justify-center my-2';
     
+    // Extrahiere Tool-ID aus der Antwort
     const toolMatch = data.response.match(/\/api\/tools\/(\d+)\/approve/);
     const toolId = toolMatch ? toolMatch[1] : null;
     
@@ -120,7 +179,15 @@ function createApprovalButton(data) {
     return div;
 }
 
+/**
+ * Genehmigt ein Tool
+ */
 function approveTool(toolId, buttonContainer) {
+    if (!buttonContainer) {
+        console.error('Button container not found');
+        return;
+    }
+    
     disableButton(buttonContainer.querySelector('button'));
     
     fetch(`/api/tools/${toolId}/approve`, {
@@ -134,7 +201,9 @@ function approveTool(toolId, buttonContainer) {
     .then(data => {
         if (data.success || data.status === 'success') {
             showNotification('Tool erfolgreich genehmigt!', 'success');
-            buttonContainer.remove();
+            if (buttonContainer && buttonContainer.remove) {
+                buttonContainer.remove();
+            }
         } else {
             showNotification('Fehler beim Genehmigen des Tools', 'error');
         }
@@ -145,7 +214,15 @@ function approveTool(toolId, buttonContainer) {
     });
 }
 
+/**
+ * Lehnt ein Tool ab
+ */
 function rejectTool(toolId, buttonContainer) {
+    if (!buttonContainer) {
+        console.error('Button container not found');
+        return;
+    }
+    
     disableButton(buttonContainer.querySelector('button'));
     
     fetch(`/api/tools/${toolId}/reject`, {
@@ -159,7 +236,9 @@ function rejectTool(toolId, buttonContainer) {
     .then(data => {
         if (data.success || data.status === 'success') {
             showNotification('Tool erfolgreich abgelehnt', 'info');
-            buttonContainer.remove();
+            if (buttonContainer && buttonContainer.remove) {
+                buttonContainer.remove();
+            }
         } else {
             showNotification('Fehler beim Ablehnen des Tools', 'error');
         }
@@ -170,7 +249,15 @@ function rejectTool(toolId, buttonContainer) {
     });
 }
 
+/**
+ * Fügt eine Nachricht zum Chat hinzu
+ */
 function addMessageToChat(container, content, role) {
+    if (!container) {
+        console.error('Chat container not found');
+        return null;
+    }
+    
     const messageDiv = document.createElement('div');
     messageDiv.className = `chat-message ${role}`;
     
@@ -189,13 +276,20 @@ function addMessageToChat(container, content, role) {
     return messageDiv;
 }
 
+/**
+ * Formatiert eine Nachricht
+ */
 function formatMessage(content) {
+    if (!content) return '';
+    
     try {
         const data = JSON.parse(content);
         if (data && typeof data === 'object') {
             return formatJsonResponse(data);
         }
-    } catch (e) {}
+    } catch (e) {
+        // Kein JSON, normal formatieren
+    }
     
     if (typeof marked !== 'undefined') {
         return marked.parse(content);
@@ -204,6 +298,9 @@ function formatMessage(content) {
     return content;
 }
 
+/**
+ * Formatiert eine JSON-Antwort
+ */
 function formatJsonResponse(data) {
     const container = document.createElement('div');
     container.className = 'markdown-body';
@@ -266,7 +363,12 @@ function formatJsonResponse(data) {
     return container.innerHTML;
 }
 
+/**
+ * Wendet Formatierung auf alle Nachrichten an
+ */
 function applyFormatting(container) {
+    if (!container) return;
+    
     const messages = container.querySelectorAll('.message-bubble.agent');
     messages.forEach(bubble => {
         if (!bubble.querySelector('.markdown-body') && bubble.textContent) {
@@ -275,6 +377,9 @@ function applyFormatting(container) {
     });
 }
 
+/**
+ * Erstellt eine Lade-Nachricht
+ */
 function createLoadingMessage() {
     const div = document.createElement('div');
     div.className = 'chat-message system';
@@ -287,6 +392,9 @@ function createLoadingMessage() {
     return div;
 }
 
+/**
+ * Erstellt eine Fehler-Nachricht
+ */
 function createErrorMessage(message) {
     const div = document.createElement('div');
     div.className = 'chat-message system';
@@ -299,8 +407,17 @@ function createErrorMessage(message) {
     return div;
 }
 
+/**
+ * Zeigt eine Benachrichtigung an
+ */
 function showNotification(message, type = 'info') {
-    const notificationContainer = document.getElementById('notification-container') || createNotificationContainer();
+    // Ensure notification container exists
+    if (!notificationContainer) {
+        notificationContainer = document.getElementById('notification-container');
+    }
+    if (!notificationContainer) {
+        notificationContainer = createNotificationContainer();
+    }
     
     const notification = document.createElement('div');
     notification.className = `notification notification-${type} p-4 mb-2 rounded-lg shadow-lg`;
@@ -312,6 +429,7 @@ function showNotification(message, type = 'info') {
         </div>
     `;
     
+    // Set styles based on type
     if (type === 'success') {
         notification.style.backgroundColor = '#dcfce7';
         notification.style.borderLeft = '4px solid #16a34a';
@@ -326,13 +444,24 @@ function showNotification(message, type = 'info') {
         notification.style.color = '#1d4ed8';
     }
     
-    notificationContainer.appendChild(notification);
-    
-    setTimeout(() => {
-        notification.remove();
-    }, 5000);
+    // Append notification to container
+    if (notificationContainer) {
+        notificationContainer.appendChild(notification);
+        
+        // Remove after 5 seconds
+        setTimeout(() => {
+            if (notification && notification.parentNode) {
+                notification.remove();
+            }
+        }, 5000);
+    } else {
+        console.error('Notification container not found');
+    }
 }
 
+/**
+ * Erstellt den Benachrichtigungs-Container
+ */
 function createNotificationContainer() {
     const container = document.createElement('div');
     container.id = 'notification-container';
@@ -341,6 +470,9 @@ function createNotificationContainer() {
     return container;
 }
 
+/**
+ * Gibt das passende Icon für Benachrichtigungen zurück
+ */
 function getNotificationIcon(type) {
     const icons = {
         success: '✅',
@@ -351,10 +483,18 @@ function getNotificationIcon(type) {
     return icons[type] || 'ℹ️';
 }
 
+/**
+ * Scrollt zum unteren Ende des Containers
+ */
 function scrollToBottom(container) {
-    container.scrollTop = container.scrollHeight;
+    if (container) {
+        container.scrollTop = container.scrollHeight;
+    }
 }
 
+/**
+ * Deaktiviert einen Button
+ */
 function disableButton(button) {
     if (button) {
         button.disabled = true;
@@ -362,9 +502,17 @@ function disableButton(button) {
     }
 }
 
+/**
+ * Aktiviert einen Button
+ */
 function enableButton(button) {
     if (button) {
         button.disabled = false;
         button.classList.remove('opacity-50', 'cursor-not-allowed');
     }
 }
+
+// Make functions globally available for inline event handlers
+window.approveTool = approveTool;
+window.rejectTool = rejectTool;
+window.showNotification = showNotification;
