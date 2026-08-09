@@ -7,17 +7,6 @@
         <h1 class="text-2xl font-bold text-secondary mb-4">Ausstehende Tools</h1>
         <p class="text-gray-700 mb-6">Hier siehst du Tools, die auf deine Freigabe warten.</p>
 
-        <script>
-            // Debug-Informationen nur anzeigen, wenn tools im Twig-Kontext verfügbar ist
-            {% if tools is defined %}
-            console.log('DEBUG: Tools-Array definiert: ja');
-            console.log('DEBUG: Tools-Array Länge:', {{ tools|length }});
-            {% else %}
-            console.log('DEBUG: Tools-Array definiert: nein');
-            {% endif %}
-        </script>
-        
-
         {% if tools is defined and tools|length > 0 %}
             <div class="space-y-4">
                 {% for tool in tools %}
@@ -46,33 +35,8 @@
                 {% endfor %}
             </div>
         {% else %}
-            <!-- DEBUG: Temporäres Test-Tool hinzufügen, um die Button-Funktionalität zu testen -->
-            <div class="space-y-4">
-                <div class="bg-gray-50 rounded-lg p-4 border border-gray-200">
-                    <h3 class="text-lg font-bold text-secondary mb-2">TEST-TOOL (Debug)</h3>
-                    <p class="text-gray-700 mb-2">Dies ist ein temporäres Test-Tool, um die Button-Funktionalität zu überprüfen.</p>
-                    <p class="text-sm text-gray-500 mb-4">
-                        Anfragt von: <strong>System</strong> |
-                        {{ 'now'|date('d.m.Y H:i') }}
-                    </p>
-                    <div class="flex gap-2">
-                        <button
-                            class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition approve-tool"
-                            data-tool-id="999"
-                        >
-                            Freigeben (Test)
-                        </button>
-                        <button
-                            class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition reject-tool"
-                            data-tool-id="999"
-                        >
-                            Ablehnen (Test)
-                        </button>
-                    </div>
-                </div>
-            </div>
-            <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded-lg mt-4">
-                <strong>Hinweis:</strong> Dies ist ein Debug-Test-Tool. Die echten ausstehenden Tools werden nicht angezeigt, weil der Controller sie nicht findet.
+            <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded-lg">
+                <strong>Hinweis:</strong> Es sind keine Tools zur Freigabe verfügbar.
             </div>
         {% endif %}
     </div>
@@ -80,21 +44,24 @@
 
 {% block javascripts %}
     {{ parent() }}
-    <script src="{{ asset('scripts/app.js') }}"></script>
-{% endblock %}
-
-{% block scripts %}
-<script>
-    // Debug-Informationen für die Tool-Freigabe
-    console.log('DEBUG: Tool-Freigabe-Seite geladen');
-    console.log('DEBUG: Verwende initToolApproval() aus app.js');
-
-    // Stelle sicher, dass die Funktion aus app.js aufgerufen wird
-    if (typeof initToolApproval === 'function') {
-        console.log('DEBUG: initToolApproval-Funktion gefunden, initialisiere...');
-        initToolApproval();
-    } else {
-        console.error('DEBUG: initToolApproval-Funktion nicht gefunden!');
-    }
-</script>
+    <script>
+    // Tool Approval Handler
+    document.addEventListener('DOMContentLoaded', function() {
+        // Approve Tool
+        document.querySelectorAll('.approve-tool').forEach(button => {
+            button.addEventListener('click', function() {
+                const toolId = this.getAttribute('data-tool-id');
+                approveTool(toolId, this.closest('.bg-gray-50'));
+            });
+        });
+        
+        // Reject Tool
+        document.querySelectorAll('.reject-tool').forEach(button => {
+            button.addEventListener('click', function() {
+                const toolId = this.getAttribute('data-tool-id');
+                rejectTool(toolId, this.closest('.bg-gray-50'));
+            });
+        });
+    });
+    </script>
 {% endblock %}
