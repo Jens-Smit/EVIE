@@ -38,24 +38,54 @@ services:
         public: true
 
     # ========================================================================
-    # AI-Agent Services (KORRIGIERT)
+    # AI-Agent Services
     # ========================================================================
 
-    # Orchestrator Dialog Service - EXPLIZITE KONFIGURATION
+    # Orchestrator Dialog Service
     App\AI\Agent\OrchestratorDialogService:
         arguments:
             $agent: '@ai.agent.orchestrator'
             $toolGenerator: '@App\AI\Skills\ToolDefinitionGenerator'
+            $subAgentFactory: '@App\AI\Agent\SubAgentFactory'
             $dispatcher: '@event_dispatcher'
             $logger: '@logger'
+            $platform: '@ai.platform.mistral'
+            $urlGenerator: '@router'
 
-    # Tool Definition Generator - EXPLIZITE KONFIGURATION (Autoconfigure entfernt)
+    # Tool Definition Generator
     App\AI\Skills\ToolDefinitionGenerator:
         arguments:
             $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
             $platform: '@ai.platform.mistral'
 
-    # Registrierung des HitlToolCallListener als Event-Listener
+    # Sub-Agent Factory - WICHTIG für Tool-Delegation
+    App\AI\Agent\SubAgentFactory:
+        arguments:
+            $platform: '@ai.platform.mistral'
+            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
+            $dynamicSkillRegistry: '@App\AI\Skills\DynamicSkillRegistry'
+            $logger: '@logger'
+
+    # Dynamic Skill Registry
+    App\AI\Skills\DynamicSkillRegistry:
+        arguments:
+            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
+
+    # Dynamic Tool Factory
+    App\AI\Skills\Tool\DynamicToolFactory:
+        arguments:
+            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
+            $logger: '@logger'
+            $toolRegistry: '@App\AI\Skills\Tool\ToolRegistry'
+            $securityGuard: '@App\AI\Security\SecurityGuard'
+
+    # Tool Registry
+    App\AI\Skills\Tool\ToolRegistry: ~
+
+    # Security Guard
+    App\AI\Security\SecurityGuard: ~
+
+    # HitlToolCallListener als Event-Listener
     App\AI\Security\HitlToolCallListener:
         tags:
             - { name: 'kernel.event_listener', event: 'Symfony\AI\Agent\Toolbox\Event\ToolCallArgumentsResolved', method: '__invoke' }
@@ -63,15 +93,15 @@ services:
     # Registrierung des OnboardingLoader als Service
     App\AI\Loader\OnboardingLoader: ~
 
-    # ToolRegistry als Service
-    App\AI\Skills\Tool\ToolRegistry: ~
-
     # Automatische Registrierung aller Tools mit dem Tag 'ai.tool'
     App\AI\Skills\Tool\:
         resource: '../src/AI/Skills/Tool/'
         tags: ['ai.tool']
 
+    # ========================================================================
     # MCP Services
+    # ========================================================================
+
     App\Mcp\Client\McpServerManager:
         arguments:
             $serverConfigs:
@@ -102,43 +132,62 @@ services:
         arguments:
             $serverManager: '@App\Mcp\Client\McpServerManager'
 
-    # Evie Toolbox Factory (aktualisiert)
+    # ========================================================================
+    # Toolbox Factory
+    # ========================================================================
+
+    # Evie Toolbox Factory - aktualisiert mit SubAgentFactory
     App\AI\Agent\EvieToolboxFactory:
         arguments:
             $mcpToolFactory: '@App\Mcp\Toolbox\McpToolFactoryWrapper'
             $nativeTools: !tagged_iterator ai.tool
             $dynamicSkillRegistry: '@App\AI\Skills\DynamicSkillRegistry'
-            $dynamicToolFactory: '@App\AI\Skills\Tool\DynamicToolFactory'
-
-    # Sub-Agent Factory (neu implementiert)
-    App\AI\Agent\SubAgentFactory:
-        arguments:
-            $platform: '@ai.platform.mistral'
-            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
-            $dynamicSkillRegistry: '@App\AI\Skills\DynamicSkillRegistry'
-            $logger: '@logger'
-
-    # Dynamic Tool Factory
-    App\AI\Skills\Tool\DynamicToolFactory:
-        arguments:
-            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
-            $logger: '@logger'
-        tags: ['ai.tool']
-
-    # Dynamic Skill Registry
-    App\AI\Skills\DynamicSkillRegistry:
-        arguments:
-            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
+            $subAgentFactory: '@App\AI\Agent\SubAgentFactory'
 
     # ========================================================================
     # Event Listener
     # ========================================================================
 
-    # Pending Tool Approval Listener
+    # Pending Tool Approval Listener - aktualisiert mit DynamicSkillRegistry
     App\EventListener\PendingToolApprovalListener:
         arguments:
             $notifier: '@notifier'
             $urlGenerator: '@router'
             $logger: '@logger'
+            $dynamicSkillRegistry: '@App\AI\Skills\DynamicSkillRegistry'
         tags:
             - { name: 'kernel.event_listener', event: 'ai.tool.pending_approval', method: 'onPendingToolApproval' }
+            - { name: 'kernel.event_listener', event: 'ai.tool.approved', method: 'onToolApproved' }
+
+    # ========================================================================
+    # Controller Services
+    # ========================================================================
+
+    # Tool Approval Controller
+    App\Controller\ToolApprovalController:
+        arguments:
+            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
+            $dynamicSkillRegistry: '@App\AI\Skills\DynamicSkillRegistry'
+            $dispatcher: '@event_dispatcher'
+            $urlGenerator: '@router'
+            $logger: '@logger'
+        tags: ['controller.service_arguments']
+
+    # ========================================================================
+    # Dynamic Tool Dispatcher
+    # ========================================================================
+
+    App\AI\Skills\Executor\GenericToolExecutor:
+        arguments:
+            $toolRegistry: '@App\AI\Skills\Tool\ToolRegistry'
+            $securityGuard: '@App\AI\Security\SecurityGuard'
+        tags: ['ai.tool']
+
+    # Dynamic Tool Dispatcher
+    App\AI\Skills\Tool\DynamicToolDispatcher:
+        arguments:
+            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
+            $dynamicToolFactory: '@App\AI\Skills\Tool\DynamicToolFactory'
+            $subAgentFactory: '@App\AI\Agent\SubAgentFactory'
+            $logger: '@logger'
+        tags: ['ai.tool']
