@@ -4,6 +4,7 @@
 namespace App\EventListener;
 
 use App\Event\PendingToolApprovalEvent;
+use App\AI\Skills\DynamicSkillRegistry;
 use Symfony\Component\Notifier\NotifierInterface;
 use Symfony\Component\Notifier\Message\ChatMessage;
 use Symfony\Component\Notifier\Recipient\Recipient;
@@ -11,7 +12,8 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Psr\Log\LoggerInterface;
 
 /**
- * Listener für PendingToolApprovalEvent - sendet Benachrichtigungen an den User.
+ * Listener für PendingToolApprovalEvent - sendet Benachrichtigungen an den User
+ * und aktualisiert das DynamicSkillRegistry nach Genehmigung.
  */
 final readonly class PendingToolApprovalListener
 {
@@ -19,6 +21,7 @@ final readonly class PendingToolApprovalListener
         private NotifierInterface $notifier,
         private UrlGeneratorInterface $urlGenerator,
         private LoggerInterface $logger,
+        private DynamicSkillRegistry $dynamicSkillRegistry,
     ) {
     }
 
@@ -33,10 +36,15 @@ final readonly class PendingToolApprovalListener
         $this->logger->info('Neues Tool wartet auf Freigabe', [
             'tool_name' => $toolDefinition->getName(),
             'user_identifier' => $userIdentifier,
+            'tool_id' => $toolDefinition->getId(),
         ]);
 
         // 1. Benachrichtigung per Chat/Notifier senden
         $this->sendNotification($toolDefinition, $userIdentifier);
+
+        // 2. DynamicSkillRegistry aktualisieren, falls Tool genehmigt wird
+        // Dies wird jetzt direkt im ToolApprovalController erledigt
+        // Aber wir können hier zusätzliche Logik hinzufügen, falls benötigt
     }
 
     /**
@@ -83,6 +91,28 @@ final readonly class PendingToolApprovalListener
             ]);
         } catch (\Exception $e) {
             $this->logger->error('Fehler beim Senden der Benachrichtigung: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Wird ausgelöst, wenn ein Tool genehmigt wird.
+     * Aktualisiert das DynamicSkillRegistry.
+     */
+    public function onToolApproved(PendingToolApprovalEvent $event): void
+    {
+        $toolDefinition = $event->getToolDefinition();
+
+        if ($toolDefinition->isApproved()) {
+            // Tool im Registry registrieren
+            $this->dynamicSkillRegistry->addTool($toolDefinition);
+
+            // Registry neu laden, um sicherzustellen, dass alles synchron ist
+            $this->dynamicSkillRegistry->reload();
+
+            $this->logger->info('Tool nach Genehmigung im Registry registriert', [
+                'tool_id' => $toolDefinition->getId(),
+                'tool_name' => $toolDefinition->getName(),
+            ]);
         }
     }
 }
