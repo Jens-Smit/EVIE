@@ -8,12 +8,9 @@
     <!-- CSRF Token für AJAX-Anfragen -->
     <meta name="csrf-token" content="{{ csrf_token('') }}">
 
-    <!-- Original CSS for base styles -->
-    <link href="{{ asset('assets/styles/app.css') }}" rel="stylesheet">
-
-    <!-- Tailwind CSS - Compiled locally -->
-    <link href="{{ asset('assets/styles/tailwind-compiled.css') }}" rel="stylesheet">
-
+    <!-- Tailwind CSS - Direct reference to source -->
+    <link href="{{ asset('assets/styles/tailwind.css') }}" rel="stylesheet">
+    
     <!-- Custom CSS Variables -->
     <style>
         :root {
@@ -27,6 +24,9 @@
 </head>
 
 <body class="bg-gray-100 font-sans leading-normal tracking-normal">
+    <!-- Notification Container for Tool Approval -->
+    <div id="notification-container" class="fixed top-4 right-4 z-50 w-80"></div>
+
     <!-- Header -->
     <header class="bg-secondary text-white shadow-md">
         <div class="container mx-auto px-6 py-3">
@@ -70,6 +70,9 @@
     </style>
 
     <!-- JavaScript -->
-    {% block javascripts %}{% endblock %}
+    {% block javascripts %}
+        <!-- Load app.js for chat functionality -->
+        <script src="{{ asset('scripts/app.js') }}"></script>
+    {% endblock %}
 </body>
 </html>
