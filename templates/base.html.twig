@@ -8,7 +8,25 @@
     <!-- CSRF Token für AJAX-Anfragen -->
     <meta name="csrf-token" content="{{ csrf_token('') }}">
 
-    <!-- Tailwind CSS - Direct reference to source -->
+    <!-- Tailwind CSS from CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Optional: Custom Tailwind configuration -->
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4a6fa5',
+                        secondary: '#166088',
+                        accent: '#4fc3f7',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Local CSS (fallback if CDN fails) -->
     <link href="{{ asset('assets/styles/tailwind.css') }}" rel="stylesheet">
     
     <!-- Custom CSS Variables -->
@@ -72,7 +90,7 @@
     <!-- JavaScript -->
     {% block javascripts %}
         <!-- Load app.js for chat functionality -->
-        <script src="{{ asset('scripts/app.js') }}"></script>
+        <script src="{{ asset('assets/scripts/app.js') }}"></script>
     {% endblock %}
 </body>
 </html>
