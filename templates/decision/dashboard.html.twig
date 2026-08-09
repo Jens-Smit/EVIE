@@ -1,0 +1,286 @@
+{# templates/decision/dashboard.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}EVIE - Entscheidungs-Dashboard{% endblock %}
+
+{% block body %}
+<div class="container mx-auto px-6 py-8">
+    <h1 class="text-3xl font-bold text-secondary mb-6">EVIE - Entscheidungs-Dashboard</h1>
+
+    {# Übersicht #}
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+        {# Ausstehende Entscheidungen #}
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-bold text-yellow-600 mb-2">⏳ Ausstehend</h2>
+            <p class="text-4xl font-bold text-gray-900">{{ statistics.pending }}</p>
+            <p class="text-sm text-gray-600 mt-1">Entscheidungen warten auf Freigabe</p>
+        </div>
+
+        {# Genehmigte Entscheidungen #}
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-bold text-green-600 mb-2">✅ Genehmigt</h2>
+            <p class="text-4xl font-bold text-gray-900">{{ statistics.approved }}</p>
+            <p class="text-sm text-gray-600 mt-1">Entscheidungen wurden genehmigt</p>
+        </div>
+
+        {# Abgelehnte Entscheidungen #}
+        <div class="bg-white rounded-lg shadow p-6">
+            <h2 class="text-xl font-bold text-red-600 mb-2">❌ Abgelehnt</h2>
+            <p class="text-4xl font-bold text-gray-900">{{ statistics.rejected }}</p>
+            <p class="text-sm text-gray-600 mt-1">Entscheidungen wurden abgelehnt</p>
+        </div>
+    </div>
+
+    {# Ausstehende Entscheidungen #}
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold text-secondary">Ausstehende Entscheidungen</h2>
+            <span class="bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+                {{ pendingDecisions|length }} neu
+            </span>
+        </div>
+
+        {% if pendingDecisions|length > 0 %}
+            <div class="space-y-4">
+                {% for decision in pendingDecisions %}
+                    <div class="bg-yellow-50 p-4 rounded-lg border-l-4 border-yellow-500 decision-item"
+                         data-decision-id="{{ decision.id }}">
+                        <div class="flex justify-between items-start">
+                            <div class="flex-1">
+                                <h3 class="font-bold text-lg text-gray-900">{{ decision.description }}</h3>
+                                <p class="text-sm text-gray-600 mt-1">
+                                    Typ: <span class="font-medium">{{ decision.type }}</span> |
+                                    Erstellt: {{ decision.created_at }}
+                                </p>
+                                {% if decision.context %}
+                                    <div class="mt-2 p-3 bg-white rounded-lg border border-gray-200">
+                                        <h4 class="text-sm font-medium text-gray-700 mb-1">Kontext:</h4>
+                                        <pre class="text-xs text-gray-800 overflow-auto">{{ decision.context|json_encode|raw }}</pre>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="mt-4 flex gap-2">
+                            <button class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition approve-decision"
+                                    data-decision-id="{{ decision.id }}">
+                                ✅ Genehmigen
+                            </button>
+                            <button class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition reject-decision"
+                                    data-decision-id="{{ decision.id }}">
+                                ❌ Ablehnen
+                            </button>
+                            <button class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition details-decision"
+                                    data-decision-id="{{ decision.id }}">
+                                📄 Details
+                            </button>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-gray-500 text-center py-8">Keine ausstehenden Entscheidungen.</p>
+        {% endif %}
+    </div>
+
+    {# Letzte Entscheidungen #}
+    <div class="bg-white rounded-lg shadow p-6 mb-8">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-2xl font-bold text-secondary">Letzte Entscheidungen</h2>
+            <a href="#" class="text-primary hover:underline text-sm">Alle anzeigen →</a>
+        </div>
+
+        {% if recentDecisions|length > 0 %}
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm text-left text-gray-500">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3">ID</th>
+                            <th class="px-4 py-3">Typ</th>
+                            <th class="px-4 py-3">Beschreibung</th>
+                            <th class="px-4 py-3">Status</th>
+                            <th class="px-4 py-3">Erstellt am</th>
+                            <th class="px-4 py-3">Genehmigt von</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for decision in recentDecisions %}
+                            <tr class="border-b bg-white hover:bg-gray-50">
+                                <td class="px-4 py-3 font-medium text-gray-900">#{{ decision.id }}</td>
+                                <td class="px-4 py-3">
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                                          style="background-color: {{ decision.type|lower == 'tool_approval' ? '#dcfce7' : decision.type|lower == 'api_access' ? '#dbeafe' : '#fef3c7' }}; color: {{ decision.type|lower == 'tool_approval' ? '#166534' : decision.type|lower == 'api_access' ? '#1e40af' : '#92400e' }};">
+                                        {{ decision.type }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 max-w-xs truncate" title="{{ decision.description }}">
+                                    {{ decision.description }}
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
+                                          style="background-color: {{ decision.status == 'approved' ? '#dcfce7' : decision.status == 'rejected' ? '#fef2f2' : '#fef3c7' }}; color: {{ decision.status == 'approved' ? '#166534' : decision.status == 'rejected' ? '#991b1b' : '#92400e' }};">
+                                        {{ decision.status }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 text-gray-500">{{ decision.created_at }}</td>
+                                <td class="px-4 py-3 text-gray-500">
+                                    {{ decision.approved_by ?? '-' }}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-gray-500 text-center py-8">Keine Entscheidungen gefunden.</p>
+        {% endif %}
+    </div>
+
+    {# Statistiken nach Typ #}
+    <div class="bg-white rounded-lg shadow p-6">
+        <h2 class="text-2xl font-bold text-secondary mb-4">Statistiken nach Typ</h2>
+
+        {% if statistics.by_type|length > 0 %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for type, stats in statistics.by_type %}
+                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
+                        <h3 class="font-bold text-lg text-gray-900 mb-2">{{ type }}</h3>
+                        <div class="space-y-1 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Gesamt:</span>
+                                <span class="font-medium">{{ stats.total }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Ausstehend:</span>
+                                <span class="font-medium">{{ stats.pending }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Genehmigt:</span>
+                                <span class="font-medium text-green-600">{{ stats.approved }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">Abgelehnt:</span>
+                                <span class="font-medium text-red-600">{{ stats.rejected }}</span>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-gray-500 text-center py-8">Keine Statistiken nach Typ verfügbar.</p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Entscheidung-Handler
+        document.querySelectorAll('.approve-decision').forEach(button => {
+            button.addEventListener('click', function() {
+                const decisionId = this.getAttribute('data-decision-id');
+                const container = this.closest('.decision-item');
+                approveDecision(decisionId, container);
+            });
+        });
+
+        document.querySelectorAll('.reject-decision').forEach(button => {
+            button.addEventListener('click', function() {
+                const decisionId = this.getAttribute('data-decision-id');
+                const container = this.closest('.decision-item');
+                rejectDecision(decisionId, container);
+            });
+        });
+
+        document.querySelectorAll('.details-decision').forEach(button => {
+            button.addEventListener('click', function() {
+                const decisionId = this.getAttribute('data-decision-id');
+                showDecisionDetails(decisionId);
+            });
+        });
+    });
+
+    // Globale Funktionen für Entscheidungen
+    function approveDecision(decisionId, container) {
+        fetch(`/api/decisions/${decisionId}/approve`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showNotification('Entscheidung genehmigt!', 'success');
+                if (container) container.remove();
+                
+                // Aktualisiere die Statistiken
+                updateStatistics();
+            } else {
+                showNotification('Fehler beim Genehmigen', 'error');
+            }
+        })
+        .catch(error => {
+            showNotification('Fehler: ' + error.message, 'error');
+        });
+    }
+
+    function rejectDecision(decisionId, container) {
+        const reason = prompt('Begründung für die Ablehnung:');
+        if (!reason) return;
+
+        fetch(`/api/decisions/${decisionId}/reject`, {
+            method: 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ reason: reason })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                showNotification('Entscheidung abgelehnt', 'info');
+                if (container) container.remove();
+                
+                // Aktualisiere die Statistiken
+                updateStatistics();
+            } else {
+                showNotification('Fehler beim Ablehnen', 'error');
+            }
+        })
+        .catch(error => {
+            showNotification('Fehler: ' + error.message, 'error');
+        });
+    }
+
+    function showDecisionDetails(decisionId) {
+        fetch(`/api/decisions/${decisionId}`, {
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                const decision = data.decision;
+                alert(`Entscheidungs-Details:\n\nID: ${decision.id}\nTyp: ${decision.type}\nStatus: ${decision.status}\nBeschreibung: ${decision.description}\nErstellt: ${decision.created_at}`);
+            } else {
+                showNotification('Fehler beim Laden der Details', 'error');
+            }
+        })
+        .catch(error => {
+            showNotification('Fehler: ' + error.message, 'error');
+        });
+    }
+
+    function updateStatistics() {
+        // Lade die Seite neu, um die Statistiken zu aktualisieren
+        location.reload();
+    }
+    </script>
+{% endblock %}
