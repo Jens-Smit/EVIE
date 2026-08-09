@@ -7,25 +7,9 @@ const fs = require('fs');
 const input = fs.readFileSync('./assets/styles/tailwind.css', 'utf8');
 
 // Process the CSS with Tailwind and Autoprefixer
+// Use the external tailwind.config.js file
 postcss([
-  tailwindcss({
-    content: [
-      "./templates/**/*.html.twig",
-      "./public/assets/**/*.js",
-      "./public/**/*.html",
-      "./assets/**/*.css",
-    ],
-    theme: {
-      extend: {
-        colors: {
-          primary: '#4a6fa5',
-          secondary: '#166088',
-          accent: '#4fc3f7',
-        }
-      }
-    },
-    plugins: [],
-  }),
+  tailwindcss(),
   autoprefixer,
 ])
 .process(input, { from: './assets/styles/tailwind.css', to: './public/assets/styles/tailwind-compiled.css' })

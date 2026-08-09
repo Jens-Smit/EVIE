@@ -1,16 +1,16 @@
 module.exports = {
   content: [
-    "./templates/**/*.html.twig",
+    "./templates/**/*.twig",
     "./public/assets/**/*.js",
-    "./public/**/*.html",
+    "./assets/**/*.css",
   ],
   theme: {
+    colors: {
+      primary: '#4a6fa5',
+      secondary: '#166088',
+      accent: '#4fc3f7',
+    },
     extend: {
-      colors: {
-        primary: '#4a6fa5',
-        secondary: '#166088',
-        accent: '#4fc3f7',
-      }
     }
   },
   plugins: [],
