@@ -98,8 +98,29 @@ services:
     App\AI\Loader\OnboardingLoader: ~
 
     # ========================================================================
-    # TOOL SERVICES - Explicit configuration for tools with constructor parameters
+    # TOOL SERVICES - Explicit configuration for ALL tools
+    # Each tool is configured individually to avoid autowiring issues
     # ========================================================================
+
+    # Weather Tool
+    App\AI\Skills\Tool\WeatherTool:
+        tags: ['ai.tool']
+
+    # File Read Tool
+    App\AI\Skills\Tool\FileReadTool:
+        tags: ['ai.tool']
+
+    # Data Analyzer Tool
+    App\AI\Skills\Tool\DataAnalyzerTool:
+        tags: ['ai.tool']
+
+    # Excel Parser Tool
+    App\AI\Skills\Tool\ExcelParserTool:
+        tags: ['ai.tool']
+
+    # User Type Lookup Tool
+    App\AI\Skills\Tool\UserTypeLookupTool:
+        tags: ['ai.tool']
 
     # Email Tool - requires MailerInterface
     App\AI\Skills\Tool\EmailTool:
@@ -128,16 +149,23 @@ services:
             $httpClient: '@http_client'
         tags: ['ai.tool']
 
-    # Automatische Registrierung aller anderen Tools mit dem Tag 'ai.tool'
-    # AUSSCHLUSS: Tools, die bereits explizit konfiguriert sind
-    App\AI\Skills\Tool\:
-        resource: '../src/AI/Skills/Tool/'
+    # Generic Tool Executor
+    App\AI\Skills\Executor\GenericToolExecutor:
+        arguments:
+            $toolRegistry: '@App\AI\Skills\Tool\ToolRegistry'
+            $securityGuard: '@App\AI\Security\SecurityGuard'
         tags: ['ai.tool']
-        exclude:
-            - '../src/AI/Skills/Tool/EmailTool.php'
-            - '../src/AI/Skills/Tool/LinkedInTool.php'
-            - '../src/AI/Skills/Tool/OAuthTool.php'
-            - '../src/AI/Skills/Tool/RestApiTool.php'
+
+    # Dynamic Tool Dispatcher
+    App\AI\Skills\Tool\DynamicToolDispatcher:
+        arguments:
+            $skillRegistry: '@App\AI\Skills\DynamicSkillRegistry'
+            $securityGuard: '@App\AI\Security\SecurityGuard'
+        tags: ['ai.tool']
+
+    # ========================================================================
+    # MCP Tools
+    # ========================================================================
 
     # Firecrawl Tool (Web-Scraping)
     Symfony\AI\Agent\Bridge\Firecrawl\Firecrawl:
@@ -267,22 +295,6 @@ services:
         arguments:
             $decisionManager: '@App\AI\Decision\DecisionManager'
         tags: ['controller.service_arguments']
-
-    # ========================================================================
-    # Dynamic Tool Dispatcher
-    # ========================================================================
-
-    App\AI\Skills\Executor\GenericToolExecutor:
-        arguments:
-            $toolRegistry: '@App\AI\Skills\Tool\ToolRegistry'
-            $securityGuard: '@App\AI\Security\SecurityGuard'
-        tags: ['ai.tool']
-
-    App\AI\Skills\Tool\DynamicToolDispatcher:
-        arguments:
-            $skillRegistry: '@App\AI\Skills\DynamicSkillRegistry'
-            $securityGuard: '@App\AI\Security\SecurityGuard'
-        tags: ['ai.tool']
 
     # ========================================================================
     # JSON Response Enforcer
