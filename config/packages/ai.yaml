@@ -53,57 +53,16 @@ ai:
                   name: 'mcp_tool_executor'
                   description: 'Führt MCP-Tools aus den konfigurierten Servern aus.'
                 
-                # Sub-Agenten als Tools registrieren
-                - agent: 'website_researcher'
-                  name: 'website_researcher'
-                  description: 'Sub-Agent für Webseiten-Recherche und Inhaltszusammenfassung'
-                
-                - agent: 'data_analyst'
-                  name: 'data_analyst'
-                  description: 'Sub-Agent für Datenanalyse und statistische Auswertungen'
-                
-                - agent: 'code_assistant'
-                  name: 'code_assistant'
-                  description: 'Sub-Agent für Code-Analyse, Generierung und Review'
-                
-                - agent: 'document_processor'
-                  name: 'document_processor'
-                  description: 'Sub-Agent für Dokumentenverarbeitung'
-                
-                - agent: 'communication_manager'
-                  name: 'communication_manager'
-                  description: 'Sub-Agent für Kommunikation (E-Mails, LinkedIn, Slack)'
-                
-                - agent: 'api_integration'
-                  name: 'api_integration'
-                  description: 'Sub-Agent für API-Integrationen (OAuth, REST, GraphQL)'
-                
-                - agent: 'project_manager'
-                  name: 'project_manager'
-                  description: 'Sub-Agent für Projektmanagement'
-                
-                - agent: 'finance_manager'
-                  name: 'finance_manager'
-                  description: 'Sub-Agent für Finanzverwaltung'
-                
-                - agent: 'hr_manager'
-                  name: 'hr_manager'
-                  description: 'Sub-Agent für Personalwesen'
-                
-                - agent: 'marketing_manager'
-                  name: 'marketing_manager'
-                  description: 'Sub-Agent für Marketing'
-                
-                - agent: 'ceo_assistant'
-                  name: 'ceo_assistant'
-                  description: 'Sub-Agent für Strategie, Planung und Entscheidungen'
-                
-                # Statische Tools
+                # Statische Tools (NICHT Sub-Agenten!)
                 - { service: 'App\AI\Skills\Tool\WeatherTool' }
                 - { service: 'App\AI\Skills\Tool\FileReadTool' }
                 - { service: 'App\AI\Skills\Tool\DataAnalyzerTool' }
                 - { service: 'App\AI\Skills\Tool\ExcelParserTool' }
                 - { service: 'App\AI\Skills\Tool\UserTypeLookupTool' }
+                - { service: 'App\AI\Skills\Tool\EmailTool' }
+                - { service: 'App\AI\Skills\Tool\LinkedInTool' }
+                - { service: 'App\AI\Skills\Tool\OAuthTool' }
+                - { service: 'App\AI\Skills\Tool\RestApiTool' }
                 
                 # Dynamische Tools aus der Datenbank
                 - service: 'App\AI\Skills\Tool\DynamicToolDispatcher'
