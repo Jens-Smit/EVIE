@@ -11,7 +11,10 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
  * Ermöglicht das Abrufen von Profilen, Posts und das Senden von Nachrichten.
  * 
  * HINWEIS: Benötigt LinkedIn API-Zugang (OAuth 2.0)
+ * Konfiguration über Umgebungsvariablen:
+ * - LINKEDIN_API_TOKEN: Access Token für die LinkedIn API
  */
+#[AsTool]
 class LinkedInTool
 {
     public function __construct(
@@ -74,7 +77,7 @@ class LinkedInTool
     ): array {
         try {
             $response = $this->httpClient->request('GET',
-                "https://api.linkedin.com/v2/people/search",
+                "https://api.linkedin.com/v2/people.search",
                 [
                     'headers' => [
                         'Authorization' => 'Bearer ' . $this->accessToken,
