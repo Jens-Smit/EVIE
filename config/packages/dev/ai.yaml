@@ -1,0 +1,8 @@
+# Symfony AI Bundle Configuration for Dev Environment
+# Disables the profiler data collector for AI Bundle to prevent
+# "Object of class Symfony\AI\Agent\TraceableAgent could not be converted to string" error
+# and "BadMethodCallException: Symfony\Component\VarDumper\Cloner\Data objects are immutable"
+
+ai:
+    profiler:
+        enabled: false
