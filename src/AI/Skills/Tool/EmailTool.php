@@ -3,32 +3,30 @@
 
 namespace App\AI\Skills\Tool;
 
-use Symfony\AI\Agent\Toolbox\Tool\Tool;
+use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
 
 /**
- * Tool für das Senden und Verwalten von E-Mails.
- * Ermöglicht dem AI-Agenten, E-Mails zu versenden, zu lesen und zu verwalten.
- * 
- * Implementiert ToolInterface für Kompatibilität mit Symfony AI Bundle.
+ * Tool für das Senden von E-Mails.
+ * Ermöglicht dem AI-Agenten, E-Mails zu versenden.
  */
-class EmailTool extends Tool
+class EmailTool
 {
     public function __construct(
         private MailerInterface $mailer,
         private string $defaultFrom = 'noreply@evie.ai'
     ) {
-        parent::__construct(
-            name: 'email_tool',
-            description: 'Tool für das Senden und Verwalten von E-Mails'
-        );
     }
 
     /**
-     * Sendet eine E-Mail
+     * Sendet eine E-Mail - HAUPTMETHODE als Tool
      */
-    public function sendEmail(
+    #[AsTool(
+        name: 'send_email',
+        description: 'Sendet eine E-Mail an einen oder mehrere Empfänger. Unterstützt HTML und Text-Inhalte.'
+    )]
+    public function __invoke(
         array $to,
         string $subject,
         string $body,
@@ -76,7 +74,7 @@ class EmailTool extends Tool
     }
 
     /**
-     * Sendet eine E-Mail mit Template
+     * Hilfsmethode: Sendet eine E-Mail mit Template (wird intern aufrufen)
      */
     public function sendTemplatedEmail(
         array $to,
@@ -86,51 +84,27 @@ class EmailTool extends Tool
         ?string $from = null
     ): array {
         try {
-            // Hier würde man normalerweise das Template rendern
-            // Für jetzt: Einfache Implementierung
             $body = $this->renderTemplate($templatePath, $templateData);
-
-            $email = (new Email())
-                ->from($from ?? $this->defaultFrom)
-                ->to(...$to)
-                ->subject($subject)
-                ->html($body);
-
-            $this->mailer->send($email);
-
-            return [
-                'status' => 'success',
-                'message' => 'E-Mail mit Template erfolgreich gesendet',
-                'to' => $to,
-                'subject' => $subject,
-                'template' => $templatePath,
-                'sent_at' => (new \DateTimeImmutable())->format(DATE_ATOM),
-            ];
+            return $this->__invoke($to, $subject, $body, $from, null, null, true);
         } catch (\Exception $e) {
             return [
                 'status' => 'error',
                 'message' => 'Fehler beim Senden der Template-E-Mail: ' . $e->getMessage(),
-                'to' => $to,
-                'subject' => $subject,
-                'template' => $templatePath,
             ];
         }
     }
 
     /**
-     * Liest E-Mails von einem IMAP-Server (Platzhalter)
-     * HINWEIS: Diese Funktion erfordert eine IMAP-Erweiterung und Konfiguration
+     * Hilfsmethode: Liest E-Mails (Platzhalter)
      */
     public function readEmails(
         string $mailbox = 'INBOX',
         int $limit = 10,
         bool $unreadOnly = true
     ): array {
-        // Platzhalter-Implementierung
-        // In einer echten Implementierung würde man hier eine IMAP-Verbindung herstellen
         return [
             'status' => 'warning',
-            'message' => 'IMAP-Funktionalität nicht implementiert. Bitte IMAP-Konfiguration hinzufügen.',
+            'message' => 'IMAP-Funktionalität nicht implementiert.',
             'mailbox' => $mailbox,
             'limit' => $limit,
             'unread_only' => $unreadOnly,
@@ -138,20 +112,17 @@ class EmailTool extends Tool
     }
 
     /**
-     * Sucht nach E-Mails (Platzhalter)
+     * Hilfsmethode: Sucht nach E-Mails (Platzhalter)
      */
     public function searchEmails(
         string $query,
         string $mailbox = 'INBOX',
         int $limit = 10
     ): array {
-        // Platzhalter-Implementierung
         return [
             'status' => 'warning',
             'message' => 'E-Mail-Suche nicht implementiert.',
             'query' => $query,
-            'mailbox' => $mailbox,
-            'limit' => $limit,
         ];
     }
 
@@ -160,13 +131,10 @@ class EmailTool extends Tool
      */
     private function renderTemplate(string $templatePath, array $data): string
     {
-        // Einfache Template-Engine für Platzhalter
         $body = file_get_contents($templatePath) ?? '';
-        
         foreach ($data as $key => $value) {
             $body = str_replace("{{ $key }}", $value, $body);
         }
-
         return $body;
     }
 }
