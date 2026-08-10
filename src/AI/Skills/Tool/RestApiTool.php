@@ -20,78 +20,37 @@ class RestApiTool
     }
 
     /**
-     * Führt eine GET-Anfrage aus
+     * Hauptmethode - API-Anfragen ausführen
      */
     #[AsTool(
-        name: 'api_get',
-        description: 'Führt eine HTTP GET-Anfrage an eine REST API aus.'
+        name: 'api_request',
+        description: 'Führt eine HTTP-Anfrage an eine REST API aus. Unterstützt GET, POST, PUT, DELETE, PATCH mit Authentifizierung.'
     )]
-    public function get(
+    public function __invoke(
+        string $method,
         string $url,
+        array $data = [],
         array $headers = [],
-        array $query = []
+        array $query = [],
+        string $authType = null,
+        string $token = null
     ): array {
-        return $this->request('GET', $url, $headers, $query);
-    }
+        // Authentifizierungs-Header hinzufügen
+        if ($authType && $token) {
+            switch (strtolower($authType)) {
+                case 'bearer':
+                    $headers['Authorization'] = 'Bearer ' . $token;
+                    break;
+                case 'basic':
+                    $headers['Authorization'] = 'Basic ' . base64_encode($token);
+                    break;
+                case 'api_key':
+                    $headers['X-API-Key'] = $token;
+                    break;
+            }
+        }
 
-    /**
-     * Führt eine POST-Anfrage aus
-     */
-    #[AsTool(
-        name: 'api_post',
-        description: 'Führt eine HTTP POST-Anfrage an eine REST API aus.'
-    )]
-    public function post(
-        string $url,
-        array $data = [],
-        array $headers = []
-    ): array {
-        return $this->request('POST', $url, $headers, [], $data);
-    }
-
-    /**
-     * Führt eine PUT-Anfrage aus
-     */
-    #[AsTool(
-        name: 'api_put',
-        description: 'Führt eine HTTP PUT-Anfrage an eine REST API aus.'
-    )]
-    public function put(
-        string $url,
-        array $data = [],
-        array $headers = []
-    ): array {
-        return $this->request('PUT', $url, $headers, [], $data);
-    }
-
-    /**
-     * Führt eine DELETE-Anfrage aus
-     */
-    #[AsTool(
-        name: 'api_delete',
-        description: 'Führt eine HTTP DELETE-Anfrage an eine REST API aus.'
-    )]
-    public function delete(
-        string $url,
-        array $headers = [],
-        array $query = []
-    ): array {
-        return $this->request('DELETE', $url, $headers, $query);
-    }
-
-    /**
-     * Führt eine PATCH-Anfrage aus
-     */
-    #[AsTool(
-        name: 'api_patch',
-        description: 'Führt eine HTTP PATCH-Anfrage an eine REST API aus.'
-    )]
-    public function patch(
-        string $url,
-        array $data = [],
-        array $headers = []
-    ): array {
-        return $this->request('PATCH', $url, $headers, [], $data);
+        return $this->request($method, $url, $headers, $query, $data);
     }
 
     /**
@@ -163,75 +122,8 @@ class RestApiTool
     }
 
     /**
-     * Führt eine Anfrage mit Authentifizierung aus
-     */
-    #[AsTool(
-        name: 'api_request_with_auth',
-        description: 'Führt eine HTTP-Anfrage mit Authentifizierung (Bearer Token, Basic Auth) aus.'
-    )]
-    public function requestWithAuth(
-        string $method,
-        string $url,
-        array $data = [],
-        array $headers = [],
-        string $authType = 'bearer',
-        string $token = null
-    ): array {
-        // Authentifizierungs-Header hinzufügen
-        switch (strtolower($authType)) {
-            case 'bearer':
-                $headers['Authorization'] = 'Bearer ' . $token;
-                break;
-            case 'basic':
-                $headers['Authorization'] = 'Basic ' . base64_encode($token);
-                break;
-            case 'api_key':
-                $headers['X-API-Key'] = $token;
-                break;
-        }
-
-        return $this->request($method, $url, $headers, [], $data);
-    }
-
-    /**
-     * Führt eine Anfrage mit OAuth Token aus
-     */
-    #[AsTool(
-        name: 'api_request_with_oauth',
-        description: 'Führt eine HTTP-Anfrage mit OAuth Access Token aus.'
-    )]
-    public function requestWithOAuth(
-        string $method,
-        string $url,
-        array $data = [],
-        array $headers = [],
-        string $accessToken
-    ): array {
-        $headers['Authorization'] = 'Bearer ' . $accessToken;
-        return $this->request($method, $url, $headers, [], $data);
-    }
-
-    /**
-     * Testet eine API-Verbindung
-     */
-    #[AsTool(
-        name: 'api_test_connection',
-        description: 'Testet die Verbindung zu einer REST API.'
-    )]
-    public function testConnection(
-        string $url,
-        array $headers = []
-    ): array {
-        return $this->request('GET', $url, $headers, []);
-    }
-
-    /**
      * Gibt die verfügbaren HTTP-Methoden zurück
      */
-    #[AsTool(
-        name: 'api_list_methods',
-        description: 'Listet alle verfügbaren HTTP-Methoden auf.'
-    )]
     public function listMethods(): array
     {
         return [
@@ -239,5 +131,13 @@ class RestApiTool
             'methods' => ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
             'description' => 'Verfügbare HTTP-Methoden für REST API-Anfragen',
         ];
+    }
+
+    /**
+     * Testet eine API-Verbindung
+     */
+    public function testConnection(string $url, array $headers = []): array
+    {
+        return $this->request('GET', $url, $headers, []);
     }
 }
