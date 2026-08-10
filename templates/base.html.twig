@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="de">
+<html lang="de" class="dark">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,90 +7,70 @@
     
     <!-- CSRF Token für AJAX-Anfragen -->
     <meta name="csrf-token" content="{{ csrf_token('') }}">
-
-    <!-- Tailwind CSS from CDN -->
-    <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- Optional: Custom Tailwind configuration -->
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        primary: '#4a6fa5',
-                        secondary: '#166088',
-                        accent: '#4fc3f7',
-                    }
-                }
-            }
-        }
-    </script>
-
-    <!-- Local CSS -->
+    <!-- Tailwind CSS (nur lokal, kein CDN) -->
     <link href="{{ asset('assets/styles/tailwind.css') }}" rel="stylesheet">
+    
+    <!-- Phosphor Icons -->
+    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    
+    <!-- Custom Styles (Glass-Panels, Scrollbar, etc.) -->
     <link href="{{ asset('assets/styles/app.css') }}" rel="stylesheet">
     
-    <!-- Custom CSS Variables -->
-    <style>
-        :root {
-            --primary-color: #4a6fa5;
-            --secondary-color: #166088;
-            --accent-color: #4fc3f7;
-        }
-    </style>
+    <!-- Theme Script (inline für schnelles Laden) -->
+    <script>
+        // Theme initialisieren (aus localStorage oder System-Präferenz)
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            if (savedTheme === 'light' || (!savedTheme && !prefersDark)) {
+                document.documentElement.classList.remove('dark');
+            }
+        })();
+    </script>
     
     {% block stylesheets %}{% endblock %}
 </head>
 
-<body class="bg-gray-100 font-sans leading-normal tracking-normal">
-    <!-- Notification Container for Tool Approval -->
-    <div id="notification-container" class="fixed top-4 right-4 z-50 w-80"></div>
-
-    <!-- Header -->
-    <header class="bg-secondary text-white shadow-md">
-        <div class="container mx-auto px-6 py-3">
-            <div class="flex justify-between items-center">
-                <h1 class="text-2xl font-bold">EVIE</h1>
-                <nav class="flex gap-4">
-                    <a href="{{ path('app_home') }}" class="px-4 py-2 rounded hover:bg-white/20 transition">Home</a>
-                    <a href="{{ path('frontend_agent_dialog') }}" class="px-4 py-2 rounded hover:bg-white/20 transition">AI Dialog</a>
-                    <a href="{{ path('frontend_agent_history') }}" class="px-4 py-2 rounded hover:bg-white/20 transition">Verlauf</a>
-                    <a href="{{ path('frontend_tools_pending') }}" class="px-4 py-2 rounded hover:bg-white/20 transition">Tools</a>
-                </nav>
-            </div>
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-300 
+       font-sans w-screen overflow-hidden flex selection:bg-primary selection:text-white 
+       relative transition-colors duration-300">
+    
+    <!-- Hintergrund-Effekte -->
+    {% include 'components/_background_effects.html.twig' %}
+    
+    <!-- Mobile Sidebar Backdrop -->
+    <div id="sidebar-backdrop" 
+         class="fixed inset-0 bg-slate-900/60 z-40 hidden opacity-0 
+                transition-opacity duration-300 backdrop-blur-sm" 
+         onclick="toggleSidebar()"></div>
+    
+    <!-- Sidebar Navigation -->
+    {% include 'components/_sidebar.html.twig' %}
+    
+    <!-- Main Content Area -->
+    <main class="flex-1 flex flex-col h-full z-10 relative min-w-0">
+        <!-- Header -->
+        {% include 'components/_header.html.twig' %}
+        
+        <!-- Dynamic View Container -->
+        <div class="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 relative">
+            {% block body %}{% endblock %}
         </div>
-    </header>
-
-    <!-- Main Content -->
-    <main class="container mx-auto px-6 py-8 min-h-[calc(100vh-120px)]">
-        {% block body %}{% endblock %}
     </main>
-
-    <!-- Footer -->
-    <footer class="bg-secondary text-white text-center py-4 mt-8">
-        <p>&copy; {{ 'now'|date('Y') }} - EVIE AI Agent System</p>
-    </footer>
-
-    <!-- Spinner Animation (for buttons) -->
-    <style>
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-        .spinner {
-            display: inline-block;
-            width: 16px;
-            height: 16px;
-            border: 2px solid rgba(255, 255, 255, 0.3);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 1s ease-in-out infinite;
-        }
-    </style>
-
+    
+    <!-- Toast Container -->
+    <div id="toast-container" 
+         class="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[110] 
+                flex flex-col gap-2 pointer-events-none w-max"></div>
+    
+    <!-- Modal Container -->
+    {% include 'components/_modal.html.twig' %}
+    
     <!-- JavaScript -->
     {% block javascripts %}
-        <!-- Load app.js for chat functionality -->
+        <script src="{{ asset('assets/scripts/theme.js') }}"></script>
+        <script src="{{ asset('assets/scripts/toast.js') }}"></script>
         <script src="{{ asset('assets/scripts/app.js') }}"></script>
     {% endblock %}
 </body>
