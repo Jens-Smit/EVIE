@@ -75,13 +75,13 @@ services:
         arguments:
             $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
 
-    # Dynamic Tool Factory
+    # Dynamic Tool Factory - FIXED: removed $toolRegistry, uses $dynamicSkillRegistry
     App\AI\Skills\Tool\DynamicToolFactory:
         arguments:
             $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
             $logger: '@logger'
-            $toolRegistry: '@App\AI\Skills\Tool\ToolRegistry'
-            $securityGuard: '@App\AI\Security\SecurityGuard'
+            $subAgentFactory: '@App\AI\Agent\SubAgentFactory'
+            $dynamicSkillRegistry: '@App\AI\Skills\DynamicSkillRegistry'
 
     # Tool Registry
     App\AI\Skills\Tool\ToolRegistry: ~
