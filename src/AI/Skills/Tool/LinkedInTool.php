@@ -8,13 +8,8 @@ use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 /**
  * Tool für die Interaktion mit der LinkedIn API.
- * Ermöglicht das Abrufen von Profilen, Posts und das Senden von Nachrichten.
- * 
- * HINWEIS: Benötigt LinkedIn API-Zugang (OAuth 2.0)
- * Konfiguration über Umgebungsvariablen:
- * - LINKEDIN_API_TOKEN: Access Token für die LinkedIn API
+ * Ermöglicht das Abrufen von Profilen und das Senden von Nachrichten.
  */
-#[AsTool]
 class LinkedInTool
 {
     public function __construct(
@@ -24,19 +19,47 @@ class LinkedInTool
     }
 
     /**
-     * Ruft ein LinkedIn-Profil ab
+     * Hauptmethode - LinkedIn-Aktionen ausführen
      */
     #[AsTool(
-        name: 'get_linkedin_profile',
-        description: 'Ruft ein LinkedIn-Profil anhand der Profile-ID oder URL ab.'
+        name: 'linkedin_action',
+        description: 'Führt LinkedIn-Aktionen aus: Profil abrufen, Nachrichten senden, Profile suchen'
     )]
+    public function __invoke(
+        string $action,
+        array $parameters = []
+    ): array {
+        switch ($action) {
+            case 'get_profile':
+                return $this->getProfile($parameters['profileIdOrUrl'] ?? '');
+            case 'search_profiles':
+                return $this->searchProfiles(
+                    $parameters['query'] ?? '',
+                    $parameters['limit'] ?? 10
+                );
+            case 'send_message':
+                return $this->sendMessage(
+                    $parameters['recipientId'] ?? '',
+                    $parameters['subject'] ?? '',
+                    $parameters['message'] ?? ''
+                );
+            default:
+                return [
+                    'status' => 'error',
+                    'message' => 'Unbekannte LinkedIn-Aktion: ' . $action,
+                    'available_actions' => ['get_profile', 'search_profiles', 'send_message'],
+                ];
+        }
+    }
+
+    /**
+     * Ruft ein LinkedIn-Profil ab
+     */
     public function getProfile(string $profileIdOrUrl): array
     {
         try {
-            // Extrahiere Profile-ID aus URL
             $profileId = $this->extractProfileId($profileIdOrUrl);
             
-            // LinkedIn API aufrufen
             $response = $this->httpClient->request('GET', 
                 "https://api.linkedin.com/v2/people/~:(id,firstName,lastName,profilePicture)",
                 [
@@ -67,14 +90,8 @@ class LinkedInTool
     /**
      * Sucht nach LinkedIn-Profilen
      */
-    #[AsTool(
-        name: 'search_linkedin_profiles',
-        description: 'Durchsucht LinkedIn nach Profilen basierend auf Suchkriterien.'
-    )]
-    public function searchProfiles(
-        string $query,
-        int $limit = 10
-    ): array {
+    public function searchProfiles(string $query, int $limit = 10): array
+    {
         try {
             $response = $this->httpClient->request('GET',
                 "https://api.linkedin.com/v2/people.search",
@@ -112,15 +129,8 @@ class LinkedInTool
     /**
      * Sendet eine LinkedIn-Nachricht
      */
-    #[AsTool(
-        name: 'send_linkedin_message',
-        description: 'Sendet eine Nachricht an ein LinkedIn-Profil.'
-    )]
-    public function sendMessage(
-        string $recipientId,
-        string $subject,
-        string $message
-    ): array {
+    public function sendMessage(string $recipientId, string $subject, string $message): array
+    {
         try {
             $response = $this->httpClient->request('POST',
                 "https://api.linkedin.com/v2/messaging/conversations",
@@ -167,16 +177,12 @@ class LinkedInTool
      */
     private function extractProfileId(string $profileIdOrUrl): string
     {
-        // Prüfe, ob es bereits eine ID ist
         if (preg_match('/^[a-zA-Z0-9-]+$/', $profileIdOrUrl)) {
             return $profileIdOrUrl;
         }
-
-        // Extrahiere aus URL
         if (preg_match('/linkedin\.com\/(in|profile)\/([a-zA-Z0-9-]+)/', $profileIdOrUrl, $matches)) {
             return $matches[2];
         }
-
         return $profileIdOrUrl;
     }
 }
