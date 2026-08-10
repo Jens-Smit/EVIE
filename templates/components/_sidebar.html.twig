@@ -1,0 +1,126 @@
+<aside id="sidebar"
+       class="fixed md:relative inset-y-0 left-0 z-50 w-72 md:w-64
+              transform -translate-x-full md:translate-x-0 transition-transform
+              duration-300 ease-in-out glass-panel flex flex-col justify-between
+              shadow-2xl md:shadow-none bg-white/95 dark:bg-slate-900/95
+              md:bg-transparent dark:md:bg-transparent">
+    
+    <div class="overflow-y-auto overflow-x-hidden flex-1 no-scrollbar">
+        {# Logo & Header #}
+        <div class="p-5 md:p-6 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary
+                    flex items-center justify-center shadow-lg shadow-primary/30 shrink-0">
+                    <i class="ph ph-brain text-white text-2xl"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold text-slate-900 dark:text-white tracking-wide">EVIE</h1>
+                    <p class="text-xs text-slate-500 dark:text-slate-400">AI Agent System</p>
+                </div>
+            </div>
+            {# Close Button (Mobile) #}
+            <button onclick="toggleSidebar()"
+                    class="md:hidden text-slate-500 dark:text-slate-400
+                           hover:text-slate-900 dark:hover:text-white p-2 rounded-lg
+                           bg-slate-100 dark:bg-slate-800/50">
+                <i class="ph ph-x text-xl"></i>
+            </button>
+        </div>
+        
+        {# Navigation Menu #}
+        <nav class="mt-2 px-3 md:px-4 space-y-1.5" id="nav-menu">
+            <a href="{{ path('app_home') }}"
+               class="nav-btn {% if app.request.route == 'app_home' %}active{% else %}inactive{% endif %}
+                      border w-full flex items-center gap-3 px-4 py-3 rounded-xl
+                      transition-all active:scale-95 font-medium">
+                <i class="ph ph-squares-four text-xl"></i>
+                <span>Dashboard</span>
+            </a>
+
+            <a href="{{ path('frontend_agent_dialog') }}"
+               class="nav-btn {% if app.request.route == 'frontend_agent_dialog' %}active{% else %}inactive{% endif %}
+                      border w-full flex items-center gap-3 px-4 py-3 rounded-xl
+                      transition-all active:scale-95 font-medium">
+                <i class="ph ph-chats-teardrop text-xl"></i>
+                <span>Agent Chat</span>
+                <span class="ml-auto bg-primary/20 text-primary text-[10px] font-bold
+                             px-2 py-0.5 rounded-full">3</span>
+            </a>
+
+            <a href="#"
+               class="nav-btn inactive border w-full flex items-center gap-3 px-4 py-3 rounded-xl
+                      transition-all active:scale-95 font-medium">
+                <i class="ph ph-users-three text-xl"></i>
+                <span>Sub-Agenten</span>
+            </a>
+
+            <a href="{{ path('frontend_tools_pending') }}"
+               class="nav-btn {% if app.request.route == 'frontend_tools_pending' %}active{% else %}inactive{% endif %}
+                      border w-full flex items-center gap-3 px-4 py-3 rounded-xl
+                      transition-all active:scale-95 font-medium">
+                <i class="ph ph-check-square-offset text-xl"></i>
+                <span>Freigaben</span>
+                <span class="ml-auto bg-orange-500/20 text-orange-600 dark:text-orange-400
+                             text-[10px] font-bold px-2 py-0.5 rounded-full">5</span>
+            </a>
+
+            <a href="#"
+               class="nav-btn inactive border w-full flex items-center gap-3 px-4 py-3 rounded-xl
+                      transition-all active:scale-95 font-medium">
+                <i class="ph ph-folders text-xl"></i>
+                <span>Dokumente</span>
+            </a>
+
+            <a href="#"
+               class="nav-btn inactive border w-full flex items-center gap-3 px-4 py-3 rounded-xl
+                      transition-all active:scale-95 font-medium">
+                <i class="ph ph-wrench text-xl"></i>
+                <span>Fähigkeiten</span>
+            </a>
+
+            <a href="#"
+               class="nav-btn inactive border w-full flex items-center gap-3 px-4 py-3 rounded-xl
+                      transition-all active:scale-95 font-medium">
+                <i class="ph ph-clock-counter-clockwise text-xl"></i>
+                <span>Verlauf</span>
+            </a>
+        </nav>
+    </div>
+    
+    {# Footer (Ressourcen, Einstellungen, User) #}
+    <div class="p-4 shrink-0 bg-slate-100/50 dark:bg-slate-900/50
+                md:bg-transparent mt-auto border-t border-slate-200 dark:border-transparent">
+        {# Ressourcen-Indikator #}
+        <div class="bg-white dark:bg-slate-800/50 rounded-xl p-3 md:p-4
+                    border border-slate-200 dark:border-slate-700/50 mb-3 md:mb-4
+                    shadow-sm dark:shadow-none">
+            <div class="flex items-center justify-between mb-2">
+                <span class="text-xs text-slate-500 dark:text-slate-400">Ressourcen</span>
+                <span class="text-xs text-emerald-600 dark:text-emerald-400">Normal</span>
+            </div>
+            <div class="w-full bg-slate-200 dark:bg-slate-900 rounded-full h-1.5 mb-1">
+                <div class="bg-primary h-1.5 rounded-full" style="width: 45%"></div>
+            </div>
+        </div>
+        
+        {# Einstellungen #}
+        <a href="#"
+           class="nav-btn inactive border w-full flex items-center gap-3 px-4 py-3 rounded-xl
+                  transition-all active:scale-95 font-medium">
+            <i class="ph ph-gear text-xl"></i>
+            <span>Einstellungen</span>
+        </a>
+        
+        {# User Profile (Mock-Daten) #}
+        <div class="mt-2 flex items-center gap-3 px-4 py-3
+                    border-t border-slate-200 dark:border-slate-700/50">
+            <div class="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center shrink-0">
+                <i class="ph ph-user text-primary"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-medium text-slate-900 dark:text-white truncate">C. Schmidt</p>
+                <p class="text-xs text-slate-500 dark:text-slate-500 truncate">CEO</p>
+            </div>
+        </div>
+    </div>
+</aside>
