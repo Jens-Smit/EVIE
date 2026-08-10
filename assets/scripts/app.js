@@ -1,518 +1,336 @@
-/**
- * EVIE - AI Agent Chat Application
- */
+// Haupt-JavaScript-Datei für EVIE Frontend
 
-// Global notification container reference
-let notificationContainer = null;
-
+// DOM Content Loaded
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initAll);
+    document.addEventListener('DOMContentLoaded', init);
 } else {
-    initAll();
+    init();
 }
 
-/**
- * Initialize all functionality
- */
-function initAll() {
-    // Initialize notification container
-    notificationContainer = document.getElementById('notification-container');
-    if (!notificationContainer) {
-        notificationContainer = createNotificationContainer();
-    }
-    
-    // Initialize chat if on dialog page
-    initChat();
-    
-    // Initialize tool approval buttons if on pending tools page
+function init() {
+    // Initialisiere alle Module
+    initTheme();
+    initSidebar();
+    initModal();
+    initChatForm();
     initToolApproval();
+    initNavigation();
 }
 
-/**
- * Initialize chat functionality
- */
-function initChat() {
-    const chatForm = document.getElementById('chat-form');
-    const chatContainer = document.getElementById('chat-container');
-    const promptInput = document.getElementById('prompt');
-    
-    if (!chatForm || !chatContainer) return;
-    
-    chatForm.addEventListener('submit', handleFormSubmit);
-    scrollToBottom(chatContainer);
-    
-    if (promptInput) promptInput.focus();
-}
-
-/**
- * Initialize tool approval functionality
- */
-function initToolApproval() {
-    // Approve buttons
-    document.querySelectorAll('.approve-tool').forEach(button => {
-        button.addEventListener('click', function() {
-            const toolId = this.getAttribute('data-tool-id');
-            const buttonContainer = this.closest('.bg-gray-50, .tool-item');
-            approveTool(toolId, buttonContainer);
-        });
-    });
-    
-    // Reject buttons
-    document.querySelectorAll('.reject-tool').forEach(button => {
-        button.addEventListener('click', function() {
-            const toolId = this.getAttribute('data-tool-id');
-            const buttonContainer = this.closest('.bg-gray-50, .tool-item');
-            rejectTool(toolId, buttonContainer);
-        });
-    });
-}
-
-/**
- * Behandelt das Senden des Formulars
- */
-function handleFormSubmit(event) {
-    event.preventDefault();
-    
-    const form = event.target;
-    const chatContainer = document.getElementById('chat-container');
-    const promptInput = document.getElementById('prompt');
-    const submitButton = form.querySelector('button[type="submit"]');
-    
-    disableButton(submitButton);
-    const message = promptInput.value.trim();
-    
-    if (!message) {
-        enableButton(submitButton);
-        return;
-    }
-    
-    addMessageToChat(chatContainer, message, 'user');
-    promptInput.value = '';
-    scrollToBottom(chatContainer);
-    sendMessageToAgent(form, chatContainer, submitButton);
-}
-
-/**
- * Sendet die Nachricht an den AI-Agenten
- */
-function sendMessageToAgent(form, chatContainer, submitButton) {
-    const formData = new FormData(form);
-    const endpoint = form.action;
-    const method = form.method;
-    
-    const loadingMessage = createLoadingMessage();
-    chatContainer.appendChild(loadingMessage);
-    scrollToBottom(chatContainer);
-    
-    fetch(endpoint, {
-        method: method,
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json',
-        },
-        body: formData
-    })
-    .then(response => {
-        if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
-        return response.json();
-    })
-    .then(data => {
-        chatContainer.removeChild(loadingMessage);
-        handleAgentResponse(data, chatContainer);
-        enableButton(submitButton);
-    })
-    .catch(error => {
-        chatContainer.removeChild(loadingMessage);
-        const errorMessage = createErrorMessage(error.message);
-        chatContainer.appendChild(errorMessage);
-        scrollToBottom(chatContainer);
-        enableButton(submitButton);
-        console.error('EVIE Chat Error:', error);
-    });
-}
-
-/**
- * Behandelt die Antwort des Agenten
- */
-function handleAgentResponse(data, chatContainer) {
-    let responseText = '';
-    
-    if (data.requires_tool_approval) {
-        responseText = data.response;
-        const approvalButton = createApprovalButton(data);
-        chatContainer.appendChild(approvalButton);
-    } else {
-        responseText = data.response || 'Keine Antwort erhalten.';
-    }
-    
-    addMessageToChat(chatContainer, responseText, 'agent');
-    scrollToBottom(chatContainer);
-    applyFormatting(chatContainer);
-}
-
-/**
- * Erstellt einen Genehmigungs-Button für Tools
- */
-function createApprovalButton(data) {
+// Hilfsfunktion: HTML escapen
+function escapeHtml(text) {
     const div = document.createElement('div');
-    div.className = 'flex gap-2 justify-center my-2';
-    
-    // Extrahiere Tool-ID aus der Antwort
-    const toolMatch = data.response.match(/\/api\/tools\/(\d+)\/approve/);
-    const toolId = toolMatch ? toolMatch[1] : null;
-    
-    if (toolId) {
-        const approveButton = document.createElement('button');
-        approveButton.className = 'bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition';
-        approveButton.innerHTML = '<span>👍 Tool freigeben</span>';
-        approveButton.addEventListener('click', () => approveTool(toolId, div));
-        
-        const rejectButton = document.createElement('button');
-        rejectButton.className = 'bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition';
-        rejectButton.innerHTML = '<span>👎 Tool ablehnen</span>';
-        rejectButton.addEventListener('click', () => rejectTool(toolId, div));
-        
-        div.appendChild(approveButton);
-        div.appendChild(rejectButton);
-    }
-    
-    return div;
+    div.textContent = text;
+    return div.innerHTML;
 }
 
-/**
- * Genehmigt ein Tool
- */
-function approveTool(toolId, buttonContainer) {
-    if (!buttonContainer) {
-        console.error('Button container not found');
-        return;
-    }
-    
-    disableButton(buttonContainer.querySelector('button'));
-    
-    fetch(`/api/tools/${toolId}/approve`, {
-        method: 'POST',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json',
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success || data.status === 'success') {
-            showNotification('Tool erfolgreich genehmigt!', 'success');
-            if (buttonContainer && buttonContainer.remove) {
-                buttonContainer.remove();
-            }
-        } else {
-            showNotification('Fehler beim Genehmigen des Tools', 'error');
-        }
-    })
-    .catch(error => {
-        showNotification('Fehler: ' + error.message, 'error');
-        console.error('Approval Error:', error);
-    });
-}
-
-/**
- * Lehnt ein Tool ab
- */
-function rejectTool(toolId, buttonContainer) {
-    if (!buttonContainer) {
-        console.error('Button container not found');
-        return;
-    }
-    
-    disableButton(buttonContainer.querySelector('button'));
-    
-    fetch(`/api/tools/${toolId}/reject`, {
-        method: 'POST',
-        headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'Accept': 'application/json',
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success || data.status === 'success') {
-            showNotification('Tool erfolgreich abgelehnt', 'info');
-            if (buttonContainer && buttonContainer.remove) {
-                buttonContainer.remove();
-            }
-        } else {
-            showNotification('Fehler beim Ablehnen des Tools', 'error');
-        }
-    })
-    .catch(error => {
-        showNotification('Fehler: ' + error.message, 'error');
-        console.error('Rejection Error:', error);
-    });
-}
-
-/**
- * Fügt eine Nachricht zum Chat hinzu
- */
-function addMessageToChat(container, content, role) {
-    if (!container) {
-        console.error('Chat container not found');
-        return null;
-    }
-    
-    const messageDiv = document.createElement('div');
-    messageDiv.className = `chat-message ${role}`;
-    
-    const bubbleDiv = document.createElement('div');
-    bubbleDiv.className = `message-bubble ${role}`;
-    
-    if (role === 'agent') {
-        bubbleDiv.innerHTML = formatMessage(content);
-    } else {
-        bubbleDiv.textContent = content;
-    }
-    
-    messageDiv.appendChild(bubbleDiv);
-    container.appendChild(messageDiv);
-    
-    return messageDiv;
-}
-
-/**
- * Formatiert eine Nachricht
- */
-function formatMessage(content) {
-    if (!content) return '';
-    
+// Hilfsfunktion: Prüfe, ob ein String JSON ist
+function isJson(str) {
     try {
-        const data = JSON.parse(content);
-        if (data && typeof data === 'object') {
-            return formatJsonResponse(data);
+        JSON.parse(str);
+        return true;
+    } catch {
+        return false;
+    }
+}
+
+// Hilfsfunktion: Formatiere die Agenten-Antwort
+function formatAgentResponse(response) {
+    if (!response) {
+        return '<p>Keine Antwort erhalten</p>';
+    }
+
+    // 1. JSON-Daten
+    if (isJson(response)) {
+        try {
+            const data = JSON.parse(response);
+            if (Array.isArray(data) || (typeof data === 'object' && data !== null)) {
+                return `<pre class="language-json"><code>${escapeHtml(JSON.stringify(data, null, 2))}</code></pre>`;
+            }
+        } catch (e) {
+            // Kein gültiges JSON, weiter mit Markdown
         }
-    } catch (e) {
-        // Kein JSON, normal formatieren
     }
-    
+
+    // 2. Markdown (inkl. Code-Blöcke, Tabellen, Listen)
     if (typeof marked !== 'undefined') {
-        return marked.parse(content);
+        return marked.parse(response);
     }
-    
-    return content;
+
+    // 3. Fallback: Einfacher Text
+    return `<p>${escapeHtml(response)}</p>`;
 }
 
-/**
- * Formatiert eine JSON-Antwort
- */
-function formatJsonResponse(data) {
-    const container = document.createElement('div');
-    container.className = 'markdown-body';
+// Mobile Sidebar Logic
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    const isClosed = sidebar.classList.contains('-translate-x-full');
     
-    if (data.type === 'website_research_result') {
-        container.innerHTML = `
-            <h3>🌐 Webseiten-Recherche: ${data.url || 'Unbekannte URL'}</h3>
-            <div class="mt-2">
-                <h4 class="font-bold">📋 Zusammenfassung:</h4>
-                <p>${data.zusammenfassung || data.summary || 'Keine Zusammenfassung verfügbar'}</p>
-            </div>
-            ${data.impressum ? `
-            <div class="mt-4">
-                <h4 class="font-bold">📄 Impressum:</h4>
-                <pre class="bg-gray-100 p-2 rounded">${JSON.stringify(data.impressum, null, 2)}</pre>
-            </div>
-            ` : ''}
-            ${data.kontakte && data.kontakte.length > 0 ? `
-            <div class="mt-4">
-                <h4 class="font-bold">📞 Kontakte:</h4>
-                <ul class="list-disc list-inside">
-                    ${data.kontakte.map(contact => `
-                        <li>${contact.name || 'Unbekannt'}: ${contact.email || ''} ${contact.telefon ? `(${contact.telefon})` : ''}</li>
-                    `).join('')}
-                </ul>
-            </div>
-            ` : ''}
-            ${data.geschäftszweck ? `
-            <div class="mt-4">
-                <h4 class="font-bold">🎯 Geschäftszweck:</h4>
-                <p>${data.geschäftszweck}</p>
-            </div>
-            ` : ''}
-            ${data.standort ? `
-            <div class="mt-4">
-                <h4 class="font-bold">📍 Standort:</h4>
-                <p>${data.standort}</p>
-            </div>
-            ` : ''}
-            ${data.branche ? `
-            <div class="mt-4">
-                <h4 class="font-bold">🏢 Branche:</h4>
-                <p>${data.branche}</p>
-            </div>
-            ` : ''}
-        `;
-    } else if (data.type === 'error') {
-        container.innerHTML = `
-            <div class="bg-red-50 border-l-4 border-red-500 p-4">
-                <h4 class="font-bold text-red-700">❌ Fehler:</h4>
-                <p class="text-red-600">${data.error_message || data.message || 'Unbekannter Fehler'}</p>
-            </div>
-        `;
-    } else if (data.type === 'dialog') {
-        container.textContent = data.content || data.message || content;
+    if (isClosed) {
+        sidebar.classList.remove('-translate-x-full');
+        backdrop.classList.remove('hidden');
+        setTimeout(() => backdrop.classList.remove('opacity-0'), 10);
     } else {
-        container.innerHTML = `<pre class="bg-gray-100 p-2 rounded">${JSON.stringify(data, null, 2)}</pre>`;
+        sidebar.classList.add('-translate-x-full');
+        backdrop.classList.add('opacity-0');
+        setTimeout(() => backdrop.classList.add('hidden'), 300);
     }
-    
-    return container.innerHTML;
 }
 
-/**
- * Wendet Formatierung auf alle Nachrichten an
- */
-function applyFormatting(container) {
-    if (!container) return;
+// Modal Logic
+function openModal(title, icon, content) {
+    const modal = document.getElementById('global-modal');
+    const container = document.getElementById('modal-container');
     
-    const messages = container.querySelectorAll('.message-bubble.agent');
-    messages.forEach(bubble => {
-        if (!bubble.querySelector('.markdown-body') && bubble.textContent) {
-            bubble.innerHTML = formatMessage(bubble.textContent);
+    document.getElementById('modal-title-text').textContent = title;
+    const iconEl = document.getElementById('modal-icon');
+    iconEl.className = `ph ${icon}`;
+    document.getElementById('modal-body').innerHTML = content;
+    
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        container.classList.remove('scale-95');
+        container.classList.add('scale-100');
+    }, 10);
+}
+
+function closeModal() {
+    const modal = document.getElementById('global-modal');
+    const container = document.getElementById('modal-container');
+    
+    modal.classList.add('opacity-0');
+    container.classList.remove('scale-100');
+    container.classList.add('scale-95');
+    
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+    }, 300);
+}
+
+// Initialize Sidebar
+function initSidebar() {
+    // Window Resize Handler
+    window.addEventListener('resize', () => {
+        if (window.innerWidth >= 768) {
+            document.getElementById('sidebar-backdrop')?.classList.add('hidden', 'opacity-0');
+            document.getElementById('sidebar')?.classList.remove('-translate-x-full');
         }
     });
 }
 
-/**
- * Erstellt eine Lade-Nachricht
- */
-function createLoadingMessage() {
-    const div = document.createElement('div');
-    div.className = 'chat-message system';
-    
-    const bubble = document.createElement('div');
-    bubble.className = 'message-bubble system';
-    bubble.innerHTML = '<span class="spinner"></span> Warte auf Antwort...';
-    
-    div.appendChild(bubble);
-    return div;
+// Initialize Modal
+function initModal() {
+    // Close Modal on Backdrop Click
+    document.getElementById('global-modal')?.addEventListener('click', (e) => {
+        if (e.target.id === 'global-modal') {
+            closeModal();
+        }
+    });
+
+    // Close Modal on ESC Key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeModal();
+        }
+    });
 }
 
-/**
- * Erstellt eine Fehler-Nachricht
- */
-function createErrorMessage(message) {
-    const div = document.createElement('div');
-    div.className = 'chat-message system';
-    
-    const bubble = document.createElement('div');
-    bubble.className = 'message-bubble system';
-    bubble.innerHTML = `<span>❌ Fehler: ${message}</span>`;
-    
-    div.appendChild(bubble);
-    return div;
-}
+// Chat-Formular für AI-Agenten
+function initChatForm() {
+    const chatForm = document.getElementById('chat-form');
+    if (!chatForm) return;
 
-/**
- * Zeigt eine Benachrichtigung an
- */
-function showNotification(message, type = 'info') {
-    // Ensure notification container exists
-    if (!notificationContainer) {
-        notificationContainer = document.getElementById('notification-container');
-    }
-    if (!notificationContainer) {
-        notificationContainer = createNotificationContainer();
-    }
-    
-    const notification = document.createElement('div');
-    notification.className = `notification notification-${type} p-4 mb-2 rounded-lg shadow-lg`;
-    notification.innerHTML = `
-        <div class="flex items-center gap-2">
-            <span>${getNotificationIcon(type)}</span>
-            <span>${message}</span>
-            <button class="ml-auto text-xl" onclick="this.parentElement.parentElement.remove()">&times;</button>
-        </div>
-    `;
-    
-    // Set styles based on type
-    if (type === 'success') {
-        notification.style.backgroundColor = '#dcfce7';
-        notification.style.borderLeft = '4px solid #16a34a';
-        notification.style.color = '#15803d';
-    } else if (type === 'error') {
-        notification.style.backgroundColor = '#fef2f2';
-        notification.style.borderLeft = '4px solid #dc2626';
-        notification.style.color = '#b91c1c';
-    } else if (type === 'info') {
-        notification.style.backgroundColor = '#dbeafe';
-        notification.style.borderLeft = '4px solid #2563eb';
-        notification.style.color = '#1d4ed8';
-    }
-    
-    // Append notification to container
-    if (notificationContainer) {
-        notificationContainer.appendChild(notification);
+    // Verhindere doppelte Anfragen durch eine Request-ID
+    let lastRequestId = null;
+
+    chatForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
         
-        // Remove after 5 seconds
-        setTimeout(() => {
-            if (notification && notification.parentNode) {
-                notification.remove();
+        // Generiere eine eindeutige Request-ID, um Duplikate zu verhindern
+        const requestId = Date.now().toString() + Math.random().toString(36).substring(2);
+        if (lastRequestId === requestId) {
+            console.log('Doppelte Anfrage erkannt, ignoriere.');
+            return;
+        }
+        lastRequestId = requestId;
+
+        const formData = new FormData(chatForm);
+        const prompt = formData.get('prompt');
+        const userIdentifier = formData.get('user_identifier') || 'default_user';
+        
+        if (!prompt) {
+            console.error('Keine Nachricht eingegeben.');
+            return;
+        }
+
+        // Zeige User-Nachricht sofort an
+        const chatContainer = document.getElementById('chat-container');
+        const userMessage = document.createElement('div');
+        userMessage.className = 'chat-message user';
+        userMessage.innerHTML = `
+            <div class="message-bubble user">
+                ${escapeHtml(prompt)}
+            </div>
+        `;
+        chatContainer.appendChild(userMessage);
+        chatContainer.scrollTop = chatContainer.scrollHeight;
+
+        // Deaktiviere Button während des Ladens
+        const submitBtn = chatForm.querySelector('button[type="submit"]');
+        const originalBtnText = submitBtn.innerHTML;
+        submitBtn.disabled = true;
+        submitBtn.innerHTML = '<span class="spinner"></span> Warte...';
+
+        try {
+            // Sende die Anfrage als JSON an die API
+            const response = await fetch(chatForm.action, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-Request-ID': requestId,
+                },
+                body: JSON.stringify({
+                    message: prompt,
+                    user_identifier: userIdentifier,
+                }),
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
-        }, 5000);
-    } else {
-        console.error('Notification container not found');
-    }
+
+            const data = await response.json();
+            
+            // Zeige Agenten-Antwort an
+            const agentMessage = document.createElement('div');
+            agentMessage.className = 'chat-message agent';
+            agentMessage.innerHTML = `
+                <div class="message-bubble agent">
+                    ${formatAgentResponse(data.response || 'Keine Antwort erhalten')}
+                </div>
+            `;
+            chatContainer.appendChild(agentMessage);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+
+            // Highlight.js nach dem Rendern ausführen
+            if (typeof hljs !== 'undefined') {
+                hljs.highlightAll();
+            }
+
+        } catch (error) {
+            console.error('Fehler beim Senden der Nachricht:', error);
+            const errorMessage = document.createElement('div');
+            errorMessage.className = 'chat-message system';
+            errorMessage.innerHTML = `
+                <div class="message-bubble system">
+                    Fehler: ${escapeHtml(error.message)}
+                </div>
+            `;
+            chatContainer.appendChild(errorMessage);
+            chatContainer.scrollTop = chatContainer.scrollHeight;
+        } finally {
+            // Reaktiviere Button
+            submitBtn.disabled = false;
+            submitBtn.innerHTML = originalBtnText;
+            chatForm.reset();
+            lastRequestId = null; // Zurücksetzen für nächste Anfrage
+        }
+    });
 }
 
-/**
- * Erstellt den Benachrichtigungs-Container
- */
-function createNotificationContainer() {
-    const container = document.createElement('div');
-    container.id = 'notification-container';
-    container.className = 'fixed top-4 right-4 z-50 w-80';
-    document.body.appendChild(container);
-    return container;
+// Tool-Freigabe-Funktionalität
+function initToolApproval() {
+    const approveButtons = document.querySelectorAll('.approve-tool');
+    const rejectButtons = document.querySelectorAll('.reject-tool');
+
+    approveButtons.forEach(button => {
+        button.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const toolId = button.dataset.toolId;
+            await handleToolAction(toolId, 'approve', button);
+        });
+    });
+
+    rejectButtons.forEach(button => {
+        button.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const toolId = button.dataset.toolId;
+            await handleToolAction(toolId, 'reject', button);
+        });
+    });
 }
 
-/**
- * Gibt das passende Icon für Benachrichtigungen zurück
- */
-function getNotificationIcon(type) {
-    const icons = {
-        success: '✅',
-        error: '❌',
-        info: 'ℹ️',
-        warning: '⚠️'
-    };
-    return icons[type] || 'ℹ️';
-}
+async function handleToolAction(toolId, action, button) {
+    const originalBtnText = button.innerHTML;
+    button.disabled = true;
+    button.innerHTML = '<span class="spinner"></span> Verarbeite...';
 
-/**
- * Scrollt zum unteren Ende des Containers
- */
-function scrollToBottom(container) {
-    if (container) {
-        container.scrollTop = container.scrollHeight;
-    }
-}
+    try {
+        // Hole den CSRF-Token aus dem Meta-Tag
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
 
-/**
- * Deaktiviert einen Button
- */
-function disableButton(button) {
-    if (button) {
-        button.disabled = true;
-        button.classList.add('opacity-50', 'cursor-not-allowed');
-    }
-}
+        const response = await fetch(`/api/tools/${toolId}/${action}`, {
+            method: 'POST',
+            headers: {
+                'Accept': 'application/json',
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': csrfToken,
+            },
+        });
 
-/**
- * Aktiviert einen Button
- */
-function enableButton(button) {
-    if (button) {
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Zeige Erfolgmeldung
+        const alert = document.createElement('div');
+        alert.className = `alert alert-success p-4 rounded-lg bg-green-100 text-green-800`;
+        alert.textContent = data.message || `Tool erfolgreich ${action === 'approve' ? 'freigegeben' : 'abgelehnt'}`;
+
+        const container = button.closest('.card') || document.querySelector('.main-container');
+        if (container) {
+            container.prepend(alert);
+        }
+
+        // Entferne die Tool-Karte nach erfolgreicher Aktion
+        if (action === 'approve' || action === 'reject') {
+            setTimeout(() => {
+                const card = button.closest('.card');
+                if (card) card.remove();
+            }, 1000);
+        }
+
+    } catch (error) {
+        console.error('Fehler bei der Tool-Aktion:', error);
+        const alert = document.createElement('div');
+        alert.className = `alert alert-error p-4 rounded-lg bg-red-100 text-red-800`;
+        alert.textContent = `Fehler: ${error.message}`;
+        const mainContainer = document.querySelector('.main-container');
+        if (mainContainer) {
+            mainContainer.prepend(alert);
+        }
+    } finally {
         button.disabled = false;
-        button.classList.remove('opacity-50', 'cursor-not-allowed');
+        button.innerHTML = originalBtnText;
     }
 }
 
-// Make functions globally available for inline event handlers
-window.approveTool = approveTool;
-window.rejectTool = rejectTool;
-window.showNotification = showNotification;
+// Navigation
+function initNavigation() {
+    const navLinks = document.querySelectorAll('.nav-link');
+    navLinks.forEach(link => {
+        link.addEventListener('click', (e) => {
+            // Aktiven Link hervorheben
+            navLinks.forEach(l => l.classList.remove('active'));
+            e.target.classList.add('active');
+        });
+    });
+}
