@@ -15,11 +15,13 @@ class OAuthTool
 {
     private array $providers = [];
     private AdapterInterface $cache;
+    private HttpClientInterface $httpClient;
 
     public function __construct(
         HttpClientInterface $httpClient,
         AdapterInterface $cache
     ) {
+        $this->httpClient = $httpClient;
         $this->cache = $cache;
         
         // Standard-OAuth-Provider-Konfigurationen
@@ -43,12 +45,66 @@ class OAuthTool
     }
 
     /**
-     * Führt den OAuth-Authentifizierungsflow durch
+     * Hauptmethode - OAuth-Aktionen ausführen
      */
     #[AsTool(
-        name: 'oauth_authenticate',
-        description: 'Führt den OAuth-Authentifizierungsflow für einen Anbieter durch und gibt die Autorisierungs-URL zurück.'
+        name: 'oauth_action',
+        description: 'Führt OAuth-Aktionen aus: Authentifizierung, Token-Tausch, Token-Erneuerung, Widerruf, Abruf'
     )]
+    public function __invoke(
+        string $action,
+        array $parameters = []
+    ): array {
+        switch ($action) {
+            case 'authenticate':
+                return $this->authenticate(
+                    $parameters['provider'] ?? '',
+                    $parameters['clientId'] ?? '',
+                    $parameters['redirectUri'] ?? '',
+                    $parameters['state'] ?? '',
+                    $parameters['scopes'] ?? []
+                );
+            case 'get_access_token':
+                return $this->getAccessToken(
+                    $parameters['provider'] ?? '',
+                    $parameters['clientId'] ?? '',
+                    $parameters['clientSecret'] ?? '',
+                    $parameters['code'] ?? '',
+                    $parameters['redirectUri'] ?? ''
+                );
+            case 'refresh_token':
+                return $this->refreshToken(
+                    $parameters['provider'] ?? '',
+                    $parameters['clientId'] ?? '',
+                    $parameters['clientSecret'] ?? '',
+                    $parameters['refreshToken'] ?? ''
+                );
+            case 'revoke_token':
+                return $this->revokeToken(
+                    $parameters['provider'] ?? '',
+                    $parameters['token'] ?? ''
+                );
+            case 'get_current_token':
+                return $this->getCurrentToken(
+                    $parameters['provider'] ?? '',
+                    $parameters['clientId'] ?? ''
+                );
+            case 'list_providers':
+                return $this->listProviders();
+            case 'get_provider_config':
+                return $this->getProviderConfig($parameters['provider'] ?? '');
+            default:
+                return [
+                    'status' => 'error',
+                    'message' => 'Unbekannte OAuth-Aktion: ' . $action,
+                    'available_actions' => ['authenticate', 'get_access_token', 'refresh_token', 'revoke_token', 'get_current_token', 'list_providers', 'get_provider_config'],
+                ];
+        }
+    }
+
+    /**
+     * Führt den OAuth-Authentifizierungsflow durch
+     */
     public function authenticate(
         string $provider,
         string $clientId,
@@ -95,10 +151,6 @@ class OAuthTool
     /**
      * Tauscht den Authorization Code gegen ein Access Token
      */
-    #[AsTool(
-        name: 'oauth_get_access_token',
-        description: 'Tauscht den OAuth Authorization Code gegen ein Access Token und Refresh Token.'
-    )]
     public function getAccessToken(
         string $provider,
         string $clientId,
@@ -170,10 +222,6 @@ class OAuthTool
     /**
      * Erneuert ein abgelaufenes Access Token
      */
-    #[AsTool(
-        name: 'oauth_refresh_token',
-        description: 'Erneuert ein abgelaufenes OAuth Access Token mit dem Refresh Token.'
-    )]
     public function refreshToken(
         string $provider,
         string $clientId,
@@ -241,14 +289,8 @@ class OAuthTool
     /**
      * Widerruft ein OAuth Token
      */
-    #[AsTool(
-        name: 'oauth_revoke_token',
-        description: 'Widerruft ein OAuth Access Token.'
-    )]
-    public function revokeToken(
-        string $provider,
-        string $token
-    ): array {
+    public function revokeToken(string $provider, string $token): array
+    {
         if (!isset($this->providers[$provider])) {
             return [
                 'status' => 'error',
@@ -307,14 +349,8 @@ class OAuthTool
     /**
      * Gibt das aktuelle Access Token für einen Anbieter zurück
      */
-    #[AsTool(
-        name: 'oauth_get_current_token',
-        description: 'Gibt das aktuell gespeicherte OAuth Access Token für einen Anbieter zurück.'
-    )]
-    public function getCurrentToken(
-        string $provider,
-        string $clientId
-    ): array {
+    public function getCurrentToken(string $provider, string $clientId): array
+    {
         $cacheKey = 'oauth_token_' . $provider . '_' . $clientId;
         $tokenData = $this->cache->get($cacheKey, []);
 
@@ -356,10 +392,6 @@ class OAuthTool
     /**
      * Listet alle konfigurierten OAuth-Anbieter auf
      */
-    #[AsTool(
-        name: 'oauth_list_providers',
-        description: 'Listet alle konfigurierten OAuth-Anbieter auf.'
-    )]
     public function listProviders(): array
     {
         return [
@@ -372,10 +404,6 @@ class OAuthTool
     /**
      * Gibt die Konfiguration eines OAuth-Anbieters zurück
      */
-    #[AsTool(
-        name: 'oauth_get_provider_config',
-        description: 'Gibt die OAuth-Konfiguration für einen bestimmten Anbieter zurück.'
-    )]
     public function getProviderConfig(string $provider): array
     {
         if (!isset($this->providers[$provider])) {
