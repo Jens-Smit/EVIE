@@ -101,6 +101,7 @@ services:
     App\AI\Skills\Tool\:
         resource: '../src/AI/Skills/Tool/'
         tags: ['ai.tool']
+        exclude: ['../src/AI/Skills/Tool/LinkedInTool.php', '../src/AI/Skills/Tool/OAuthTool.php', '../src/AI/Skills/Tool/RestApiTool.php']
 
     # Firecrawl Tool (Web-Scraping)
     Symfony\AI\Agent\Bridge\Firecrawl\Firecrawl:
@@ -113,6 +114,30 @@ services:
     Symfony\AI\Agent\Bridge\Tavily\Tavily:
         arguments:
             $apiKey: '%env(TAVILY_API_KEY)%'
+        tags: ['ai.tool']
+
+    # ========================================================================
+    # External Tool Services (require explicit configuration)
+    # ========================================================================
+
+    # LinkedIn Tool - requires LINKEDIN_API_TOKEN environment variable
+    App\AI\Skills\Tool\LinkedInTool:
+        arguments:
+            $httpClient: '@http_client'
+            $accessToken: '%env(LINKEDIN_API_TOKEN)%'
+        tags: ['ai.tool']
+
+    # OAuth Tool - for OAuth 2.0 authentication
+    App\AI\Skills\Tool\OAuthTool:
+        arguments:
+            $httpClient: '@http_client'
+            $cache: '@cache.app'
+        tags: ['ai.tool']
+
+    # REST API Tool - for generic REST API requests
+    App\AI\Skills\Tool\RestApiTool:
+        arguments:
+            $httpClient: '@http_client'
         tags: ['ai.tool']
 
     # ========================================================================
