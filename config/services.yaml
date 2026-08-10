@@ -97,28 +97,16 @@ services:
     # Registrierung des OnboardingLoader als Service
     App\AI\Loader\OnboardingLoader: ~
 
-    # Automatische Registrierung aller Tools mit dem Tag 'ai.tool'
-    App\AI\Skills\Tool\:
-        resource: '../src/AI/Skills/Tool/'
-        tags: ['ai.tool']
-        exclude: ['../src/AI/Skills/Tool/LinkedInTool.php', '../src/AI/Skills/Tool/OAuthTool.php', '../src/AI/Skills/Tool/RestApiTool.php']
-
-    # Firecrawl Tool (Web-Scraping)
-    Symfony\AI\Agent\Bridge\Firecrawl\Firecrawl:
-        arguments:
-            $apiKey: '%env(FIRECRAWL_API_KEY)%'
-            $endpoint: 'https://api.firecrawl.dev'
-        tags: ['ai.tool']
-
-    # Tavily Tool (Web-Suche)
-    Symfony\AI\Agent\Bridge\Tavily\Tavily:
-        arguments:
-            $apiKey: '%env(TAVILY_API_KEY)%'
-        tags: ['ai.tool']
-
     # ========================================================================
-    # External Tool Services (require explicit configuration)
+    # TOOL SERVICES - Explicit configuration for tools with constructor parameters
     # ========================================================================
+
+    # Email Tool - requires MailerInterface
+    App\AI\Skills\Tool\EmailTool:
+        arguments:
+            $mailer: '@mailer'
+            $defaultFrom: 'noreply@evie.ai'
+        tags: ['ai.tool']
 
     # LinkedIn Tool - requires LINKEDIN_API_TOKEN environment variable
     App\AI\Skills\Tool\LinkedInTool:
@@ -138,6 +126,30 @@ services:
     App\AI\Skills\Tool\RestApiTool:
         arguments:
             $httpClient: '@http_client'
+        tags: ['ai.tool']
+
+    # Automatische Registrierung aller anderen Tools mit dem Tag 'ai.tool'
+    # AUSSCHLUSS: Tools, die bereits explizit konfiguriert sind
+    App\AI\Skills\Tool\:
+        resource: '../src/AI/Skills/Tool/'
+        tags: ['ai.tool']
+        exclude:
+            - '../src/AI/Skills/Tool/EmailTool.php'
+            - '../src/AI/Skills/Tool/LinkedInTool.php'
+            - '../src/AI/Skills/Tool/OAuthTool.php'
+            - '../src/AI/Skills/Tool/RestApiTool.php'
+
+    # Firecrawl Tool (Web-Scraping)
+    Symfony\AI\Agent\Bridge\Firecrawl\Firecrawl:
+        arguments:
+            $apiKey: '%env(FIRECRAWL_API_KEY)%'
+            $endpoint: 'https://api.firecrawl.dev'
+        tags: ['ai.tool']
+
+    # Tavily Tool (Web-Suche)
+    Symfony\AI\Agent\Bridge\Tavily\Tavily:
+        arguments:
+            $apiKey: '%env(TAVILY_API_KEY)%'
         tags: ['ai.tool']
 
     # ========================================================================
