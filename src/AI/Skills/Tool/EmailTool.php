@@ -3,30 +3,31 @@
 
 namespace App\AI\Skills\Tool;
 
-use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
+use Symfony\AI\Agent\Toolbox\Tool\Tool;
 use Symfony\Component\Mailer\MailerInterface;
 use Symfony\Component\Mime\Email;
 
 /**
  * Tool für das Senden und Verwalten von E-Mails.
  * Ermöglicht dem AI-Agenten, E-Mails zu versenden, zu lesen und zu verwalten.
+ * 
+ * Implementiert ToolInterface für Kompatibilität mit Symfony AI Bundle.
  */
-#[AsTool]
-class EmailTool
+class EmailTool extends Tool
 {
     public function __construct(
         private MailerInterface $mailer,
         private string $defaultFrom = 'noreply@evie.ai'
     ) {
+        parent::__construct(
+            name: 'email_tool',
+            description: 'Tool für das Senden und Verwalten von E-Mails'
+        );
     }
 
     /**
      * Sendet eine E-Mail
      */
-    #[AsTool(
-        name: 'send_email',
-        description: 'Sendet eine E-Mail an einen oder mehrere Empfänger. Unterstützt HTML und Text-Inhalte.'
-    )]
     public function sendEmail(
         array $to,
         string $subject,
@@ -77,10 +78,6 @@ class EmailTool
     /**
      * Sendet eine E-Mail mit Template
      */
-    #[AsTool(
-        name: 'send_templated_email',
-        description: 'Sendet eine E-Mail mit einem Twig-Template.'
-    )]
     public function sendTemplatedEmail(
         array $to,
         string $subject,
@@ -124,10 +121,6 @@ class EmailTool
      * Liest E-Mails von einem IMAP-Server (Platzhalter)
      * HINWEIS: Diese Funktion erfordert eine IMAP-Erweiterung und Konfiguration
      */
-    #[AsTool(
-        name: 'read_emails',
-        description: 'Liest E-Mails von einem IMAP-Server. Erfordert IMAP-Konfiguration.'
-    )]
     public function readEmails(
         string $mailbox = 'INBOX',
         int $limit = 10,
@@ -147,10 +140,6 @@ class EmailTool
     /**
      * Sucht nach E-Mails (Platzhalter)
      */
-    #[AsTool(
-        name: 'search_emails',
-        description: 'Durchsucht E-Mails nach bestimmten Kriterien.'
-    )]
     public function searchEmails(
         string $query,
         string $mailbox = 'INBOX',
