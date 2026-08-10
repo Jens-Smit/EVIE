@@ -9,8 +9,12 @@ use Symfony\Component\HttpClient\Exception\ClientException;
 
 /**
  * Tool für REST API-Anfragen.
- * Ermöglicht das Ausführen von HTTP-Anfragen an beliebige REST APIs.
+ * Erwartet Parameter: method, url, data, headers, query, authType, token
  */
+#[AsTool(
+    name: 'api_request',
+    description: 'Führt HTTP-Anfragen an REST APIs aus. Parameter: method (GET|POST|PUT|DELETE|PATCH), url (String), data (Array, optional), headers (Array, optional), query (Array, optional), authType (bearer|basic|api_key, optional), token (String, optional)'
+)]
 class RestApiTool
 {
     public function __construct(
@@ -20,21 +24,18 @@ class RestApiTool
     }
 
     /**
-     * Hauptmethode - API-Anfragen ausführen
+     * Hauptmethode - HTTP-Anfrage ausführen
      */
-    #[AsTool(
-        name: 'api_request',
-        description: 'Führt eine HTTP-Anfrage an eine REST API aus. Unterstützt GET, POST, PUT, DELETE, PATCH mit Authentifizierung.'
-    )]
-    public function __invoke(
-        string $method,
-        string $url,
-        array $data = [],
-        array $headers = [],
-        array $query = [],
-        string $authType = null,
-        string $token = null
-    ): array {
+    public function __invoke(array $parameters = []): array
+    {
+        $method = strtoupper($parameters['method'] ?? 'GET');
+        $url = $parameters['url'] ?? '';
+        $data = $parameters['data'] ?? [];
+        $headers = $parameters['headers'] ?? [];
+        $query = $parameters['query'] ?? [];
+        $authType = $parameters['authType'] ?? null;
+        $token = $parameters['token'] ?? null;
+
         // Authentifizierungs-Header hinzufügen
         if ($authType && $token) {
             switch (strtolower($authType)) {
@@ -47,6 +48,8 @@ class RestApiTool
                 case 'api_key':
                     $headers['X-API-Key'] = $token;
                     break;
+                default:
+                    $headers['Authorization'] = $token;
             }
         }
 
@@ -97,9 +100,7 @@ class RestApiTool
                 'status_code' => $statusCode,
                 'url' => $fullUrl,
                 'method' => $method,
-                'headers' => $options['headers'],
                 'data' => $responseData ?? $content,
-                'raw_content' => $content,
             ];
         } catch (ClientException $e) {
             $response = $e->getResponse();
@@ -119,25 +120,5 @@ class RestApiTool
                 'message' => 'Request Error: ' . $e->getMessage(),
             ];
         }
-    }
-
-    /**
-     * Gibt die verfügbaren HTTP-Methoden zurück
-     */
-    public function listMethods(): array
-    {
-        return [
-            'status' => 'success',
-            'methods' => ['GET', 'POST', 'PUT', 'DELETE', 'PATCH'],
-            'description' => 'Verfügbare HTTP-Methoden für REST API-Anfragen',
-        ];
-    }
-
-    /**
-     * Testet eine API-Verbindung
-     */
-    public function testConnection(string $url, array $headers = []): array
-    {
-        return $this->request('GET', $url, $headers, []);
     }
 }
