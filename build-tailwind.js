@@ -12,10 +12,10 @@ postcss([
   tailwindcss(),
   autoprefixer,
 ])
-.process(input, { from: './assets/styles/tailwind.css', to: './public/assets/styles/tailwind-compiled.css' })
+.process(input, { from: './assets/styles/tailwind.css', to: './public/assets/styles/tailwind.css' })
 .then(result => {
   // Write the compiled CSS to the output file
-  fs.writeFileSync('./public/assets/styles/tailwind-compiled.css', result.css);
+  fs.writeFileSync('./public/assets/styles/tailwind.css', result.css);
   console.log('Tailwind CSS successfully compiled!');
 })
 .catch(error => {

@@ -9,6 +9,9 @@ if (document.readyState === 'loading') {
 
 function init() {
     // Initialisiere alle Module
+    initTheme();
+    initSidebar();
+    initModal();
     initChatForm();
     initToolApproval();
     initNavigation();
@@ -56,6 +59,84 @@ function formatAgentResponse(response) {
 
     // 3. Fallback: Einfacher Text
     return `<p>${escapeHtml(response)}</p>`;
+}
+
+// Mobile Sidebar Logic
+function toggleSidebar() {
+    const sidebar = document.getElementById('sidebar');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    const isClosed = sidebar.classList.contains('-translate-x-full');
+    
+    if (isClosed) {
+        sidebar.classList.remove('-translate-x-full');
+        backdrop.classList.remove('hidden');
+        setTimeout(() => backdrop.classList.remove('opacity-0'), 10);
+    } else {
+        sidebar.classList.add('-translate-x-full');
+        backdrop.classList.add('opacity-0');
+        setTimeout(() => backdrop.classList.add('hidden'), 300);
+    }
+}
+
+// Modal Logic
+function openModal(title, icon, content) {
+    const modal = document.getElementById('global-modal');
+    const container = document.getElementById('modal-container');
+    
+    document.getElementById('modal-title-text').textContent = title;
+    const iconEl = document.getElementById('modal-icon');
+    iconEl.className = `ph ${icon}`;
+    document.getElementById('modal-body').innerHTML = content;
+    
+    modal.classList.remove('hidden');
+    modal.style.display = 'flex';
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        container.classList.remove('scale-95');
+        container.classList.add('scale-100');
+    }, 10);
+}
+
+function closeModal() {
+    const modal = document.getElementById('global-modal');
+    const container = document.getElementById('modal-container');
+    
+    modal.classList.add('opacity-0');
+    container.classList.remove('scale-100');
+    container.classList.add('scale-95');
+    
+    setTimeout(() => {
+        modal.classList.add('hidden');
+        modal.style.display = 'none';
+    }, 300);
+}
+
+// Initialize Sidebar
+function initSidebar() {
+    // Window Resize Handler
+    window.addEventListener('resize', () => {
+        if (window.innerWidth >= 768) {
+            document.getElementById('sidebar-backdrop')?.classList.add('hidden', 'opacity-0');
+            document.getElementById('sidebar')?.classList.remove('-translate-x-full');
+        }
+    });
+}
+
+// Initialize Modal
+function initModal() {
+    // Close Modal on Backdrop Click
+    document.getElementById('global-modal')?.addEventListener('click', (e) => {
+        if (e.target.id === 'global-modal') {
+            closeModal();
+        }
+    });
+
+    // Close Modal on ESC Key
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+            closeModal();
+        }
+    });
 }
 
 // Chat-Formular für AI-Agenten
@@ -190,11 +271,16 @@ async function handleToolAction(toolId, action, button) {
     button.innerHTML = '<span class="spinner"></span> Verarbeite...';
 
     try {
+        // Hole den CSRF-Token aus dem Meta-Tag
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.content || '';
+
         const response = await fetch(`/api/tools/${toolId}/${action}`, {
             method: 'POST',
             headers: {
                 'Accept': 'application/json',
-                'X-Requested-With': 'XMLHttpRequest'
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest',
+                'X-CSRF-TOKEN': csrfToken,
             },
         });
 
@@ -203,12 +289,12 @@ async function handleToolAction(toolId, action, button) {
         }
 
         const data = await response.json();
-        
+
         // Zeige Erfolgmeldung
         const alert = document.createElement('div');
         alert.className = `alert alert-success p-4 rounded-lg bg-green-100 text-green-800`;
         alert.textContent = data.message || `Tool erfolgreich ${action === 'approve' ? 'freigegeben' : 'abgelehnt'}`;
-        
+
         const container = button.closest('.card') || document.querySelector('.main-container');
         if (container) {
             container.prepend(alert);

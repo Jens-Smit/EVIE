@@ -30,7 +30,7 @@
         {# Navigation Menu #}
         <nav class="mt-2 px-3 md:px-4 space-y-1.5" id="nav-menu">
             <a href="{{ path('app_home') }}"
-               class="nav-btn {% if app.request.route == 'app_home' %}active{% else %}inactive{% endif %}
+               class="nav-btn {% if app.request.attributes.get('_route') == 'app_home' %}active{% else %}inactive{% endif %}
                       border w-full flex items-center gap-3 px-4 py-3 rounded-xl
                       transition-all active:scale-95 font-medium">
                 <i class="ph ph-squares-four text-xl"></i>
@@ -38,7 +38,7 @@
             </a>
 
             <a href="{{ path('frontend_agent_dialog') }}"
-               class="nav-btn {% if app.request.route == 'frontend_agent_dialog' %}active{% else %}inactive{% endif %}
+               class="nav-btn {% if app.request.attributes.get('_route') == 'frontend_agent_dialog' %}active{% else %}inactive{% endif %}
                       border w-full flex items-center gap-3 px-4 py-3 rounded-xl
                       transition-all active:scale-95 font-medium">
                 <i class="ph ph-chats-teardrop text-xl"></i>
@@ -55,7 +55,7 @@
             </a>
 
             <a href="{{ path('frontend_tools_pending') }}"
-               class="nav-btn {% if app.request.route == 'frontend_tools_pending' %}active{% else %}inactive{% endif %}
+               class="nav-btn {% if app.request.attributes.get('_route') == 'frontend_tools_pending' %}active{% else %}inactive{% endif %}
                       border w-full flex items-center gap-3 px-4 py-3 rounded-xl
                       transition-all active:scale-95 font-medium">
                 <i class="ph ph-check-square-offset text-xl"></i>
