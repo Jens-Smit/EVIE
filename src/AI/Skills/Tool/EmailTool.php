@@ -11,6 +11,7 @@ use Symfony\Component\Mime\Email;
  * Tool für das Senden und Verwalten von E-Mails.
  * Ermöglicht dem AI-Agenten, E-Mails zu versenden, zu lesen und zu verwalten.
  */
+#[AsTool]
 class EmailTool
 {
     public function __construct(
