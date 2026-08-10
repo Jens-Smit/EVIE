@@ -12,15 +12,6 @@ use Symfony\AI\Agent\Toolbox\ToolFactory\ChainFactory;
 use Symfony\AI\Agent\Toolbox\ToolFactory\ReflectionToolFactory;
 use Symfony\AI\Agent\Toolbox\Tool\Subagent;
 
-/**
- * Factory für die Toolbox des EVIE-Agenten.
- * Lädt jetzt auch dynamisch generierte Tools aus der Datenbank.
- * 
- * Verbesserungen:
- * - Unterstützung für Subagent-Tools
- * - Dynamische Tool-Registrierung
- * - Bessere Integration mit Symfony AI Bundle
- */
 final class EvieToolboxFactory
 {
     public function __construct(
@@ -31,42 +22,33 @@ final class EvieToolboxFactory
     ) {
     }
 
-    /**
-     * Erstellt eine Toolbox mit allen verfügbaren Tools:
-     * - MCP-Tools
-     * - Native PHP-Tools (via Reflection)
-     * - Dynamisch generierte Tools aus der Datenbank
-     * - Sub-Agenten als Tools
-     */
     public function create(): Toolbox
     {
         $reflectionFactory = new ReflectionToolFactory();
-        
-        // 1. ChainFactory für MCP und Reflection Tools
-        $chainFactory = new ChainFactory([
-            $this->mcpToolFactory,
-            $reflectionFactory,
-        ]);
-
-        // 2. Liste aller Tools zusammenstellen
+        $chainFactory = new ChainFactory([$this->mcpToolFactory, $reflectionFactory]);
         $allTools = [];
-        
-        // 2a. Native Tools (aus der DI-Container-Konfiguration)
+
         foreach ($this->nativeTools as $tool) {
             if ($tool instanceof ToolInterface) {
                 $allTools[] = $tool;
             }
         }
 
-        // 2b. Sub-Agenten als Tools hinzufügen
-        foreach ($this->subAgentFactory->createAllSubAgentTools() as $subAgentTool) {
-            $allTools[] = $subAgentTool;
+        $subAgentTools = $this->subAgentFactory->createAllSubAgentTools();
+        $agentNames = [
+            'website_researcher', 'data_analyst', 'code_assistant', 'document_processor',
+            'communication_manager', 'api_integration', 'project_manager', 'finance_manager',
+            'hr_manager', 'marketing_manager', 'ceo_assistant'
+        ];
+
+        foreach ($agentNames as $agentName) {
+            if (isset($subAgentTools[$agentName]) && $subAgentTools[$agentName] instanceof Subagent) {
+                $safeSubAgentTool = $this->createSafeSubAgentToolWrapper($subAgentTools[$agentName], $agentName);
+                $allTools[] = $safeSubAgentTool;
+            }
         }
 
-        // 2c. Dynamische Tools aus der Datenbank
-        // Jedes Tool aus dem DynamicSkillRegistry wird als dynamisches Tool registriert
         foreach ($this->dynamicSkillRegistry->getAvailableTools() as $toolName => $metadata) {
-            // Erstelle ein dynamisches Tool für jede ToolDefinition
             $dynamicTool = new class($toolName, $metadata) implements ToolInterface {
                 private string $toolName;
                 private array $metadata;
@@ -77,57 +59,61 @@ final class EvieToolboxFactory
                     $this->metadata = $metadata;
                 }
 
-                public function getName(): string
-                {
-                    return $this->toolName;
-                }
-
-                public function getDescription(): string
-                {
-                    return $this->metadata['description'] ?? 'Dynamisch generiertes Tool';
-                }
-
-                public function __invoke(array $parameters = []): array
-                {
-                    // Diese Methode wird durch den DynamicToolDispatcher implementiert
-                    // Hier nur ein Platzhalter
-                    return [
-                        'status' => 'error',
-                        'message' => 'Tool-Ausführung muss über DynamicToolDispatcher erfolgen',
-                    ];
-                }
+                public function getName(): string { return $this->toolName; }
+                public function getDescription(): string { return $this->metadata['description'] ?? 'Dynamisch generiertes Tool'; }
+                public function __invoke(array $parameters = []): array { return ['status' => 'error', 'message' => 'Tool-Ausführung muss über DynamicToolDispatcher erfolgen']; }
+                public function __toString(): string { return $this->getName(); }
             };
-
             $allTools[] = $dynamicTool;
         }
 
-        // 3. Toolbox mit allen Tools erstellen
         return new Toolbox($allTools, $chainFactory);
     }
 
-    /**
-     * Erstellt eine Toolbox speziell für den Orchestrator-Agenten.
-     * Enthält nur die Tools, die der Orchestrator benötigt.
-     */
+    private function createSafeSubAgentToolWrapper(Subagent $subAgentTool, string $agentName): ToolInterface
+    {
+        return new class($subAgentTool, $agentName) implements ToolInterface {
+            private Subagent $subAgentTool;
+            private string $agentName;
+
+            public function __construct(Subagent $subAgentTool, string $agentName)
+            {
+                $this->subAgentTool = $subAgentTool;
+                $this->agentName = $agentName;
+            }
+
+            public function getName(): string { return 'subagent_' . $this->agentName; }
+            public function getDescription(): string { return 'Sub-Agent für spezifische Aufgaben'; }
+            public function __invoke(array $parameters = []): mixed
+            {
+                // Subagent::__invoke() erwartet einen String (die Nachricht an den Sub-Agenten)
+                $message = $parameters['task'] ?? $parameters['message'] ?? $parameters['query'] ?? json_encode($parameters);
+                return $this->subAgentTool->__invoke((string) $message);
+            }
+            public function __toString(): string { return $this->getName(); }
+        };
+    }
+
     public function createOrchestratorToolbox(): Toolbox
     {
         $reflectionFactory = new ReflectionToolFactory();
-        $chainFactory = new ChainFactory([
-            $this->mcpToolFactory,
-            $reflectionFactory,
-        ]);
-
+        $chainFactory = new ChainFactory([$this->mcpToolFactory, $reflectionFactory]);
         $orchestratorTools = [];
 
-        // 1. MCP Tools
-        // Diese werden über die ChainFactory verfügbar sein
+        // Sub-Agenten korrekt über Subagent-Wrapper einbinden
+        $subAgentTools = $this->subAgentFactory->createAllSubAgentTools();
+        $agentNames = [
+            'website_researcher', 'data_analyst', 'code_assistant', 'document_processor',
+            'communication_manager', 'api_integration', 'project_manager', 'finance_manager',
+            'hr_manager', 'marketing_manager', 'ceo_assistant'
+        ];
 
-        // 2. Sub-Agenten als Tools
-        foreach ($this->subAgentFactory->createAllSubAgentTools() as $subAgentTool) {
-            $orchestratorTools[] = $subAgentTool;
+        foreach ($agentNames as $agentName) {
+            if (isset($subAgentTools[$agentName]) && $subAgentTools[$agentName] instanceof Subagent) {
+                $orchestratorTools[] = $this->createSafeSubAgentToolWrapper($subAgentTools[$agentName], $agentName);
+            }
         }
 
-        // 3. Dynamische Tools
         foreach ($this->dynamicSkillRegistry->getAvailableTools() as $toolName => $metadata) {
             $dynamicTool = new class($toolName, $metadata) implements ToolInterface {
                 private string $toolName;
@@ -139,23 +125,10 @@ final class EvieToolboxFactory
                     $this->metadata = $metadata;
                 }
 
-                public function getName(): string
-                {
-                    return $this->toolName;
-                }
-
-                public function getDescription(): string
-                {
-                    return $this->metadata['description'] ?? 'Dynamisch generiertes Tool';
-                }
-
-                public function __invoke(array $parameters = []): array
-                {
-                    return [
-                        'status' => 'error',
-                        'message' => 'Tool-Ausführung muss über DynamicToolDispatcher erfolgen',
-                    ];
-                }
+                public function getName(): string { return $this->toolName; }
+                public function getDescription(): string { return $this->metadata['description'] ?? 'Dynamisch generiertes Tool'; }
+                public function __invoke(array $parameters = []): array { return ['status' => 'error', 'message' => 'Tool-Ausführung muss über DynamicToolDispatcher erfolgen']; }
+                public function __toString(): string { return $this->getName(); }
             };
             $orchestratorTools[] = $dynamicTool;
         }
@@ -163,22 +136,12 @@ final class EvieToolboxFactory
         return new Toolbox($orchestratorTools, $chainFactory);
     }
 
-    /**
-     * Erstellt eine Toolbox für einen bestimmten Sub-Agenten.
-     */
     public function createSubAgentToolbox(AgentInterface $subAgent): Toolbox
     {
         $reflectionFactory = new ReflectionToolFactory();
-        $chainFactory = new ChainFactory([
-            $this->mcpToolFactory,
-            $reflectionFactory,
-        ]);
-
-        // Sub-Agenten-spezifische Tools
+        $chainFactory = new ChainFactory([$this->mcpToolFactory, $reflectionFactory]);
         $subAgentTools = [];
 
-        // Füge alle Tools hinzu, die für diesen Sub-Agenten relevant sind
-        // Dies könnte basierend auf der Rolle des Sub-Agenten gefiltert werden
         foreach ($this->nativeTools as $tool) {
             if ($tool instanceof ToolInterface) {
                 $subAgentTools[] = $tool;

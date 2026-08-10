@@ -208,11 +208,17 @@ ai:
                 ANTWORTE IMMER IM JSON-FORMAT: {"type":"strategy_result|decision|task_prioritization","strategy":{},"decision":{},"tasks":[]}
             tools:
                 - agent: 'communication_manager'
+                  description: 'Verwaltet E-Mails, Nachrichten, LinkedIn und andere Kommunikation'
                 - agent: 'api_integration'
+                  description: 'Bindet externe APIs an, verwaltet OAuth und Authentifizierung'
                 - agent: 'project_manager'
+                  description: 'Verwaltet Aufgaben, Termine, Ressourcen und Projekte'
                 - agent: 'finance_manager'
+                  description: 'Verwaltet Buchhaltung, Rechnungen, Zahlungen'
                 - agent: 'hr_manager'
+                  description: 'Verwaltet Mitarbeiter, Gehälter, Verträge'
                 - agent: 'marketing_manager'
+                  description: 'Verwaltet Kampagnen, Social Media, Content'
 
         # Fallback Agent
         fallback:
