@@ -5,6 +5,7 @@ namespace App\AI\Briefing;
 
 use App\AI\Decision\DecisionManager;
 use App\AI\Workflow\WorkflowOrchestrator;
+use App\Entity\AgentHistory;
 use App\Repository\AgentHistoryRepository;
 use Psr\Log\LoggerInterface;
 
@@ -75,22 +76,23 @@ class BriefingManager
         $oneDayAgo = new \DateTimeImmutable('-1 day');
 
         $completedTasks = $this->historyRepo->createQueryBuilder('h')
-            ->where('h.userProfile = :user')
-            ->andWhere('h.status = :status')
-            ->andWhere('h.executedAt >= :date')
+            ->join('h.user', 'u')
+            ->where('u.userIdentifier = :user')
+            ->andWhere('h.createdAt >= :date')
             ->setParameter('user', $userIdentifier)
-            ->setParameter('status', 'success')
             ->setParameter('date', $oneDayAgo)
-            ->orderBy('h.executedAt', 'DESC')
+            ->orderBy('h.createdAt', 'DESC')
             ->getQuery()
             ->getResult();
 
         return array_map(function($task) {
+            $details = json_decode($task->getDetails() ?? '{}', true) ?? [];
+
             return [
                 'id' => $task->getId(),
-                'description' => $task->getInput()['message'] ?? $task->getInput()['task'] ?? 'Unbekannte Aufgabe',
-                'agent' => $task->getAgentName(),
-                'executed_at' => $task->getExecutedAt()->format('Y-m-d H:i:s'),
+                'description' => $details['input']['message'] ?? $details['input']['task'] ?? 'Unbekannte Aufgabe',
+                'agent' => $details['agent'] ?? null,
+                'executed_at' => $task->getCreatedAt()->format('Y-m-d H:i:s'),
                 'duration' => $this->calculateDuration($task),
             ];
         }, $completedTasks);
@@ -258,11 +260,9 @@ class BriefingManager
     private function calculateDuration(AgentHistory $task): string
     {
         $createdAt = $task->getCreatedAt();
-        $executedAt = $task->getExecutedAt();
 
-        if (!$executedAt) {
-            return 'N/A';
-        }
+        // Da die neue Entity kein separates executedAt hat, verwenden wir createdAt als Basis
+        $executedAt = $createdAt;
 
         $seconds = $executedAt->getTimestamp() - $createdAt->getTimestamp();
 

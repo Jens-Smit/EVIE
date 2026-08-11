@@ -247,6 +247,7 @@ services:
     App\Mcp\Toolbox\McpToolExecutor:
         arguments:
             $serverManager: '@App\Mcp\Client\McpServerManager'
+            $serverAliases: ['filesystem', 'playwright', 'github']
 
     # ========================================================================
     # Toolbox Factory

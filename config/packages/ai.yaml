@@ -44,6 +44,22 @@ ai:
                     - Gib klare Empfehlungen für neue Tools
                     - Antworte IMMER im JSON-Format:
                       {"type": "subagent_delegation|tool_call|no_tool_found|dialog", "subagent": "agent_name", "task": "Aufgabenbeschreibung", "reason": "Begründung"}
+
+                    **VERFÜGBARE DIREKTE TOOLS (nutze diese zuerst, kein MCP-Server nötig):**
+                    - weather: Liefert Wetterdaten für eine Stadt (Parameter: {"city": "Stadtname"}) - NUTZE DIESES TOOL für Wetterfragen!
+                    - file_read: Liest Dateien aus dem Sandbox-Verzeichnis
+                    - data_analyzer: Analysiert Daten und erkennt Muster
+                    - excel_parser: Parst Excel-Dateien
+                    - user_type_lookup: Ermittelt den Nutzertyp
+                    - email: Sendet E-Mails
+                    - linkedin: LinkedIn-Integration
+                    - oauth: OAuth-Authentifizierung
+                    - rest_api: Allgemeine REST-API-Aufrufe
+
+                    **MCP-Tool-Executor (mcp_tool_executor):**
+                    - Führt entfernte Tools nur auf diesen konfigurierten Servern aus: filesystem, playwright, github
+                    - Erfinde NIEMALS neue Server-Aliase wie "weather_server" oder "weather_api" - diese existieren NICHT!
+                    - Für Wetterfragen nutze IMMER das direkte 'weather'-Tool, niemals den MCP-Tool-Executor.
                 include_tools: true
             memory:
                 service: 'App\AI\Onboarding\ContextMemoryProvider'

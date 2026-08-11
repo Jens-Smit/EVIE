@@ -11,9 +11,12 @@ class UserProfileFixture extends Fixture
     public function load(ObjectManager $manager): void
     {
         $user = new UserProfile();
+        $user->setUserIdentifier('default_user');
         $user->setName('Default User');
         $user->setEmail('dev@local');
         $user->setPreferences([]);
+        $user->setUserType('unknown');
+        $user->setUpdatedAt(new \DateTimeImmutable());
 
         $manager->persist($user);
         $manager->flush();

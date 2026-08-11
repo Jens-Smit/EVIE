@@ -9,6 +9,7 @@ use App\AI\Skills\DynamicSkillRegistry;
 use Psr\Log\LoggerInterface;
 use Symfony\AI\Agent\Agent;
 use Symfony\AI\Agent\AgentInterface;
+use Symfony\AI\Agent\InputProcessor\SystemPromptInputProcessor;
 use Symfony\AI\Agent\Toolbox\Tool\Subagent;
 use Symfony\AI\Platform\PlatformInterface;
 
@@ -48,7 +49,7 @@ final readonly class SubAgentFactory
             platform: $this->platform,
             model: $model,
             name: $name,
-            prompt: $this->generatePromptForRole($role),
+            inputProcessors: [new SystemPromptInputProcessor($this->generatePromptForRole($role))],
         );
 
         // Sub-Agent im DynamicSkillRegistry als Tool registrieren
@@ -81,7 +82,7 @@ final readonly class SubAgentFactory
             platform: $this->platform,
             model: $model,
             name: $name,
-            prompt: $this->generatePromptForRole($role),
+            inputProcessors: [new SystemPromptInputProcessor($this->generatePromptForRole($role))],
         );
 
         // Erstelle ein Subagent-Tool

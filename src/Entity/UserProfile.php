@@ -15,8 +15,8 @@ class UserProfile
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 255)]
-    private string $name;
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $name = null;
 
     #[ORM\Column(length: 255, unique: true)]
     private string $userIdentifier;
@@ -26,6 +26,18 @@ class UserProfile
 
     #[ORM\Column(type: 'json', nullable: true)]
     private ?array $preferences = [];
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $userType = 'unknown';
+
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $contextEmbedding = null;
+
+    #[ORM\Column(type: 'json', nullable: true)]
+    private ?array $onboardingData = [];
+
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    private ?\DateTimeImmutable $updatedAt = null;
 
     #[ORM\OneToMany(targetEntity: AgentHistory::class, mappedBy: 'user')]
     private Collection $agentHistories;
@@ -48,7 +60,7 @@ class UserProfile
         return $this->id;
     }
 
-    public function getName(): string
+    public function getName(): ?string
     {
         return $this->name;
     }
@@ -64,7 +76,7 @@ class UserProfile
         return $this;
     }
 
-    public function setName(string $name): static
+    public function setName(?string $name): static
     {
         $this->name = $name;
         return $this;
@@ -89,6 +101,50 @@ class UserProfile
     public function setPreferences(?array $preferences): static
     {
         $this->preferences = $preferences;
+        return $this;
+    }
+
+    public function getUserType(): ?string
+    {
+        return $this->userType;
+    }
+
+    public function setUserType(?string $userType): static
+    {
+        $this->userType = $userType;
+        return $this;
+    }
+
+    public function getContextEmbedding(): ?string
+    {
+        return $this->contextEmbedding;
+    }
+
+    public function setContextEmbedding(?string $contextEmbedding): static
+    {
+        $this->contextEmbedding = $contextEmbedding;
+        return $this;
+    }
+
+    public function getOnboardingData(): ?array
+    {
+        return $this->onboardingData;
+    }
+
+    public function setOnboardingData(?array $onboardingData): static
+    {
+        $this->onboardingData = $onboardingData;
+        return $this;
+    }
+
+    public function getUpdatedAt(): ?\DateTimeImmutable
+    {
+        return $this->updatedAt;
+    }
+
+    public function setUpdatedAt(?\DateTimeImmutable $updatedAt): static
+    {
+        $this->updatedAt = $updatedAt;
         return $this;
     }
 

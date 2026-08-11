@@ -3,6 +3,7 @@
 namespace App\Repository;
 
 use App\Entity\AgentHistory;
+use App\Entity\UserProfile;
 use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
 use Doctrine\Persistence\ManagerRegistry;
 
@@ -35,11 +36,11 @@ class AgentHistoryRepository extends ServiceEntityRepository
     }
 
     /**
-     * Finds all actions by a specific agent.
+     * Finds all actions by a specific action/agent.
      */
-    public function findByAgent(string $agentName): array
+    public function findByAction(string $action): array
     {
-        return $this->findBy(['agentName' => $agentName]);
+        return $this->findBy(['action' => $action]);
     }
 
     /**
@@ -53,5 +54,15 @@ class AgentHistoryRepository extends ServiceEntityRepository
             ->setParameter('userIdentifier', $userIdentifier)
             ->getQuery()
             ->getResult();
+    }
+
+    /**
+     * Finds a UserProfile by its identifier.
+     */
+    public function findUserByIdentifier(string $userIdentifier): ?UserProfile
+    {
+        $userProfileRepo = $this->getEntityManager()->getRepository(UserProfile::class);
+
+        return $userProfileRepo->findOneBy(['userIdentifier' => $userIdentifier]);
     }
 }

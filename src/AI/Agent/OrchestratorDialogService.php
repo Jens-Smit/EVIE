@@ -506,7 +506,12 @@ final readonly class OrchestratorDialogService
     private function handleDialogResponse(string $responseContent): string
     {
         $responseData = json_decode($responseContent, true);
-        $content = $responseData['content'] ?? 'Keine Antwort verfügbar';
+
+        // Die LLM-Antwort nutzt 'reason' als Schlüssel für die Antwort, 
+        // Fallback auf 'content' für Kompatibilität
+        $content = $responseData['content'] 
+            ?? $responseData['reason'] 
+            ?? 'Keine Antwort verfügbar';
         $intent = $responseData['intent'] ?? 'general';
 
         $this->logger->info('Dialog-Antwort erkannt', [

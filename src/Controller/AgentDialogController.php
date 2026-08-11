@@ -76,7 +76,7 @@ final class AgentDialogController
         if (!$userProfile) {
             $userProfile = new UserProfile();
             $userProfile->setUserIdentifier($userIdentifier);
-            $userProfile->setUserType('unknown'); // Standardwert
+            $userProfile->setName($userIdentifier); // Standardwert
             $this->userProfileRepo->save($userProfile, true); // Sofort speichern
         }
 
@@ -95,12 +95,14 @@ final class AgentDialogController
             if ($this->isToolGenerationRequest($response)) {
                 // Speichere als "pending_tool"-Status
                 $historyEntry = new AgentHistory();
-                $historyEntry->setAgentName('orchestrator');
-                $historyEntry->setAction(['type' => 'tool_generation_request']);
-                $historyEntry->setInput(['message' => $userMessage]);
-                $historyEntry->setOutput(['response' => $response]);
-                $historyEntry->setStatus('pending_tool_approval');
-                $historyEntry->setUserProfile($userProfile);
+                $historyEntry->setAction('tool_generation_request');
+                $historyEntry->setDetails(json_encode([
+                    'agent' => 'orchestrator',
+                    'status' => 'pending_tool_approval',
+                    'input' => ['message' => $userMessage],
+                    'output' => ['response' => $response],
+                ], JSON_THROW_ON_ERROR));
+                $historyEntry->setUser($userProfile);
                 $this->historyRepo->save($historyEntry, true);
 
                 return new JsonResponse([
@@ -111,23 +113,27 @@ final class AgentDialogController
 
             // Normale Antwort
             $historyEntry = new AgentHistory();
-            $historyEntry->setAgentName('orchestrator');
-            $historyEntry->setAction(['type' => 'dialog']);
-            $historyEntry->setInput(['message' => $userMessage]);
-            $historyEntry->setOutput(['response' => $response]);
-            $historyEntry->setStatus('success');
-            $historyEntry->setUserProfile($userProfile);
+            $historyEntry->setAction('dialog');
+            $historyEntry->setDetails(json_encode([
+                'agent' => 'orchestrator',
+                'status' => 'success',
+                'input' => ['message' => $userMessage],
+                'output' => ['response' => $response],
+            ], JSON_THROW_ON_ERROR));
+            $historyEntry->setUser($userProfile);
             $this->historyRepo->save($historyEntry, true);
 
             return new JsonResponse(['response' => $response]);
         } catch (\Exception $e) {
             $historyEntry = new AgentHistory();
-            $historyEntry->setAgentName('orchestrator');
-            $historyEntry->setAction(['type' => 'dialog']);
-            $historyEntry->setInput(['message' => $userMessage]);
-            $historyEntry->setOutput(['error' => $e->getMessage()]);
-            $historyEntry->setStatus('failed');
-            $historyEntry->setUserProfile($userProfile);
+            $historyEntry->setAction('dialog');
+            $historyEntry->setDetails(json_encode([
+                'agent' => 'orchestrator',
+                'status' => 'failed',
+                'input' => ['message' => $userMessage],
+                'output' => ['error' => $e->getMessage()],
+            ], JSON_THROW_ON_ERROR));
+            $historyEntry->setUser($userProfile);
             $this->historyRepo->save($historyEntry, true);
 
             $this->logger->error('AgentDialogController::dialog - Fehler:', [
@@ -160,13 +166,18 @@ final class AgentDialogController
         $entries = $this->historyRepo->findByUserIdentifier($userIdentifier);
 
         return new JsonResponse(array_map(
-            static fn ($entry) => [
-                'agent' => $entry->getAgentName(),
-                'status' => $entry->getStatus(),
-                'executed_at' => $entry->getExecutedAt()->format(DATE_ATOM),
-                'input' => $entry->getInput(),
-                'output' => $entry->getOutput(),
-            ],
+            static function ($entry) {
+                $details = json_decode($entry->getDetails() ?? '{}', true) ?? [];
+
+                return [
+                    'agent' => $details['agent'] ?? null,
+                    'status' => $details['status'] ?? null,
+                    'action' => $entry->getAction(),
+                    'executed_at' => $entry->getCreatedAt()->format(DATE_ATOM),
+                    'input' => $details['input'] ?? null,
+                    'output' => $details['output'] ?? null,
+                ];
+            },
             $entries
         ));
     }

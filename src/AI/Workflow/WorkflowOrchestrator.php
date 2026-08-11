@@ -50,7 +50,7 @@ class WorkflowOrchestrator
             $this->saveResults($workflow, $results);
 
             // 5. Workflow als erfolgreich markieren
-            $workflow->setStatus('completed');
+            $this->updateWorkflowStatus($workflow, 'completed');
             $this->historyRepo->save($workflow, true);
 
             $this->logger->info('Workflow erfolgreich abgeschlossen', [
@@ -88,22 +88,31 @@ class WorkflowOrchestrator
     private function createWorkflowEntity(array $strategy, string $userIdentifier): AgentHistory
     {
         $workflow = new AgentHistory();
-        $workflow->setAgentName('workflow_orchestrator');
-        $workflow->setInput([
-            'task' => $strategy['task'],
-            'user_identifier' => $userIdentifier,
-        ]);
-        $workflow->setOutput([
-            'strategy' => $strategy,
-        ]);
-        $workflow->setStatus('running');
-        $workflow->setUserProfile($userIdentifier);
-        $workflow->setMetadata([
-            'workflow_type' => 'multi_step',
-            'total_steps' => $strategy['execution_plan']['total_steps'],
-            'estimated_duration' => $strategy['estimated_duration'],
-            'risk_level' => $strategy['risk_assessment']['level'],
-        ]);
+        $workflow->setAction('workflow_orchestrator');
+        $workflow->setDetails(json_encode([
+            'agent' => 'workflow_orchestrator',
+            'status' => 'running',
+            'input' => [
+                'task' => $strategy['task'],
+                'user_identifier' => $userIdentifier,
+            ],
+            'output' => [
+                'strategy' => $strategy,
+            ],
+            'metadata' => [
+                'workflow_type' => 'multi_step',
+                'total_steps' => $strategy['execution_plan']['total_steps'] ?? count($strategy['execution_plan']['steps']),
+                'estimated_duration' => $strategy['estimated_duration'],
+                'risk_level' => $strategy['risk_assessment']['level'],
+            ],
+        ], JSON_THROW_ON_ERROR));
+
+        // UserProfile laden bzw. den userIdentifier als Referenz speichern
+        // (Der User wird über das Repository zugeordnet)
+        $userProfile = $this->historyRepo->findUserByIdentifier($userIdentifier);
+        if ($userProfile) {
+            $workflow->setUser($userProfile);
+        }
 
         $this->historyRepo->save($workflow, true);
 
@@ -152,8 +161,8 @@ class WorkflowOrchestrator
                     continue;
                 } else {
                     // Workflow abbrechen
-                    $workflow->setStatus('failed');
-                    $workflow->setError($e->getMessage());
+                    $this->updateWorkflowStatus($workflow, 'failed');
+                    $this->updateWorkflowError($workflow, $e->getMessage());
                     $this->historyRepo->save($workflow, true);
                     throw $e;
                 }
@@ -224,13 +233,13 @@ class WorkflowOrchestrator
      */
     private function updateWorkflowProgress(AgentHistory $workflow, array $executedSteps, array $results): void
     {
-        $metadata = $workflow->getMetadata() ?? [];
-        $metadata['executed_steps'] = $executedSteps;
-        $metadata['step_results'] = $results;
-        $metadata['last_updated'] = (new \DateTimeImmutable())->format(DATE_ATOM);
+        $details = $this->getWorkflowDetailsArray($workflow);
+        $details['metadata']['executed_steps'] = $executedSteps;
+        $details['metadata']['step_results'] = $results;
+        $details['metadata']['last_updated'] = (new \DateTimeImmutable())->format(DATE_ATOM);
+        $details['output']['results'] = $results;
 
-        $workflow->setMetadata($metadata);
-        $workflow->setOutput(['results' => $results]);
+        $workflow->setDetails(json_encode($details, JSON_THROW_ON_ERROR));
 
         $this->historyRepo->save($workflow, true);
     }
@@ -240,15 +249,43 @@ class WorkflowOrchestrator
      */
     private function saveResults(AgentHistory $workflow, array $results): void
     {
-        $metadata = $workflow->getMetadata() ?? [];
-        $metadata['final_results'] = $results;
-        $metadata['completed_at'] = (new \DateTimeImmutable())->format(DATE_ATOM);
+        $details = $this->getWorkflowDetailsArray($workflow);
+        $details['metadata']['final_results'] = $results;
+        $details['metadata']['completed_at'] = (new \DateTimeImmutable())->format(DATE_ATOM);
+        $details['output']['results'] = $results;
+        $details['executed_at'] = (new \DateTimeImmutable())->format(DATE_ATOM);
 
-        $workflow->setMetadata($metadata);
-        $workflow->setOutput(['results' => $results]);
-        $workflow->setExecutedAt(new \DateTimeImmutable());
+        $workflow->setDetails(json_encode($details, JSON_THROW_ON_ERROR));
 
         $this->historyRepo->save($workflow, true);
+    }
+
+    /**
+     * Aktualisiert den Status eines Workflows
+     */
+    private function updateWorkflowStatus(AgentHistory $workflow, string $status): void
+    {
+        $details = $this->getWorkflowDetailsArray($workflow);
+        $details['status'] = $status;
+        $workflow->setDetails(json_encode($details, JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * Aktualisiert den Fehler eines Workflows
+     */
+    private function updateWorkflowError(AgentHistory $workflow, string $error): void
+    {
+        $details = $this->getWorkflowDetailsArray($workflow);
+        $details['error'] = $error;
+        $workflow->setDetails(json_encode($details, JSON_THROW_ON_ERROR));
+    }
+
+    /**
+     * Liest die Workflow-Details aus der Entity
+     */
+    private function getWorkflowDetailsArray(AgentHistory $workflow): array
+    {
+        return json_decode($workflow->getDetails() ?? '{}', true) ?? [];
     }
 
     /**
@@ -317,13 +354,12 @@ class WorkflowOrchestrator
     public function getActiveWorkflows(string $userIdentifier = null): array
     {
         $queryBuilder = $this->historyRepo->createQueryBuilder('ah')
-            ->where('ah.agentName = :agent')
-            ->andWhere('ah.status IN (:statuses)')
-            ->setParameter('agent', 'workflow_orchestrator')
-            ->setParameter('statuses', ['running', 'pending']);
+            ->where('ah.action = :agent')
+            ->setParameter('agent', 'workflow_orchestrator');
 
         if ($userIdentifier) {
-            $queryBuilder->andWhere('ah.userProfile = :user')
+            $queryBuilder->join('ah.user', 'u')
+                ->andWhere('u.userIdentifier = :user')
                 ->setParameter('user', $userIdentifier);
         }
 
@@ -333,14 +369,14 @@ class WorkflowOrchestrator
             ->getResult();
 
         return array_map(function($workflow) {
-            $metadata = $workflow->getMetadata() ?? [];
+            $details = $this->getWorkflowDetailsArray($workflow);
             return [
                 'id' => $workflow->getId(),
-                'status' => $workflow->getStatus(),
-                'task' => $workflow->getInput()['task'] ?? 'Unbekannte Aufgabe',
+                'status' => $details['status'] ?? null,
+                'task' => $details['input']['task'] ?? 'Unbekannte Aufgabe',
                 'progress' => $this->calculateProgress($workflow),
-                'estimated_duration' => $metadata['estimated_duration'] ?? 'Unbekannt',
-                'risk_level' => $metadata['risk_level'] ?? 'low',
+                'estimated_duration' => $details['metadata']['estimated_duration'] ?? 'Unbekannt',
+                'risk_level' => $details['metadata']['risk_level'] ?? 'low',
                 'created_at' => $workflow->getCreatedAt()->format('Y-m-d H:i:s'),
             ];
         }, $workflows);
@@ -351,7 +387,8 @@ class WorkflowOrchestrator
      */
     private function calculateProgress(AgentHistory $workflow): int
     {
-        $metadata = $workflow->getMetadata() ?? [];
+        $details = $this->getWorkflowDetailsArray($workflow);
+        $metadata = $details['metadata'] ?? [];
         
         if (isset($metadata['total_steps']) && isset($metadata['executed_steps'])) {
             $total = $metadata['total_steps'];
@@ -370,18 +407,19 @@ class WorkflowOrchestrator
     {
         $workflow = $this->historyRepo->find($workflowId);
 
-        if (!$workflow || $workflow->getAgentName() !== 'workflow_orchestrator') {
+        if (!$workflow || $workflow->getAction() !== 'workflow_orchestrator') {
             return null;
         }
 
-        $metadata = $workflow->getMetadata() ?? [];
-        $output = $workflow->getOutput() ?? [];
+        $details = $this->getWorkflowDetailsArray($workflow);
+        $metadata = $details['metadata'] ?? [];
+        $output = $details['output'] ?? [];
 
         return [
             'id' => $workflow->getId(),
-            'status' => $workflow->getStatus(),
-            'task' => $workflow->getInput()['task'] ?? 'Unbekannte Aufgabe',
-            'user' => $workflow->getUserProfile(),
+            'status' => $details['status'] ?? null,
+            'task' => $details['input']['task'] ?? 'Unbekannte Aufgabe',
+            'user' => $workflow->getUser()?->getUserIdentifier(),
             'progress' => $this->calculateProgress($workflow),
             'total_steps' => $metadata['total_steps'] ?? 0,
             'executed_steps' => $metadata['executed_steps'] ?? [],
@@ -389,8 +427,8 @@ class WorkflowOrchestrator
             'estimated_duration' => $metadata['estimated_duration'] ?? 'Unbekannt',
             'risk_level' => $metadata['risk_level'] ?? 'low',
             'created_at' => $workflow->getCreatedAt()->format('Y-m-d H:i:s'),
-            'executed_at' => $workflow->getExecutedAt()?->format('Y-m-d H:i:s'),
-            'error' => $workflow->getError(),
+            'executed_at' => $details['executed_at'] ?? null,
+            'error' => $details['error'] ?? null,
         ];
     }
 
@@ -401,17 +439,20 @@ class WorkflowOrchestrator
     {
         $workflow = $this->historyRepo->find($workflowId);
 
-        if (!$workflow || $workflow->getAgentName() !== 'workflow_orchestrator') {
+        if (!$workflow || $workflow->getAction() !== 'workflow_orchestrator') {
             return false;
         }
 
-        if ($workflow->getStatus() !== 'running') {
+        $details = $this->getWorkflowDetailsArray($workflow);
+        if (($details['status'] ?? null) !== 'running') {
             return false;
         }
 
-        $workflow->setStatus('cancelled');
-        $workflow->setError($reason ?? 'Workflow manuell abgebrochen');
-        $workflow->setExecutedAt(new \DateTimeImmutable());
+        $this->updateWorkflowStatus($workflow, 'cancelled');
+        $this->updateWorkflowError($workflow, $reason ?? 'Workflow manuell abgebrochen');
+        $details = $this->getWorkflowDetailsArray($workflow);
+        $details['executed_at'] = (new \DateTimeImmutable())->format(DATE_ATOM);
+        $workflow->setDetails(json_encode($details, JSON_THROW_ON_ERROR));
 
         $this->historyRepo->save($workflow, true);
 

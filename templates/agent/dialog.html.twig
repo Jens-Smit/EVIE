@@ -51,13 +51,13 @@
         </div>
 
         {# Chat Form #}
-        <form id="chat-form" action="{{ path('agent_dialog') }}" method="post" class="space-y-4">
+        <form id="chat-form" class="space-y-4">
             <div>
                 <label for="prompt" class="block text-sm font-medium text-content mb-2">
                     Deine Nachricht:
                 </label>
                 <textarea id="prompt" name="prompt"
-                          class="w-full p-3 border border-border rounded-xl bg-surface
+                          class="w-full p-3 border border-border rounded-xl bg-white dark:bg-slate-800
                                  focus:ring-2 focus:ring-primary focus:border-transparent
                                  text-content placeholder-content-subtle"
                           placeholder="Was möchtest du den Agenten fragen?"
@@ -100,4 +100,90 @@
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const form = document.getElementById('chat-form');
+            const chatContainer = document.getElementById('chat-container');
+            const prompt = document.getElementById('prompt');
+
+            form.addEventListener('submit', async function (e) {
+                e.preventDefault();
+
+                const message = prompt.value.trim();
+                if (!message) {
+                    return;
+                }
+
+                // User-Nachricht im Chat anzeigen
+                appendMessage('user', message);
+                prompt.value = '';
+                prompt.focus();
+
+                // Typing-Indikator anzeigen
+                const typingEl = showTyping();
+
+                try {
+                    const response = await fetch('{{ path('agent_dialog') }}', {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({
+                            message: message,
+                            user_identifier: 'default_user'
+                        })
+                    });
+
+                    const data = await response.json();
+                    typingEl.remove();
+
+                    if (!response.ok) {
+                        appendMessage('agent', 'Fehler: ' + (data.error || 'Unbekannter Fehler'));
+                        return;
+                    }
+
+                    appendMessage('agent', data.response || 'Keine Antwort erhalten.');
+                } catch (err) {
+                    typingEl.remove();
+                    appendMessage('agent', 'Fehler: ' + err.message);
+                }
+            });
+
+            function appendMessage(role, content) {
+                const wrapper = document.createElement('div');
+                const bubble = document.createElement('div');
+
+                if (role === 'user') {
+                    wrapper.className = 'flex justify-end';
+                    bubble.className = 'chat-bubble-user rounded-xl px-4 py-2 max-w-[75%] whitespace-pre-wrap';
+                } else {
+                    wrapper.className = 'flex justify-start';
+                    bubble.className = 'chat-bubble-agent rounded-xl px-4 py-2 max-w-[75%] whitespace-pre-wrap';
+                }
+
+                bubble.textContent = content;
+                wrapper.appendChild(bubble);
+                chatContainer.appendChild(wrapper);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }
+
+            function showTyping() {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'flex justify-start';
+                wrapper.innerHTML = '<div class="chat-bubble-agent rounded-xl px-4 py-2">' +
+                    '<span class="typing-dot">.</span>' +
+                    '<span class="typing-dot">.</span>' +
+                    '<span class="typing-dot">.</span>' +
+                    '</div>';
+                chatContainer.appendChild(wrapper);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+                return wrapper;
+            }
+        });
+    </script>
 {% endblock %}

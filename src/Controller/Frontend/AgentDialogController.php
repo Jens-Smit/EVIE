@@ -35,16 +35,26 @@ class AgentDialogController extends AbstractController
         // Konvertiere die Einträge in ein für das Template geeignetes Format
         $history = [];
         foreach ($entries as $entry) {
+            // Erst Details prüfen (neues Format), dann action (altes Format)
+            $details = json_decode($entry->getDetails() ?? '{}', true) ?? [];
+            if (empty($details)) {
+                // Altes Format: action enthält JSON wie {"type":"dialog"}
+                $action = json_decode($entry->getAction(), true);
+                if (is_array($action)) {
+                    $details = $action;
+                }
+            }
+            
             $history[] = [
-                'timestamp' => $entry->getExecutedAt(),
+                'timestamp' => $entry->getCreatedAt(),
                 'messages' => [
                     [
                         'role' => 'user',
-                        'content' => $entry->getInput()['message'] ?? 'Unbekannte Nachricht',
+                        'content' => $details['input']['message'] ?? 'Unbekannte Nachricht',
                     ],
                     [
                         'role' => 'agent',
-                        'content' => $entry->getOutput()['response'] ?? $entry->getOutput()['error'] ?? 'Keine Antwort',
+                        'content' => $details['output']['response'] ?? $details['output']['error'] ?? 'Keine Antwort',
                     ],
                 ],
             ];

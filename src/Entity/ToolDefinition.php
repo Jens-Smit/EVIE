@@ -20,11 +20,29 @@ class ToolDefinition
     #[ORM\Column(type: Types::TEXT)]
     private string $description;
 
-    #[ORM\Column(type: Types::JSON)]
+    #[ORM\Column(name: 'tool_schema', type: Types::JSON)]
     private array $schema;
+
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $parameters = [];
 
     #[ORM\Column(length: 50)]
     private string $status = 'pending';
+
+    #[ORM\Column(length: 50, nullable: true)]
+    private ?string $complexity = null;
+
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $dependencies = [];
+
+    #[ORM\Column(type: Types::JSON, nullable: true)]
+    private ?array $metadata = [];
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $approvedAt = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?\DateTimeImmutable $rejectedAt = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
@@ -33,8 +51,8 @@ class ToolDefinition
     private ?\DateTimeImmutable $updatedAt = null;
 
     #[ORM\ManyToOne(targetEntity: ToolCategory::class, inversedBy: 'tools')]
-    #[ORM\JoinColumn(nullable: false)]
-    private ToolCategory $category;
+    #[ORM\JoinColumn(nullable: true)]
+    private ?ToolCategory $category = null;
 
     public function __construct()
     {
@@ -79,6 +97,17 @@ class ToolDefinition
         return $this;
     }
 
+    public function getParameters(): ?array
+    {
+        return $this->parameters;
+    }
+
+    public function setParameters(?array $parameters): static
+    {
+        $this->parameters = $parameters;
+        return $this;
+    }
+
     public function getStatus(): string
     {
         return $this->status;
@@ -87,6 +116,76 @@ class ToolDefinition
     public function setStatus(string $status): static
     {
         $this->status = $status;
+        return $this;
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->status === 'approved';
+    }
+
+    public function isPending(): bool
+    {
+        return $this->status === 'pending';
+    }
+
+    public function isRejected(): bool
+    {
+        return $this->status === 'rejected';
+    }
+
+    public function getComplexity(): ?string
+    {
+        return $this->complexity;
+    }
+
+    public function setComplexity(?string $complexity): static
+    {
+        $this->complexity = $complexity;
+        return $this;
+    }
+
+    public function getDependencies(): ?array
+    {
+        return $this->dependencies;
+    }
+
+    public function setDependencies(?array $dependencies): static
+    {
+        $this->dependencies = $dependencies;
+        return $this;
+    }
+
+    public function getMetadata(): ?array
+    {
+        return $this->metadata;
+    }
+
+    public function setMetadata(?array $metadata): static
+    {
+        $this->metadata = $metadata;
+        return $this;
+    }
+
+    public function getApprovedAt(): ?\DateTimeImmutable
+    {
+        return $this->approvedAt;
+    }
+
+    public function setApprovedAt(?\DateTimeImmutable $approvedAt): static
+    {
+        $this->approvedAt = $approvedAt;
+        return $this;
+    }
+
+    public function getRejectedAt(): ?\DateTimeImmutable
+    {
+        return $this->rejectedAt;
+    }
+
+    public function setRejectedAt(?\DateTimeImmutable $rejectedAt): static
+    {
+        $this->rejectedAt = $rejectedAt;
         return $this;
     }
 
@@ -112,12 +211,12 @@ class ToolDefinition
         return $this;
     }
 
-    public function getCategory(): ToolCategory
+    public function getCategory(): ?ToolCategory
     {
         return $this->category;
     }
 
-    public function setCategory(ToolCategory $category): static
+    public function setCategory(?ToolCategory $category): static
     {
         $this->category = $category;
         return $this;
