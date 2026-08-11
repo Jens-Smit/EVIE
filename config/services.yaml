@@ -275,6 +275,15 @@ services:
             - { name: 'kernel.event_listener', event: 'ai.tool.pending_approval', method: 'onPendingToolApproval' }
             - { name: 'kernel.event_listener', event: 'ai.tool.approved', method: 'onToolApproved' }
 
+    # Sidebar Badge Listener - calculates dynamic badge counts
+    App\EventListener\SidebarBadgeListener:
+        arguments:
+            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
+            $historyRepo: '@App\Repository\AgentHistoryRepository'
+            $twig: '@twig'
+        tags:
+            - { name: 'kernel.event_listener', event: 'kernel.controller', method: 'onKernelController', priority: 10 }
+
     # ========================================================================
     # Controller Services
     # ========================================================================
