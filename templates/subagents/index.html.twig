@@ -1,0 +1,100 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Subagenten - EVIE{% endblock %}
+
+{% block body %}
+<div class="container mx-auto px-4 py-8">
+    <h1 class="text-3xl font-bold mb-6">Subagenten</h1>
+    
+    <div class="bg-white shadow-md rounded-lg p-6 mb-6">
+        <h2 class="text-2xl font-semibold mb-4">Neuen Subagenten erstellen</h2>
+        <form id="createSubAgentForm" class="space-y-4">
+            <div>
+                <label for="name" class="block text-sm font-medium text-gray-700">Name</label>
+                <input type="text" name="name" id="name" required 
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+            </div>
+            <div>
+                <label for="description" class="block text-sm font-medium text-gray-700">Beschreibung</label>
+                <textarea name="description" id="description" rows="3" required
+                          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
+            </div>
+            <div>
+                <label for="capabilities" class="block text-sm font-medium text-gray-700">Fähigkeiten (JSON)</label>
+                <textarea name="capabilities" id="capabilities" rows="2"
+                          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">[]</textarea>
+            </div>
+            <button type="submit" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+                Erstellen
+            </button>
+        </form>
+    </div>
+
+    <div class="bg-white shadow-md rounded-lg p-6">
+        <h2 class="text-2xl font-semibold mb-4">Meine Subagenten</h2>
+        
+        {% if subAgents|length > 0 %}
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {% for subAgent in subAgents %}
+            <div class="border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow">
+                <div class="flex justify-between items-start mb-2">
+                    <h3 class="text-xl font-semibold">{{ subAgent.name }}</h3>
+                    <span class="px-2 py-1 text-xs rounded-full 
+                          {% if subAgent.status == 'active' %}bg-green-100 text-green-800
+                          {% else %}bg-gray-100 text-gray-800{% endif %}">
+                        {{ subAgent.status }}
+                    </span>
+                </div>
+                <p class="text-gray-600 mb-4">{{ subAgent.description }}</p>
+                <div class="flex space-x-2">
+                    <a href="{{ path('api_subagents_get', {'id': subAgent.id}) }}" 
+                       class="px-3 py-1 bg-blue-100 text-blue-800 rounded-md text-sm hover:bg-blue-200">
+                        Details
+                    </a>
+                    <a href="{{ path('api_subagents_history', {'id': subAgent.id}) }}" 
+                       class="px-3 py-1 bg-purple-100 text-purple-800 rounded-md text-sm hover:bg-purple-200">
+                        Historie
+                    </a>
+                    <button 
+                       class="px-3 py-1 bg-red-100 text-red-800 rounded-md text-sm hover:bg-red-200"
+                       onclick="event.preventDefault(); if(confirm('Subagent löschen?')) { fetch('{{ path('api_subagents_delete', {'id': subAgent.id}) }}', { method: 'DELETE' }).then(() => window.location.reload()); }">
+                        Löschen
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="text-gray-500">Keine Subagenten gefunden.</p>
+        {% endif %}
+    </div>
+</div>
+
+{% block javascripts %}
+<script>
+document.getElementById('createSubAgentForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    const formData = {
+        name: document.getElementById('name').value,
+        description: document.getElementById('description').value,
+        capabilities: JSON.parse(document.getElementById('capabilities').value || '[]')
+    };
+    
+    fetch('{{ path("api_subagents_create") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: JSON.stringify(formData)
+    }).then(response => response.json())
+      .then(data => {
+          if (data.success) {
+              window.location.reload();
+          } else {
+              alert('Fehler: ' + (data.error || 'Unbekannter Fehler'));
+          }
+      });
+});
+</script>
+{% endblock %}
