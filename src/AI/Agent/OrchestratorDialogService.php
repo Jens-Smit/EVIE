@@ -82,7 +82,7 @@ final readonly class OrchestratorDialogService
                     return $this->handleToolNotFound($userMessage, $userIdentifier);
 
                 case 'dialog':
-                    return $this->handleDialogResponse($normalizedResponse);
+                    return $this->handleDialogResponse($normalizedResponse, $userMessage, $userIdentifier);
 
                 default:
                     $this->logger->warning('Unbekannter Antworttyp', ['type' => $responseType]);
@@ -134,6 +134,37 @@ final readonly class OrchestratorDialogService
 
         // Drittes: LLM-basierte Klassifizierung für komplexere Fälle
         return $this->classifyWithLLM($response);
+    }
+
+    /**
+     * Prüft, ob eine Dialog-Antwort darauf hindeutet, dass kein Tool verfügbar ist.
+     */
+    private function isNoToolAvailableResponse(string $reason, string $content): bool
+    {
+        $text = $reason . ' ' . $content;
+        $textLower = strtolower($text);
+        
+        $indicators = [
+            'kein tool verfügbar',
+            'keine funktionierenden tools',
+            'keine tools zur verfügung',
+            'kein passendes tool',
+            'keine ressourcen',
+            'nicht verfügbar',
+            'kann diese anfrage nicht ausführen',
+            'manuelle zusammenfassung ist erforderlich',
+            'keine automatisierten tools',
+            'kein direktes tool',
+            'es stehen keine funktionierenden tools zur verfügung',
+        ];
+
+        foreach ($indicators as $indicator) {
+            if (str_contains($textLower, $indicator)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -512,23 +543,32 @@ final readonly class OrchestratorDialogService
 
     /**
      * Behandelt direkte Dialog-Antworten
+     * Prüft, ob die Antwort auf fehlende Tools hindeutet und löst dann Tool-Generierung aus
      */
-    private function handleDialogResponse(string $responseContent): string
+    private function handleDialogResponse(string $responseContent, string $userMessage, string $userIdentifier): string
     {
         $responseData = json_decode($responseContent, true);
 
         // Die LLM-Antwort nutzt 'reason' als Schlüssel für die Antwort, 
         // Fallback auf 'content' für Kompatibilität
-        $content = $responseData['content'] 
-            ?? $responseData['reason'] 
-            ?? 'Keine Antwort verfügbar';
+        $content = $responseData['content'] ?? '';
+        $reason = $responseData['reason'] ?? '';
         $intent = $responseData['intent'] ?? 'general';
+
+        // Prüfe, ob die Antwort darauf hindeutet, dass kein Tool verfügbar ist
+        if ($this->isNoToolAvailableResponse($reason, $content)) {
+            $this->logger->info('Dialog-Antwort enthält Tool-Fehlermeldung, starte Tool-Generierung...');
+            return $this->handleToolNotFound($userMessage, $userIdentifier);
+        }
+
+        // Normale Dialog-Antwort
+        $finalContent = $content ?: $reason ?: 'Keine Antwort verfügbar';
 
         $this->logger->info('Dialog-Antwort erkannt', [
             'intent' => $intent,
-            'content_length' => strlen($content)
+            'content_length' => strlen($finalContent)
         ]);
 
-        return $content;
+        return $finalContent;
     }
 }
