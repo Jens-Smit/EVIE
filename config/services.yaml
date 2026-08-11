@@ -53,6 +53,7 @@ services:
             $urlGenerator: '@router'
             $jsonResponseEnforcer: '@App\AI\Response\JsonResponseEnforcer'
             $faultTolerantValidator: '@App\AI\Response\FaultTolerantValidator'
+            $responseNormalizer: '@App\AI\Response\ResponseNormalizer'
 
     # Tool Definition Generator - UPDATED with ToolCategoryRepository
     App\AI\Skills\ToolDefinitionGenerator:
