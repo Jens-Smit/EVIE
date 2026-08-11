@@ -1,14 +1,112 @@
+# EVIE Routes
+# API Routes for EVIE
+
+# Controllers
 controllers:
     resource: ../src/Controller/
     type: attribute
 
+# Agent Dialog
 agent_dialog:
     path: /api/agent/dialog
     controller: App\Controller\AgentDialogController::dialog
-    methods: POST
+    methods: [POST]
 
 agent_history:
     path: /api/agent/history/{userIdentifier}
     controller: App\Controller\AgentDialogController::history
     methods: GET
 
+# Documents
+api_documents_list:
+    path: /api/documents
+    controller: App\Controller\DocumentController::list
+    methods: [GET]
+
+api_documents_upload:
+    path: /api/documents/upload
+    controller: App\Controller\DocumentController::upload
+    methods: [POST]
+
+api_documents_get:
+    path: /api/documents/{id}
+    controller: App\Controller\DocumentController::get
+    methods: [GET]
+    requirements:
+        id: '\d+'
+
+api_documents_delete:
+    path: /api/documents/{id}
+    controller: App\Controller\DocumentController::delete
+    methods: [DELETE]
+    requirements:
+        id: '\d+'
+
+# SubAgents
+api_subagents_list:
+    path: /api/subagents
+    controller: App\Controller\SubAgentController::list
+    methods: [GET]
+
+api_subagents_get:
+    path: /api/subagents/{id}
+    controller: App\Controller\SubAgentController::get
+    methods: [GET]
+    requirements:
+        id: '\d+'
+
+api_subagents_history:
+    path: /api/subagents/{id}/history
+    controller: App\Controller\SubAgentController::history
+    methods: [GET]
+    requirements:
+        id: '\d+'
+
+api_subagents_create:
+    path: /api/subagents
+    controller: App\Controller\SubAgentController::create
+    methods: [POST]
+
+api_subagents_delete:
+    path: /api/subagents/{id}
+    controller: App\Controller\SubAgentController::delete
+    methods: [DELETE]
+    requirements:
+        id: '\d+'
+
+# Dashboard
+api_dashboard:
+    path: /api/dashboard
+    controller: App\Controller\DashboardController::index
+    methods: [GET]
+
+# Frontend Routes
+app_home:
+    path: /
+    controller: App\Controller\Frontend\HomeController::index
+    methods: [GET]
+
+app_agent_dialog:
+    path: /agent/dialog
+    controller: App\Controller\Frontend\AgentDialogController::index
+    methods: [GET]
+
+app_documents:
+    path: /documents
+    controller: App\Controller\Frontend\DocumentController::index
+    methods: [GET]
+
+app_subagents:
+    path: /subagents
+    controller: App\Controller\Frontend\SubAgentController::index
+    methods: [GET]
+
+app_dashboard:
+    path: /dashboard
+    controller: App\Controller\Frontend\DashboardController::index
+    methods: [GET]
+
+app_tools:
+    path: /tools
+    controller: App\Controller\Frontend\ToolApprovalController::index
+    methods: [GET]
