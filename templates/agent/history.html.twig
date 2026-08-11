@@ -1,184 +1,59 @@
+{# templates/agent/history.html.twig #}
 {% extends 'base.html.twig' %}
 
-{% block title %}EVIE - Verlauf{% endblock %}
-
-{% block stylesheets %}
-    {{ parent() }}
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@5.2.0/github-markdown-light.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.7.0/styles/github.min.css">
-    <style>
-        #history-container {
-            max-height: 600px;
-            overflow-y: auto;
-            border: 1px solid #d1d5db;
-            border-radius: 0.5rem;
-            padding: 1rem;
-            background: #fff;
-        }
-        .history-entry {
-            margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid #e5e7eb;
-        }
-        .history-entry:last-child {
-            border-bottom: none;
-            margin-bottom: 0;
-            padding-bottom: 0;
-        }
-        .history-timestamp {
-            text-align: center;
-            margin-bottom: 0.5rem;
-        }
-        .history-timestamp strong {
-            color: #6b7280;
-            font-size: 0.875rem;
-        }
-        .history-message {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-            max-width: 80%;
-            margin-bottom: 0.5rem;
-        }
-        .history-message.user {
-            align-self: flex-end;
-        }
-        .history-message.agent {
-            align-self: flex-start;
-        }
-        .history-message-bubble {
-            display: inline-block;
-            padding: 0.75rem 1rem;
-            border-radius: 0.75rem;
-            line-height: 1.5;
-            word-wrap: break-word;
-            font-size: 0.9rem;
-        }
-        .history-message-bubble.user {
-            background: #2563eb;
-            color: white;
-            border-bottom-right-radius: 0;
-        }
-        .history-message-bubble.agent {
-            background: #f3f4f6;
-            color: #1f2937;
-            border-bottom-left-radius: 0;
-        }
-        .history-markdown-body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            line-height: 1.5;
-            color: #374151;
-        }
-        .history-markdown-body pre {
-            background: #1e293b;
-            color: #e2e8f0;
-            padding: 0.75rem;
-            border-radius: 0.5rem;
-            overflow-x: auto;
-            margin: 0.5rem 0;
-            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-            font-size: 0.8rem;
-        }
-        .history-markdown-body code {
-            background: #e5e7eb;
-            color: #1f2937;
-            padding: 0.15rem 0.3rem;
-            border-radius: 0.25rem;
-            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-            font-size: 0.8rem;
-        }
-        .history-markdown-body pre code {
-            background: transparent;
-            color: inherit;
-            padding: 0;
-        }
-        .history-markdown-body blockquote {
-            border-left: 3px solid #2563eb;
-            padding-left: 1rem;
-            margin-left: 0;
-            color: #6b7280;
-            font-style: italic;
-        }
-        #history-container::-webkit-scrollbar { width: 8px; }
-        #history-container::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
-        #history-container::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 10px; }
-    </style>
-{% endblock %}
-
-{% block javascripts %}
-    {{ parent() }}
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.7.0/highlight.min.js"></script>
-    <script>
-        if (typeof marked !== 'undefined') {
-            marked.setOptions({
-                highlight: function(code, lang) {
-                    if (lang && hljs.getLanguage(lang)) {
-                        return hljs.highlight(lang, code).value;
-                    }
-                    return hljs.highlightAuto(code).value;
-                },
-                langPrefix: 'language-',
-                gfm: true,
-                breaks: true
-            });
-        }
-        document.addEventListener('DOMContentLoaded', function() {
-            const markdownElements = document.querySelectorAll('.history-markdown');
-            markdownElements.forEach(function(el) {
-                if (typeof marked !== 'undefined') {
-                    el.innerHTML = marked.parse(el.textContent);
-                }
-            });
-            if (typeof hljs !== 'undefined') {
-                hljs.highlightAll();
-            }
-        });
-    </script>
-{% endblock %}
+{% block title %}EVIE – Agenten-Verlauf{% endblock %}
 
 {% block body %}
-    <div class="bg-white rounded-lg shadow p-6">
-        <div class="flex justify-between items-center mb-4">
-            <h1 class="text-2xl font-bold text-secondary">Agenten-Verlauf</h1>
-            <a href="{{ path('frontend_agent_dialog') }}" class="bg-primary text-white px-4 py-2 rounded-lg hover:bg-secondary transition flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-8-3a1 1 0 00-.867.5 1 1 0 11-1.731-1A3 3 0 0113 8a3.001 3.001 0 01-2 2.83V11a1 1 0 11-2 0v-1a1 1 0 011-1 1 1 0 100-2zm0 8a1 1 0 100-2 1 1 0 000 2z" clip-rule="evenodd" />
-                </svg>
-                Neue Konversation
-            </a>
-        </div>
-        
-        <p class="text-gray-700 mb-6">Hier siehst du die letzten Interaktionen mit dem EVIE-Agenten für Benutzer <strong>default_user</strong>.</p>
+<div class="max-w-4xl mx-auto">
+    <div class="flex items-center justify-between mb-6">
+        <h1 class="text-2xl font-bold text-content">Agenten-Verlauf</h1>
+        <a href="{{ path('frontend_agent_dialog') }}" class="btn btn-primary">
+            <i class="ph ph-plus"></i>
+            Neue Konversation
+        </a>
+    </div>
 
+    <div class="card p-6">
         {% if history is defined and history|length > 0 %}
-            <div id="history-container">
+            <div class="space-y-6">
                 {% for entry in history %}
-                    <div class="history-entry">
-                        <div class="history-timestamp">
-                            <strong>{{ entry.timestamp|date('d.m.Y H:i:s') }}</strong>
+                    <div class="border border-border rounded-xl overflow-hidden">
+                        <div class="bg-surface-muted px-4 py-2 border-b border-border">
+                            <span class="text-sm font-medium text-content-muted">
+                                {{ entry.timestamp|date('d.m.Y H:i:s') }}
+                            </span>
                         </div>
-                        {% for message in entry.messages %}
-                            <div class="history-message {% if message.role == 'user' %}user{% else %}agent{% endif %}">
-                                <div class="history-message-bubble {% if message.role == 'user' %}user{% else %}agent{% endif %}">
-                                    <div class="history-markdown history-markdown-body">{{ message.content }}</div>
-                                </div>
-                            </div>
-                        {% endfor %}
+                        <div class="p-4 space-y-3">
+                            {% for message in entry.messages %}
+                                {% if message.role == 'user' %}
+                                    <div class="flex justify-end">
+                                        <div class="chat-bubble-user rounded-xl px-4 py-2 max-w-[75%]">
+                                            {{ message.content }}
+                                        </div>
+                                    </div>
+                                {% else %}
+                                    <div class="flex justify-start">
+                                        <div class="chat-bubble-agent rounded-xl px-4 py-2 max-w-[75%]">
+                                            {{ message.content }}
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
                     </div>
                 {% endfor %}
             </div>
         {% else %}
-            <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded-lg mb-6">
-                <p>Noch keine Einträge im Verlauf für Benutzer <strong>default_user</strong>.</p>
-                <p class="mt-2">Starte eine <a href="{{ path('frontend_agent_dialog') }}" class="text-primary underline font-medium">Konversation</a>, um den Verlauf zu füllen.</p>
+            <div class="text-center py-12">
+                <i class="ph ph-chat-circle-dots text-5xl text-content-muted mb-4"></i>
+                <h2 class="text-xl font-semibold text-content mb-2">Noch keine Einträge im Verlauf</h2>
+                <p class="text-content-muted mb-6">Starte eine Konversation, um den Verlauf zu füllen.</p>
+                <a href="{{ path('frontend_agent_dialog') }}" class="btn btn-primary">
+                    <i class="ph ph-chat-circle-dots"></i>
+                    Neue Konversation starten
+                </a>
             </div>
         {% endif %}
-
-        <div class="mt-6 text-center">
-            <a href="{{ path('frontend_agent_dialog') }}" class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-secondary transition">
-                Zurück zum Chat
-            </a>
-        </div>
     </div>
+</div>
 {% endblock %}

@@ -1,41 +1,56 @@
 {# templates/decision/dashboard.html.twig #}
 {% extends 'base.html.twig' %}
 
-{% block title %}EVIE - Entscheidungs-Dashboard{% endblock %}
+{% block title %}EVIE – Entscheidungs-Dashboard{% endblock %}
 
 {% block body %}
-<div class="container mx-auto px-6 py-8">
-    <h1 class="text-3xl font-bold text-secondary mb-6">EVIE - Entscheidungs-Dashboard</h1>
+<div class="max-w-6xl mx-auto space-y-6">
+    <h1 class="text-2xl md:text-3xl font-bold text-content">Entscheidungs-Dashboard</h1>
 
     {# Übersicht #}
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
         {# Ausstehende Entscheidungen #}
-        <div class="bg-white rounded-lg shadow p-6">
-            <h2 class="text-xl font-bold text-yellow-600 mb-2">⏳ Ausstehend</h2>
-            <p class="text-4xl font-bold text-gray-900">{{ statistics.pending }}</p>
-            <p class="text-sm text-gray-600 mt-1">Entscheidungen warten auf Freigabe</p>
+        <div class="card p-6">
+            <div class="flex items-center gap-3 mb-3">
+                <div class="w-10 h-10 rounded-xl bg-warning-soft flex items-center justify-center shrink-0">
+                    <i class="ph ph-hourglass text-warning text-xl"></i>
+                </div>
+                <h2 class="font-bold text-content">Ausstehend</h2>
+            </div>
+            <p class="text-4xl font-bold text-content">{{ statistics.pending }}</p>
+            <p class="text-sm text-content-muted mt-1">Entscheidungen warten auf Freigabe</p>
         </div>
 
         {# Genehmigte Entscheidungen #}
-        <div class="bg-white rounded-lg shadow p-6">
-            <h2 class="text-xl font-bold text-green-600 mb-2">✅ Genehmigt</h2>
-            <p class="text-4xl font-bold text-gray-900">{{ statistics.approved }}</p>
-            <p class="text-sm text-gray-600 mt-1">Entscheidungen wurden genehmigt</p>
+        <div class="card p-6">
+            <div class="flex items-center gap-3 mb-3">
+                <div class="w-10 h-10 rounded-xl bg-success-soft flex items-center justify-center shrink-0">
+                    <i class="ph ph-check-circle text-success text-xl"></i>
+                </div>
+                <h2 class="font-bold text-content">Genehmigt</h2>
+            </div>
+            <p class="text-4xl font-bold text-content">{{ statistics.approved }}</p>
+            <p class="text-sm text-content-muted mt-1">Entscheidungen wurden genehmigt</p>
         </div>
 
         {# Abgelehnte Entscheidungen #}
-        <div class="bg-white rounded-lg shadow p-6">
-            <h2 class="text-xl font-bold text-red-600 mb-2">❌ Abgelehnt</h2>
-            <p class="text-4xl font-bold text-gray-900">{{ statistics.rejected }}</p>
-            <p class="text-sm text-gray-600 mt-1">Entscheidungen wurden abgelehnt</p>
+        <div class="card p-6">
+            <div class="flex items-center gap-3 mb-3">
+                <div class="w-10 h-10 rounded-xl bg-danger-soft flex items-center justify-center shrink-0">
+                    <i class="ph ph-x-circle text-danger text-xl"></i>
+                </div>
+                <h2 class="font-bold text-content">Abgelehnt</h2>
+            </div>
+            <p class="text-4xl font-bold text-content">{{ statistics.rejected }}</p>
+            <p class="text-sm text-content-muted mt-1">Entscheidungen wurden abgelehnt</p>
         </div>
     </div>
 
     {# Ausstehende Entscheidungen #}
-    <div class="bg-white rounded-lg shadow p-6 mb-8">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-2xl font-bold text-secondary">Ausstehende Entscheidungen</h2>
-            <span class="bg-yellow-100 text-yellow-800 text-xs font-medium px-2.5 py-0.5 rounded-full">
+    <div class="card p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-bold text-content">Ausstehende Entscheidungen</h2>
+            <span class="badge badge-pending">
                 {{ pendingDecisions|length }} neu
             </span>
         </div>
@@ -43,86 +58,87 @@
         {% if pendingDecisions|length > 0 %}
             <div class="space-y-4">
                 {% for decision in pendingDecisions %}
-                    <div class="bg-yellow-50 p-4 rounded-lg border-l-4 border-yellow-500 decision-item"
+                    <div class="bg-warning-soft p-4 rounded-xl border-l-4 border-warning decision-item"
                          data-decision-id="{{ decision.id }}">
                         <div class="flex justify-between items-start">
                             <div class="flex-1">
-                                <h3 class="font-bold text-lg text-gray-900">{{ decision.description }}</h3>
-                                <p class="text-sm text-gray-600 mt-1">
+                                <h3 class="font-bold text-lg text-content">{{ decision.description }}</h3>
+                                <p class="text-sm text-content-muted mt-1">
                                     Typ: <span class="font-medium">{{ decision.type }}</span> |
                                     Erstellt: {{ decision.created_at }}
                                 </p>
                                 {% if decision.context %}
-                                    <div class="mt-2 p-3 bg-white rounded-lg border border-gray-200">
-                                        <h4 class="text-sm font-medium text-gray-700 mb-1">Kontext:</h4>
-                                        <pre class="text-xs text-gray-800 overflow-auto">{{ decision.context|json_encode|raw }}</pre>
+                                    <div class="mt-2 p-3 bg-surface rounded-lg border border-border">
+                                        <h4 class="text-sm font-medium text-content mb-1">Kontext:</h4>
+                                        <pre class="text-xs text-content-muted overflow-auto">{{ decision.context|json_encode|raw }}</pre>
                                     </div>
                                 {% endif %}
                             </div>
                         </div>
-                        <div class="mt-4 flex gap-2">
-                            <button class="bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-600 transition approve-decision"
+                        <div class="mt-4 flex flex-wrap gap-2">
+                            <button class="btn btn-success approve-decision"
                                     data-decision-id="{{ decision.id }}">
-                                ✅ Genehmigen
+                                <i class="ph ph-check"></i>
+                                Genehmigen
                             </button>
-                            <button class="bg-red-500 text-white px-4 py-2 rounded-lg hover:bg-red-600 transition reject-decision"
+                            <button class="btn btn-danger reject-decision"
                                     data-decision-id="{{ decision.id }}">
-                                ❌ Ablehnen
+                                <i class="ph ph-x"></i>
+                                Ablehnen
                             </button>
-                            <button class="bg-gray-500 text-white px-4 py-2 rounded-lg hover:bg-gray-600 transition details-decision"
+                            <button class="btn btn-ghost details-decision"
                                     data-decision-id="{{ decision.id }}">
-                                📄 Details
+                                <i class="ph ph-file-text"></i>
+                                Details
                             </button>
                         </div>
                     </div>
                 {% endfor %}
             </div>
         {% else %}
-            <p class="text-gray-500 text-center py-8">Keine ausstehenden Entscheidungen.</p>
+            <p class="text-content-muted text-center py-8">Keine ausstehenden Entscheidungen.</p>
         {% endif %}
     </div>
 
     {# Letzte Entscheidungen #}
-    <div class="bg-white rounded-lg shadow p-6 mb-8">
-        <div class="flex justify-between items-center mb-4">
-            <h2 class="text-2xl font-bold text-secondary">Letzte Entscheidungen</h2>
+    <div class="card p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h2 class="text-xl font-bold text-content">Letzte Entscheidungen</h2>
             <a href="#" class="text-primary hover:underline text-sm">Alle anzeigen →</a>
         </div>
 
         {% if recentDecisions|length > 0 %}
-            <div class="overflow-x-auto">
-                <table class="w-full text-sm text-left text-gray-500">
-                    <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+            <div class="table-responsive">
+                <table class="table">
+                    <thead>
                         <tr>
-                            <th class="px-4 py-3">ID</th>
-                            <th class="px-4 py-3">Typ</th>
-                            <th class="px-4 py-3">Beschreibung</th>
-                            <th class="px-4 py-3">Status</th>
-                            <th class="px-4 py-3">Erstellt am</th>
-                            <th class="px-4 py-3">Genehmigt von</th>
+                            <th>ID</th>
+                            <th>Typ</th>
+                            <th>Beschreibung</th>
+                            <th>Status</th>
+                            <th>Erstellt am</th>
+                            <th>Genehmigt von</th>
                         </tr>
                     </thead>
                     <tbody>
                         {% for decision in recentDecisions %}
-                            <tr class="border-b bg-white hover:bg-gray-50">
-                                <td class="px-4 py-3 font-medium text-gray-900">#{{ decision.id }}</td>
-                                <td class="px-4 py-3">
-                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                                          style="background-color: {{ decision.type|lower == 'tool_approval' ? '#dcfce7' : decision.type|lower == 'api_access' ? '#dbeafe' : '#fef3c7' }}; color: {{ decision.type|lower == 'tool_approval' ? '#166534' : decision.type|lower == 'api_access' ? '#1e40af' : '#92400e' }};">
+                            <tr>
+                                <td class="font-medium text-content">#{{ decision.id }}</td>
+                                <td>
+                                    <span class="badge {% if decision.type|lower == 'tool_approval' %}badge-approved{% elseif decision.type|lower == 'api_access' %}badge-pending{% else %}badge-pending{% endif %}">
                                         {{ decision.type }}
                                     </span>
                                 </td>
-                                <td class="px-4 py-3 max-w-xs truncate" title="{{ decision.description }}">
+                                <td class="max-w-xs truncate" title="{{ decision.description }}">
                                     {{ decision.description }}
                                 </td>
-                                <td class="px-4 py-3">
-                                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium"
-                                          style="background-color: {{ decision.status == 'approved' ? '#dcfce7' : decision.status == 'rejected' ? '#fef2f2' : '#fef3c7' }}; color: {{ decision.status == 'approved' ? '#166534' : decision.status == 'rejected' ? '#991b1b' : '#92400e' }};">
+                                <td>
+                                    <span class="badge {% if decision.status == 'approved' %}badge-approved{% elseif decision.status == 'rejected' %}badge-rejected{% else %}badge-pending{% endif %}">
                                         {{ decision.status }}
                                     </span>
                                 </td>
-                                <td class="px-4 py-3 text-gray-500">{{ decision.created_at }}</td>
-                                <td class="px-4 py-3 text-gray-500">
+                                <td>{{ decision.created_at }}</td>
+                                <td>
                                     {{ decision.approved_by ?? '-' }}
                                 </td>
                             </tr>
@@ -131,42 +147,42 @@
                 </table>
             </div>
         {% else %}
-            <p class="text-gray-500 text-center py-8">Keine Entscheidungen gefunden.</p>
+            <p class="text-content-muted text-center py-8">Keine Entscheidungen gefunden.</p>
         {% endif %}
     </div>
 
     {# Statistiken nach Typ #}
-    <div class="bg-white rounded-lg shadow p-6">
-        <h2 class="text-2xl font-bold text-secondary mb-4">Statistiken nach Typ</h2>
+    <div class="card p-6">
+        <h2 class="text-xl font-bold text-content mb-4">Statistiken nach Typ</h2>
 
         {% if statistics.by_type|length > 0 %}
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {% for type, stats in statistics.by_type %}
-                    <div class="bg-gray-50 p-4 rounded-lg border border-gray-200">
-                        <h3 class="font-bold text-lg text-gray-900 mb-2">{{ type }}</h3>
+                    <div class="bg-surface-muted p-4 rounded-xl border border-border">
+                        <h3 class="font-bold text-lg text-content mb-2">{{ type }}</h3>
                         <div class="space-y-1 text-sm">
                             <div class="flex justify-between">
-                                <span class="text-gray-600">Gesamt:</span>
-                                <span class="font-medium">{{ stats.total }}</span>
+                                <span class="text-content-muted">Gesamt:</span>
+                                <span class="font-medium text-content">{{ stats.total }}</span>
                             </div>
                             <div class="flex justify-between">
-                                <span class="text-gray-600">Ausstehend:</span>
-                                <span class="font-medium">{{ stats.pending }}</span>
+                                <span class="text-content-muted">Ausstehend:</span>
+                                <span class="font-medium text-content">{{ stats.pending }}</span>
                             </div>
                             <div class="flex justify-between">
-                                <span class="text-gray-600">Genehmigt:</span>
-                                <span class="font-medium text-green-600">{{ stats.approved }}</span>
+                                <span class="text-content-muted">Genehmigt:</span>
+                                <span class="font-medium text-success">{{ stats.approved }}</span>
                             </div>
                             <div class="flex justify-between">
-                                <span class="text-gray-600">Abgelehnt:</span>
-                                <span class="font-medium text-red-600">{{ stats.rejected }}</span>
+                                <span class="text-content-muted">Abgelehnt:</span>
+                                <span class="font-medium text-danger">{{ stats.rejected }}</span>
                             </div>
                         </div>
                     </div>
                 {% endfor %}
             </div>
         {% else %}
-            <p class="text-gray-500 text-center py-8">Keine Statistiken nach Typ verfügbar.</p>
+            <p class="text-content-muted text-center py-8">Keine Statistiken nach Typ verfügbar.</p>
         {% endif %}
     </div>
 </div>

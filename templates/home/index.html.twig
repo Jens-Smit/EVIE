@@ -1,34 +1,56 @@
+{# templates/home/index.html.twig #}
 {% extends 'base.html.twig' %}
 
-{% block title %}EVIE - Willkommen{% endblock %}
+{% block title %}EVIE – Willkommen{% endblock %}
 
 {% block body %}
-    <div class="bg-white rounded-lg shadow p-6 mb-6">
-        <h1 class="text-2xl font-bold text-secondary mb-4">Willkommen bei EVIE</h1>
-        <p class="text-gray-700 mb-4">
+<div class="max-w-4xl mx-auto space-y-6">
+    {# Hero Card #}
+    <div class="card p-8 md:p-10">
+        <div class="flex items-center gap-4 mb-6">
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-secondary
+                        flex items-center justify-center shadow-button shrink-0">
+                <i class="ph ph-brain text-white text-3xl"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold text-content">Willkommen bei EVIE</h1>
+                <p class="text-content-muted">Dein selbst-evolvierender AI-Agent</p>
+            </div>
+        </div>
+        
+        <p class="text-content-muted mb-6 leading-relaxed">
             EVIE ist dein selbst-evolvierender AI-Agent, der auf dem Symfony AI Bundle basiert.
-        </p>
-        <p class="text-gray-700 mb-6">
-            Navigiere durch die Menüpunkte, um mit dem Agenten zu interagieren, den Verlauf einzusehen oder Tools zu verwalten.
+            Navigiere durch die Menüpunkte, um mit dem Agenten zu interagieren, den Verlauf
+            einzusehen oder Tools zu verwalten.
         </p>
         
-        <div class="flex gap-4">
-            <a href="{{ path('frontend_agent_dialog') }}" class="bg-primary text-white px-4 py-2 rounded hover:bg-secondary transition">
+        <div class="flex flex-wrap gap-3">
+            <a href="{{ path('frontend_agent_dialog') }}" class="btn btn-primary">
+                <i class="ph ph-chats-teardrop"></i>
                 AI Dialog starten
             </a>
-            <a href="{{ path('frontend_agent_history') }}" class="bg-accent text-white px-4 py-2 rounded hover:bg-blue-600 transition">
+            <a href="{{ path('frontend_agent_history') }}" class="btn btn-secondary">
+                <i class="ph ph-clock-counter-clockwise"></i>
                 Verlauf anzeigen
             </a>
-            <a href="{{ path('frontend_tools_pending') }}" class="bg-accent text-white px-4 py-2 rounded hover:bg-blue-600 transition">
+            <a href="{{ path('frontend_tools_pending') }}" class="btn btn-ghost">
+                <i class="ph ph-check-square-offset"></i>
                 Ausstehende Tools
             </a>
         </div>
     </div>
     
-    <div class="bg-white rounded-lg shadow p-6">
-        <h2 class="text-xl font-bold text-secondary mb-4">Systemstatus</h2>
-        <div class="bg-blue-100 border border-blue-400 text-blue-700 px-4 py-3 rounded">
+    {# Systemstatus Card #}
+    <div class="card p-6">
+        <h2 class="card-title flex items-center gap-2">
+            <i class="ph ph-pulse text-success"></i>
+            Systemstatus
+        </h2>
+        <div class="bg-success-soft border border-success/20 text-success
+                    px-4 py-3 rounded-xl flex items-center gap-2">
+            <i class="ph ph-check-circle text-lg"></i>
             <strong>Status:</strong> Alle Systeme sind operativ.
         </div>
     </div>
+</div>
 {% endblock %}

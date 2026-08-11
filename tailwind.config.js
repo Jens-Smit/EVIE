@@ -8,11 +8,70 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        primary: '#6366f1',    // Indigo (Mockup)
-        secondary: '#8b5cf6',  // Violett (Mockup)
-        accent: '#4fc3f7',
-        emerald: '#10b981',
-        orange: '#f97316',
+        // Brand-Farben
+        primary: {
+          DEFAULT: 'var(--color-primary)',
+          hover: 'var(--color-primary-hover)',
+          soft: 'var(--color-primary-soft)',
+        },
+        secondary: {
+          DEFAULT: 'var(--color-secondary)',
+          hover: 'var(--color-secondary-hover)',
+          soft: 'var(--color-secondary-soft)',
+        },
+        accent: {
+          DEFAULT: 'var(--color-accent)',
+          soft: 'var(--color-accent-soft)',
+        },
+
+        // Oberflächen
+        surface: {
+          DEFAULT: 'var(--color-surface)',
+          muted: 'var(--color-surface-muted)',
+          elevated: 'var(--color-surface-elevated)',
+        },
+
+        // Text
+        content: {
+          DEFAULT: 'var(--color-content)',
+          muted: 'var(--color-content-muted)',
+          subtle: 'var(--color-content-subtle)',
+        },
+
+        // Rahmen
+        border: {
+          DEFAULT: 'var(--color-border)',
+          strong: 'var(--color-border-strong)',
+        },
+
+        // Status
+        success: {
+          DEFAULT: 'var(--color-success)',
+          soft: 'var(--color-success-soft)',
+        },
+        warning: {
+          DEFAULT: 'var(--color-warning)',
+          soft: 'var(--color-warning-soft)',
+        },
+        danger: {
+          DEFAULT: 'var(--color-danger)',
+          soft: 'var(--color-danger-soft)',
+        },
+        info: {
+          DEFAULT: 'var(--color-info)',
+          soft: 'var(--color-info-soft)',
+        },
+      },
+      boxShadow: {
+        card: 'var(--shadow-card)',
+        'card-hover': 'var(--shadow-card-hover)',
+        button: 'var(--shadow-button)',
+        'button-hover': 'var(--shadow-button-hover)',
+        modal: 'var(--shadow-modal)',
+      },
+      borderRadius: {
+        card: 'var(--radius-card)',
+        button: 'var(--radius-button)',
       },
       animation: {
         'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',

@@ -1,52 +1,91 @@
+{# templates/agent/index.html.twig #}
 {% extends 'base.html.twig' %}
 
-{% block title %}EVIE - Willkommen{% endblock %}
+{% block title %}EVIE – Agenten{% endblock %}
 
 {% block body %}
-<div class="text-center mb-4">
-    <h1>Willkommen bei EVIE</h1>
-    <p class="mt-2">Dein selbst-evolvierender AI-Agent für komplexe Aufgaben</p>
-</div>
-
-<div class="card">
-    <h2 class="card-title">Über EVIE</h2>
-    <p>
-        EVIE ist ein fortschrittliches AI-Agenten-System, das auf dem Symfony AI Bundle basiert.
-        Es ermöglicht die Erstellung und Verwaltung von selbstlernenden Agenten, die 
-        verschiedene Aufgaben in deinem Unternehmen übernehmen können.
-    </p>
-    <p>
-        Mit EVIE kannst du:
-    </p>
-    <ul>
-        <li>AI-Agenten für spezifische Aufgaben erstellen und trainieren</li>
-        <li>Dialoge mit Agenten führen und deren Antworten verwalten</li>
-        <li>Tools für Agenten freischalten und verwalten</li>
-        <li>Den Verlauf aller Interaktionen einsehen</li>
-    </ul>
-</div>
-
-<div class="card">
-    <h2 class="card-title">Schnellstart</h2>
-    <div class="text-center">
-        <a href="{{ path('agent_dialog') }}" class="btn btn-primary mt-2">
-            AI-Agenten Dialog starten
-        </a>
-        <a href="{{ path('agent_history') }}" class="btn btn-secondary mt-2">
-            Verlauf anzeigen
-        </a>
-        <a href="{{ path('tools_pending') }}" class="btn btn-secondary mt-2">
-            Ausstehende Tools verwalten
-        </a>
-    </div>
-</div>
-
-<div class="card">
-    <h2 class="card-title">Systemstatus</h2>
-    <div class="text-center">
-        <p>System: <span class="badge badge-approved">Operativ</span></p>
-        <p>Agenten: <span class="badge badge-approved">Aktiv</span></p>
-        <p>Tools: <span class="badge badge-pending">Wartung</span></p>
+<div class="max-w-4xl mx-auto space-y-6">
+    {# Hero Card #}
+    <div class="card p-8 md:p-10">
+        <div class="flex items-center gap-4 mb-6">
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-secondary
+                        flex items-center justify-center shadow-button shrink-0">
+                <i class="ph ph-robot text-white text-3xl"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold text-content">EVIE Agenten</h1>
+                <p class="text-content-muted">Dein selbst-evolvierender AI-Agent für komplexe Aufgaben</p>
+            </div>
+        </div>
+        
+        <p class="text-content-muted mb-6 leading-relaxed">
+            EVIE ist ein fortschrittliches AI-Agenten-System, das auf dem Symfony AI Bundle basiert.
+            Es ermöglicht die Erstellung und Verwaltung von selbstlernenden Agenten, die
+            verschiedene Aufgaben in deinem Unternehmen übernehmen können.
+        </p>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+            <div class="bg-surface-muted rounded-xl p-4 border border-border">
+                <h3 class="font-semibold text-content mb-2 flex items-center gap-2">
+                    <i class="ph ph-check-circle text-success"></i>
+                    Funktionen
+                </h3>
+                <ul class="space-y-2 text-sm text-content-muted">
+                    <li class="flex items-start gap-2">
+                        <i class="ph ph-dot text-primary mt-0.5"></i>
+                        AI-Agenten für spezifische Aufgaben erstellen und trainieren
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="ph ph-dot text-primary mt-0.5"></i>
+                        Dialoge mit Agenten führen und deren Antworten verwalten
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="ph ph-dot text-primary mt-0.5"></i>
+                        Tools für Agenten freischalten und verwalten
+                    </li>
+                    <li class="flex items-start gap-2">
+                        <i class="ph ph-dot text-primary mt-0.5"></i>
+                        Den Verlauf aller Interaktionen einsehen
+                    </li>
+                </ul>
+            </div>
+            
+            <div class="bg-surface-muted rounded-xl p-4 border border-border">
+                <h3 class="font-semibold text-content mb-2 flex items-center gap-2">
+                    <i class="ph ph-pulse text-info"></i>
+                    Systemstatus
+                </h3>
+                <div class="space-y-3 text-sm">
+                    <div class="flex items-center justify-between">
+                        <span class="text-content-muted">System</span>
+                        <span class="badge badge-approved">Operativ</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-content-muted">Agenten</span>
+                        <span class="badge badge-approved">Aktiv</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-content-muted">Tools</span>
+                        <span class="badge badge-pending">Wartung</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="flex flex-wrap gap-3">
+            <a href="{{ path('frontend_agent_dialog') }}" class="btn btn-primary">
+                <i class="ph ph-chats-teardrop"></i>
+                AI-Agenten Dialog starten
+            </a>
+            <a href="{{ path('frontend_agent_history') }}" class="btn btn-secondary">
+                <i class="ph ph-clock-counter-clockwise"></i>
+                Verlauf anzeigen
+            </a>
+            <a href="{{ path('frontend_tools_pending') }}" class="btn btn-ghost">
+                <i class="ph ph-check-square-offset"></i>
+                Ausstehende Tools verwalten
+            </a>
+        </div>
     </div>
 </div>
 {% endblock %}

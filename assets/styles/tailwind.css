@@ -1,24 +1,195 @@
 @import "tailwindcss";
 @config "../../tailwind.config.js";
 
-@theme {
+/* ============================================
+   EVIE Design System – Farben & Variablen
+   Light & Dark Mode
+   ============================================ */
+
+:root {
+  /* Brand-Farben (Light) */
   --color-primary: #6366f1;
+  --color-primary-hover: #4f46e5;
+  --color-primary-soft: #eef2ff;
+
   --color-secondary: #8b5cf6;
-  --color-accent: #4fc3f7;
+  --color-secondary-hover: #7c3aed;
+  --color-secondary-soft: #f5f3ff;
+
+  --color-accent: #0ea5e9;
+  --color-accent-soft: #e0f2fe;
+
+  /* Oberflächen (Light) */
+  --color-surface: #ffffff;
+  --color-surface-muted: #f8fafc;
+  --color-surface-elevated: #f1f5f9;
+
+  /* Text (Light) */
+  --color-content: #1e293b;
+  --color-content-muted: #64748b;
+  --color-content-subtle: #94a3b8;
+
+  /* Rahmen (Light) */
+  --color-border: #e2e8f0;
+  --color-border-strong: #cbd5e1;
+
+  /* Status (Light) */
+  --color-success: #10b981;
+  --color-success-soft: #d1fae5;
+  --color-warning: #f59e0b;
+  --color-warning-soft: #fef3c7;
+  --color-danger: #ef4444;
+  --color-danger-soft: #fee2e2;
+  --color-info: #3b82f6;
+  --color-info-soft: #dbeafe;
+
+  /* Schatten (Light) */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+  --shadow-button: 0 1px 2px rgba(0, 0, 0, 0.05);
+  --shadow-button-hover: 0 2px 6px rgba(0, 0, 0, 0.1);
+  --shadow-modal: 0 20px 50px rgba(0, 0, 0, 0.2);
+
+  /* Radien */
+  --radius-card: 0.75rem;
+  --radius-button: 0.5rem;
 }
 
-/* Custom styles */
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+.dark {
+  /* Brand-Farben (Dark) */
+  --color-primary: #818cf8;
+  --color-primary-hover: #a5b4fc;
+  --color-primary-soft: rgba(99, 102, 241, 0.15);
+
+  --color-secondary: #a78bfa;
+  --color-secondary-hover: #c4b5fd;
+  --color-secondary-soft: rgba(139, 92, 246, 0.15);
+
+  --color-accent: #38bdf8;
+  --color-accent-soft: rgba(14, 165, 233, 0.15);
+
+  /* Oberflächen (Dark) */
+  --color-surface: #1e293b;
+  --color-surface-muted: #0f172a;
+  --color-surface-elevated: #334155;
+
+  /* Text (Dark) */
+  --color-content: #f1f5f9;
+  --color-content-muted: #94a3b8;
+  --color-content-subtle: #64748b;
+
+  /* Rahmen (Dark) */
+  --color-border: #334155;
+  --color-border-strong: #475569;
+
+  /* Status (Dark) */
+  --color-success: #34d399;
+  --color-success-soft: rgba(16, 185, 129, 0.15);
+  --color-warning: #fbbf24;
+  --color-warning-soft: rgba(245, 158, 11, 0.15);
+  --color-danger: #f87171;
+  --color-danger-soft: rgba(239, 68, 68, 0.15);
+  --color-info: #60a5fa;
+  --color-info-soft: rgba(59, 130, 246, 0.15);
+
+  /* Schatten (Dark) */
+  --shadow-card: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.2);
+  --shadow-card-hover: 0 4px 12px rgba(0, 0, 0, 0.4), 0 2px 4px rgba(0, 0, 0, 0.2);
+  --shadow-button: 0 1px 2px rgba(0, 0, 0, 0.3);
+  --shadow-button-hover: 0 2px 6px rgba(0, 0, 0, 0.4);
+  --shadow-modal: 0 20px 50px rgba(0, 0, 0, 0.5);
 }
 
+/* ============================================
+   Basis-Styles
+   ============================================ */
+
+body {
+  background-color: var(--color-surface-muted);
+  color: var(--color-content);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar { width: 4px; height: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--color-border-strong);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--color-content-subtle); }
+
+/* Glass Panel */
+.glass-panel {
+  background-color: color-mix(in srgb, var(--color-surface) 70%, transparent);
+  backdrop-filter: blur(12px);
+  border: 1px solid var(--color-border);
+  box-shadow: var(--shadow-card);
+}
+
+/* Nav Button */
+.nav-btn.active {
+  background-color: var(--color-primary-soft);
+  border-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
+  color: var(--color-primary);
+}
+.dark .nav-btn.active {
+  color: var(--color-content);
+}
+.nav-btn.inactive {
+  color: var(--color-content-muted);
+  border-color: transparent;
+  transition: all 0.2s ease;
+}
+.nav-btn.inactive:hover {
+  color: var(--color-primary);
+  background-color: var(--color-surface-elevated);
+}
+
+/* Typing Dots */
+.typing-dot { animation: typing 1.4s infinite ease-in-out; }
+.typing-dot:nth-child(1) { animation-delay: 0s; }
+.typing-dot:nth-child(2) { animation-delay: 0.2s; }
+.typing-dot:nth-child(3) { animation-delay: 0.4s; }
+@keyframes typing {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-3px); }
+}
+
+/* Hide Utility */
+.hide { display: none !important; }
+
+/* Fade In */
+.fade-in { animation: fadeIn 0.3s ease-in-out forwards; }
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Slide Up Animation */
+.animate-slide-up {
+  animation: slideUp 0.3s ease-out forwards;
+}
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* Spinner */
 .spinner {
-    display: inline-block;
-    width: 16px;
-    height: 16px;
-    border: 2px solid rgba(255, 255, 255, 0.3);
-    border-radius: 50%;
-    border-top-color: white;
-    animation: spin 1s ease-in-out infinite;
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--color-border);
+  border-radius: 50%;
+  border-top-color: var(--color-primary);
+  animation: spin 1s ease-in-out infinite;
 }
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+/* No Scrollbar */
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }

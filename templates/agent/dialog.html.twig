@@ -1,184 +1,103 @@
 {# templates/agent/dialog.html.twig #}
 {% extends 'base.html.twig' %}
 
-{% block stylesheets %}
-    {{ parent() }}
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/github-markdown-css@5.2.0/github-markdown-light.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/highlight.min.css">
-    <style>
-        #chat-container {
-            max-height: 600px;
-            overflow-y: auto;
-            border: 1px solid #d1d5db;
-            border-radius: 0.5rem;
-            padding: 1rem;
-            background: #fff;
-            display: flex;
-            flex-direction: column;
-            gap: 0.75rem;
-        }
-        .chat-message {
-            display: flex;
-            flex-direction: column;
-            gap: 0.25rem;
-            max-width: 80%;
-        }
-        .chat-message.user {
-            align-self: flex-end;
-        }
-        .chat-message.agent {
-            align-self: flex-start;
-        }
-        .chat-message.system {
-            align-self: center;
-        }
-        .message-bubble {
-            display: inline-block;
-            padding: 0.75rem 1rem;
-            border-radius: 0.75rem;
-            line-height: 1.6;
-            word-wrap: break-word;
-        }
-        .message-bubble.user {
-            background: #2563eb;
-            color: white;
-            border-bottom-right-radius: 0;
-        }
-        .message-bubble.agent {
-            background: #f3f4f6;
-            color: #1f2937;
-            border-bottom-left-radius: 0;
-        }
-        .message-bubble.system {
-            background: #fef3c7;
-            color: #92400e;
-            border-radius: 0.75rem;
-            font-size: 0.875rem;
-            text-align: center;
-        }
-        .markdown-body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            line-height: 1.6;
-            color: #374151;
-        }
-        .markdown-body h1, .markdown-body h2, .markdown-body h3 {
-            margin-top: 1rem; margin-bottom: 0.5rem; color: #1f2937; font-weight: 600;
-        }
-        .markdown-body h1 { font-size: 1.5rem; }
-        .markdown-body h2 { font-size: 1.25rem; }
-        .markdown-body h3 { font-size: 1.125rem; }
-        .markdown-body p { margin: 0.5rem 0; }
-        .markdown-body pre {
-            background: #1e293b; color: #e2e8f0; padding: 1rem; border-radius: 0.5rem;
-            overflow-x: auto; margin: 0.5rem 0; font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
-            font-size: 0.875rem;
-        }
-        .markdown-body code {
-            background: #e5e7eb; color: #1f2937; padding: 0.2rem 0.4rem; border-radius: 0.25rem;
-            font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace; font-size: 0.875rem;
-        }
-        .markdown-body pre code { background: transparent; color: inherit; padding: 0; }
-        .markdown-body blockquote {
-            border-left: 3px solid #2563eb; padding-left: 1rem; margin-left: 0;
-            color: #6b7280; font-style: italic;
-        }
-        .markdown-body table { border-collapse: collapse; width: 100%; margin: 1rem 0; font-size: 0.875rem; }
-        .markdown-body th, .markdown-body td { border: 1px solid #d1d5db; padding: 0.5rem; }
-        .markdown-body th { background: #f3f4f6; text-align: left; font-weight: 600; }
-        .markdown-body tr:nth-child(even) { background: #f9fafb; }
-        .markdown-body ul, .markdown-body ol { margin: 0.5rem 0; padding-left: 1.5rem; }
-        .markdown-body li { margin: 0.25rem 0; }
-        .markdown-body a { color: #2563eb; text-decoration: underline; }
-        .spinner {
-            display: inline-block; width: 1rem; height: 1rem; border: 2px solid #f3f4f6;
-            border-top: 2px solid #2563eb; border-radius: 50%; animation: spin 0.8s linear infinite;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        #chat-container::-webkit-scrollbar { width: 8px; }
-        #chat-container::-webkit-scrollbar-track { background: #f1f1f1; border-radius: 10px; }
-        #chat-container::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 10px; }
-        #chat-form textarea { resize: vertical; min-height: 100px; }
-    </style>
-{% endblock %}
-
-{% block javascripts %}
-    {{ parent() }}
-    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/highlight.js@11.9.0/highlight.min.js"></script>
-    <script>
-        if (typeof marked !== 'undefined') {
-            marked.setOptions({
-                highlight: function(code, lang) {
-                    if (lang && hljs.getLanguage(lang)) {
-                        return hljs.highlight(lang, code).value;
-                    }
-                    return hljs.highlightAuto(code).value;
-                },
-                langPrefix: 'language-',
-                gfm: true,
-                breaks: true
-            });
-        }
-    </script>
-{% endblock %}
-
-{% block title %}EVIE - AI Dialog{% endblock %}
+{% block title %}EVIE – AI Dialog{% endblock %}
 
 {% block body %}
-    <div class="bg-white rounded-lg shadow p-6">
-        <h1 class="text-2xl font-bold text-secondary mb-4">AI Agent Dialog</h1>
-        <p class="text-gray-700 mb-6">Stelle dem EVIE-Agenten eine Frage oder gib ihm eine Aufgabe.</p>
+<div class="max-w-4xl mx-auto">
+    <div class="card p-6">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-content">AI Agent Dialog</h1>
+                <p class="text-content-muted mt-1">Stelle dem EVIE-Agenten eine Frage oder gib ihm eine Aufgabe.</p>
+            </div>
+            <a href="{{ path('frontend_agent_history') }}" class="btn btn-ghost">
+                <i class="ph ph-clock-counter-clockwise"></i>
+                Verlauf
+            </a>
+        </div>
         
-        <div id="chat-container" class="w-full">
+        {# Chat Container #}
+        <div id="chat-container" class="space-y-4 mb-6 max-h-[500px] overflow-y-auto pr-2">
             {% if messages is defined and messages|length > 0 %}
                 {% for message in messages %}
-                    <div class="chat-message {% if message.role == 'user' %}user{% elseif message.role == 'agent' %}agent{% else %}system{% endif %}">
-                        <div class="message-bubble {% if message.role == 'user' %}user{% elseif message.role == 'agent' %}agent{% else %}system{% endif %}">
-                            {% if message.role == 'system' %}
-                                <div class="markdown-body">{{ message.content }}</div>
-                            {% else %}
+                    {% if message.role == 'system' %}
+                        <div class="flex justify-center">
+                            <div class="chat-bubble-system rounded-xl px-4 py-2 text-sm">
                                 {{ message.content }}
-                            {% endif %}
+                            </div>
                         </div>
-                    </div>
+                    {% elseif message.role == 'user' %}
+                        <div class="flex justify-end">
+                            <div class="chat-bubble-user rounded-xl px-4 py-2 max-w-[75%]">
+                                {{ message.content }}
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="flex justify-start">
+                            <div class="chat-bubble-agent rounded-xl px-4 py-2 max-w-[75%]">
+                                {{ message.content }}
+                            </div>
+                        </div>
+                    {% endif %}
                 {% endfor %}
             {% else %}
-                <div class="chat-message system">
-                    <div class="message-bubble system">
+                <div class="flex justify-center">
+                    <div class="chat-bubble-system rounded-xl px-4 py-2 text-sm">
                         Willkommen beim EVIE-Agenten! Wie kann ich dir helfen?
                     </div>
                 </div>
             {% endif %}
         </div>
 
-        <form id="chat-form" action="{{ path('agent_dialog') }}" method="post" class="space-y-4 mt-4">
+        {# Chat Form #}
+        <form id="chat-form" action="{{ path('agent_dialog') }}" method="post" class="space-y-4">
             <div>
-                <label for="prompt" class="block text-sm font-medium text-gray-700 mb-1">Deine Nachricht:</label>
-                <textarea id="prompt" name="prompt" class="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="Was möchtest du den Agenten fragen?" rows="3" required></textarea>
+                <label for="prompt" class="block text-sm font-medium text-content mb-2">
+                    Deine Nachricht:
+                </label>
+                <textarea id="prompt" name="prompt"
+                          class="w-full p-3 border border-border rounded-xl bg-surface
+                                 focus:ring-2 focus:ring-primary focus:border-transparent
+                                 text-content placeholder-content-subtle"
+                          placeholder="Was möchtest du den Agenten fragen?"
+                          rows="3" required></textarea>
             </div>
             <input type="hidden" name="user_identifier" value="default_user">
-            <button type="submit" class="bg-primary text-white px-6 py-2 rounded-lg hover:bg-secondary transition flex items-center gap-2">
-                <span>Senden</span>
-            </button>
+            <div class="flex justify-end">
+                <button type="submit" class="btn btn-primary px-6">
+                    <i class="ph ph-paper-plane-right"></i>
+                    Senden
+                </button>
+            </div>
         </form>
 
-        <div class="mt-6">
-            <a href="{{ path('frontend_agent_history') }}" class="text-primary hover:underline flex items-center gap-2">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                    <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
-                </svg>
-                Verlauf anzeigen
-            </a>
-        </div>
-
-        <div class="mt-6 bg-gray-50 rounded-lg p-4">
-            <h2 class="text-lg font-bold text-secondary mb-2">Hinweise</h2>
-            <ul class="list-disc list-inside text-gray-700 space-y-1">
-                <li>Der Agent antwortet basierend auf seinen Trainingsdaten und dem aktuellen Kontext.</li>
-                <li>Für komplexe Anfragen kann die Antwort etwas länger dauern.</li>
-                <li>Alle Dialoge werden in der Datenbank gespeichert und im <a href="{{ path('frontend_agent_history') }}" class="text-primary underline">Verlauf</a> angezeigt.</li>
-                <li>Markdown, Code-Blöcke und Tabellen werden automatisch formatiert.</li>
+        {# Hinweise #}
+        <div class="mt-6 bg-surface-muted rounded-xl p-4 border border-border">
+            <h2 class="font-semibold text-content mb-3 flex items-center gap-2">
+                <i class="ph ph-info text-info"></i>
+                Hinweise
+            </h2>
+            <ul class="space-y-2 text-sm text-content-muted">
+                <li class="flex items-start gap-2">
+                    <i class="ph ph-dot text-primary mt-0.5"></i>
+                    Der Agent antwortet basierend auf seinen Trainingsdaten und dem aktuellen Kontext.
+                </li>
+                <li class="flex items-start gap-2">
+                    <i class="ph ph-dot text-primary mt-0.5"></i>
+                    Für komplexe Anfragen kann die Antwort etwas länger dauern.
+                </li>
+                <li class="flex items-start gap-2">
+                    <i class="ph ph-dot text-primary mt-0.5"></i>
+                    Alle Dialoge werden in der Datenbank gespeichert und im
+                    <a href="{{ path('frontend_agent_history') }}" class="text-primary underline">Verlauf</a> angezeigt.
+                </li>
+                <li class="flex items-start gap-2">
+                    <i class="ph ph-dot text-primary mt-0.5"></i>
+                    Markdown, Code-Blöcke und Tabellen werden automatisch formatiert.
+                </li>
             </ul>
         </div>
     </div>
+</div>
 {% endblock %}

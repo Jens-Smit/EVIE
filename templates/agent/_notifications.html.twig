@@ -1,4 +1,4 @@
-<!-- templates/agent/_notifications.html.twig -->
+{# templates/agent/_notifications.html.twig #}
 {% if app.session.flashBag.has('pending_tools') %}
 <div class="evie-notifications" data-controller="evie-notifications">
     <div class="evie-notification-toast" data-evie-notifications-target="toast">
@@ -11,19 +11,21 @@
                     <h4 class="evie-notification-title">Neues Tool wartet auf Freigabe</h4>
                 </div>
                 <div class="evie-notification-body">
-                    <p><strong>{{ tool.name }}</strong></p>
-                    <p>{{ tool.description|slice(0, 100) }}...</p>
+                    <div class="evie-notification-message">
+                        <p><strong>{{ tool.name }}</strong></p>
+                        <p>{{ tool.description|slice(0, 100) }}...</p>
+                    </div>
                 </div>
                 <div class="evie-notification-actions">
-                    <button class="evie-btn evie-btn-approve" 
+                    <button class="btn btn-success btn-sm" 
                             data-action="evie-notifications#approveTool"
                             data-tool-id="{{ tool.id }}">
-                        👍 Freigeben
+                        <i class="ph ph-check"></i> Freigeben
                     </button>
-                    <button class="evie-btn evie-btn-reject" 
+                    <button class="btn btn-danger btn-sm" 
                             data-action="evie-notifications#rejectTool"
                             data-tool-id="{{ tool.id }}">
-                        👎 Ablehnen
+                        <i class="ph ph-x"></i> Ablehnen
                     </button>
                 </div>
             </div>
@@ -32,7 +34,7 @@
 </div>
 {% endif %}
 
-<!-- CSS für Benachrichtigungen -->
+{# CSS für Benachrichtigungen (design-system-konform) #}
 <style>
     .evie-notifications {
         position: fixed;
@@ -45,28 +47,31 @@
     .evie-notification-toast {
         display: flex;
         flex-direction: column;
-        gap: 10px;
+        gap: 12px;
     }
 
     .evie-notification {
-        background: white;
-        border-radius: 8px;
-        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-        padding: 15px;
-        border-left: 4px solid #ffc107;
+        background-color: var(--color-surface);
+        border-radius: var(--radius-card);
+        box-shadow: var(--shadow-card-hover);
+        padding: 16px;
+        border-left: 4px solid var(--color-warning);
         animation: slideIn 0.3s ease-out;
+        border-top: 1px solid var(--color-border);
+        border-right: 1px solid var(--color-border);
+        border-bottom: 1px solid var(--color-border);
     }
 
     .evie-notification-pending {
-        border-left-color: #ffc107;
+        border-left-color: var(--color-warning);
     }
 
     .evie-notification-approved {
-        border-left-color: #28a745;
+        border-left-color: var(--color-success);
     }
 
     .evie-notification-rejected {
-        border-left-color: #dc3545;
+        border-left-color: var(--color-danger);
     }
 
     .evie-notification-header {
@@ -78,19 +83,20 @@
 
     .evie-notification-icon {
         font-size: 20px;
+        line-height: 1;
     }
 
     .evie-notification-title {
         margin: 0;
-        font-size: 16px;
+        font-size: 1rem;
         font-weight: 600;
-        color: #333;
+        color: var(--color-content);
     }
 
     .evie-notification-body {
         margin-bottom: 15px;
-        font-size: 14px;
-        color: #666;
+        font-size: 0.875rem;
+        color: var(--color-content-muted);
     }
 
     .evie-notification-body p {
@@ -103,32 +109,9 @@
         justify-content: flex-end;
     }
 
-    .evie-btn {
-        padding: 8px 16px;
-        border: none;
-        border-radius: 4px;
-        cursor: pointer;
-        font-size: 14px;
-        font-weight: 500;
-        transition: all 0.2s;
-    }
-
-    .evie-btn-approve {
-        background: #28a745;
-        color: white;
-    }
-
-    .evie-btn-approve:hover {
-        background: #218838;
-    }
-
-    .evie-btn-reject {
-        background: #dc3545;
-        color: white;
-    }
-
-    .evie-btn-reject:hover {
-        background: #c82333;
+    .btn-sm {
+        padding: 0.375rem 0.75rem;
+        font-size: 0.75rem;
     }
 
     @keyframes slideIn {
