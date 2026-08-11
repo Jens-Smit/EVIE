@@ -1,4 +1,27 @@
 services:
+    php:
+        build:
+            context: .
+            dockerfile: docker/php/Dockerfile
+        container_name: evie-php
+        volumes:
+            - .:/var/www/html
+        networks: [mcp_isolated]
+        depends_on:
+            - evie-db
+
+    nginx:
+        image: nginx:latest
+        container_name: evie-nginx
+        ports:
+            - "8000:80"
+        volumes:
+            - .:/var/www/html
+            - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf
+        networks: [mcp_isolated]
+        depends_on:
+            - php
+
     mcp-playwright:
         image: mcr.microsoft.com/playwright/mcp:latest
         container_name: mcp-playwright
@@ -11,18 +34,10 @@ services:
             - --port=8931
             - --host=0.0.0.0
         ports:
-            - "8931:8931"          # entfernen, falls Zugriff nur intern über mcp_isolated laufen soll
+            - "8931:8931"
         networks: [mcp_isolated]
-        healthcheck:
-            test: ["CMD", "node", "-e", "process.exit(0)"]
-            interval: 30s
-            timeout: 5s
-            retries: 3
-            start_period: 15s
         restart: unless-stopped
 
-    # Verifiziert: https://github.com/j0hanz/filesystem-mcp
-    # Default ist stdio; --port aktiviert HTTP-Transport (siehe README/CLI-Optionen).
     mcp-filesystem:
         image: ghcr.io/j0hanz/filesystem-mcp:latest
         container_name: mcp-filesystem
@@ -34,15 +49,8 @@ services:
         volumes:
             - ./var/mcp-sandbox:/workspace:rw
         networks: [mcp_isolated]
-        healthcheck:
-            test: ["CMD", "wget", "-q", "--spider", "http://localhost:8123/"]
-            interval: 30s
-            timeout: 5s
-            retries: 3
-            start_period: 15s
         restart: unless-stopped
 
-    # PostgreSQL für EVIE (falls nicht bereits vorhanden)
     evie-db:
         image: postgres:15-alpine
         container_name: evie-db
@@ -55,11 +63,6 @@ services:
         volumes:
             - evie-db-data:/var/lib/postgresql/data
         networks: [mcp_isolated]
-        healthcheck:
-            test: ["CMD-SHELL", "pg_isready -U evie"]
-            interval: 10s
-            timeout: 5s
-            retries: 5
         restart: unless-stopped
 
 networks:

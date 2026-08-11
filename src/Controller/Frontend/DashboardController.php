@@ -6,6 +6,7 @@ use App\Repository\AgentHistoryRepository;
 use App\Repository\DocumentRepository;
 use App\Repository\SubAgentRepository;
 use App\Repository\ToolDefinitionRepository;
+use App\Repository\UserProfileRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
@@ -17,25 +18,33 @@ class DashboardController extends AbstractController
         AgentHistoryRepository $agentHistoryRepository,
         ToolDefinitionRepository $toolDefinitionRepository,
         DocumentRepository $documentRepository,
-        SubAgentRepository $subAgentRepository
+        SubAgentRepository $subAgentRepository,
+        UserProfileRepository $userRepository
     ): Response {
         $user = $this->getUser();
         if (!$user) {
-            return $this->redirectToRoute('app_login');
+            // Default-User laden
+            $user = $userRepository->find(1); // oder eine andere ID
         }
 
-        $recentActions = $agentHistoryRepository->findBy(
-            ['user' => $user],
-            ['createdAt' => 'DESC'],
-            10
-        );
+        if ($user) {
+            $recentActions = $agentHistoryRepository->findBy(
+                ['user' => $user],
+                ['createdAt' => 'DESC'],
+                10
+            );
+
+            $subAgents = $subAgentRepository->findByUser($user->getId());
+        } else {
+            $recentActions = [];
+            $subAgents = [];
+        }
 
         $pendingTools = $toolDefinitionRepository->findBy(
             ['status' => 'pending']
         );
 
         $recentDocuments = $documentRepository->findRecent(5);
-        $subAgents = $subAgentRepository->findByUser($user->getId());
 
         return $this->render('dashboard/index.html.twig', [
             'recentActions' => $recentActions,

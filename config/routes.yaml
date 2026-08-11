@@ -88,7 +88,7 @@ app_home:
 
 app_agent_dialog:
     path: /agent/dialog
-    controller: App\Controller\Frontend\AgentDialogController::index
+    controller: App\Controller\Frontend\AgentDialogController::dialog
     methods: [GET]
 
 app_documents:
@@ -108,5 +108,5 @@ app_dashboard:
 
 app_tools:
     path: /tools
-    controller: App\Controller\Frontend\ToolApprovalController::index
+    controller: App\Controller\Frontend\ToolApprovalController::pending
     methods: [GET]

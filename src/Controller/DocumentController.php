@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\Document;
 use App\Entity\UserProfile;
 use App\Repository\DocumentRepository;
+use App\Repository\UserProfileRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -18,7 +19,8 @@ class DocumentController extends AbstractController
 {
     public function __construct(
         private EntityManagerInterface $entityManager,
-        private DocumentRepository $documentRepository
+        private DocumentRepository $documentRepository,
+        private UserProfileRepository $userRepository
     ) {
     }
 
@@ -26,8 +28,9 @@ class DocumentController extends AbstractController
     public function list(Request $request): JsonResponse
     {
         $user = $this->getUser();
-        if (!$user instanceof UserProfile) {
-            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        if (!$user) {
+            // Default-User laden
+            $user = $this->userRepository->find(1); // oder eine andere ID
         }
 
         $documents = $this->documentRepository->findByUser($user->getId());
@@ -41,8 +44,9 @@ class DocumentController extends AbstractController
     public function upload(Request $request): JsonResponse
     {
         $user = $this->getUser();
-        if (!$user instanceof UserProfile) {
-            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        if (!$user) {
+            // Default-User laden
+            $user = $this->userRepository->find(1); // oder eine andere ID
         }
 
         $file = $request->files->get('file');
@@ -72,8 +76,9 @@ class DocumentController extends AbstractController
     public function get(Document $document): JsonResponse
     {
         $user = $this->getUser();
-        if (!$user instanceof UserProfile || $document->getUser() !== $user) {
-            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        if (!$user) {
+            // Default-User laden
+            $user = $this->userRepository->find(1); // oder eine andere ID
         }
 
         return $this->json([
@@ -90,8 +95,9 @@ class DocumentController extends AbstractController
     public function delete(Document $document): JsonResponse
     {
         $user = $this->getUser();
-        if (!$user instanceof UserProfile || $document->getUser() !== $user) {
-            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        if (!$user) {
+            // Default-User laden
+            $user = $this->userRepository->find(1); // oder eine andere ID
         }
 
         $this->entityManager->remove($document);

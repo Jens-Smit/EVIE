@@ -48,7 +48,7 @@ class AgentHistoryRepository extends ServiceEntityRepository
     public function findByUserIdentifier(string $userIdentifier): array
     {
         return $this->createQueryBuilder('a')
-            ->join('a.userProfile', 'u')
+            ->join('a.user', 'u')
             ->where('u.userIdentifier = :userIdentifier')
             ->setParameter('userIdentifier', $userIdentifier)
             ->getQuery()

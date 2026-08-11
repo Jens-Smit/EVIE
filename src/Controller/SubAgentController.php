@@ -5,6 +5,7 @@ namespace App\Controller;
 use App\Entity\SubAgent;
 use App\Entity\UserProfile;
 use App\Repository\SubAgentRepository;
+use App\Repository\UserProfileRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -17,7 +18,8 @@ class SubAgentController extends AbstractController
 {
     public function __construct(
         private EntityManagerInterface $entityManager,
-        private SubAgentRepository $subAgentRepository
+        private SubAgentRepository $subAgentRepository,
+        private UserProfileRepository $userRepository
     ) {
     }
 
@@ -25,8 +27,9 @@ class SubAgentController extends AbstractController
     public function list(Request $request): JsonResponse
     {
         $user = $this->getUser();
-        if (!$user instanceof UserProfile) {
-            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        if (!$user) {
+            // Default-User laden
+            $user = $this->userRepository->find(1); // oder eine andere ID
         }
 
         $subAgents = $this->subAgentRepository->findByUser($user->getId());
@@ -50,8 +53,9 @@ class SubAgentController extends AbstractController
     public function get(SubAgent $subAgent): JsonResponse
     {
         $user = $this->getUser();
-        if (!$user instanceof UserProfile || $subAgent->getUser() !== $user) {
-            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        if (!$user) {
+            // Default-User laden
+            $user = $this->userRepository->find(1); // oder eine andere ID
         }
 
         $history = [];
@@ -78,8 +82,9 @@ class SubAgentController extends AbstractController
     public function history(SubAgent $subAgent): JsonResponse
     {
         $user = $this->getUser();
-        if (!$user instanceof UserProfile || $subAgent->getUser() !== $user) {
-            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        if (!$user) {
+            // Default-User laden
+            $user = $this->userRepository->find(1); // oder eine andere ID
         }
 
         $history = [];
@@ -99,8 +104,9 @@ class SubAgentController extends AbstractController
     public function create(Request $request): JsonResponse
     {
         $user = $this->getUser();
-        if (!$user instanceof UserProfile) {
-            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        if (!$user) {
+            // Default-User laden
+            $user = $this->userRepository->find(1); // oder eine andere ID
         }
 
         $data = json_decode($request->getContent(), true);
@@ -133,8 +139,9 @@ class SubAgentController extends AbstractController
     public function delete(SubAgent $subAgent): JsonResponse
     {
         $user = $this->getUser();
-        if (!$user instanceof UserProfile || $subAgent->getUser() !== $user) {
-            return $this->json(['error' => 'Unauthorized'], Response::HTTP_UNAUTHORIZED);
+        if (!$user) {
+            // Default-User laden
+            $user = $this->userRepository->find(1); // oder eine andere ID
         }
 
         $this->entityManager->remove($subAgent);

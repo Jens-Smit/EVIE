@@ -18,6 +18,9 @@ class UserProfile
     #[ORM\Column(length: 255)]
     private string $name;
 
+    #[ORM\Column(length: 255, unique: true)]
+    private string $userIdentifier;
+
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $email = null;
 
@@ -48,6 +51,17 @@ class UserProfile
     public function getName(): string
     {
         return $this->name;
+    }
+
+    public function getUserIdentifier(): string
+    {
+        return $this->userIdentifier;
+    }
+
+    public function setUserIdentifier(string $userIdentifier): static
+    {
+        $this->userIdentifier = $userIdentifier;
+        return $this;
     }
 
     public function setName(string $name): static
