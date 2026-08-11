@@ -1,0 +1,170 @@
+{# templates/tools/list.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}EVIE – Alle verfügbaren Tools{% endblock %}
+
+{% block body %}
+<div class="max-w-6xl mx-auto space-y-6">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl md:text-3xl font-bold text-content">Alle verfügbaren Tools</h1>
+            <p class="text-content-muted mt-1">
+                Hier siehst du alle statischen und dynamischen Tools, die im System registriert sind.
+            </p>
+        </div>
+        <div class="flex gap-2">
+            <span class="badge badge-approved">
+                <i class="ph ph-database text-sm mr-1"></i>
+                {{ databaseTools|length }} Datenbank-Tools
+            </span>
+            <span class="badge badge-info">
+                <i class="ph ph-lightning text-sm mr-1"></i>
+                {{ dynamicTools|length }} Dynamische Tools
+            </span>
+        </div>
+    </div>
+
+    {# Übersichtskarten #}
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {# Datenbank-Tools #}
+        {% if databaseTools|length > 0 %}
+            <div class="card p-6 col-span-1 md:col-span-2 lg:col-span-3">
+                <h2 class="card-title flex items-center gap-2 mb-4">
+                    <i class="ph ph-database text-primary"></i>
+                    Datenbank-Tools ({{ databaseTools|length }})
+                </h2>
+                <p class="text-sm text-content-muted mb-4">
+                    Genehmigte Tools, die in der Datenbank gespeichert sind.
+                </p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {% for tool in databaseTools %}
+                        <div class="bg-surface-muted rounded-xl p-4 border border-border hover:border-primary/30 transition-colors">
+                            <div class="flex items-start justify-between mb-2">
+                                <div class="flex-1">
+                                    <h3 class="font-semibold text-content mb-1">{{ tool.name }}</h3>
+                                    <p class="text-xs text-content-muted truncate">
+                                        {{ tool.description|slice(0, 100) }}{% if tool.description|length > 100 %}...{% endif %}
+                                    </p>
+                                </div>
+                                <span class="text-xs text-success bg-success-soft px-2 py-0.5 rounded-full">
+                                    Datenbank
+                                </span>
+                            </div>
+                            <div class="flex items-center gap-2 text-xs text-content-subtle">
+                                <span class="flex items-center gap-1">
+                                    <i class="ph ph-calendar"></i>
+                                    {{ tool.created_at|date('d.m.Y') }}
+                                </span>
+                                <span class="flex items-center gap-1">
+                                    <i class="ph ph-check-circle"></i>
+                                    {{ tool.status }}
+                                </span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        {# Dynamische Tools #}
+        {% if dynamicTools|length > 0 %}
+            <div class="card p-6 col-span-1 md:col-span-2 lg:col-span-3">
+                <h2 class="card-title flex items-center gap-2 mb-4">
+                    <i class="ph ph-lightning text-info"></i>
+                    Dynamische Tools ({{ dynamicTools|length }})
+                </h2>
+                <p class="text-sm text-content-muted mb-4">
+                    Tools, die dynamisch im System registriert wurden.
+                </p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {% for tool in dynamicTools %}
+                        <div class="bg-surface-muted rounded-xl p-4 border border-border hover:border-info/30 transition-colors">
+                            <div class="flex items-start justify-between mb-2">
+                                <div class="flex-1">
+                                    <h3 class="font-semibold text-content mb-1">{{ tool.name }}</h3>
+                                    <p class="text-xs text-content-muted truncate">
+                                        {{ tool.description|slice(0, 100) }}{% if tool.description|length > 100 %}...{% endif %}
+                                    </p>
+                                </div>
+                                <span class="text-xs text-info bg-info-soft px-2 py-0.5 rounded-full">
+                                    Dynamisch
+                                </span>
+                            </div>
+                            <div class="flex items-center gap-2 text-xs text-content-subtle">
+                                <span class="flex items-center gap-1">
+                                    <i class="ph ph-zap"></i>
+                                    Aktiv
+                                </span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        {# Keine Tools gefunden #}
+        {% if databaseTools|length == 0 and dynamicTools|length == 0 %}
+            <div class="card p-6 col-span-1 md:col-span-2 lg:col-span-3 text-center">
+                <i class="ph ph-wrench text-5xl text-content-muted mb-4"></i>
+                <h2 class="text-xl font-semibold text-content mb-2">Keine Tools verfügbar</h2>
+                <p class="text-content-muted mb-6">
+                    Es wurden noch keine Tools genehmigt oder registriert.
+                </p>
+                <a href="{{ path('app_tool_pending_list') }}" class="btn btn-primary">
+                    <i class="ph ph-plus"></i>
+                    Ausstehende Tools prüfen
+                </a>
+            </div>
+        {% endif %}
+    </div>
+
+    {# Statistik #}
+    <div class="card p-6">
+        <h2 class="card-title flex items-center gap-2 mb-4">
+            <i class="ph ph-chart-bar text-xl"></i>
+            Statistik
+        </h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="bg-surface-muted rounded-xl p-4 border border-border text-center">
+                <i class="ph ph-database text-2xl text-primary mb-2"></i>
+                <div class="text-2xl font-bold text-content">{{ databaseTools|length }}</div>
+                <div class="text-xs text-content-muted">Datenbank-Tools</div>
+            </div>
+            <div class="bg-surface-muted rounded-xl p-4 border border-border text-center">
+                <i class="ph ph-lightning text-2xl text-info mb-2"></i>
+                <div class="text-2xl font-bold text-content">{{ dynamicTools|length }}</div>
+                <div class="text-xs text-content-muted">Dynamische Tools</div>
+            </div>
+            <div class="bg-surface-muted rounded-xl p-4 border border-border text-center">
+                <i class="ph ph-check-circle text-2xl text-success mb-2"></i>
+                <div class="text-2xl font-bold text-content">{{ totalCount }}</div>
+                <div class="text-xs text-content-muted">Gesamt</div>
+            </div>
+            <div class="bg-surface-muted rounded-xl p-4 border border-border text-center">
+                <i class="ph ph-folder-open text-2xl text-warning mb-2"></i>
+                <div class="text-2xl font-bold text-content">~</div>
+                <div class="text-xs text-content-muted">Kategorien</div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Tooltips für Tool-Karten
+            document.querySelectorAll('.bg-surface-muted.rounded-xl.p-4').forEach(card => {
+                card.addEventListener('mouseenter', function() {
+                    this.style.transform = 'translateY(-2px)';
+                    this.style.boxShadow = '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)';
+                });
+                card.addEventListener('mouseleave', function() {
+                    this.style.transform = '';
+                    this.style.boxShadow = '';
+                });
+            });
+        });
+    </script>
+{% endblock %}
