@@ -54,6 +54,7 @@ services:
             $jsonResponseEnforcer: '@App\AI\Response\JsonResponseEnforcer'
             $faultTolerantValidator: '@App\AI\Response\FaultTolerantValidator'
             $responseNormalizer: '@App\AI\Response\ResponseNormalizer'
+            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
 
     # Tool Definition Generator - UPDATED with ToolCategoryRepository
     App\AI\Skills\ToolDefinitionGenerator:
@@ -305,6 +306,13 @@ services:
     App\Controller\DecisionController:
         arguments:
             $decisionManager: '@App\AI\Decision\DecisionManager'
+        tags: ['controller.service_arguments']
+
+    App\Controller\SubAgentListController:
+        arguments:
+            $subAgentFactory: '@App\AI\Agent\SubAgentFactory'
+            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
+            $entityManager: '@doctrine.orm.entity_manager'
         tags: ['controller.service_arguments']
 
     # ========================================================================
