@@ -32,6 +32,11 @@ class AgentDialogController extends AbstractController
         // Hole alle Einträge für den Benutzer
         $entries = $historyRepo->findByUserIdentifier($userIdentifier);
         
+        // Sortiere die Einträge absteigend nach Datum (aktuellste zuerst)
+        usort($entries, function($a, $b) {
+            return $b->getCreatedAt() <=> $a->getCreatedAt();
+        });
+        
         // Konvertiere die Einträge in ein für das Template geeignetes Format
         $history = [];
         foreach ($entries as $entry) {
@@ -46,6 +51,7 @@ class AgentDialogController extends AbstractController
             }
             
             $history[] = [
+                'id' => $entry->getId(),
                 'timestamp' => $entry->getCreatedAt(),
                 'messages' => [
                     [
@@ -62,6 +68,50 @@ class AgentDialogController extends AbstractController
 
         return $this->render('agent/history.html.twig', [
             'history' => $history,
+        ]);
+    }
+    
+    #[Route('/history/continue/{id}', name: 'frontend_agent_history_continue', methods: ['GET'])]
+    public function continueConversation(int $id, Request $request, AgentHistoryRepository $historyRepo): Response
+    {
+        // Hole den historischen Eintrag
+        $entry = $historyRepo->find($id);
+        
+        if (!$entry) {
+            throw $this->createNotFoundException('Eintrag nicht gefunden');
+        }
+        
+        // Extrahiere die Nachrichten aus dem Eintrag
+        $details = json_decode($entry->getDetails() ?? '{}', true) ?? [];
+        if (empty($details)) {
+            $action = json_decode($entry->getAction(), true);
+            if (is_array($action)) {
+                $details = $action;
+            }
+        }
+        
+        // Baue die Nachrichten für den Chat auf
+        $messages = [];
+        
+        // System-Nachricht hinzufügen
+        $messages[] = ['role' => 'system', 'content' => 'Fortsetzung der Konversation vom ' . $entry->getCreatedAt()->format('d.m.Y H:i:s')];
+        
+        // User-Nachricht hinzufügen
+        if (isset($details['input']['message'])) {
+            $messages[] = ['role' => 'user', 'content' => $details['input']['message']];
+        }
+        
+        // Agent-Antwort hinzufügen
+        if (isset($details['output']['response'])) {
+            $messages[] = ['role' => 'agent', 'content' => $details['output']['response']];
+        } elseif (isset($details['output']['error'])) {
+            $messages[] = ['role' => 'agent', 'content' => $details['output']['error']];
+        }
+        
+        return $this->render('agent/dialog.html.twig', [
+            'messages' => $messages,
+            'continuing_conversation' => true,
+            'conversation_id' => $id,
         ]);
     }
 }
