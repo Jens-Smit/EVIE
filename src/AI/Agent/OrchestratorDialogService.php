@@ -84,6 +84,9 @@ final readonly class OrchestratorDialogService
                 case 'dialog':
                     return $this->handleDialogResponse($normalizedResponse, $userMessage, $userIdentifier);
 
+                case 'website_research_result':
+                    return $this->handleWebsiteResearchResponse($normalizedResponse);
+
                 default:
                     $this->logger->warning('Unbekannter Antworttyp', ['type' => $responseType]);
                     return $this->handleUnstructuredResponse($normalizedResponse, $userMessage, $userIdentifier);
@@ -493,12 +496,19 @@ final readonly class OrchestratorDialogService
 
     /**
      * Behandelt Tool-Call-Antworten
+     * Falls tool_name unknown oder leer ist, wird Tool-Generierung ausgelöst
      */
     private function handleToolCallResponse(string $responseContent, string $userMessage, string $userIdentifier): string
     {
         $responseData = json_decode($responseContent, true);
         $toolName = $responseData['tool_name'] ?? 'unknown';
         $parameters = $responseData['parameters'] ?? [];
+
+        // Falls tool_name "unknown" oder leer ist → Tool-Generierung auslösen
+        if ($toolName === 'unknown' || empty($toolName) || !isset($responseData['tool_name'])) {
+            $this->logger->info('Tool-Call mit unbekanntem oder fehlendem Tool-Namen erkannt, starte Tool-Generierung...');
+            return $this->handleToolNotFound($userMessage, $userIdentifier);
+        }
 
         $this->logger->info('Tool-Call erkannt', [
             'tool_name' => $toolName,
@@ -570,5 +580,57 @@ final readonly class OrchestratorDialogService
         ]);
 
         return $finalContent;
+    }
+
+    /**
+     * Behandelt website_research_result Antworten
+     */
+    private function handleWebsiteResearchResponse(string $responseContent): string
+    {
+        $responseData = json_decode($responseContent, true);
+        
+        // Extrahiere die wichtigsten Informationen
+        $url = $responseData['url'] ?? 'Unbekannte URL';
+        $summary = $responseData['zusammenfassung'] ?? $responseData['summary'] ?? '';
+        $impressum = $responseData['impressum'] ?? [];
+        $kontakte = $responseData['kontakte'] ?? [];
+        
+        // Formatiere die Antwort für den User
+        $output = "### Webseiten-Zusammenfassung: {$url}\n\n";
+        
+        if (!empty($summary)) {
+            if (is_array($summary)) {
+                $output .= "**Zusammenfassung:**\n";
+                foreach ($summary as $key => $value) {
+                    if (is_array($value)) {
+                        $output .= "- **{$key}:** " . implode(', ', $value) . "\n";
+                    } else {
+                        $output .= "- **{$key}:** {$value}\n";
+                    }
+                }
+            } else {
+                $output .= "**Zusammenfassung:** {$summary}\n\n";
+            }
+        }
+        
+        if (!empty($impressum)) {
+            $output .= "\n**Impressum:**\n";
+            foreach ($impressum as $key => $value) {
+                $output .= "- **{$key}:** {$value}\n";
+            }
+        }
+        
+        if (!empty($kontakte) && is_array($kontakte)) {
+            $output .= "\n**Kontakte:**\n";
+            foreach ($kontakte as $kontakt) {
+                $name = $kontakt['name'] ?? 'Unbekannt';
+                $email = $kontakt['email'] ?? 'Nicht angegeben';
+                $telefon = $kontakt['telefon'] ?? 'Nicht angegeben';
+                $output .= "- **{$name}:** {$email}, Tel: {$telefon}\n";
+            }
+        }
+        
+        $this->logger->info('Website Research Antwort formatiert');
+        return $output;
     }
 }
