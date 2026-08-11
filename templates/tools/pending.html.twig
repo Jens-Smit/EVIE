@@ -19,13 +19,13 @@
         {% if tools is defined and tools|length > 0 %}
             <div class="space-y-4">
                 {% for tool in tools %}
-                    <div class="bg-surface-muted rounded-xl p-4 border border-border tool-item">
+                    <div class="bg-surface-muted rounded-xl p-4 border border-border tool-item" data-tool-id="{{ tool.id }}">
                         <div class="flex items-start justify-between gap-4">
                             <div class="flex-1 min-w-0">
                                 <h3 class="text-lg font-bold text-content mb-2">{{ tool.name }}</h3>
                                 <p class="text-content-muted mb-2">{{ tool.description }}</p>
                                 <p class="text-sm text-content-subtle mb-4">
-                                    Anfragt von: <strong class="text-content">{{ tool.requester }}</strong> |
+                                    Anfragt von: <strong class="text-content">{{ tool.requester ?? 'System' }}</strong> |
                                     {{ tool.timestamp is not null ? tool.timestamp|date('d.m.Y H:i') : 'Unbekannt' }}
                                 </p>
                             </div>
@@ -34,6 +34,7 @@
                             <button
                                 class="btn btn-success approve-tool"
                                 data-tool-id="{{ tool.id }}"
+                                data-action="approve"
                             >
                                 <i class="ph ph-check"></i>
                                 Freigeben
@@ -41,6 +42,7 @@
                             <button
                                 class="btn btn-danger reject-tool"
                                 data-tool-id="{{ tool.id }}"
+                                data-action="reject"
                             >
                                 <i class="ph ph-x"></i>
                                 Ablehnen
@@ -63,4 +65,138 @@
 
 {% block javascripts %}
     {{ parent() }}
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Handle tool approval/rejection buttons
+        document.querySelectorAll('.approve-tool, .reject-tool').forEach(button => {
+            button.addEventListener('click', async function(e) {
+                e.preventDefault();
+                
+                const toolId = this.getAttribute('data-tool-id');
+                const action = this.getAttribute('data-action'); // 'approve' or 'reject'
+                const toolItem = this.closest('.tool-item');
+                
+                // Disable buttons to prevent multiple clicks
+                const approveBtn = toolItem.querySelector('.approve-tool');
+                const rejectBtn = toolItem.querySelector('.reject-tool');
+                approveBtn.disabled = true;
+                rejectBtn.disabled = true;
+                
+                // Show loading state
+                const originalText = this.innerHTML;
+                this.innerHTML = '<i class="ph ph-spinner spinner"></i> Verarbeiten...';
+                
+                try {
+                    const response = await fetch(`/api/tools/${toolId}/${action}`, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: JSON.stringify({})
+                    });
+                    
+                    const data = await response.json();
+                    
+                    if (data.success || data.status === 'success') {
+                        // Show success message
+                        showNotification(data.message || `Tool ${action === 'approve' ? 'freigegeben' : 'abgelehnt'}`, 'success');
+                        
+                        // Remove the tool item from the list
+                        toolItem.style.opacity = '0.5';
+                        setTimeout(() => {
+                            toolItem.remove();
+                            
+                            // Update counter if no tools left
+                            const remainingTools = document.querySelectorAll('.tool-item').length;
+                            const counter = document.querySelector('.badge-pending');
+                            if (counter && remainingTools === 0) {
+                                counter.textContent = '0 offen';
+                            }
+                        }, 500);
+                    } else {
+                        throw new Error(data.message || 'Unbekannter Fehler');
+                    }
+                } catch (error) {
+                    console.error('Fehler bei der Tool-Aktion:', error);
+                    showNotification(error.message || 'Fehler bei der Aktion', 'error');
+                    
+                    // Restore button state
+                    approveBtn.disabled = false;
+                    rejectBtn.disabled = false;
+                    this.innerHTML = originalText;
+                }
+            });
+        });
+        
+        // Show notification helper
+        function showNotification(message, type = 'info') {
+            const notification = document.createElement('div');
+            notification.className = `notification notification-${type}`;
+            notification.innerHTML = `
+                <i class="ph ph-${type === 'success' ? 'check-circle' : type === 'error' ? 'x-circle' : 'info'}"></i>
+                <span>${message}</span>
+            `;
+            
+            // Style the notification
+            Object.assign(notification.style, {
+                position: 'fixed',
+                top: '20px',
+                right: '20px',
+                padding: '12px 16px',
+                borderRadius: '8px',
+                background: type === 'success' ? '#10b981' : type === 'error' ? '#ef4444' : '#3b82f6',
+                color: 'white',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px',
+                boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
+                zIndex: '1000',
+                animation: 'slideIn 0.3s ease-out'
+            });
+            
+            document.body.appendChild(notification);
+            
+            // Remove after 3 seconds
+            setTimeout(() => {
+                notification.style.animation = 'slideOut 0.3s ease-in';
+                setTimeout(() => notification.remove(), 300);
+            }, 3000);
+        }
+        
+        // Add CSS animations
+        const style = document.createElement('style');
+        style.textContent = `
+            @keyframes slideIn {
+                from {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+                to {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+            }
+            @keyframes slideOut {
+                from {
+                    transform: translateX(0);
+                    opacity: 1;
+                }
+                to {
+                    transform: translateX(100%);
+                    opacity: 0;
+                }
+            }
+            .spinner {
+                animation: spin 1s linear infinite;
+            }
+            @keyframes spin {
+                from { transform: rotate(0deg); }
+                to { transform: rotate(360deg); }
+            }
+        `;
+        document.head.appendChild(style);
+    });
+    </script>
 {% endblock %}
