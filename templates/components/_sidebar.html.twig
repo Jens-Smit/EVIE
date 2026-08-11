@@ -49,8 +49,8 @@
                 {% endif %}
             </a>
 
-            <a href="{{ path('app_subagents') }}"
-               class="nav-btn {% if app.request.attributes.get('_route') == 'app_subagents' %}active{% else %}inactive{% endif %}
+            <a href="{{ path('app_subagents_list') }}"
+               class="nav-btn {% if app.request.attributes.get('_route') == 'app_subagents_list' %}active{% else %}inactive{% endif %}
                       border w-full flex items-center gap-3 px-4 py-3 rounded-xl
                       transition-all active:scale-95 font-medium">
                 <i class="ph ph-users-three text-xl"></i>
