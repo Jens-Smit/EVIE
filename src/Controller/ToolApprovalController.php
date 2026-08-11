@@ -43,6 +43,11 @@ final class ToolApprovalController extends AbstractController
             'status' => ['pending', 'pending_approval'],
         ]);
 
+        // Sortiere nach Erstellungsdatum (neueste zuerst)
+        usort($pendingTools, function($a, $b) {
+            return $b->getCreatedAt() <=> $a->getCreatedAt();
+        });
+
         if ($request->isXmlHttpRequest() || $request->headers->get('Accept') === 'application/json') {
             return $this->json([
                 'success' => true,
@@ -62,9 +67,10 @@ final class ToolApprovalController extends AbstractController
             ]);
         }
 
-        // Für HTML-Anfragen: Render Template
-        return $this->render('agent/pending_tools.html.twig', [
+        // Für HTML-Anfragen: Render Template mit Badge-Count
+        return $this->render('tools/pending.html.twig', [
             'pendingTools' => $pendingTools,
+            'pending_tools_count' => count($pendingTools),
         ]);
     }
 
@@ -139,7 +145,7 @@ final class ToolApprovalController extends AbstractController
     #[Route('/tools/{id}/show', name: 'app_tool_show')]
     public function showTool(ToolDefinition $toolDefinition): Response
     {
-        return $this->render('agent/tool_detail.html.twig', [
+        return $this->render('tools/tool_detail.html.twig', [
             'tool' => $toolDefinition,
             'approval_url' => $this->urlGenerator->generate('app_tool_approve_api', ['id' => $toolDefinition->getId()]),
             'reject_url' => $this->urlGenerator->generate('app_tool_reject_api', ['id' => $toolDefinition->getId()]),
@@ -254,6 +260,31 @@ final class ToolApprovalController extends AbstractController
             return $this->json([
                 'status' => 'error',
                 'message' => 'Fehler beim Zurücksetzen des Tool-Status',
+                'error' => $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+    
+    /**
+     * Gibt die Anzahl der ausstehenden Tools zurück (für Sidebar Badge)
+     */
+    #[Route('/api/pending-tools/count', name: 'app_pending_tools_count', methods: ['GET'])]
+    public function getPendingToolsCount(): JsonResponse
+    {
+        try {
+            $count = $this->toolDefinitionRepo->count([
+                'status' => ['pending', 'pending_approval'],
+            ]);
+            
+            return $this->json([
+                'status' => 'success',
+                'count' => $count,
+            ]);
+        } catch (\Exception $e) {
+            $this->logger->error('Fehler beim Abrufen der ausstehenden Tools: ' . $e->getMessage());
+            return $this->json([
+                'status' => 'error',
+                'message' => 'Fehler beim Abrufen der Count',
                 'error' => $e->getMessage(),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
