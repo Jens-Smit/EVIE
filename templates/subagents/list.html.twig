@@ -1,0 +1,248 @@
+{# templates/subagents/list.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}EVIE – Sub-Agenten verwalten{% endblock %}
+
+{% block body %}
+<div class="max-w-6xl mx-auto space-y-6">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl md:text-3xl font-bold text-content">Sub-Agenten verwalten</h1>
+            <p class="text-content-muted mt-1">
+                Hier siehst du alle verfügbaren Sub-Agenten und kannst ihnen Tools zuweisen.
+            </p>
+        </div>
+        <div class="flex gap-2">
+            <span class="badge badge-approved">
+                <i class="ph ph-users-three text-sm mr-1"></i>
+                {{ subAgents|length }} Sub-Agenten
+            </span>
+            <span class="badge badge-info">
+                <i class="ph ph-wrench text-sm mr-1"></i>
+                {{ allTools|length }} Tools verfügbar
+            </span>
+        </div>
+    </div>
+
+    {# Fehlermeldungen #}
+    {% for message in app.flashes('error') %}
+        <div class="bg-danger-soft border border-danger/20 text-danger px-4 py-3 rounded-xl flex items-center gap-2">
+            <i class="ph ph-warning-circle text-lg"></i>
+            <span>{{ message }}</span>
+        </div>
+    {% endfor %}
+
+    {# Erfolgsmeldungen #}
+    {% for message in app.flashes('success') %}
+        <div class="bg-success-soft border border-success/20 text-success px-4 py-3 rounded-xl flex items-center gap-2">
+            <i class="ph ph-check-circle text-lg"></i>
+            <span>{{ message }}</span>
+        </div>
+    {% endfor %}
+
+    {# Neuer Sub-Agent erstellen #}
+    <div class="card p-6">
+        <h2 class="card-title flex items-center gap-2 mb-4">
+            <i class="ph ph-plus-circle text-primary"></i>
+            Neuer Sub-Agent
+        </h2>
+        <p class="text-sm text-content-muted mb-4">
+            Erstelle einen neuen Sub-Agenten und weise ihm Tools zu.
+        </p>
+        
+        <form method="post" action="{{ path('app_subagents_create') }}" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label for="subagent_name" class="block text-sm font-medium text-content mb-2">
+                        Name des Sub-Agenten
+                    </label>
+                    <input type="text" id="subagent_name" name="subagent_name"
+                           class="w-full p-3 border border-border rounded-xl bg-white dark:bg-slate-800
+                                  focus:ring-2 focus:ring-primary focus:border-transparent
+                                  text-content placeholder-content-subtle"
+                           placeholder="z.B. social_media_manager"
+                           required>
+                </div>
+                <div>
+                    <label for="subagent_role" class="block text-sm font-medium text-content mb-2">
+                        Rolle (optional)
+                    </label>
+                    <input type="text" id="subagent_role" name="subagent_role"
+                           class="w-full p-3 border border-border rounded-xl bg-white dark:bg-slate-800
+                                  focus:ring-2 focus:ring-primary focus:border-transparent
+                                  text-content placeholder-content-subtle"
+                           placeholder="z.B. Social Media Management">
+                </div>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-content mb-2">
+                    Tools zuweisen (optional)
+                </label>
+                <p class="text-xs text-content-muted mb-2">
+                    Wähle aus, welche Tools dieser Sub-Agent verwenden darf.
+                </p>
+                <div class="bg-surface-muted rounded-xl p-4 border border-border max-h-48 overflow-y-auto">
+                    {% if allTools|length > 0 %}
+                        {% for tool in allTools %}
+                            <label class="flex items-center gap-2 p-2 hover:bg-surface-elevated rounded-lg cursor-pointer">
+                                <input type="checkbox" 
+                                       name="tools[]" 
+                                       value="{{ tool.name }}"
+                                       class="w-4 h-4 rounded border-border text-primary focus:ring-primary">
+                                <span class="text-sm text-content">
+                                    <strong>{{ tool.name }}</strong>
+                                    <span class="text-content-muted"> – {{ tool.description|slice(0, 50) }}{% if tool.description|length > 50 %}...{% endif %}</span>
+                                </span>
+                            </label>
+                        {% endfor %}
+                    {% else %}
+                        <p class="text-sm text-content-muted">Keine Tools verfügbar.</p>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="flex justify-end">
+                <button type="submit" class="btn btn-primary">
+                    <i class="ph ph-plus"></i>
+                    Sub-Agent erstellen
+                </button>
+            </div>
+        </form>
+    </div>
+
+    {# Vorhandene Sub-Agenten #}
+    {% if subAgents|length > 0 %}
+        <div class="card p-6">
+            <h2 class="card-title flex items-center gap-2 mb-4">
+                <i class="ph ph-users-three text-xl"></i>
+                Verfügbare Sub-Agenten ({{ subAgents|length }})
+            </h2>
+            <p class="text-sm text-content-muted mb-6">
+                Klicke auf einen Sub-Agenten, um ihm Tools zuzuweisen.
+            </p>
+            
+            <div class="space-y-4">
+                {% for subAgent in subAgents %}
+                    <div class="bg-surface-muted rounded-xl p-4 border border-border">
+                        <div class="flex items-start justify-between mb-3">
+                            <div class="flex-1">
+                                <h3 class="font-semibold text-content mb-1">{{ subAgent.name }}</h3>
+                                <p class="text-sm text-content-muted">{{ subAgent.description }}</p>
+                            </div>
+                            <div class="flex gap-2">
+                                <button class="btn btn-ghost btn-sm toggle-tools-btn"
+                                        data-subagent-name="{{ subAgent.name }}"
+                                        title="Tools zuweisen">
+                                    <i class="ph ph-gear"></i>
+                                    Tools
+                                </button>
+                            </div>
+                        </div>
+                        
+                        {# Tool-Zuweisungsformular (versteckt) #}
+                        <div class="tool-assignment-form hidden bg-surface rounded-xl p-4 border border-border mt-3">
+                            <h4 class="font-medium text-content mb-3">
+                                <i class="ph ph-wrench text-sm mr-1"></i>
+                                Tools für {{ subAgent.name }} zuweisen
+                            </h4>
+                            <form method="post" action="{{ path('app_subagents_assign_tools', {'name': subAgent.name}) }}" class="space-y-3">
+                                <div class="bg-surface-muted rounded-xl p-4 border border-border max-h-48 overflow-y-auto">
+                                    {% for tool in subAgent.all_tools %}
+                                        <label class="flex items-center gap-2 p-2 hover:bg-surface-elevated rounded-lg cursor-pointer">
+                                            <input type="checkbox" 
+                                                   name="tools[]" 
+                                                   value="{{ tool.name }}"
+                                                   class="w-4 h-4 rounded border-border text-primary focus:ring-primary"
+                                                   {% if tool.name in subAgent.assigned_tools|map(attribute='name')|join(',') %}checked{% endif %}>
+                                            <span class="text-sm text-content">
+                                                <strong>{{ tool.name }}</strong>
+                                                <span class="text-content-muted"> – {{ tool.description|slice(0, 50) }}{% if tool.description|length > 50 %}...{% endif %}</span>
+                                            </span>
+                                        </label>
+                                    {% endfor %}
+                                </div>
+                                <div class="flex justify-end gap-2 pt-2 border-t border-border">
+                                    <button type="button" class="btn btn-ghost cancel-assignment">
+                                        Abbrechen
+                                    </button>
+                                    <button type="submit" class="btn btn-primary">
+                                        <i class="ph ph-check"></i>
+                                        Speichern
+                                    </button>
+                                </div>
+                            </form>
+                        </div>
+                        
+                        {# Zeige zugewiesene Tools an #}
+                        {% if subAgent.assigned_tools|length > 0 %}
+                            <div class="mt-3 pt-3 border-t border-border">
+                                <h5 class="text-sm font-medium text-content-muted mb-2">
+                                    <i class="ph ph-check-circle text-success text-xs mr-1"></i>
+                                    Zugewiesene Tools ({{ subAgent.assigned_tools|length }})
+                                </h5>
+                                <div class="flex flex-wrap gap-2">
+                                    {% for tool in subAgent.assigned_tools %}
+                                        <span class="badge badge-approved">
+                                            <i class="ph ph-wrench text-xs mr-1"></i>
+                                            {{ tool.name }}
+                                        </span>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% else %}
+        <div class="card p-6 text-center">
+            <i class="ph ph-users-three text-5xl text-content-muted mb-4"></i>
+            <h2 class="text-xl font-semibold text-content mb-2">Keine Sub-Agenten verfügbar</h2>
+            <p class="text-content-muted mb-6">
+                Erstelle einen neuen Sub-Agenten, um loszulegen.
+            </p>
+        </div>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Toggle Tool-Zuweisungsformular
+            document.querySelectorAll('.toggle-tools-btn').forEach(button => {
+                button.addEventListener('click', function() {
+                    const form = this.closest('.bg-surface-muted').querySelector('.tool-assignment-form');
+                    const isHidden = form.classList.contains('hidden');
+                    
+                    // Verstecke alle anderen Formulare
+                    document.querySelectorAll('.tool-assignment-form').forEach(f => {
+                        f.classList.add('hidden');
+                    });
+                    
+                    // Zeige/Verstecke dieses Formular
+                    if (isHidden) {
+                        form.classList.remove('hidden');
+                        this.innerHTML = '<i class="ph ph-x"></i> Schließen';
+                    } else {
+                        form.classList.add('hidden');
+                        this.innerHTML = '<i class="ph ph-gear"></i> Tools';
+                    }
+                });
+            });
+            
+            // Abbrechen-Button
+            document.querySelectorAll('.cancel-assignment').forEach(button => {
+                button.addEventListener('click', function() {
+                    const form = this.closest('.tool-assignment-form');
+                    const toggleBtn = form.parentElement.querySelector('.toggle-tools-btn');
+                    
+                    form.classList.add('hidden');
+                    toggleBtn.innerHTML = '<i class="ph ph-gear"></i> Tools';
+                });
+            });
+        });
+    </script>
+{% endblock %}
