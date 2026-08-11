@@ -7,7 +7,6 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: AgentHistoryRepository::class)]
-#[ORM\Table(name: 'agent_history')]
 class AgentHistory
 {
     #[ORM\Id]
@@ -15,31 +14,28 @@ class AgentHistory
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 255)]
-    private string $agentName;
+    #[ORM\Column(type: Types::TEXT)]
+    private string $action;
 
-    #[ORM\Column(type: Types::JSON)]
-    private array $action;
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $details = null;
 
-    #[ORM\Column(type: Types::JSON, nullable: true)]
-    private ?array $input = null;
-
-    #[ORM\Column(type: Types::JSON, nullable: true)]
-    private ?array $output = null;
-
-    #[ORM\Column(length: 50)]
-    private string $status; // success, failed, pending
-
-    #[ORM\Column(type: 'datetime_immutable')]
-    private \DateTimeImmutable $executedAt;
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
+    private \DateTimeImmutable $createdAt;
 
     #[ORM\ManyToOne(targetEntity: UserProfile::class, inversedBy: 'agentHistories')]
     #[ORM\JoinColumn(nullable: false)]
-    private UserProfile $userProfile;
+    private UserProfile $user;
+
+    #[ORM\ManyToOne(targetEntity: SubAgent::class, inversedBy: 'history')]
+    private ?SubAgent $subAgent = null;
+
+    #[ORM\OneToMany(targetEntity: Document::class, mappedBy: 'agentHistory')]
+    private iterable $documents;
 
     public function __construct()
     {
-        $this->executedAt = new \DateTimeImmutable();
+        $this->createdAt = new \DateTimeImmutable();
     }
 
     public function getId(): ?int
@@ -47,80 +43,82 @@ class AgentHistory
         return $this->id;
     }
 
-    public function getAgentName(): string
-    {
-        return $this->agentName;
-    }
-
-    public function setAgentName(string $agentName): static
-    {
-        $this->agentName = $agentName;
-        return $this;
-    }
-
-    public function getAction(): array
+    public function getAction(): string
     {
         return $this->action;
     }
 
-    public function setAction(array $action): static
+    public function setAction(string $action): static
     {
         $this->action = $action;
         return $this;
     }
 
-    public function getInput(): ?array
+    public function getDetails(): ?string
     {
-        return $this->input;
+        return $this->details;
     }
 
-    public function setInput(?array $input): static
+    public function setDetails(?string $details): static
     {
-        $this->input = $input;
+        $this->details = $details;
         return $this;
     }
 
-    public function getOutput(): ?array
+    public function getCreatedAt(): \DateTimeImmutable
     {
-        return $this->output;
+        return $this->createdAt;
     }
 
-    public function setOutput(?array $output): static
+    public function setCreatedAt(\DateTimeImmutable $createdAt): static
     {
-        $this->output = $output;
+        $this->createdAt = $createdAt;
         return $this;
     }
 
-    public function getStatus(): string
+    public function getUser(): UserProfile
     {
-        return $this->status;
+        return $this->user;
     }
 
-    public function setStatus(string $status): static
+    public function setUser(UserProfile $user): static
     {
-        $this->status = $status;
+        $this->user = $user;
         return $this;
     }
 
-    public function getExecutedAt(): \DateTimeImmutable
+    public function getSubAgent(): ?SubAgent
     {
-        return $this->executedAt;
+        return $this->subAgent;
     }
 
-    public function setExecutedAt(\DateTimeImmutable $executedAt): static
+    public function setSubAgent(?SubAgent $subAgent): static
     {
-        $this->executedAt = $executedAt;
+        $this->subAgent = $subAgent;
         return $this;
     }
 
-    public function getUserProfile(): UserProfile
+    public function getDocuments(): iterable
     {
-        return $this->userProfile;
+        return $this->documents;
     }
 
-    public function setUserProfile(UserProfile $userProfile): static
+    public function addDocument(Document $document): static
     {
-        $this->userProfile = $userProfile;
+        if (!$this->documents->contains($document)) {
+            $this->documents[] = $document;
+            $document->setAgentHistory($this);
+        }
+        return $this;
+    }
+
+    public function removeDocument(Document $document): static
+    {
+        if ($this->documents->removeElement($document)) {
+            if ($document->getAgentHistory() === $this) {
+                $document->setAgentHistory(null);
+            }
+        }
         return $this;
     }
 }
