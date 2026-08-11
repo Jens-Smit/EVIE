@@ -77,8 +77,9 @@
                 <span>Dokumente</span>
             </a>
 
-            <a href="#"
-               class="nav-btn inactive border w-full flex items-center gap-3 px-4 py-3 rounded-xl
+            <a href="{{ path('app_tools_list') }}"
+               class="nav-btn {% if app.request.attributes.get('_route') == 'app_tools_list' %}active{% else %}inactive{% endif %}
+                      border w-full flex items-center gap-3 px-4 py-3 rounded-xl
                       transition-all active:scale-95 font-medium">
                 <i class="ph ph-wrench text-xl"></i>
                 <span>Fähigkeiten</span>
