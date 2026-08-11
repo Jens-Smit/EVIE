@@ -154,7 +154,7 @@
                                                    name="tools[]" 
                                                    value="{{ tool.name }}"
                                                    class="w-4 h-4 rounded border-border text-primary focus:ring-primary"
-                                                   {% if tool.name in subAgent.assigned_tools|map(attribute='name')|join(',') %}checked{% endif %}>
+                                                   {% if tool.name in subAgent.assigned_tools|column('name') %}checked{% endif %}>
                                             <span class="text-sm text-content">
                                                 <strong>{{ tool.name }}</strong>
                                                 <span class="text-content-muted"> – {{ tool.description|slice(0, 50) }}{% if tool.description|length > 50 %}...{% endif %}</span>
