@@ -18,10 +18,16 @@
             <div class="space-y-6">
                 {% for entry in history %}
                     <div class="border border-border rounded-xl overflow-hidden">
-                        <div class="bg-surface-muted px-4 py-2 border-b border-border">
+                        <div class="bg-surface-muted px-4 py-2 border-b border-border flex items-center justify-between">
                             <span class="text-sm font-medium text-content-muted">
                                 {{ entry.timestamp|date('d.m.Y H:i:s') }}
                             </span>
+                            <a href="{{ path('frontend_agent_history_continue', {'id': entry.id}) }}" 
+                               class="btn btn-ghost btn-sm text-primary"
+                               title="Konversation fortsetzen">
+                                <i class="ph ph-chat-circle-dots"></i>
+                                Fortsetzen
+                            </a>
                         </div>
                         <div class="p-4 space-y-3">
                             {% for message in entry.messages %}
