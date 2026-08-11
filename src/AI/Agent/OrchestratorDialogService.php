@@ -9,6 +9,7 @@ use App\AI\Response\FaultTolerantValidator;
 use App\AI\Response\ResponseNormalizer;
 use App\Entity\ToolDefinition;
 use App\Event\PendingToolApprovalEvent;
+use App\Repository\ToolDefinitionRepository;
 use Symfony\AI\Agent\AgentInterface;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
@@ -32,6 +33,7 @@ final readonly class OrchestratorDialogService
         private JsonResponseEnforcer $jsonResponseEnforcer,
         private FaultTolerantValidator $faultTolerantValidator,
         private ResponseNormalizer $responseNormalizer,
+        private ToolDefinitionRepository $toolDefinitionRepo,
     ) {
     }
 
@@ -230,7 +232,7 @@ final readonly class OrchestratorDialogService
      */
     private function handleToolNotFound(string $userMessage, string $userIdentifier): string
     {
-        $this->logger->info('Kein passendes Tool gefunden. Starte Tool-Generierung und Sub-Agenten-Erstellung...');
+        $this->logger->info('Kein passendes Tool gefunden. Starte Tool-Generierung...');
 
         // 1. Bestimme den passenden Sub-Agenten basierend auf der User-Anfrage
         $subAgent = $this->determineAndCreateSubAgent($userMessage);
@@ -239,10 +241,31 @@ final readonly class OrchestratorDialogService
         // 2. Tool-Name aus der User-Nachricht extrahieren (intelligente Analyse)
         $toolName = $this->extractToolNameFromRequest($userMessage);
         
-        // 3. Bessere Beschreibung generieren (nicht die User-Nachricht direkt)
+        // 3. Prüfe, ob ein Tool mit diesem Namen schon existiert (pending oder approved)
+        $existingTool = $this->toolDefinitionRepo->findOneBy([
+            'name' => $toolName,
+            'status' => ['pending', 'pending_approval', 'approved']
+        ]);
+        
+        if ($existingTool) {
+            $this->logger->info('Tool existiert bereits, verwende bestehende Definition', [
+                'tool_name' => $toolName,
+                'tool_id' => $existingTool->getId(),
+                'status' => $existingTool->getStatus()
+            ]);
+            
+            // Falls das Tool noch pending ist, löse HITL-Event aus
+            if (in_array($existingTool->getStatus(), ['pending', 'pending_approval'])) {
+                $this->dispatcher->dispatch(new PendingToolApprovalEvent($existingTool, $userIdentifier));
+            }
+            
+            return $this->generateUserResponse($existingTool, $subAgent);
+        }
+        
+        // 4. Bessere Beschreibung generieren (nicht die User-Nachricht direkt)
         $description = $this->generateBetterToolDescription($userMessage, $subAgentName);
         
-        // 4. Tool-Definition generieren
+        // 5. Tool-Definition generieren
         $toolDefinition = $this->toolGenerator->generateToolDefinition(
             $toolName,
             $description,
@@ -253,13 +276,13 @@ final readonly class OrchestratorDialogService
             ]
         );
 
-        // 5. Sub-Agenten mit dem Tool verknüpfen
+        // 6. Sub-Agenten mit dem Tool verknüpfen
         $this->linkSubAgentToTool($toolDefinition, $subAgent);
 
-        // 6. HITL-Event auslösen
+        // 7. HITL-Event auslösen
         $this->dispatcher->dispatch(new PendingToolApprovalEvent($toolDefinition, $userIdentifier));
 
-        // 7. User-Freundliche Antwort generieren
+        // 8. User-Freundliche Antwort generieren
         return $this->generateUserResponse($toolDefinition, $subAgent);
     }
 
