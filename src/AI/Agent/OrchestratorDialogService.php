@@ -232,7 +232,7 @@ final readonly class OrchestratorDialogService
     {
         $this->logger->info('Kein passendes Tool gefunden. Starte Tool-Generierung und Sub-Agenten-Erstellung...');
 
-        // 1. Tool-Name aus der User-Nachricht extrahieren
+        // 1. Tool-Name aus der User-Nachricht extrahieren (intelligente Analyse)
         $toolName = $this->extractToolNameFromRequest($userMessage);
         
         // 2. Beschreibung generieren
@@ -258,10 +258,7 @@ final readonly class OrchestratorDialogService
         // 6. HITL-Event auslösen
         $this->dispatcher->dispatch(new PendingToolApprovalEvent($toolDefinition, $userIdentifier));
 
-        // 7. Tool sofort im Registry registrieren (auch wenn pending)
-        // Dies wird in ToolDefinitionGenerator->generateToolDefinition() erledigt
-
-        // 8. User-Freundliche Antwort generieren
+        // 7. User-Freundliche Antwort generieren
         return $this->generateUserResponse($toolDefinition, $subAgent);
     }
 
@@ -382,10 +379,79 @@ final readonly class OrchestratorDialogService
 
     /**
      * Extrahiere einen sinnvollen Tool-Namen aus der User-Anfrage.
+     * Analysiert die Anfrage und generiert passende Namen wie:
+     * - "website_scraping" für Webseiten-Zusammenfassungen
+     * - "data_analysis" für Datenanalysen
+     * - "document_processing" für Dokumentenverarbeitung
      */
     private function extractToolNameFromRequest(string $userMessage): string
     {
-        // Einfache Heuristik: Nimm die ersten 3-5 Wörter
+        $messageLower = strtolower($userMessage);
+        
+        // 1. Prüfe auf bestehende Tools und generiere passende Namen
+        // Webseiten-Recherche
+        if (preg_match('/(webseite|website|web page|webpage|url|link|http[s]?:\/\/|www\.)/i', $messageLower)) {
+            if (preg_match('/(zusammenfassen|zusammenfassung|summarize|summary|analysieren|analyse)/i', $messageLower)) {
+                return 'website_scraping';
+            }
+            if (preg_match('/(durchsuchen|recherche|recherchieren|suche|suchen)/i', $messageLower)) {
+                return 'website_research';
+            }
+            if (preg_match('/(extrahiere|extrahieren|daten abrufen|content extrahieren)/i', $messageLower)) {
+                return 'website_content_extraction';
+            }
+            return 'website_analysis';
+        }
+        
+        // Datenanalyse
+        if (preg_match('/(daten|data|analyse|analysieren|auswertung|statistik|zahlen)/i', $messageLower)) {
+            if (preg_match('/(tabelle|table|csv|excel)/i', $messageLower)) {
+                return 'data_table_analysis';
+            }
+            if (preg_match('/(statistik|statistics|diagramm|chart)/i', $messageLower)) {
+                return 'data_visualization';
+            }
+            return 'data_analysis';
+        }
+        
+        // Code-Assistenz
+        if (preg_match('/(code|programm|skript|script|funktion|klassen|php|symfony|entwickeln|develop)/i', $messageLower)) {
+            if (preg_match('/(debuggen|debug|fehler|error|problem)/i', $messageLower)) {
+                return 'code_debugging';
+            }
+            if (preg_match('/(generieren|generieren|erstellen|create)/i', $messageLower)) {
+                return 'code_generation';
+            }
+            return 'code_assistance';
+        }
+        
+        // Dokumentenverarbeitung
+        if (preg_match('/(dokument|pdf|excel|datei|file|verarbeiten|lesen|extrahieren)/i', $messageLower)) {
+            if (preg_match('/(pdf)/i', $messageLower)) {
+                return 'pdf_processing';
+            }
+            if (preg_match('/(excel|csv)/i', $messageLower)) {
+                return 'spreadsheet_processing';
+            }
+            return 'document_processing';
+        }
+        
+        // E-Mail
+        if (preg_match('/(email|e-mail|nachricht|mail|senden|send)/i', $messageLower)) {
+            return 'email_management';
+        }
+        
+        // Wetter
+        if (preg_match('/(wetter|weather|vorhersage|forecast)/i', $messageLower)) {
+            return 'weather_forecast';
+        }
+        
+        // Kalender/Termine
+        if (preg_match('/(termin|appointment|kalender|calendar|planen|scheduling)/i', $messageLower)) {
+            return 'appointment_scheduling';
+        }
+        
+        // Fallback: Analysiere die ersten Wörter und bereinige
         $words = preg_split('/\s+/', trim($userMessage));
         $toolName = implode('_', array_slice($words, 0, 3));
         
