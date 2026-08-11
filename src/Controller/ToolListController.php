@@ -33,7 +33,8 @@ final class ToolListController extends AbstractController
         ]);
 
         // 2. Dynamisch registrierte Tools aus dem Registry
-        $dynamicTools = $this->dynamicSkillRegistry->getAllTools();
+        // getAvailableTools() gibt ein Array mit Tool-Namen als Keys und Metadaten als Values zurück
+        $dynamicToolsMetadata = $this->dynamicSkillRegistry->getAvailableTools();
 
         // 3. Kombiniere und entferne Duplikate
         $allTools = [];
@@ -56,7 +57,7 @@ final class ToolListController extends AbstractController
         }
 
         // Füge dynamische Tools hinzu (die nicht in der DB sind)
-        foreach ($dynamicTools as $toolName => $toolConfig) {
+        foreach ($dynamicToolsMetadata as $toolName => $toolConfig) {
             if (!isset($seenNames[$toolName])) {
                 $seenNames[$toolName] = true;
                 $allTools[] = [
@@ -64,7 +65,7 @@ final class ToolListController extends AbstractController
                     'name' => $toolName,
                     'description' => $toolConfig['description'] ?? 'Keine Beschreibung verfügbar',
                     'type' => 'dynamic',
-                    'status' => 'active',
+                    'status' => $toolConfig['status'] ?? 'active',
                     'schema' => $toolConfig['schema'] ?? [],
                     'created_at' => null,
                 ];
