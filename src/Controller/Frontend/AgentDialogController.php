@@ -20,6 +20,8 @@ class AgentDialogController extends AbstractController
 
         return $this->render('agent/dialog.html.twig', [
             'messages' => $messages,
+            'continuing_conversation' => false,
+            'conversation_id' => null,
         ]);
     }
 
