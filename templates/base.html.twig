@@ -2,48 +2,109 @@
 <html lang="de" class="dark">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}EVIE - AI Agent{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>{% block title %}EVIE - AI Agent Workspace{% endblock %}</title>
     
     <!-- CSRF Token für AJAX-Anfragen -->
     <meta name="csrf-token" content="{{ csrf_token('') }}">
     
-    <!-- Tailwind CSS (nur lokal, kein CDN) -->
-    <link href="{{ asset('assets/styles/tailwind.css') }}" rel="stylesheet">
-    
-    <!-- Phosphor Icons -->
+    <!-- Tailwind CSS (CDN) -->
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://unpkg.com/@phosphor-icons/web"></script>
     
-    <!-- Custom Styles (Glass-Panels, Scrollbar, etc.) -->
-    <link href="{{ asset('assets/styles/app.css') }}" rel="stylesheet">
-    
-    <!-- Theme Script (inline für schnelles Laden) -->
+    <!-- Tailwind Configuration -->
     <script>
-        // Theme initialisieren (aus localStorage oder System-Präferenz)
-        (function() {
-            const savedTheme = localStorage.getItem('theme');
-            const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            if (savedTheme === 'light' || (!savedTheme && !prefersDark)) {
-                document.documentElement.classList.remove('dark');
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#6366f1',
+                        secondary: '#8b5cf6',
+                    },
+                    animation: {
+                        'pulse-fast': 'pulse 1s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+                        'blob': 'blob 7s infinite',
+                        'slide-up': 'slideUp 0.3s ease-out forwards',
+                    },
+                    keyframes: {
+                        blob: {
+                            '0%': { transform: 'translate(0px, 0px) scale(1)' },
+                            '33%': { transform: 'translate(30px, -50px) scale(1.1)' },
+                            '66%': { transform: 'translate(-20px, 20px) scale(0.9)' },
+                            '100%': { transform: 'translate(0px, 0px) scale(1)' },
+                        },
+                        slideUp: {
+                            '0%': { opacity: 0, transform: 'translate(-50%, 20px)' },
+                            '100%': { opacity: 1, transform: 'translate(-50%, 0)' },
+                        }
+                    }
+                }
             }
-        })();
+        }
     </script>
+    
+    <!-- Custom Styles -->
+    <style>
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { 
+            background: #cbd5e1; 
+            border-radius: 10px; 
+        }
+        .dark ::-webkit-scrollbar-thumb { background: #334155; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        body { 
+            height: 100dvh; 
+            -webkit-tap-highlight-color: transparent; 
+        }
+        .hide { display: none !important; }
+        
+        .fade-in { 
+            animation: fadeIn 0.3s ease-in-out forwards; 
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .typing-dot { animation: typing 1.4s infinite ease-in-out; }
+        .typing-dot:nth-child(1) { animation-delay: 0s; }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-3px); }
+        }
+
+        /* Reusable Glass Panel Class for Light/Dark Mode */
+        .glass-panel {
+            @apply bg-white/70 dark:bg-slate-800/70 backdrop-blur-xl border border-slate-200 dark:border-slate-700/50 shadow-sm dark:shadow-none;
+        }
+        .nav-btn.active {
+            @apply bg-primary/10 dark:bg-primary/20 border-primary/30 text-primary dark:text-white;
+        }
+        .nav-btn.inactive {
+            @apply text-slate-600 dark:text-slate-400 hover:text-primary dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-800 border-transparent;
+        }
+    </style>
     
     {% block stylesheets %}{% endblock %}
 </head>
 
-<body class="bg-surface-muted text-content font-sans w-screen overflow-hidden flex
-       relative transition-colors duration-300 selection:bg-primary selection:text-white">
+<body class="bg-slate-50 dark:bg-slate-950 text-slate-800 dark:text-slate-300 font-sans w-screen overflow-hidden flex selection:bg-primary selection:text-white relative transition-colors duration-300">
     
-    <!-- Hintergrund-Effekte -->
-    {% include 'components/_background_effects.html.twig' %}
-    
+    <!-- Hintergrund Effekte -->
+    <div class="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none transition-opacity duration-300">
+        <div class="absolute top-[-10%] left-[-10%] w-64 h-64 md:w-96 md:h-96 bg-primary opacity-30 dark:opacity-20 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[80px] md:blur-[100px] animate-blob"></div>
+        <div class="absolute top-[20%] right-[-10%] w-64 h-64 md:w-96 md:h-96 bg-secondary opacity-30 dark:opacity-20 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[80px] md:blur-[100px] animate-blob" style="animation-delay: 2s;"></div>
+        <div class="absolute bottom-[-20%] left-[20%] w-64 h-64 md:w-96 md:h-96 bg-emerald-500 opacity-20 dark:opacity-10 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[80px] md:blur-[100px] animate-blob" style="animation-delay: 4s;"></div>
+    </div>
+
     <!-- Mobile Sidebar Backdrop -->
-    <div id="sidebar-backdrop" 
-         class="fixed inset-0 bg-slate-900/60 z-40 hidden opacity-0 
-                transition-opacity duration-300 backdrop-blur-sm" 
-         onclick="toggleSidebar()"></div>
-    
+    <div id="sidebar-backdrop" class="fixed inset-0 bg-slate-900/60 z-40 hidden opacity-0 transition-opacity duration-300 backdrop-blur-sm" onclick="toggleSidebar()"></div>
+
     <!-- Sidebar Navigation -->
     {% include 'components/_sidebar.html.twig' %}
     
@@ -53,7 +114,7 @@
         {% include 'components/_header.html.twig' %}
         
         <!-- Dynamic View Container -->
-        <div class="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 relative">
+        <div class="flex-1 overflow-y-auto overflow-x-hidden p-4 md:p-8 relative" id="content-area">
             {% block body %}{% endblock %}
         </div>
     </main>
@@ -62,15 +123,111 @@
     <div id="toast-container" 
          class="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[110] 
                 flex flex-col gap-2 pointer-events-none w-max"></div>
-    
-    <!-- Modal Container -->
-    {% include 'components/_modal.html.twig' %}
-    
+
     <!-- JavaScript -->
+    <script>
+        // -- Theme Toggle Logic --
+        function toggleTheme() {
+            const html = document.documentElement;
+            const icon = document.getElementById('theme-icon');
+            
+            if (html.classList.contains('dark')) {
+                html.classList.remove('dark');
+                icon.classList.replace('ph-sun', 'ph-moon');
+                showToast('Light Mode aktiviert', 'info');
+            } else {
+                html.classList.add('dark');
+                icon.classList.replace('ph-moon', 'ph-sun');
+                showToast('Dark Mode aktiviert', 'info');
+            }
+        }
+
+        // -- Toast Notification System --
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            
+            let icon = 'ph-info';
+            let colors = 'bg-slate-800 text-white border-slate-700';
+            
+            if(type === 'success') { 
+                icon = 'ph-check-circle text-emerald-400'; 
+                colors = 'bg-slate-900 text-white border-emerald-500/30'; 
+            }
+            if(type === 'error') { 
+                icon = 'ph-warning-circle text-red-400'; 
+                colors = 'bg-slate-900 text-white border-red-500/30'; 
+            }
+
+            toast.className = `flex items-center gap-2 px-4 py-2.5 rounded-full border shadow-xl text-sm font-medium animate-slide-up pointer-events-auto ${colors}`;
+            toast.innerHTML = `<i class="ph ${icon} text-lg"></i> <span>${message}</span>`;
+            
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transform = 'translate(-50%, 20px)';
+                toast.style.transition = 'all 0.3s ease';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        // -- Mobile Sidebar Logic --
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const backdrop = document.getElementById('sidebar-backdrop');
+            const isClosed = sidebar.classList.contains('-translate-x-full');
+            
+            if (isClosed) {
+                sidebar.classList.remove('-translate-x-full');
+                backdrop.classList.remove('hidden');
+                setTimeout(() => backdrop.classList.remove('opacity-0'), 10);
+            } else {
+                sidebar.classList.add('-translate-x-full');
+                backdrop.classList.add('opacity-0');
+                setTimeout(() => backdrop.classList.add('hidden'), 300);
+            }
+        }
+
+        // -- View Switching Logic --
+        function switchView(viewId) {
+            document.querySelectorAll('.view-section').forEach(el => {
+                el.classList.add('hide');
+                el.classList.remove('fade-in');
+            });
+            
+            document.querySelectorAll('.nav-btn').forEach(el => {
+                el.classList.remove('active');
+                el.classList.add('inactive');
+            });
+
+            const target = document.getElementById('view-' + viewId);
+            if(target) {
+                target.classList.remove('hide');
+                target.classList.add('fade-in');
+                document.getElementById('content-area').scrollTop = 0;
+            }
+
+            const navBtn = document.querySelector(`.nav-btn[data-target="${viewId}"]`);
+            if(navBtn) {
+                navBtn.classList.remove('inactive');
+                navBtn.classList.add('active');
+            }
+
+            if(window.innerWidth < 768 && !document.getElementById('sidebar').classList.contains('-translate-x-full')) {
+                toggleSidebar();
+            }
+        }
+
+        // -- Window Resize Handler --
+        window.addEventListener('resize', () => {
+            if(window.innerWidth >= 768) {
+                document.getElementById('sidebar-backdrop').classList.add('hidden', 'opacity-0');
+            }
+        });
+    </script>
+    
     {% block javascripts %}
-        <script src="{{ asset('assets/scripts/theme.js') }}"></script>
-        <script src="{{ asset('assets/scripts/toast.js') }}"></script>
-        <script src="{{ asset('assets/scripts/app.js') }}"></script>
         <script src="https://unpkg.com/htmx.org@1.9.6"></script>
         <script src="https://unpkg.com/htmx.org@1.9.6/dist/ext/json-enc.js"></script>
     {% endblock %}
