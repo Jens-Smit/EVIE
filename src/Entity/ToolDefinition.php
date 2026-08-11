@@ -7,7 +7,6 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: ToolDefinitionRepository::class)]
-#[ORM\Table(name: 'tool_definitions')]
 class ToolDefinition
 {
     #[ORM\Id]
@@ -18,44 +17,24 @@ class ToolDefinition
     #[ORM\Column(length: 255)]
     private string $name;
 
-    #[ORM\Column(name: 'schema_definition', type: Types::JSON)]
-    private array $schemaDefinition;
-
-    #[ORM\Column(length: 255)]
+    #[ORM\Column(type: Types::TEXT)]
     private string $description;
 
+    #[ORM\Column(type: Types::JSON)]
+    private array $schema;
+
     #[ORM\Column(length: 50)]
-    private string $status = 'pending'; // pending, approved, rejected, pending_approval
+    private string $status = 'pending';
 
-    #[ORM\Column(type: Types::JSON, nullable: true)]
-    private ?array $parameters = null;
-
-    #[ORM\Column(type: 'datetime_immutable')]
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
-    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?\DateTimeImmutable $updatedAt = null;
 
-    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
-    private ?\DateTimeImmutable $approvedAt = null;
-
-    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
-    private ?\DateTimeImmutable $rejectedAt = null;
-
-    // NEUE FELDER FÜR LLM-BASIERTE TOOL-DEFINITION
-
-    #[ORM\ManyToOne(targetEntity: ToolCategory::class)]
-    #[ORM\JoinColumn(nullable: true)]
-    private ?ToolCategory $category = null;
-
-    #[ORM\Column(length: 50, nullable: true)]
-    private ?string $complexity = null; // low, medium, high
-
-    #[ORM\Column(type: Types::JSON, nullable: true)]
-    private ?array $dependencies = null; // Abhängigkeiten wie ['http_client', 'firecrawl']
-
-    #[ORM\Column(type: Types::JSON, nullable: true)]
-    private ?array $metadata = null; // Metadaten für Wiederverwendung
+    #[ORM\ManyToOne(targetEntity: ToolCategory::class, inversedBy: 'tools')]
+    #[ORM\JoinColumn(nullable: false)]
+    private ToolCategory $category;
 
     public function __construct()
     {
@@ -78,17 +57,6 @@ class ToolDefinition
         return $this;
     }
 
-    public function getSchema(): array
-    {
-        return $this->schemaDefinition;
-    }
-
-    public function setSchema(array $schema): static
-    {
-        $this->schemaDefinition = $schema;
-        return $this;
-    }
-
     public function getDescription(): string
     {
         return $this->description;
@@ -100,6 +68,17 @@ class ToolDefinition
         return $this;
     }
 
+    public function getSchema(): array
+    {
+        return $this->schema;
+    }
+
+    public function setSchema(array $schema): static
+    {
+        $this->schema = $schema;
+        return $this;
+    }
+
     public function getStatus(): string
     {
         return $this->status;
@@ -108,17 +87,6 @@ class ToolDefinition
     public function setStatus(string $status): static
     {
         $this->status = $status;
-        return $this;
-    }
-
-    public function getParameters(): ?array
-    {
-        return $this->parameters;
-    }
-
-    public function setParameters(?array $parameters): static
-    {
-        $this->parameters = $parameters;
         return $this;
     }
 
@@ -144,86 +112,14 @@ class ToolDefinition
         return $this;
     }
 
-    public function getApprovedAt(): ?\DateTimeImmutable
-    {
-        return $this->approvedAt;
-    }
-
-    public function setApprovedAt(?\DateTimeImmutable $approvedAt): static
-    {
-        $this->approvedAt = $approvedAt;
-        return $this;
-    }
-
-    public function getRejectedAt(): ?\DateTimeImmutable
-    {
-        return $this->rejectedAt;
-    }
-
-    public function setRejectedAt(?\DateTimeImmutable $rejectedAt): static
-    {
-        $this->rejectedAt = $rejectedAt;
-        return $this;
-    }
-
-    public function isApproved(): bool
-    {
-        return $this->status === 'approved';
-    }
-
-    public function isPending(): bool
-    {
-        return in_array($this->status, ['pending', 'pending_approval']);
-    }
-
-    public function isRejected(): bool
-    {
-        return $this->status === 'rejected';
-    }
-
-    // NEUE GETTER/SETTER FÜR DIE NEUEN FELDER
-
-    public function getCategory(): ?ToolCategory
+    public function getCategory(): ToolCategory
     {
         return $this->category;
     }
 
-    public function setCategory(?ToolCategory $category): static
+    public function setCategory(ToolCategory $category): static
     {
         $this->category = $category;
-        return $this;
-    }
-
-    public function getComplexity(): ?string
-    {
-        return $this->complexity;
-    }
-
-    public function setComplexity(?string $complexity): static
-    {
-        $this->complexity = $complexity;
-        return $this;
-    }
-
-    public function getDependencies(): ?array
-    {
-        return $this->dependencies;
-    }
-
-    public function setDependencies(?array $dependencies): static
-    {
-        $this->dependencies = $dependencies;
-        return $this;
-    }
-
-    public function getMetadata(): ?array
-    {
-        return $this->metadata;
-    }
-
-    public function setMetadata(?array $metadata): static
-    {
-        $this->metadata = $metadata;
         return $this;
     }
 }
