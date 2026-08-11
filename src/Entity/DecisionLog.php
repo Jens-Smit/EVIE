@@ -1,5 +1,4 @@
 <?php
-// src/Entity/DecisionLog.php
 
 namespace App\Entity;
 
@@ -8,8 +7,6 @@ use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity(repositoryClass: DecisionLogRepository::class)]
-#[ORM\Table(name: 'decision_logs')]
-#[ORM\HasLifecycleCallbacks]
 class DecisionLog
 {
     #[ORM\Id]
@@ -17,36 +14,21 @@ class DecisionLog
     #[ORM\Column]
     private ?int $id = null;
 
-    #[ORM\Column(length: 100)]
-    private string $decisionType; // tool_approval, api_access, data_deletion, communication, etc.
-
     #[ORM\Column(type: Types::TEXT)]
-    private string $description;
+    private string $decision;
 
-    #[ORM\Column(type: Types::JSON, nullable: true)]
-    private ?array $context = [];
-
-    #[ORM\Column(type: Types::JSON, nullable: true)]
-    private ?array $options = null;
-
-    #[ORM\Column(length: 50)]
-    private string $status = 'pending'; // pending, approved, rejected, executed
-
-    #[ORM\Column(length: 255, nullable: true)]
-    private ?string $approvedBy = null;
-
-    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
-    private ?\DateTimeImmutable $approvedAt = null;
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $context = null;
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
-    #[ORM\Column(type: Types::JSON, nullable: true)]
-    private ?array $metadata = null;
+    #[ORM\Column(length: 50, nullable: true)]
+    private ?string $status = 'pending';
 
-    #[ORM\ManyToOne(targetEntity: UserProfile::class, inversedBy: 'decisionLogs')]
-    #[ORM\JoinColumn(nullable: true)]
-    private ?UserProfile $userProfile = null;
+    #[ORM\ManyToOne(targetEntity: UserProfile::class)]
+    #[ORM\JoinColumn(nullable: false)]
+    private UserProfile $user;
 
     public function __construct()
     {
@@ -58,80 +40,25 @@ class DecisionLog
         return $this->id;
     }
 
-    public function getDecisionType(): string
+    public function getDecision(): string
     {
-        return $this->decisionType;
+        return $this->decision;
     }
 
-    public function setDecisionType(string $decisionType): static
+    public function setDecision(string $decision): static
     {
-        $this->decisionType = $decisionType;
+        $this->decision = $decision;
         return $this;
     }
 
-    public function getDescription(): string
-    {
-        return $this->description;
-    }
-
-    public function setDescription(string $description): static
-    {
-        $this->description = $description;
-        return $this;
-    }
-
-    public function getContext(): ?array
+    public function getContext(): ?string
     {
         return $this->context;
     }
 
-    public function setContext(?array $context): static
+    public function setContext(?string $context): static
     {
         $this->context = $context;
-        return $this;
-    }
-
-    public function getOptions(): ?array
-    {
-        return $this->options;
-    }
-
-    public function setOptions(?array $options): static
-    {
-        $this->options = $options;
-        return $this;
-    }
-
-    public function getStatus(): string
-    {
-        return $this->status;
-    }
-
-    public function setStatus(string $status): static
-    {
-        $this->status = $status;
-        return $this;
-    }
-
-    public function getApprovedBy(): ?string
-    {
-        return $this->approvedBy;
-    }
-
-    public function setApprovedBy(?string $approvedBy): static
-    {
-        $this->approvedBy = $approvedBy;
-        return $this;
-    }
-
-    public function getApprovedAt(): ?\DateTimeImmutable
-    {
-        return $this->approvedAt;
-    }
-
-    public function setApprovedAt(?\DateTimeImmutable $approvedAt): static
-    {
-        $this->approvedAt = $approvedAt;
         return $this;
     }
 
@@ -146,55 +73,25 @@ class DecisionLog
         return $this;
     }
 
-    public function getMetadata(): ?array
+    public function getStatus(): ?string
     {
-        return $this->metadata;
+        return $this->status;
     }
 
-    public function setMetadata(?array $metadata): static
+    public function setStatus(?string $status): static
     {
-        $this->metadata = $metadata;
+        $this->status = $status;
         return $this;
     }
 
-    public function getUserProfile(): ?UserProfile
+    public function getUser(): UserProfile
     {
-        return $this->userProfile;
+        return $this->user;
     }
 
-    public function setUserProfile(?UserProfile $userProfile): static
+    public function setUser(UserProfile $user): static
     {
-        $this->userProfile = $userProfile;
+        $this->user = $user;
         return $this;
-    }
-
-    public function isPending(): bool
-    {
-        return $this->status === 'pending';
-    }
-
-    public function isApproved(): bool
-    {
-        return $this->status === 'approved';
-    }
-
-    public function isRejected(): bool
-    {
-        return $this->status === 'rejected';
-    }
-
-    public function isExecuted(): bool
-    {
-        return $this->status === 'executed';
-    }
-
-    #[ORM\PrePersist]
-    public function setTimestamps(): void
-    {
-        $this->createdAt = new \DateTimeImmutable();
-        
-        if ($this->status === 'approved' && $this->approvedAt === null) {
-            $this->approvedAt = new \DateTimeImmutable();
-        }
     }
 }
