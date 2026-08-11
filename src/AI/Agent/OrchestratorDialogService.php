@@ -6,6 +6,7 @@ namespace App\AI\Agent;
 use App\AI\Skills\ToolDefinitionGenerator;
 use App\AI\Response\JsonResponseEnforcer;
 use App\AI\Response\FaultTolerantValidator;
+use App\AI\Response\ResponseNormalizer;
 use App\Entity\ToolDefinition;
 use App\Event\PendingToolApprovalEvent;
 use Symfony\AI\Agent\AgentInterface;
@@ -30,6 +31,7 @@ final readonly class OrchestratorDialogService
         private UrlGeneratorInterface $urlGenerator,
         private JsonResponseEnforcer $jsonResponseEnforcer,
         private FaultTolerantValidator $faultTolerantValidator,
+        private ResponseNormalizer $responseNormalizer,
     ) {
     }
 
@@ -46,37 +48,45 @@ final readonly class OrchestratorDialogService
             $result = $this->agent->call($messages);
             $responseContent = $result->getContent();
 
-            $this->logger->debug('Orchestrator-Agent Antwort', [
+            $this->logger->debug('Orchestrator-Agent Antwort (Rohdaten)', [
                 'response' => $responseContent,
-                'is_valid_json' => $this->jsonResponseEnforcer->validateJsonResponse($responseContent)
+                'length' => strlen($responseContent)
             ]);
 
-            // Prüfe, ob die Antwort gültiges JSON ist
-            if (!$this->jsonResponseEnforcer->validateJsonResponse($responseContent)) {
-                $this->logger->warning('Ungültige JSON-Antwort vom LLM, starte Fallback-Handling');
-                return $this->handleUnstructuredResponse($responseContent, $userMessage, $userIdentifier);
+            // NORMALISIERE die Antwort SOFORT, bevor weitere Verarbeitung
+            $normalizedResponse = $this->responseNormalizer->normalizeResponse($responseContent);
+            
+            $this->logger->debug('Orchestrator-Agent Antwort (normalisiert)', [
+                'response' => $normalizedResponse,
+                'is_valid_json' => $this->jsonResponseEnforcer->validateJsonResponse($normalizedResponse)
+            ]);
+
+            // Prüfe, ob die normalisierte Antwort gültiges JSON ist
+            if (!$this->jsonResponseEnforcer->validateJsonResponse($normalizedResponse)) {
+                $this->logger->warning('Ungültige JSON-Antwort vom LLM auch nach Normalisierung, starte Fallback-Handling');
+                return $this->handleUnstructuredResponse($normalizedResponse, $userMessage, $userIdentifier);
             }
 
-            // Extrahiere den Antworttyp
-            $responseType = $this->jsonResponseEnforcer->extractResponseType($responseContent);
+            // Extrahiere den Antworttyp aus der NORMALISIERTEN Antwort
+            $responseType = $this->jsonResponseEnforcer->extractResponseType($normalizedResponse);
 
             // Behandle verschiedene Antworttypen
             switch ($responseType) {
                 case 'tool_call':
-                    return $this->handleToolCallResponse($responseContent, $userMessage, $userIdentifier);
+                    return $this->handleToolCallResponse($normalizedResponse, $userMessage, $userIdentifier);
 
                 case 'subagent_delegation':
-                    return $this->handleSubAgentDelegation($responseContent, $userMessage, $userIdentifier);
+                    return $this->handleSubAgentDelegation($normalizedResponse, $userMessage, $userIdentifier);
 
                 case 'no_tool_found':
                     return $this->handleToolNotFound($userMessage, $userIdentifier);
 
                 case 'dialog':
-                    return $this->handleDialogResponse($responseContent);
+                    return $this->handleDialogResponse($normalizedResponse);
 
                 default:
                     $this->logger->warning('Unbekannter Antworttyp', ['type' => $responseType]);
-                    return $this->handleUnstructuredResponse($responseContent, $userMessage, $userIdentifier);
+                    return $this->handleUnstructuredResponse($normalizedResponse, $userMessage, $userIdentifier);
             }
         } catch (\Exception $e) {
             $this->logger->error('Fehler beim Aufruf des Orchestrator-Agenten: ' . $e->getMessage());
