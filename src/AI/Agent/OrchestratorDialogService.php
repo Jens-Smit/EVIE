@@ -232,14 +232,15 @@ final readonly class OrchestratorDialogService
     {
         $this->logger->info('Kein passendes Tool gefunden. Starte Tool-Generierung und Sub-Agenten-Erstellung...');
 
-        // 1. Tool-Name aus der User-Nachricht extrahieren (intelligente Analyse)
+        // 1. Bestimme den passenden Sub-Agenten basierend auf der User-Anfrage
+        $subAgent = $this->determineAndCreateSubAgent($userMessage);
+        $subAgentName = $subAgent->getName();
+        
+        // 2. Tool-Name aus der User-Nachricht extrahieren (intelligente Analyse)
         $toolName = $this->extractToolNameFromRequest($userMessage);
         
-        // 2. Beschreibung generieren
-        $description = $this->generateToolDescription($userMessage);
-        
-        // 3. Passenden Sub-Agenten bestimmen und erstellen
-        $subAgent = $this->determineAndCreateSubAgent($userMessage);
+        // 3. Bessere Beschreibung generieren (nicht die User-Nachricht direkt)
+        $description = $this->generateBetterToolDescription($userMessage, $subAgentName);
         
         // 4. Tool-Definition generieren
         $toolDefinition = $this->toolGenerator->generateToolDefinition(
@@ -248,7 +249,7 @@ final readonly class OrchestratorDialogService
             [
                 'user_identifier' => $userIdentifier,
                 'original_request' => $userMessage,
-                'suggested_sub_agent' => $subAgent->getName(),
+                'suggested_sub_agent' => $subAgentName,
             ]
         );
 
@@ -304,27 +305,57 @@ final readonly class OrchestratorDialogService
         $messageLower = strtolower($userMessage);
 
         // Webseiten-Recherche
-        if (preg_match('/(webseite|website|recherche|suche|research|durchsuchen|zusammenfassen|impressum|kontakte|geschäftszweck|standort|branche|visiongastro)/i', $messageLower)) {
+        if (preg_match('/(webseite|website|web page|webpage|url|link|http[s]?:\/\/|www\.)/i', $messageLower)) {
             return $this->subAgentFactory->createWebsiteResearchAgent();
         }
 
         // Datenanalyse
-        if (preg_match('/(daten|analyse|statistik|auswertung|zahlen|diagramm)/i', $messageLower)) {
+        if (preg_match('/(daten|data|analyse|analysieren|auswertung|statistik|zahlen)/i', $messageLower)) {
             return $this->subAgentFactory->createDataAnalysisAgent();
         }
 
         // Code-Assistenz
-        if (preg_match('/(code|programm|skript|funktion|klassen|php|symfony|entwickeln)/i', $messageLower)) {
+        if (preg_match('/(code|programm|skript|script|funktion|klassen|php|symfony|entwickeln|develop)/i', $messageLower)) {
             return $this->subAgentFactory->createCodeAssistantAgent();
         }
 
         // Dokumentenverarbeitung
-        if (preg_match('/(dokument|pdf|excel|datei|verarbeiten|lesen|extrahieren)/i', $messageLower)) {
+        if (preg_match('/(dokument|pdf|excel|datei|file|verarbeiten|lesen|extrahieren)/i', $messageLower)) {
             return $this->subAgentFactory->createDocumentProcessorAgent();
         }
 
-        // Fallback: Website Research Agent (häufigster Use Case)
-        return $this->subAgentFactory->createWebsiteResearchAgent();
+        // Kommunikation
+        if (preg_match('/(email|e-mail|nachricht|mail|senden|send|linkedin|kommunikation)/i', $messageLower)) {
+            return $this->subAgentFactory->createCommunicationManagerAgent();
+        }
+
+        // API-Integration
+        if (preg_match('/(api|integration|oauth|authentifizierung|anbinden)/i', $messageLower)) {
+            return $this->subAgentFactory->createApiIntegrationAgent();
+        }
+
+        // Projektmanagement
+        if (preg_match('/(projekt|aufgabe|task|termin|planen|scheduling|management)/i', $messageLower)) {
+            return $this->subAgentFactory->createProjectManagerAgent();
+        }
+
+        // Finanzen
+        if (preg_match('/(finanzen|buchhaltung|rechnung|zahlung|geld|kosten)/i', $messageLower)) {
+            return $this->subAgentFactory->createFinanceManagerAgent();
+        }
+
+        // HR
+        if (preg_match('/(mitarbeiter|personal|vertrag|gehalt|hr|human resources)/i', $messageLower)) {
+            return $this->subAgentFactory->createHrManagerAgent();
+        }
+
+        // Marketing
+        if (preg_match('/(marketing|kampagne|social media|content|werbung|werben)/i', $messageLower)) {
+            return $this->subAgentFactory->createMarketingManagerAgent();
+        }
+
+        // CEO Assistant (Fallback für komplexe Anfragen)
+        return $this->subAgentFactory->createCeoAssistantAgent();
     }
 
     /**
@@ -390,7 +421,7 @@ final readonly class OrchestratorDialogService
         
         // 1. Prüfe auf bestehende Tools und generiere passende Namen
         // Webseiten-Recherche
-        if (preg_match('/(webseite|website|web page|webpage|url|link|http[s]?:\/\/|www\.)/i', $messageLower)) {
+        if (preg_match('/(webseite|website|web page|webpage|url|http[s]?:\/\/|www\.)/i', $messageLower)) {
             if (preg_match('/(zusammenfassen|zusammenfassung|summarize|summary|analysieren|analyse)/i', $messageLower)) {
                 return 'website_scraping';
             }
@@ -468,15 +499,110 @@ final readonly class OrchestratorDialogService
     }
 
     /**
-     * Generiere eine Beschreibung für das neue Tool.
+     * Generiere eine bessere Beschreibung für das neue Tool.
+     * Nicht die User-Nachricht direkt, sondern eine generische Beschreibung basierend auf dem Tool-Typ.
      */
-    private function generateToolDescription(string $userMessage): string
+    private function generateBetterToolDescription(string $userMessage, string $subAgentName): string
     {
-        // Kürze die Nachricht auf eine sinnvolle Länge
-        $description = substr($userMessage, 0, 200);
+        $messageLower = strtolower($userMessage);
+        
+        // Webseiten-Tools
+        if ($subAgentName === 'website_researcher' || str_contains($messageLower, 'webseite') || str_contains($messageLower, 'website')) {
+            if (preg_match('/(zusammenfassen|zusammenfassung|summarize)/i', $messageLower)) {
+                return 'Fasst Webseiten-Inhalte zusammen und extrahiert wichtige Informationen wie Impressum, Kontakte, Geschäftszweck.';
+            }
+            if (preg_match('/(durchsuchen|recherche|suche)/i', $messageLower)) {
+                return 'Durchsucht Webseiten nach spezifischen Informationen und liefert strukturierte Ergebnisse.';
+            }
+            return 'Analysiert und verarbeitet Webseiten-Inhalte.';
+        }
+        
+        // Datenanalyse-Tools
+        if ($subAgentName === 'data_analyst' || str_contains($messageLower, 'daten') || str_contains($messageLower, 'analyse')) {
+            return 'Analysiert Daten, erkennt Muster und liefert statistische Auswertungen.';
+        }
+        
+        // Code-Tools
+        if ($subAgentName === 'code_assistant' || str_contains($messageLower, 'code') || str_contains($messageLower, 'programm')) {
+            return 'Unterstützt bei der Code-Analyse, Fehlerbehebung und Generierung von Code-Snippets.';
+        }
+        
+        // Dokumenten-Tools
+        if ($subAgentName === 'document_processor' || str_contains($messageLower, 'dokument') || str_contains($messageLower, 'pdf')) {
+            return 'Verarbeitet Dokumente, extrahiert Daten und erstellt Zusammenfassungen.';
+        }
+        
+        // Kommunikation
+        if ($subAgentName === 'communication_manager' || str_contains($messageLower, 'email') || str_contains($messageLower, 'nachricht')) {
+            return 'Verwaltet E-Mails, Nachrichten und andere Kommunikationsaufgaben.';
+        }
+        
+        // API-Integration
+        if ($subAgentName === 'api_integration' || str_contains($messageLower, 'api')) {
+            return 'Bindet externe APIs an, verwaltet Authentifizierung und führt API-Aufrufe durch.';
+        }
+        
+        // Projektmanagement
+        if ($subAgentName === 'project_manager' || str_contains($messageLower, 'projekt') || str_contains($messageLower, 'aufgabe')) {
+            return 'Verwaltet Projekte, Aufgaben und Termine.';
+        }
+        
+        // Finanzen
+        if ($subAgentName === 'finance_manager' || str_contains($messageLower, 'finanzen') || str_contains($messageLower, 'rechnung')) {
+            return 'Verwaltet Buchhaltung, Rechnungen und Zahlungen.';
+        }
+        
+        // HR
+        if ($subAgentName === 'hr_manager' || str_contains($messageLower, 'mitarbeiter') || str_contains($messageLower, 'personal')) {
+            return 'Verwaltet Mitarbeiterdaten, Verträge und Personalangelegenheiten.';
+        }
+        
+        // Marketing
+        if ($subAgentName === 'marketing_manager' || str_contains($messageLower, 'marketing') || str_contains($messageLower, 'kampagne')) {
+            return 'Verantwortlich für Marketing-Kampagnen, Social Media und Content-Erstellung.';
+        }
+        
+        // CEO Assistant
+        if ($subAgentName === 'ceo_assistant') {
+            return 'Unterstützt bei strategischen Entscheidungen und Aufgabenpriorisierung.';
+        }
+        
+        // Fallback: Generische Beschreibung
+        return 'Führt spezifische Aufgaben basierend auf der User-Anfrage aus.';
+    }
 
-        // Füge einen Kontext hinzu
-        return sprintf("Tool zur Ausführung der folgenden Aufgabe: %s", $description);
+    /**
+     * Behandelt den Fall, wenn der Orchestrator einen Sub-Agenten vorschlägt.
+     */
+    private function handleSubAgentSuggestion(string $userMessage, string $userIdentifier): string
+    {
+        $this->logger->info('Orchestrator schlägt Sub-Agenten vor. Erstelle und registriere...');
+
+        // Sub-Agenten bestimmen
+        $subAgent = $this->determineAndCreateSubAgent($userMessage);
+
+        // Tool-Definition für die Delegation erstellen
+        $toolName = 'delegate_to_' . $subAgent->getName();
+        $description = sprintf('Delegiert die Aufgabe an den %s Sub-Agenten', $subAgent->getName());
+
+        $toolDefinition = $this->toolGenerator->generateToolDefinition(
+            $toolName,
+            $description,
+            [
+                'user_identifier' => $userIdentifier,
+                'original_request' => $userMessage,
+                'sub_agent' => $subAgent->getName(),
+            ]
+        );
+
+        // Tool genehmigen, da es sich um eine Delegation handelt
+        $this->toolGenerator->approveTool($toolDefinition);
+
+        return sprintf(
+            "Ich habe deine Anfrage an den **%s** Sub-Agenten delegiert, der sich um diese Aufgabe kümmern wird. " .
+            "Der Agent wird die Anfrage bearbeiten und dir das Ergebnis liefern.",
+            $subAgent->getName()
+        );
     }
 
     /**
