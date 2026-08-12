@@ -1,7 +1,9 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!-- https://phpunit.readthedocs.io/en/latest/configuration.html -->
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.0/phpunit.xsd"
          bootstrap="tests/bootstrap.php"
+         colors="true"
          cacheDirectory=".phpunit.cache"
          executionOrder="depends,defects"
          requireCoverageMetadata="false"
@@ -12,6 +14,32 @@
     <testsuites>
         <testsuite name="Application Test Suite">
             <directory>tests</directory>
+            <exclude>
+                <directory suffix=".php">tests/Unit/AI</directory>
+                <directory suffix=".php">tests/Integration/AI</directory>
+            </exclude>
+        </testsuite>
+
+        <!-- EVIE AI Komponenten Tests -->
+        <testsuite name="EVIE AI Unit Tests">
+            <directory>tests/Unit/AI</directory>
+        </testsuite>
+
+        <testsuite name="EVIE AI Integration Tests">
+            <directory>tests/Integration/AI</directory>
+        </testsuite>
+
+        <!-- Spezifische Test-Suites für AI-Komponenten -->
+        <testsuite name="EVIE AI Security Tests">
+            <directory>tests/Unit/AI/Security</directory>
+        </testsuite>
+
+        <testsuite name="EVIE AI Skills Tests">
+            <directory>tests/Unit/AI/Skills</directory>
+        </testsuite>
+
+        <testsuite name="EVIE AI Agent Tests">
+            <directory>tests/Unit/AI/Agent</directory>
         </testsuite>
     </testsuites>
 
@@ -24,10 +52,37 @@
         </exclude>
     </source>
 
+    <!-- Filter für AI-Komponenten -->
+    <filter>
+        <whitelist processUncoveredFilesFromWhitelist="true">
+            <directory suffix=".php">src/AI</directory>
+        </whitelist>
+    </filter>
+
+    <!-- Code Coverage Konfiguration -->
+    <coverage cacheDirectory=".phpunit.cache" processUncoveredFiles="true">
+        <include>
+            <directory suffix=".php">src/AI</directory>
+        </include>
+        <exclude>
+            <file>src/AI/DependencyInjection</file>
+        </exclude>
+    </coverage>
+
+    <!-- Logging -->
+    <logging>
+        <log type="coverage-html" target="build/coverage" title="EVIE Test Coverage" charset="UTF-8" yui="true" highlight="true"/>
+        <log type="coverage-clover" target="build/logs/clover.xml"/>
+        <log type="coverage-crap4j" target="build/logs/crap4j.xml" threshold="30"/>
+        <log type="coverage-text" target="php://stdout" showOnlyPercentage="true"/>
+        <log type="junit" target="build/logs/junit.xml"/>
+    </logging>
+
+    <!-- PHP Einstellungen -->
     <php>
         <ini name="error_reporting" value="-1" />
         <server name="APP_ENV" value="test" />
         <server name="KERNEL_CLASS" value="App\Kernel" />
-        <server name="SYMFONY_DEPRECATIONS_HELPER" value="disabled" />
+        <server name="SYMFONY_DEPRECATIONS_HELPER" value="weak_vendors" />
     </php>
 </phpunit>
