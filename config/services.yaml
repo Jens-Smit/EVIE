@@ -162,13 +162,33 @@ services:
             $platform: '@ai.platform.mistral'
             $logger: '@logger'
 
-    # Sub-Agent Factory
+    # Sub-Agent Factory - UPDATED mit Container und SubAgentDefinitionRepository
     App\AI\Agent\SubAgentFactory:
         arguments:
             $platform: '@ai.platform.mistral'
             $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
             $dynamicSkillRegistry: '@App\AI\Skills\DynamicSkillRegistry'
             $logger: '@logger'
+            $container: '@service_container'
+            $subAgentDefinitionRepo: '@App\Repository\SubAgentDefinitionRepository'
+            $params: '@parameter_bag'
+
+    # Sub-Agent Dispatcher - UPDATED mit SubAgentFactory und SubAgentDefinitionRepository
+    App\AI\Agent\SubAgentDispatcher:
+        arguments:
+            $platform: '@ai.platform.mistral'
+            $logger: '@logger'
+            $jsonResponseEnforcer: '@App\AI\Response\JsonResponseEnforcer'
+            $faultTolerantValidator: '@App\AI\Response\FaultTolerantValidator'
+            $toolGenerator: '@App\AI\Skills\ToolDefinitionGenerator'
+            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
+            $subAgentDefinitionRepo: '@App\Repository\SubAgentDefinitionRepository'
+            $dispatcher: '@event_dispatcher'
+            $urlGenerator: '@router'
+            $subAgentFactory: '@App\AI\Agent\SubAgentFactory'
+            $firecrawl: '@Symfony\AI\Agent\Bridge\Firecrawl\Firecrawl'
+            $tavily: '@Symfony\AI\Agent\Bridge\Tavily\Tavily'
+        tags: ['container.hot_path']
 
     # ========================================================================
     # Security Services
@@ -235,14 +255,27 @@ services:
         tags:
             - { name: 'container.compiler_pass' }
 
+    # AiSubAgentsCompilerPass für dynamische Sub-Agenten-Registrierung
+    App\DependencyInjection\Compiler\AiSubAgentsCompilerPass:
+        tags:
+            - { name: 'container.compiler_pass' }
+
     # ========================================================================
-    # Cache Warmup Command
+    # Cache Warmup Commands
     # ========================================================================
 
     # WarmupDynamicToolsCacheCommand für CompilerPass-Unterstützung
     App\Command\WarmupDynamicToolsCacheCommand:
         arguments:
             $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
+        tags:
+            - { name: 'console.command' }
+
+    # WarmupSubAgentsCacheCommand für Sub-Agenten
+    App\Command\WarmupSubAgentsCacheCommand:
+        arguments:
+            $subAgentDefinitionRepo: '@App\Repository\SubAgentDefinitionRepository'
+            $cache: '@cache.app'
         tags:
             - { name: 'console.command' }
 
@@ -484,23 +517,6 @@ services:
         tags: ['container.hot_path']
 
     # ========================================================================
-    # Sub-Agent Dispatcher
-    # ========================================================================
-    App\AI\Agent\SubAgentDispatcher:
-        arguments:
-            $platform: '@ai.platform.mistral'
-            $logger: '@logger'
-            $jsonResponseEnforcer: '@App\AI\Response\JsonResponseEnforcer'
-            $faultTolerantValidator: '@App\AI\Response\FaultTolerantValidator'
-            $toolGenerator: '@App\AI\Skills\ToolDefinitionGenerator'
-            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
-            $dispatcher: '@event_dispatcher'
-            $urlGenerator: '@router'
-            $firecrawl: '@Symfony\AI\Agent\Bridge\Firecrawl\Firecrawl'
-            $tavily: '@Symfony\AI\Agent\Bridge\Tavily\Tavily'
-        tags: ['container.hot_path']
-
-    # ========================================================================
     # Response Pipeline
     # ========================================================================
     App\AI\Response\ResponsePipeline:
@@ -510,3 +526,12 @@ services:
             $responseNormalizer: '@App\AI\Response\ResponseNormalizer'
             $faultTolerantValidator: '@App\AI\Response\FaultTolerantValidator'
         tags: ['container.hot_path']
+
+    # ========================================================================
+    # Repository Services
+    # ========================================================================
+
+    # SubAgentDefinition Repository
+    App\Repository\SubAgentDefinitionRepository:
+        arguments:
+            $registry: '@doctrine'
