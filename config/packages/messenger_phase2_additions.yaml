@@ -1,0 +1,49 @@
+# config/packages/messenger_phase2_additions.yaml
+# Diese Konfigurationen müssen in config/packages/messenger.yaml integriert werden
+# Füge folgende Abschnitte in die bestehende messenger.yaml ein
+
+# 1. Füge unter framework.messenger.serializer hinzu:
+#    serializer:
+#        default_serializer: messenger.transport.symfony_serializer
+#        symfony_serializer:
+#            format: json
+#            context: {}
+
+# 2. Füge folgende Transports hinzu (unter framework.messenger.transports):
+#    async_tools:
+#        dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+#        retry_strategy:
+#            max_retries: 3
+#            delay: 1000
+#            multiplier: 2
+#            max_delay: 10000
+#
+#    streaming:
+#        dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+#        retry_strategy:
+#            max_retries: 0
+
+# 3. Füge folgende Routing-Regeln hinzu (unter framework.messenger.routing):
+#    'App\Message\ExecuteToolMessage': async_tools
+#    'App\Message\StreamToolResponseMessage': streaming
+#    'App\Message\StartStreamingSessionMessage': streaming
+#    'App\Message\EndStreamingSessionMessage': streaming
+#    'App\Message\StreamChunkMessage': streaming
+
+# 4. Füge folgende when@dev und when@test Konfigurationen hinzu:
+# when@dev:
+#     framework:
+#         messenger:
+#             transports:
+#                 async_tools: 'sync://'
+#                 streaming: 'sync://'
+#
+# when@test:
+#     framework:
+#         messenger:
+#             transports:
+#                 async_tools: 'sync://'
+#                 streaming: 'sync://'
+
+# Alternative: Ersetze die gesamte messenger.yaml mit dem Inhalt aus messenger_streaming.yaml
+# die bereits im Repository ist.
