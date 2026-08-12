@@ -5,8 +5,10 @@ namespace App\AI\Agent;
 use App\AI\Response\FaultTolerantValidator;
 use App\AI\Response\JsonResponseEnforcer;
 use App\AI\Skills\ToolDefinitionGenerator;
+use App\Entity\SubAgentDefinition;
 use App\Entity\ToolDefinition;
 use App\Event\PendingToolApprovalEvent;
+use App\Repository\SubAgentDefinitionRepository;
 use App\Repository\ToolDefinitionRepository;
 use Psr\Log\LoggerInterface;
 use Symfony\AI\Agent\AgentInterface;
@@ -18,16 +20,17 @@ use Symfony\AI\Agent\Bridge\Tavily\Tavily;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
-    /**
-     * SubAgentDispatcher - Intelligente Weiterleitung von Aufgaben an spezialisierte Sub-Agenten
-     *
-     * Diese Klasse implementiert einen Sub-Agent-Dispatcher, der:
-     * 1. User-Anfragen analysiert und an passende Sub-Agenten weiterleitet
-     * 2. Firecrawl für Webseiten-Recherche integriert
-     * 3. Tavily für Web-Suche und Informationsbeschaffung nutzt
-     * 4. Automatische Tool-Generierung für neue Anforderungen
-     * 5. Fehlertolerante Verarbeitung und Monitoring
-     */
+/**
+ * SubAgentDispatcher - Intelligente Weiterleitung von Aufgaben an spezialisierte Sub-Agenten
+ *
+ * Diese Klasse implementiert einen Sub-Agent-Dispatcher, der:
+ * 1. User-Anfragen analysiert und an passende Sub-Agenten weiterleitet
+ * 2. Firecrawl für Webseiten-Recherche integriert
+ * 3. Tavily für Web-Suche und Informationsbeschaffung nutzt
+ * 4. Automatische Tool-Generierung für neue Anforderungen
+ * 5. Fehlertolerante Verarbeitung und Monitoring
+ * 6. Dynamisches Laden von Sub-Agenten aus der Datenbank unterstützt
+ */
 class SubAgentDispatcher
 {
     private PlatformInterface $platform;
@@ -36,8 +39,10 @@ class SubAgentDispatcher
     private FaultTolerantValidator $faultTolerantValidator;
     private ToolDefinitionGenerator $toolGenerator;
     private ToolDefinitionRepository $toolDefinitionRepo;
+    private SubAgentDefinitionRepository $subAgentDefinitionRepo;
     private EventDispatcherInterface $dispatcher;
     private UrlGeneratorInterface $urlGenerator;
+    private SubAgentFactory $subAgentFactory;
     private Firecrawl $firecrawl;
     private Tavily $tavily;
 
@@ -48,8 +53,10 @@ class SubAgentDispatcher
         FaultTolerantValidator $faultTolerantValidator,
         ToolDefinitionGenerator $toolGenerator,
         ToolDefinitionRepository $toolDefinitionRepo,
+        SubAgentDefinitionRepository $subAgentDefinitionRepo,
         EventDispatcherInterface $dispatcher,
         UrlGeneratorInterface $urlGenerator,
+        SubAgentFactory $subAgentFactory,
         Firecrawl $firecrawl,
         Tavily $tavily
     ) {
@@ -59,8 +66,10 @@ class SubAgentDispatcher
         $this->faultTolerantValidator = $faultTolerantValidator;
         $this->toolGenerator = $toolGenerator;
         $this->toolDefinitionRepo = $toolDefinitionRepo;
+        $this->subAgentDefinitionRepo = $subAgentDefinitionRepo;
         $this->dispatcher = $dispatcher;
         $this->urlGenerator = $urlGenerator;
+        $this->subAgentFactory = $subAgentFactory;
         $this->firecrawl = $firecrawl;
         $this->tavily = $tavily;
     }
@@ -90,6 +99,105 @@ class SubAgentDispatcher
 
             return $this->createErrorResponse($e->getMessage());
         }
+    }
+
+    /**
+     * Delegiert eine Aufgabe an einen bestimmten Sub-Agenten (dynamisch oder statisch).
+     */
+    public function delegate(string $task, array $context = [], string $userIdentifier = 'system'): array
+    {
+        // 1. Bestimme den passenden Sub-Agenten
+        $subAgentName = $this->determineSubAgent($task);
+
+        if ($subAgentName === null) {
+            throw new \RuntimeException('Kein passender Sub-Agent für die Aufgabe gefunden.');
+        }
+
+        // 2. Lade den Sub-Agenten dynamisch
+        $subAgent = $this->subAgentFactory->createByName($subAgentName);
+
+        // 3. Führe die Aufgabe aus
+        $result = $subAgent->__invoke($task, $context);
+
+        $this->logger->info('Aufgabe an Sub-Agenten delegiert', [
+            'sub_agent' => $subAgentName,
+            'task' => substr($task, 0, 100),
+        ]);
+
+        return [
+            'sub_agent' => $subAgentName,
+            'result' => $result,
+            'status' => 'completed',
+        ];
+    }
+
+    /**
+     * Bestimmt den passenden Sub-Agenten für eine Aufgabe.
+     */
+    private function determineSubAgent(string $task): ?string
+    {
+        // 1. Prüfe, ob ein Sub-Agent explizit in der Aufgabe genannt wird
+        if (preg_match('/@([a-zA-Z0-9_]+)/', $task, $matches)) {
+            return $matches[1];
+        }
+
+        // 2. Nutze Keyword-Matching
+        return $this->classifyTask($task);
+    }
+
+    /**
+     * Klassifiziert eine Aufgabe und gibt den passenden Sub-Agenten-Namen zurück.
+     */
+    private function classifyTask(string $task): ?string
+    {
+        $taskLower = strtolower($task);
+        
+        $keywords = [
+            'website' => 'website_researcher',
+            'recherche' => 'website_researcher',
+            'web' => 'website_researcher',
+            'impressum' => 'website_researcher',
+            'daten' => 'data_analyst',
+            'analyse' => 'data_analyst',
+            'statistik' => 'data_analyst',
+            'code' => 'code_assistant',
+            'programm' => 'code_assistant',
+            'skript' => 'code_assistant',
+            'dokument' => 'document_processor',
+            'pdf' => 'document_processor',
+            'email' => 'communication_manager',
+            'nachricht' => 'communication_manager',
+            'linkedin' => 'communication_manager',
+            'api' => 'api_integration',
+            'integration' => 'api_integration',
+            'oauth' => 'api_integration',
+            'projekt' => 'project_manager',
+            'aufgabe' => 'project_manager',
+            'termin' => 'project_manager',
+            'finanz' => 'finance_manager',
+            'buchhaltung' => 'finance_manager',
+            'rechnung' => 'finance_manager',
+            'zahlung' => 'finance_manager',
+            'mitarbeiter' => 'hr_manager',
+            'personal' => 'hr_manager',
+            'vertrag' => 'hr_manager',
+            'gehalt' => 'hr_manager',
+            'marketing' => 'marketing_manager',
+            'kampagne' => 'marketing_manager',
+            'social' => 'marketing_manager',
+            'content' => 'marketing_manager',
+            'strategie' => 'ceo_assistant',
+            'entscheidung' => 'ceo_assistant',
+            'priorität' => 'ceo_assistant',
+        ];
+
+        foreach ($keywords as $keyword => $subAgentName) {
+            if (stripos($taskLower, $keyword) !== false) {
+                return $subAgentName;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -515,5 +623,41 @@ class SubAgentDispatcher
         ];
 
         return json_encode($errorData, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * Gibt alle verfügbaren Sub-Agenten zurück.
+     */
+    public function getAvailableSubAgents(): array
+    {
+        return $this->subAgentFactory->getAvailableSubAgents();
+    }
+
+    /**
+     * Gibt alle aktiven Sub-Agenten-Definitionen aus der Datenbank zurück.
+     */
+    public function getActiveSubAgentDefinitions(): array
+    {
+        return $this->subAgentDefinitionRepo->findAllActive();
+    }
+
+    /**
+     * Delegiert eine Aufgabe an einen bestimmten Sub-Agenten.
+     */
+    public function delegateTo(string $subAgentName, string $task, array $context = []): array
+    {
+        $subAgent = $this->subAgentFactory->createByName($subAgentName);
+        $result = $subAgent->__invoke($task, $context);
+
+        $this->logger->info('Aufgabe an spezifischen Sub-Agenten delegiert', [
+            'sub_agent' => $subAgentName,
+            'task' => substr($task, 0, 100),
+        ]);
+
+        return [
+            'sub_agent' => $subAgentName,
+            'result' => $result,
+            'status' => 'completed',
+        ];
     }
 }
