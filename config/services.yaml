@@ -196,10 +196,12 @@ services:
     # Dynamic Skill Registry & Tools
     # ========================================================================
 
-    # Dynamic Skill Registry
+    # Dynamic Skill Registry - UPDATED mit DynamicToolFactory
     App\AI\Skills\DynamicSkillRegistry:
         arguments:
             $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
+            $toolFactory: '@App\AI\Skills\Tool\DynamicToolFactory'
+            $toolRegistry: '@ai.agent.tool_registry'  # Symfony AI Bundle ToolRegistry
 
     # Dynamic Tool Factory - UPDATED mit SecurityGuard und Container
     App\AI\Skills\Tool\DynamicToolFactory:
@@ -218,7 +220,7 @@ services:
             $securityGuard: '@App\AI\Security\SecurityGuard'
             $logger: '@logger'
 
-    # Tool Registry
+    # Tool Registry (Symfony AI Bundle)
     App\AI\Skills\Tool\ToolRegistry: ~
 
     # Registrierung des OnboardingLoader als Service
@@ -232,6 +234,17 @@ services:
     App\DependencyInjection\Compiler\AiDynamicToolsCompilerPass:
         tags:
             - { name: 'container.compiler_pass' }
+
+    # ========================================================================
+    # Cache Warmup Command
+    # ========================================================================
+
+    # WarmupDynamicToolsCacheCommand für CompilerPass-Unterstützung
+    App\Command\WarmupDynamicToolsCacheCommand:
+        arguments:
+            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
+        tags:
+            - { name: 'console.command' }
 
     # ========================================================================
     # TOOL SERVICES - Explicit configuration for ALL tools
