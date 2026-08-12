@@ -1,0 +1,92 @@
+{# templates/htmx/forms/_tool_form.html.twig #}
+
+<div class="tool-form-card card shadow-sm mb-3" 
+     hx-target="#tool-results-container" 
+     hx-swap="beforeend">
+    
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">
+            <i class="fas fa-tools me-2"></i>
+            Tool ausführen
+        </h5>
+    </div>
+    
+    <div class="card-body">
+        <form 
+              hx-post="{{ path('htmx_tools_execute') }}"
+              hx-indicator="#tool-loading-indicator"
+              hx-trigger="submit"
+              class="row g-3">
+            
+            <div class="col-md-4">
+                <label for="tool_name" class="form-label">Tool auswählen</label>
+                <select class="form-select" id="tool_name" name="tool_name" required>
+                    <option value="" selected disabled>Tool auswählen...</option>
+                    {% for toolName in available_tools|keys %}
+                        <option value="{{ toolName }}" 
+                                {% if selected_tool == toolName %}selected{% endif %}>
+                            {{ toolName }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="col-md-6">
+                <label for="tool_arguments" class="form-label">Argumente (JSON)</label>
+                <textarea class="form-control font-mono" 
+                          id="tool_arguments" 
+                          name="arguments" 
+                          rows="2" 
+                          placeholder='{"param1": "value1", "param2": "value2"}'
+                          required></textarea>
+                <div class="form-text">
+                    Gib die Argumente als JSON-Objekt ein. Beispiel: <code>{"query": "test"}</code>
+                </div>
+            </div>
+            
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-play me-1"></i> Ausführen
+                </button>
+            </div>
+            
+            <div class="col-12">
+                <div id="tool-loading-indicator" 
+                     class="htmx-indicator d-none">
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="spinner-border spinner-border-sm text-primary" role="status"></div>
+                        <span>Tool wird ausgeführt...</span>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Tool-Formular Logik
+document.addEventListener('DOMContentLoaded', function() {
+    const toolSelect = document.getElementById('tool_name');
+    const argumentsTextarea = document.getElementById('tool_arguments');
+    
+    if (toolSelect && argumentsTextarea) {
+        // Tool-spezifische Platzhalter
+        const toolPlaceholders = {
+            'read_file': '{"path": "/path/to/file.txt"}',
+            'list_files': '{"path": "/path/to/directory"}',
+            'web_search': '{"query": "search term", "max_results": 5}',
+            'data_analyze': '{"data": [1, 2, 3, 4, 5], "analysis_type": "statistics"}',
+            'email_send': '{"to": "recipient@example.com", "subject": "Test", "body": "Message"}',
+        };
+        
+        toolSelect.addEventListener('change', function() {
+            const selectedTool = this.value;
+            if (toolPlaceholders[selectedTool]) {
+                argumentsTextarea.placeholder = toolPlaceholders[selectedTool];
+            } else {
+                argumentsTextarea.placeholder = '{"param1": "value1", "param2": "value2"}';
+            }
+        });
+    }
+});
+</script>
