@@ -1,5 +1,4 @@
 <?php
-// src/AI/Skills/Tool/DynamicToolFactory.php
 
 namespace App\AI\Skills\Tool;
 
@@ -7,27 +6,77 @@ use App\Entity\ToolDefinition;
 use App\Repository\ToolDefinitionRepository;
 use App\AI\Agent\SubAgentFactory;
 use App\AI\Skills\DynamicSkillRegistry;
+use App\AI\Security\SecurityGuard;
 use Psr\Log\LoggerInterface;
 use Symfony\AI\Agent\AgentInterface;
+use Symfony\AI\Agent\Tool\ToolInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 /**
- * Factory für dynamisch generierte Tools.
- * Wandelt ToolDefinition-Entitäten in ausführbare ToolInterface-Implementierungen um.
- * Unterstützt jetzt auch die Delegation an Sub-Agenten.
+ * DynamicToolFactory - Erstellt ausführbare ToolInterface-Implementierungen aus ToolDefinition-Entities
+ * 
+ * Diese Factory unterstützt:
+ * 1. Erstellung von DynamicTool-Instanzien für CompilerPass-Integration
+ * 2. Sub-Agenten-Delegation für komplexe Aufgaben
+ * 3. SecurityGuard-Integration für Sicherheitsprüfungen
+ * 
+ * @see https://symfony.com/doc/current/ai/bundles/ai-bundle.html#register-tools
  */
 final readonly class DynamicToolFactory
 {
     public function __construct(
+        private ContainerInterface $container,
         private ToolDefinitionRepository $toolDefinitionRepo,
         private LoggerInterface $logger,
         private SubAgentFactory $subAgentFactory,
         private DynamicSkillRegistry $dynamicSkillRegistry,
+        private SecurityGuard $securityGuard,
     ) {
     }
 
     /**
-     * Erstellt ein Tool aus einer ToolDefinition.
-     * Unterstützt jetzt auch Sub-Agenten-Delegation.
+     * Erstellt ein DynamicTool aus einer ToolDefinition.
+     * 
+     * Diese Methode wird vom CompilerPass verwendet, um Tools zur Compile-Time zu registrieren.
+     * 
+     * @param ToolDefinition $toolDefinition Die Tool-Definition
+     * @return DynamicTool Das erstellte Tool
+     */
+    public function createTool(ToolDefinition $toolDefinition): DynamicTool
+    {
+        // 1. Prüfe, ob das Tool genehmigt ist
+        if (!$toolDefinition->isApproved()) {
+            throw new \RuntimeException(sprintf(
+                'Tool "%s" ist nicht genehmigt und kann nicht erstellt werden.',
+                $toolDefinition->getName()
+            ));
+        }
+
+        // 2. Prüfe SecurityGuard-Whitelist
+        $schema = $toolDefinition->getSchema();
+        $this->securityGuard->assertToolAllowed($schema, $toolDefinition->getName());
+
+        // 3. Erstelle den Executor
+        $executor = $this->container->has(DynamicToolExecutor::class) 
+            ? $this->container->get(DynamicToolExecutor::class)
+            : new DynamicToolExecutor($this->container, $this->securityGuard, $this->logger);
+
+        // 4. Erstelle und gib das DynamicTool zurück
+        $tool = new DynamicTool($toolDefinition, $executor);
+
+        $this->logger->debug('DynamicToolFactory: DynamicTool erstellt', [
+            'tool' => $toolDefinition->getName(),
+            'status' => $toolDefinition->getStatus(),
+        ]);
+
+        return $tool;
+    }
+
+    /**
+     * Erstellt ein Tool für die Verwendung in der Toolbox (abwärtskompatibel).
+     * 
+     * Diese Methode behält die bestehende Funktionalität bei, die in der aktuellen
+     * EVIE-Implementierung verwendet wird.
      */
     public function getTool(): ToolInterface
     {
@@ -270,6 +319,9 @@ final readonly class DynamicToolFactory
         };
     }
 
+    /**
+     * Erstellt ein Tool für eine spezifische ToolDefinition (abwärtskompatibel).
+     */
     public function createToolForDefinition(ToolDefinition $toolDefinition): ToolInterface
     {
         return new class($toolDefinition, $this->logger, $this->subAgentFactory) implements ToolInterface {
@@ -312,5 +364,44 @@ final readonly class DynamicToolFactory
                 return ['tool' => $this->toolDefinition->getName(), 'result' => sprintf('Tool "%s" ausgeführt', $this->toolDefinition->getName())];
             }
         };
+    }
+
+    /**
+     * Erstellt mehrere Tools aus einer Liste von ToolDefinitions.
+     * 
+     * @param ToolDefinition[] $toolDefinitions
+     * @return DynamicTool[]
+     */
+    public function createTools(array $toolDefinitions): array
+    {
+        $tools = [];
+        foreach ($toolDefinitions as $toolDefinition) {
+            try {
+                $tools[] = $this->createTool($toolDefinition);
+            } catch (\Exception $e) {
+                $this->logger->warning('DynamicToolFactory: Tool-Erstellung fehlgeschlagen', [
+                    'tool' => $toolDefinition->getName(),
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+        return $tools;
+    }
+
+    /**
+     * Prüft, ob ein Tool erstellt werden kann.
+     */
+    public function canCreateTool(ToolDefinition $toolDefinition): bool
+    {
+        try {
+            if (!$toolDefinition->isApproved()) {
+                return false;
+            }
+            $schema = $toolDefinition->getSchema();
+            $this->securityGuard->assertToolAllowed($schema, $toolDefinition->getName());
+            return true;
+        } catch (\Exception $e) {
+            return false;
+        }
     }
 }
