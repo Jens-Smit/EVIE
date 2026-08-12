@@ -1,0 +1,249 @@
+{# templates/htmx/dashboard/_dashboard.html.twig #}
+
+<div class="dashboard-container" 
+     hx-get="{{ path('htmx_dashboard') }}"
+     hx-trigger="every 30s">
+    
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <h2 class="mb-0">
+                <i class="fas fa-tachometer-alt me-2"></i>
+                EVIE Dashboard
+            </h2>
+            <p class="text-muted mb-0">Echtzeit-Übersicht deiner AI-Tools und -Agenten</p>
+        </div>
+    </div>
+    
+    {# Statistik-Karten #}
+    <div class="row g-4 mb-4">
+        {# Tools Statistik #}
+        <div class="col-md-3">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="bg-primary bg-opacity-10 rounded-circle p-3">
+                                <i class="fas fa-tools fs-4 text-primary"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="mb-1 text-muted">Verfügbare Tools</h6>
+                            <h3 class="mb-0">{{ available_tools|length }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <a href="#" 
+                       hx-get="{{ path('htmx_dashboard_tools_stats') }}"
+                       hx-target="#tools-stats-container"
+                       hx-trigger="click"
+                       class="btn btn-sm btn-outline-primary w-100">
+                        <i class="fas fa-chart-bar me-1"></i> Details
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        {# Sub-Agenten Statistik #}
+        <div class="col-md-3">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="bg-info bg-opacity-10 rounded-circle p-3">
+                                <i class="fas fa-user-cog fs-4 text-info"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="mb-1 text-muted">Sub-Agenten</h6>
+                            <h3 class="mb-0">{{ available_subagents|length }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <a href="#" 
+                       hx-get="{{ path('htmx_dashboard_subagents_stats') }}"
+                       hx-target="#subagents-stats-container"
+                       hx-trigger="click"
+                       class="btn btn-sm btn-outline-info w-100">
+                        <i class="fas fa-chart-bar me-1"></i> Details
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        {# MCP-Server Statistik #}
+        <div class="col-md-3">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="bg-success bg-opacity-10 rounded-circle p-3">
+                                <i class="fas fa-server fs-4 text-success"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="mb-1 text-muted">MCP-Server</h6>
+                            <h3 class="mb-0">{{ available_mcp_servers|length }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <a href="#" 
+                       hx-get="{{ path('htmx_dashboard_mcp_stats') }}"
+                       hx-target="#mcp-stats-container"
+                       hx-trigger="click"
+                       class="btn btn-sm btn-outline-success w-100">
+                        <i class="fas fa-chart-bar me-1"></i> Details
+                    </a>
+                </div>
+            </div>
+        </div>
+        
+        {# Aktive Sessions #}
+        <div class="col-md-3">
+            <div class="card h-100 shadow-sm">
+                <div class="card-body">
+                    <div class="d-flex align-items-center">
+                        <div class="flex-shrink-0">
+                            <div class="bg-warning bg-opacity-10 rounded-circle p-3">
+                                <i class="fas fa-stream fs-4 text-warning"></i>
+                            </div>
+                        </div>
+                        <div class="flex-grow-1 ms-3">
+                            <h6 class="mb-1 text-muted">Aktive Sessions</h6>
+                            <h3 class="mb-0">{{ active_sessions|length }}</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="card-footer bg-transparent">
+                    <a href="{{ path('mcp_servers_list') }}" 
+                       class="btn btn-sm btn-outline-warning w-100">
+                        <i class="fas fa-list me-1"></i> Anzeigen
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {# Haupt-Inhalt #}
+    <div class="row g-4">
+        {# Tools Section #}
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-tools me-2"></i>
+                        Tools
+                    </h5>
+                    <a href="#" 
+                       hx-get="{{ path('htmx_tools_form') }}"
+                       hx-target="#tools-container"
+                       hx-trigger="click"
+                       class="btn btn-sm btn-outline-primary">
+                        <i class="fas fa-plus me-1"></i> Tool ausführen
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <div id="tools-container" class="p-3">
+                        {% include 'htmx/forms/_tool_form.html.twig' %}
+                    </div>
+                    <div id="tool-results-container" class="p-3 border-top">
+                        <div class="text-muted text-center py-4">
+                            <i class="fas fa-arrow-up fa-2x mb-2"></i>
+                            <p class="mb-0">Führe ein Tool aus, um Ergebnisse zu sehen</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        {# Sub-Agenten Section #}
+        <div class="col-md-6">
+            <div class="card shadow-sm h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-user-cog me-2"></i>
+                        Sub-Agenten
+                    </h5>
+                    <a href="#" 
+                       hx-get="{{ path('htmx_subagents_form') }}"
+                       hx-target="#subagents-container"
+                       hx-trigger="click"
+                       class="btn btn-sm btn-outline-info">
+                        <i class="fas fa-plus me-1"></i> Aufgabe delegieren
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <div id="subagents-container" class="p-3">
+                        {% include 'htmx/forms/_subagent_form.html.twig' %}
+                    </div>
+                    <div id="subagent-results-container" class="p-3 border-top">
+                        <div class="text-muted text-center py-4">
+                            <i class="fas fa-arrow-up fa-2x mb-2"></i>
+                            <p class="mb-0">Delegiere eine Aufgabe, um Ergebnisse zu sehen</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {# MCP Tools Section #}
+    <div class="row g-4 mt-2">
+        <div class="col-md-12">
+            <div class="card shadow-sm">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0">
+                        <i class="fas fa-server me-2"></i>
+                        MCP-Tools
+                    </h5>
+                    <a href="#" 
+                       hx-get="{{ path('htmx_mcp_tools_form') }}"
+                       hx-target="#mcp-container"
+                       hx-trigger="click"
+                       class="btn btn-sm btn-outline-success">
+                        <i class="fas fa-plus me-1"></i> MCP-Tool ausführen
+                    </a>
+                </div>
+                <div class="card-body p-0">
+                    <div id="mcp-container" class="p-3">
+                        {% include 'htmx/forms/_mcp_tool_form.html.twig' %}
+                    </div>
+                    <div id="mcp-results-container" class="p-3 border-top">
+                        <div class="text-muted text-center py-4">
+                            <i class="fas fa-arrow-up fa-2x mb-2"></i>
+                            <p class="mb-0">Führe ein MCP-Tool aus, um Ergebnisse zu sehen</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {# Statistik-Container (dynamisch geladen) #}
+    <div class="row g-4 mt-2 d-none">
+        <div class="col-md-4">
+            <div id="tools-stats-container"></div>
+        </div>
+        <div class="col-md-4">
+            <div id="subagents-stats-container"></div>
+        </div>
+        <div class="col-md-4">
+            <div id="mcp-stats-container"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Dashboard Auto-Refresh
+document.addEventListener('DOMContentLoaded', function() {
+    // Alle 30 Sekunden Dashboard aktualisieren
+    setInterval(function() {
+        const dashboard = document.querySelector('.dashboard-container');
+        if (dashboard) {
+            htmx.trigger(dashboard, 'htmx:trigger');
+        }
+    }, 30000);
+});
+</script>
