@@ -33,6 +33,10 @@ parameters:
         - 'Symfony\AI\Agent\Bridge\Firecrawl\Firecrawl'
         - 'Symfony\AI\Agent\Bridge\Tavily\Tavily'
         
+        # MCP Server Services
+        - 'App\AI\Mcp\McpServerFactory'
+        - 'App\AI\Mcp\McpToolExecutor'
+        
         # Wildcard für alle EVIE Tools (falls nicht explizit aufgelistet)
         - 'App\AI\Skills\Tool\*'
     
@@ -260,6 +264,11 @@ services:
         tags:
             - { name: 'container.compiler_pass' }
 
+    # AiMcpServersCompilerPass für dynamische MCP-Server-Registrierung
+    App\DependencyInjection\Compiler\AiMcpServersCompilerPass:
+        tags:
+            - { name: 'container.compiler_pass' }
+
     # ========================================================================
     # Cache Warmup Commands
     # ========================================================================
@@ -275,6 +284,14 @@ services:
     App\Command\WarmupSubAgentsCacheCommand:
         arguments:
             $subAgentDefinitionRepo: '@App\Repository\SubAgentDefinitionRepository'
+            $cache: '@cache.app'
+        tags:
+            - { name: 'console.command' }
+
+    # WarmupMcpServersCacheCommand für MCP-Server
+    App\Command\WarmupMcpServersCacheCommand:
+        arguments:
+            $mcpServerDefinitionRepo: '@App\Repository\McpServerDefinitionRepository'
             $cache: '@cache.app'
         tags:
             - { name: 'console.command' }
@@ -346,7 +363,7 @@ services:
         tags: ['ai.tool']
 
     # ========================================================================
-    # MCP Tools
+    # MCP Tools & Services
     # ========================================================================
 
     # Firecrawl Tool (Web-Scraping)
@@ -362,42 +379,23 @@ services:
             $apiKey: '%env(TAVILY_API_KEY)%'
         tags: ['ai.tool']
 
-    # ========================================================================
-    # Strategy & Workflow Services
-    # ========================================================================
-
-    App\AI\Strategy\StrategyManager:
+    # MCP Server Factory
+    App\AI\Mcp\McpServerFactory:
         arguments:
-            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
-            $subAgentFactory: '@App\AI\Agent\SubAgentFactory'
-            $platform: '@ai.platform.mistral'
+            $container: '@service_container'
+            $mcpServerDefinitionRepo: '@App\Repository\McpServerDefinitionRepository'
+            $securityGuard: '@App\AI\Security\SecurityGuard'
             $logger: '@logger'
 
-    App\AI\Workflow\WorkflowOrchestrator:
+    # MCP Tool Executor (updated with dynamic server support)
+    App\AI\Mcp\McpToolExecutor:
         arguments:
-            $strategyManager: '@App\AI\Strategy\StrategyManager'
-            $subAgentFactory: '@App\AI\Agent\SubAgentFactory'
-            $historyRepo: '@App\Repository\AgentHistoryRepository'
+            $mcpServerFactory: '@App\AI\Mcp\McpServerFactory'
+            $securityGuard: '@App\AI\Security\SecurityGuard'
             $logger: '@logger'
 
     # ========================================================================
-    # Decision & Briefing Services
-    # ========================================================================
-
-    App\AI\Decision\DecisionManager:
-        arguments:
-            $decisionLogRepo: '@App\Repository\DecisionLogRepository'
-            $logger: '@logger'
-
-    App\AI\Briefing\BriefingManager:
-        arguments:
-            $historyRepo: '@App\Repository\AgentHistoryRepository'
-            $decisionManager: '@App\AI\Decision\DecisionManager'
-            $workflowOrchestrator: '@App\AI\Workflow\WorkflowOrchestrator'
-            $logger: '@logger'
-
-    # ========================================================================
-    # MCP Services
+    # MCP Client Services
     # ========================================================================
 
     App\Mcp\Client\McpServerManager:
@@ -432,15 +430,38 @@ services:
             $serverAliases: ['filesystem', 'playwright', 'github']
 
     # ========================================================================
-    # Toolbox Factory
+    # Strategy & Workflow Services
     # ========================================================================
 
-    App\AI\Agent\EvieToolboxFactory:
+    App\AI\Strategy\StrategyManager:
         arguments:
-            $mcpToolFactory: '@App\Mcp\Toolbox\McpToolFactoryWrapper'
-            $nativeTools: !tagged_iterator ai.tool
-            $dynamicSkillRegistry: '@App\AI\Skills\DynamicSkillRegistry'
+            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
             $subAgentFactory: '@App\AI\Agent\SubAgentFactory'
+            $platform: '@ai.platform.mistral'
+            $logger: '@logger'
+
+    App\AI\Workflow\WorkflowOrchestrator:
+        arguments:
+            $strategyManager: '@App\AI\Strategy\StrategyManager'
+            $subAgentFactory: '@App\AI\Agent\SubAgentFactory'
+            $historyRepo: '@App\Repository\AgentHistoryRepository'
+            $logger: '@logger'
+
+    # ========================================================================
+    # Decision & Briefing Services
+    # ========================================================================
+
+    App\AI\Decision\DecisionManager:
+        arguments:
+            $decisionLogRepo: '@App\Repository\DecisionLogRepository'
+            $logger: '@logger'
+
+    App\AI\Briefing\BriefingManager:
+        arguments:
+            $historyRepo: '@App\Repository\AgentHistoryRepository'
+            $decisionManager: '@App\AI\Decision\DecisionManager'
+            $workflowOrchestrator: '@App\AI\Workflow\WorkflowOrchestrator'
+            $logger: '@logger'
 
     # ========================================================================
     # Event Listener
@@ -495,6 +516,14 @@ services:
             $entityManager: '@doctrine.orm.entity_manager'
         tags: ['controller.service_arguments']
 
+    # MCP Server Controller
+    App\Controller\McpServerController:
+        arguments:
+            $mcpServerFactory: '@App\AI\Mcp\McpServerFactory'
+            $mcpServerDefinitionRepo: '@App\Repository\McpServerDefinitionRepository'
+            $entityManager: '@doctrine.orm.entity_manager'
+        tags: ['controller.service_arguments']
+
     # ========================================================================
     # JSON Response Enforcer
     # ========================================================================
@@ -533,5 +562,10 @@ services:
 
     # SubAgentDefinition Repository
     App\Repository\SubAgentDefinitionRepository:
+        arguments:
+            $registry: '@doctrine'
+
+    # McpServerDefinition Repository
+    App\Repository\McpServerDefinitionRepository:
         arguments:
             $registry: '@doctrine'
