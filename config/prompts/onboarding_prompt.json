@@ -1,0 +1,709 @@
+{
+  "system": {
+    "role": "You are an expert onboarding assistant for the EVIE multi-agent system. Your primary goal is to collect precise user information to personalize the AI agent experience and optimize tool recommendations.",
+    "persona": "Friendly, professional, and methodical. You guide users through the onboarding process with clear questions and helpful explanations.",
+    "guidelines": [
+      "Ask one question at a time to avoid overwhelming the user",
+      "Validate user responses before proceeding to the next question",
+      "Provide clear examples when users are unsure how to answer",
+      "Store all collected information in the provided memory context",
+      "Ask for clarification if responses are ambiguous or incomplete",
+      "Adapt questions based on previous answers (e.g., skip technical questions for non-developers)",
+      "Always explain why you're asking each question and how it will improve their experience"
+    ],
+    "tone": "Conversational but professional. Use emojis sparingly (1-2 per message max)."
+  },
+  "flow": {
+    "type": "structured_interview",
+    "description": "A step-by-step process to collect all necessary user information",
+    "steps": [
+      {
+        "id": "welcome",
+        "type": "introduction",
+        "message": "Welcome to EVIE, your intelligent multi-agent system! I'm here to help you get started. This quick onboarding process (about 3-5 minutes) will help me understand your needs so I can provide the most relevant tools and assistance. Let's begin!\n\nFirst, could you tell me your primary role?",
+        "quick_reply_options": [
+          "Developer",
+          "Business User",
+          "Administrator",
+          "Data Scientist",
+          "Other (please specify)"
+        ],
+        "validation": {
+          "required": true,
+          "type": "string",
+          "min_length": 3
+        },
+        "memory_key": "user_profile.user_type",
+        "conditional_next": {
+          "Developer": "technical_skills",
+          "Data Scientist": "technical_skills",
+          "Business User": "use_case",
+          "Administrator": "use_case",
+          "Other": "user_type_clarification"
+        }
+      },
+      {
+        "id": "user_type_clarification",
+        "type": "conditional",
+        "condition": "user_profile.user_type == 'Other'",
+        "message": "Could you please specify your role in more detail? This will help me tailor EVIE to your specific needs.",
+        "validation": {
+          "required": true,
+          "type": "string",
+          "min_length": 5
+        },
+        "memory_key": "user_profile.user_type_detail",
+        "next_step": "use_case"
+      },
+      {
+        "id": "technical_skills",
+        "type": "multiple_choice",
+        "message": "Great! As a {{ user_profile.user_type }}, what are your technical skills? Select all that apply:",
+        "options": [
+          {
+            "id": "php",
+            "label": "PHP",
+            "description": "Experience with PHP development"
+          },
+          {
+            "id": "symfony",
+            "label": "Symfony Framework",
+            "description": "Familiarity with Symfony 5/6/7"
+          },
+          {
+            "id": "javascript",
+            "label": "JavaScript/TypeScript",
+            "description": "Frontend or Node.js development"
+          },
+          {
+            "id": "python",
+            "label": "Python",
+            "description": "Python scripting or data science"
+          },
+          {
+            "id": "devops",
+            "label": "DevOps/CI-CD",
+            "description": "Deployment, containers, infrastructure"
+          },
+          {
+            "id": "database",
+            "label": "Databases",
+            "description": "SQL, NoSQL, data modeling"
+          },
+          {
+            "id": "ai_ml",
+            "label": "AI/Machine Learning",
+            "description": "Experience with AI models or ML algorithms"
+          },
+          {
+            "id": "cloud",
+            "label": "Cloud Services",
+            "description": "AWS, GCP, Azure, or other cloud platforms"
+          },
+          {
+            "id": "none",
+            "label": "No technical background",
+            "description": "I'm not technical but need AI assistance"
+          }
+        ],
+        "validation": {
+          "required": false,
+          "type": "array",
+          "min_items": 0
+        },
+        "memory_key": "user_profile.technical_skills",
+        "next_step": "experience_level"
+      },
+      {
+        "id": "experience_level",
+        "type": "single_choice",
+        "message": "How would you rate your technical expertise with the skills you selected?",
+        "options": [
+          {
+            "id": "beginner",
+            "label": "Beginner",
+            "description": "Just starting out, need guidance"
+          },
+          {
+            "id": "intermediate",
+            "label": "Intermediate",
+            "description": "Comfortable with basics, learning advanced topics"
+          },
+          {
+            "id": "advanced",
+            "label": "Advanced",
+            "description": "Very experienced, can work independently"
+          },
+          {
+            "id": "expert",
+            "label": "Expert",
+            "description": "Deep expertise, can mentor others"
+          }
+        ],
+        "validation": {
+          "required": true,
+          "type": "string"
+        },
+        "memory_key": "user_profile.experience_level",
+        "next_step": "use_case"
+      },
+      {
+        "id": "use_case",
+        "type": "multiple_choice",
+        "message": "What are your primary use cases for EVIE? Select all that apply:",
+        "options": [
+          {
+            "id": "code_generation",
+            "label": "Code Generation",
+            "description": "Generate PHP, JavaScript, or other code",
+            "recommended_for": ["Developer", "Data Scientist"]
+          },
+          {
+            "id": "code_review",
+            "label": "Code Review",
+            "description": "Review and suggest improvements for existing code",
+            "recommended_for": ["Developer"]
+          },
+          {
+            "id": "business_automation",
+            "label": "Business Process Automation",
+            "description": "Automate repetitive business tasks",
+            "recommended_for": ["Business User", "Administrator"]
+          },
+          {
+            "id": "data_analysis",
+            "label": "Data Analysis & Visualization",
+            "description": "Analyze datasets and create visualizations",
+            "recommended_for": ["Data Scientist", "Business User"]
+          },
+          {
+            "id": "document_processing",
+            "label": "Document Processing",
+            "description": "Extract, summarize, or transform documents",
+            "recommended_for": ["Business User", "Administrator"]
+          },
+          {
+            "id": "research",
+            "label": "Research & Information Gathering",
+            "description": "Gather and synthesize information from various sources",
+            "recommended_for": ["All"]
+          },
+          {
+            "id": "project_management",
+            "label": "Project Management",
+            "description": "Assist with planning, tracking, and coordinating projects",
+            "recommended_for": ["Business User", "Administrator"]
+          },
+          {
+            "id": "system_administration",
+            "label": "System Administration",
+            "description": "Help with server, deployment, or infrastructure tasks",
+            "recommended_for": ["Administrator", "DevOps"]
+          },
+          {
+            "id": "education",
+            "label": "Learning & Education",
+            "description": "Explain concepts, provide tutorials, or help learn new skills",
+            "recommended_for": ["All"]
+          },
+          {
+            "id": "other",
+            "label": "Other Use Case",
+            "description": "Something not listed above"
+          }
+        ],
+        "validation": {
+          "required": true,
+          "type": "array",
+          "min_items": 1
+        },
+        "memory_key": "user_profile.use_cases",
+        "next_step": "use_case_clarification"
+      },
+      {
+        "id": "use_case_clarification",
+        "type": "conditional",
+        "condition": "'other' in user_profile.use_cases",
+        "message": "Could you describe your specific use case in more detail?",
+        "validation": {
+          "required": true,
+          "type": "string",
+          "min_length": 10
+        },
+        "memory_key": "user_profile.other_use_case",
+        "next_step": "industry"
+      },
+      {
+        "id": "industry",
+        "type": "single_choice",
+        "message": "Which industry or domain do you primarily work in?",
+        "options": [
+          {
+            "id": "technology",
+            "label": "Technology/Software",
+            "description": "Software development, IT services, etc."
+          },
+          {
+            "id": "gastronomy",
+            "label": "Gastronomy/Hospitality",
+            "description": "Restaurants, hotels, catering (special EVIE focus)"
+          },
+          {
+            "id": "retail",
+            "label": "Retail/E-commerce",
+            "description": "Online stores, physical retail"
+          },
+          {
+            "id": "finance",
+            "label": "Finance/Accounting",
+            "description": "Banking, accounting, financial services"
+          },
+          {
+            "id": "healthcare",
+            "label": "Healthcare",
+            "description": "Hospitals, clinics, medical services"
+          },
+          {
+            "id": "education",
+            "label": "Education",
+            "description": "Schools, universities, training"
+          },
+          {
+            "id": "manufacturing",
+            "label": "Manufacturing/Logistics",
+            "description": "Production, supply chain, logistics"
+          },
+          {
+            "id": "nonprofit",
+            "label": "Non-profit/NGO",
+            "description": "Charities, foundations, non-governmental organizations"
+          },
+          {
+            "id": "other",
+            "label": "Other Industry",
+            "description": "An industry not listed above"
+          }
+        ],
+        "validation": {
+          "required": true,
+          "type": "string"
+        },
+        "memory_key": "user_profile.industry",
+        "next_step": "industry_clarification"
+      },
+      {
+        "id": "industry_clarification",
+        "type": "conditional",
+        "condition": "user_profile.industry == 'other'",
+        "message": "Could you specify your industry?",
+        "validation": {
+          "required": true,
+          "type": "string",
+          "min_length": 3
+        },
+        "memory_key": "user_profile.industry_detail",
+        "next_step": "response_preference"
+      },
+      {
+        "id": "response_preference",
+        "type": "single_choice",
+        "message": "How do you prefer to receive responses from EVIE?",
+        "options": [
+          {
+            "id": "concise",
+            "label": "Concise",
+            "description": "Short, direct answers with minimal explanation"
+          },
+          {
+            "id": "balanced",
+            "label": "Balanced",
+            "description": "Detailed but to the point, with relevant explanations"
+          },
+          {
+            "id": "detailed",
+            "label": "Detailed",
+            "description": "Comprehensive answers with step-by-step explanations and examples"
+          },
+          {
+            "id": "context_dependent",
+            "label": "Context-Dependent",
+            "description": "Let EVIE decide based on the situation"
+          }
+        ],
+        "validation": {
+          "required": true,
+          "type": "string"
+        },
+        "memory_key": "user_preferences.response_style",
+        "next_step": "technical_preference"
+      },
+      {
+        "id": "technical_preference",
+        "type": "single_choice",
+        "message": "How technical should the responses be?",
+        "options": [
+          {
+            "id": "non_technical",
+            "label": "Non-Technical",
+            "description": "Avoid technical jargon, explain in simple terms"
+          },
+          {
+            "id": "somewhat_technical",
+            "label": "Somewhat Technical",
+            "description": "Use some technical terms but explain them"
+          },
+          {
+            "id": "technical",
+            "label": "Technical",
+            "description": "Use technical terms freely, assume knowledge"
+          },
+          {
+            "id": "highly_technical",
+            "label": "Highly Technical",
+            "description": "Deep technical details, code examples, architecture discussions"
+          }
+        ],
+        "validation": {
+          "required": true,
+          "type": "string"
+        },
+        "memory_key": "user_preferences.technical_level",
+        "next_step": "language_preference"
+      },
+      {
+        "id": "language_preference",
+        "type": "single_choice",
+        "message": "What language do you prefer for communication with EVIE?",
+        "options": [
+          {
+            "id": "german",
+            "label": "German",
+            "description": "Deutsch"
+          },
+          {
+            "id": "english",
+            "label": "English",
+            "description": "English"
+          },
+          {
+            "id": "both",
+            "label": "Both",
+            "description": "Respond in the same language as my input"
+          }
+        ],
+        "validation": {
+          "required": true,
+          "type": "string"
+        },
+        "memory_key": "user_preferences.language",
+        "next_step": "notification_preferences"
+      },
+      {
+        "id": "notification_preferences",
+        "type": "multiple_choice",
+        "message": "How would you like to be notified about important updates or approvals?",
+        "options": [
+          {
+            "id": "email",
+            "label": "Email",
+            "description": "Send notifications to my email"
+          },
+          {
+            "id": "in_app",
+            "label": "In-App Notifications",
+            "description": "Show notifications in the EVIE interface"
+          },
+          {
+            "id": "slack",
+            "label": "Slack",
+            "description": "Send messages to my Slack workspace"
+          },
+          {
+            "id": "teams",
+            "label": "Microsoft Teams",
+            "description": "Send messages to my Teams channel"
+          },
+          {
+            "id": "none",
+            "label": "No Notifications",
+            "description": "Do not send any notifications"
+          }
+        ],
+        "validation": {
+          "required": false,
+          "type": "array"
+        },
+        "memory_key": "user_preferences.notifications",
+        "next_step": "hitl_preferences"
+      },
+      {
+        "id": "hitl_preferences",
+        "type": "multiple_choice",
+        "message": "For which types of actions should EVIE request Human-in-the-Loop (HITL) approval?",
+        "description": "HITL means a human must explicitly approve the action before it's executed.",
+        "options": [
+          {
+            "id": "database_changes",
+            "label": "Database Modifications",
+            "description": "Any changes to databases (INSERT, UPDATE, DELETE)",
+            "default": true
+          },
+          {
+            "id": "file_modifications",
+            "label": "File System Changes",
+            "description": "Creating, modifying, or deleting files",
+            "default": true
+          },
+          {
+            "id": "external_api_calls",
+            "label": "External API Calls",
+            "description": "Calls to external services or APIs",
+            "default": true
+          },
+          {
+            "id": "tool_creation",
+            "label": "New Tool Creation",
+            "description": "When EVIE wants to create a new tool",
+            "default": true
+          },
+          {
+            "id": "high_cost_operations",
+            "label": "High-Cost Operations",
+            "description": "Actions that may incur significant costs (API calls, computations)",
+            "default": true
+          },
+          {
+            "id": "none",
+            "label": "No HITL Required",
+            "description": "Trust EVIE to make decisions without approval"
+          }
+        ],
+        "validation": {
+          "required": false,
+          "type": "array"
+        },
+        "memory_key": "user_preferences.hitl_requirements",
+        "default": ["database_changes", "file_modifications", "external_api_calls", "tool_creation"],
+        "next_step": "security_preferences"
+      },
+      {
+        "id": "security_preferences",
+        "type": "single_choice",
+        "message": "What security level would you like for your EVIE instance?",
+        "description": "This affects which tools are available and what actions they can perform.",
+        "options": [
+          {
+            "id": "restricted",
+            "label": "Restricted",
+            "description": "Only basic, safe operations. Most tools disabled."
+          },
+          {
+            "id": "balanced",
+            "label": "Balanced",
+            "description": "Good security with most tools available. Recommended for most users."
+          },
+          {
+            "id": "permissive",
+            "label": "Permissive",
+            "description": "Most tools enabled, but with HITL approval for sensitive operations."
+          },
+          {
+            "id": "custom",
+            "label": "Custom",
+            "description": "I'll configure security settings manually later."
+          }
+        ],
+        "validation": {
+          "required": true,
+          "type": "string"
+        },
+        "memory_key": "user_preferences.security_level",
+        "next_step": "summary"
+      },
+      {
+        "id": "summary",
+        "type": "confirmation",
+        "message": "Thank you! Here's a summary of your preferences. Please review and confirm:",
+        "template": "\n## Your EVIE Configuration\n\n### Profile\n- **Role:** {{ user_profile.user_type }}{% if user_profile.user_type_detail %} ({{ user_profile.user_type_detail }}){% endif %}\n- **Experience Level:** {{ user_profile.experience_level }}\n- **Industry:** {{ user_profile.industry }}{% if user_profile.industry_detail %} ({{ user_profile.industry_detail }}){% endif %}\n\n### Technical Skills\n{% if user_profile.technical_skills|length > 0 %}\n- {{ user_profile.technical_skills|join(', ') }}\n{% else %}\n- No specific technical skills\n{% endif %}\n\n### Use Cases\n- {{ user_profile.use_cases|join(', ') }}{% if user_profile.other_use_case %} ({{ user_profile.other_use_case }}){% endif %}\n\n### Preferences\n- **Response Style:** {{ user_preferences.response_style }}\n- **Technical Level:** {{ user_preferences.technical_level }}\n- **Language:** {{ user_preferences.language }}\n- **Notifications:** {{ user_preferences.notifications|join(', ') or 'None' }}\n- **HITL Requirements:** {{ user_preferences.hitl_requirements|join(', ') or 'None' }}\n- **Security Level:** {{ user_preferences.security_level }}\n\nIs this information correct?",
+        "validation": {
+          "required": true,
+          "type": "boolean"
+        },
+        "next_step": {
+          "true": "completion",
+          "false": "correction"
+        }
+      },
+      {
+        "id": "correction",
+        "type": "free_text",
+        "message": "What would you like to correct? Please specify which information is incorrect and what the correct value should be.",
+        "validation": {
+          "required": true,
+          "type": "string",
+          "min_length": 10
+        },
+        "next_step": "summary"
+      },
+      {
+        "id": "completion",
+        "type": "final",
+        "message": "Perfect! Your onboarding is complete. EVIE is now configured to provide the best possible experience for your needs.\n\n## What's Next?\n\n1. **Explore Available Tools:** Check out the tool catalog to see what EVIE can do\n2. **Try the Orchestrator:** Ask EVIE a question to see how it delegates to sub-agents\n3. **Customize Further:** Adjust your preferences anytime in the settings\n\n## Quick Start Commands\n\n- `List all available tools`: `/tools list`\n- `Show my profile`: `/profile show`\n- `Start a conversation`: Just type your question!\n\nThank you for choosing EVIE. Type `/help` at any time for assistance.",
+        "memory_action": "finalize",
+        "next_step": null
+      }
+    ]
+  },
+  "memory": {
+    "structure": {
+      "user_profile": {
+        "type": "object",
+        "description": "Core user information",
+        "properties": {
+          "user_type": {
+            "type": "string",
+            "description": "Primary role of the user"
+          },
+          "user_type_detail": {
+            "type": "string",
+            "description": "Detailed role description (if 'Other')"
+          },
+          "technical_skills": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "List of technical skills"
+          },
+          "experience_level": {
+            "type": "string",
+            "enum": ["beginner", "intermediate", "advanced", "expert"],
+            "description": "User's experience level"
+          },
+          "use_cases": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Primary use cases for EVIE"
+          },
+          "other_use_case": {
+            "type": "string",
+            "description": "Custom use case description"
+          },
+          "industry": {
+            "type": "string",
+            "description": "Industry or domain"
+          },
+          "industry_detail": {
+            "type": "string",
+            "description": "Detailed industry description (if 'Other')"
+          }
+        },
+        "required": ["user_type", "experience_level", "use_cases", "industry"]
+      },
+      "user_preferences": {
+        "type": "object",
+        "description": "User preferences for EVIE behavior",
+        "properties": {
+          "response_style": {
+            "type": "string",
+            "enum": ["concise", "balanced", "detailed", "context_dependent"],
+            "description": "Preferred response style"
+          },
+          "technical_level": {
+            "type": "string",
+            "enum": ["non_technical", "somewhat_technical", "technical", "highly_technical"],
+            "description": "Preferred technical level"
+          },
+          "language": {
+            "type": "string",
+            "enum": ["german", "english", "both"],
+            "description": "Preferred communication language"
+          },
+          "notifications": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Preferred notification methods"
+          },
+          "hitl_requirements": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Actions requiring HITL approval"
+          },
+          "security_level": {
+            "type": "string",
+            "enum": ["restricted", "balanced", "permissive", "custom"],
+            "description": "Overall security level"
+          }
+        },
+        "required": ["response_style", "technical_level", "language", "security_level"]
+      }
+    },
+    "persistence": {
+      "enabled": true,
+      "storage_key": "ai.onboarding.{{ user_id }}",
+      "ttl": "365 days",
+      "version": "1.0"
+    },
+    "context_integration": {
+      "system_prompt": true,
+      "tool_selection": true,
+      "sub_agent_routing": true
+    }
+  },
+  "response_formatting": {
+    "structured_output": true,
+    "format": "json",
+    "template": {
+      "action": "{{ action }}",
+      "step": "{{ step_id }}",
+      "question": "{{ question }}",
+      "options": {{ options|tojson }},
+      "validation": {{ validation|tojson }},
+      "context": {
+        "current_profile": {{ user_profile|tojson }},
+        "current_preferences": {{ user_preferences|tojson }}
+      }
+    }
+  },
+  "error_handling": {
+    "invalid_input": "I'm sorry, that doesn't seem to be a valid answer. {{ error_message }} Please try again.",
+    "validation_failed": "The answer doesn't meet the requirements: {{ error_message }}. Please provide a valid response.",
+    "timeout": "It seems you're taking a while to respond. You can take your time, or type 'skip' to move to the next question.",
+    "interruption": "No problem! We can continue the onboarding later. Your progress has been saved. Type '/onboarding resume' to continue."
+  },
+  "localization": {
+    "supported_languages": ["en", "de"],
+    "fallback_language": "en",
+    "translations": {
+      "de": {
+        "welcome": "Willkommen bei EVIE, Ihrem intelligenten Multi-Agenten-System! Ich helfe Ihnen, loszulegen. Dieser kurze Onboarding-Prozess (ca. 3-5 Minuten) hilft mir, Ihre Bedürfnisse zu verstehen, damit ich die relevantesten Tools und Unterstützung bereitstellen kann. Legen wir los!\n\nZuerst: Was ist Ihre primäre Rolle?",
+        "response_style": {
+          "concise": "Kurz und prägnant",
+          "balanced": "Ausführlich, aber auf den Punkt",
+          "detailed": "Umfassend mit detaillierten Erklärungen",
+          "context_dependent": "EVIE soll je nach Situation entscheiden"
+        }
+      }
+    }
+  },
+  "metadata": {
+    "version": "1.0.0",
+    "created": "2026-08-12",
+    "author": "EVIE System",
+    "compatibility": {
+      "symfony_ai_bundle": ">=0.12.0",
+      "evie_version": ">=1.0.0"
+    },
+    "dependencies": [
+      "App\\AI\\Onboarding\\OnboardingFlowManager",
+      "App\\AI\\Onboarding\\ContextMemoryProvider",
+      "Symfony\\AI\\Agent\\AgentInterface"
+    ]
+  }
+}
