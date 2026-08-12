@@ -225,7 +225,7 @@ services:
         arguments:
             $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
             $toolFactory: '@App\AI\Skills\Tool\DynamicToolFactory'
-            $toolRegistry: '@ai.agent.tool_registry'  # Symfony AI Bundle ToolRegistry
+            $toolRegistry: '@ai.agent.tool_registry'
 
     # Dynamic Tool Factory - UPDATED mit SecurityGuard und Container
     App\AI\Skills\Tool\DynamicToolFactory:
@@ -298,7 +298,6 @@ services:
 
     # ========================================================================
     # TOOL SERVICES - Explicit configuration for ALL tools
-    # Each tool is configured individually to avoid autowiring issues
     # ========================================================================
 
     # Weather Tool
@@ -524,6 +523,15 @@ services:
             $entityManager: '@doctrine.orm.entity_manager'
         tags: ['controller.service_arguments']
 
+    # Streaming Controller
+    App\Controller\StreamingController:
+        arguments:
+            $sessionManager: '@App\AI\Streaming\StreamingSessionManager'
+            $sessionRepo: '@App\Repository\StreamingSessionRepository'
+            $messageBus: '@message_bus'
+            $entityManager: '@doctrine.orm.entity_manager'
+        tags: ['controller.service_arguments']
+
     # ========================================================================
     # JSON Response Enforcer
     # ========================================================================
@@ -569,3 +577,51 @@ services:
     App\Repository\McpServerDefinitionRepository:
         arguments:
             $registry: '@doctrine'
+
+    # StreamingSession Repository
+    App\Repository\StreamingSessionRepository:
+        arguments:
+            $registry: '@doctrine'
+
+    # ========================================================================
+    # Streaming Services (Phase 2 - Measure 5)
+    # ========================================================================
+
+    # Streaming Session Manager
+    App\AI\Streaming\StreamingSessionManager:
+        arguments:
+            $entityManager: '@doctrine.orm.entity_manager'
+            $sessionRepo: '@App\Repository\StreamingSessionRepository'
+            $logger: '@logger'
+
+    # Streaming Publisher (Mercure Integration)
+    App\AI\Streaming\StreamingPublisher:
+        arguments:
+            $mercureHub: '@mercure.hub'
+            $logger: '@logger'
+
+    # Message Handlers (automatically registered via AsMessageHandler attribute)
+    App\MessageHandler\ExecuteToolMessageHandler:
+        arguments:
+            $toolExecutor: '@App\AI\Skills\Tool\DynamicToolExecutor'
+            $sessionManager: '@App\AI\Streaming\StreamingSessionManager'
+            $messageBus: '@message_bus'
+            $logger: '@logger'
+
+    App\MessageHandler\StreamToolResponseMessageHandler:
+        arguments:
+            $sessionManager: '@App\AI\Streaming\StreamingSessionManager'
+            $streamingPublisher: '@App\AI\Streaming\StreamingPublisher'
+            $logger: '@logger'
+
+    App\MessageHandler\StartStreamingSessionMessageHandler:
+        arguments:
+            $sessionManager: '@App\AI\Streaming\StreamingSessionManager'
+            $streamingPublisher: '@App\AI\Streaming\StreamingPublisher'
+            $logger: '@logger'
+
+    App\MessageHandler\EndStreamingSessionMessageHandler:
+        arguments:
+            $sessionManager: '@App\AI\Streaming\StreamingSessionManager'
+            $streamingPublisher: '@App\AI\Streaming\StreamingPublisher'
+            $logger: '@logger'
