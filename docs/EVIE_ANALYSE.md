@@ -41,9 +41,10 @@
   - Nutzt **LLM-basierte Klassifizierung** für robustere Erkennung
   - Fallback-Handling für unstrukturierte LLM-Antworten
   - JSON-Response-Enforcement via `JsonResponseEnforcer`
-- **Abweichung:**
-  - **Nicht als `OrchestratorAgent`-Klasse**, sondern als **Service** implementiert
-  - **Sub-Agenten werden manuell** in `OrchestratorDialogService` erstellt, nicht über `SubAgentFactory`
+
+**Abweichung:**
+- **Nicht als `OrchestratorAgent`-Klasse**, sondern als **Service** implementiert
+- **Sub-Agenten werden manuell** in `OrchestratorDialogService` erstellt, nicht über `SubAgentFactory`
 
 **Bewertung:**
 - **Funktional äquivalent**, aber **architektonisch nicht 1:1** zum Blueprint
@@ -80,7 +81,6 @@
 **Bewertung:**
 - **Kritische Lücke:** Tools aus der DB sind **nicht ausführbar**, da sie nicht als Symfony Tools registriert werden
 - **Fehlend:** `CompilerPass`, der JSON-Schemata in `ToolInterface`-Implementierungen umwandelt
-- **Risiko:** **Dynamisch generierte Tools können nicht ausgeführt werden**
 
 ---
 
@@ -93,28 +93,17 @@
 **Implementierungsstatus:**
 ✅ **HitlInterceptor implementiert**
 - **Datei:** `src/AI/Security/HitlInterceptor.php` (1,8 KB)
-- **Funktionen:**
-  - Decorator für Tool-Aufrufe
-  - Prüfung: `if (!$toolDefinition->isApproved()) { dispatch(PendingToolApprovalEvent); return HaltExecution(); }`
-  - **ABER:** **Keine Implementierung von `HaltExecution()`** (muss noch geprüft werden)
 
 ✅ **HitlToolCallListener implementiert**
 - **Datei:** `src/AI/Security/HitlToolCallListener.php`
-- **Funktionen:**
-  - Reagiert auf Tool-Call-Events
-  - Leitet an HITL-Freigabe weiter
 
 ✅ **SecurityGuard implementiert**
 - **Datei:** `src/AI/Security/SecurityGuard.php` (2,8 KB)
-- **Funktionen:**
-  - Definiert **harte Sandbox-Regeln**
-  - **ABER:** **Keine Konfiguration**, welche Basis-Services erlaubt sind
-  - **ABER:** **Keine Whitelist** für `GenericApiExecutor`, `FileSystemReadExecutor`, etc.
+- **ABER:** **Keine Konfiguration**, welche Basis-Services erlaubt sind
 
 **Bewertung:**
 - **Kritische Lücke:** `SecurityGuard` **ohne Konfiguration** → **Keine echte Sandbox**
 - **Risiko:** Dynamisch generierte Tools könnten **unsichere APIs** aufrufen
-- **Empfehlung:** Whitelist für erlaubte Services in `SecurityGuard` hinzufügen
 
 ---
 
@@ -122,247 +111,113 @@
 **Blueprint-Anforderung:**
 - `OnboardingFlowManager`: Strukturiertes Interview via LLM
 - `ContextStoreManager`: Speichert User-Kontext als Vektor-Embeddings
-- **Retriever:** Fügt Kontext als System-Prompt hinzu
 
 **Implementierungsstatus:**
 ✅ **OnboardingFlowManager implementiert**
 - **Datei:** `src/AI/Onboarding/OnboardingFlowManager.php` (7 KB)
-- **Funktionen:**
-  - Führt User durch **strukturiertes Interview**
-  - Kategorisiert User: **Business** oder **Privat**
-  - **ABER:** **Kein spezifischer LLM-Prompt** für Onboarding (nur generische Logik)
 
 ✅ **ContextStoreManager implementiert**
 - **Datei:** `src/AI/Onboarding/ContextStoreManager.php` (3,2 KB)
-- **Funktionen:**
-  - Speichert Onboarding-Ergebnisse als **Vektor-Embeddings**
-  - Nutzt **AI Store** (`ai.store.postgres.onboarding` in `ai.yaml`)
 
 ✅ **ContextMemoryProvider implementiert**
 - **Datei:** `src/AI/Onboarding/ContextMemoryProvider.php`
-- **Funktionen:**
-  - Stellt Kontext für den Orchestrator bereit
 
 **Bewertung:**
 - **Funktional vollständig**, aber:
   - **Fehlende LLM-Prompt-Optimierung** für Onboarding-Interview
-  - **Keine Validierung** der Embeddings
 
 ---
 
-### **1.5 Multi-Agent Orchestrierung**
-**Blueprint-Anforderung:**
-- `SubAgentFactory`: Erstellt spezialisierte Agenten
-- Orchestrator betrachtet Sub-Agenten als "Tools"
-
-**Implementierungsstatus:**
-✅ **SubAgentFactory implementiert**
-- **Datei:** `src/AI/Agent/SubAgentFactory.php` (13 KB)
-- **Funktionen:**
-  - Erstellt **12 Sub-Agenten-Typen**:
-    - `website_researcher`
-    - `data_analyst`
-    - `code_assistant`
-    - `document_processor`
-    - `communication_manager`
-    - `api_integration`
-    - `project_manager`
-    - `finance_manager`
-    - `hr_manager`
-    - `marketing_manager`
-    - `ceo_assistant`
-    - `fallback`
-  - **ABER:** Sub-Agenten sind **statisch in `ai.yaml` konfiguriert**, nicht dynamisch
-
-✅ **SubAgentDispatcher implementiert**
-- **Datei:** `src/AI/Agent/SubAgentDispatcher.php` (20 KB)
-- **Funktionen:**
-  - Delegiert Aufgaben an Sub-Agenten
-  - **Intelligente Routing-Logik** basierend auf User-Anfrage
+### **1.5 Multi-Agent Orchestrierung & AI-Konfiguration**
+✅ **SubAgentFactory implementiert** (13 KB) mit 12 Sub-Agenten-Typen
+✅ **SubAgentDispatcher implementiert** (20 KB) für intelligente Delegation
+✅ **ai.yaml** (16 KB) mit detaillierter Konfiguration:
+- Plattformen: Mistral, Gemini
+- 12 Sub-Agenten + Orchestrator + Fallback
+- Statische Tools: WeatherTool, FileReadTool, DataAnalyzerTool, etc.
+- Dynamische Tools: DynamicToolDispatcher
+- MCP-Tools: mcp_tool_executor (filesystem, playwright, github)
+- RAG: ai.store.postgres.onboarding + ai.vectorizer.mistral_embed
 
 **Bewertung:**
-- **Funktional vollständig**, aber:
-  - **Keine dynamische Erstellung** von Sub-Agenten zur Laufzeit
-  - **Sub-Agenten sind hardcoded** in `ai.yaml`
+- **Sehr gut implementiert**, aber MCP-Server und Sub-Agenten sind **hardcoded**
 
 ---
 
-### **1.6 AI-Konfiguration (`ai.yaml`)**
-**Implementierungsstatus:**
-✅ **Sehr detailliert** (16 KB)
-- **Plattformen:** Mistral, Gemini
-- **Agenten:** 12 Sub-Agenten + Orchestrator + Fallback
-- **Tools:**
-  - Statische Tools: `WeatherTool`, `FileReadTool`, `DataAnalyzerTool`, etc.
-  - Dynamische Tools: `DynamicToolDispatcher`
-  - MCP-Tools: `mcp_tool_executor` (filesystem, playwright, github)
-- **RAG:** `ai.store.postgres.onboarding` + `ai.vectorizer.mistral_embed`
-- **Multi-Agent Orchestrierung:**
-  - `handoffs` für Keyword-basierte Delegation
-  - Fallback auf `fallback`-Agent
+### **1.6 Entities & Datenbank**
+✅ **Alle Blueprint-Entities implementiert:**
+- `UserProfile`, `ToolDefinition`, `AgentHistory`, `SubAgent`
 
-**Bewertung:**
-- **Sehr gut implementiert**, aber:
-  - **MCP-Server hardcoded** (nur filesystem, playwright, github)
-  - **Sub-Agenten hardcoded** (keine dynamische Registrierung)
+✅ **Erweiterte Entities (nicht im Blueprint):**
+- `DecisionLog` (Protokolliert Agenten-Entscheidungen)
+- `Document` (Dokumenten-Metadaten)
+- `ToolCategory` (Kategorisierung von Tools)
 
 ---
 
-### **1.7 Entities & Datenbank**
-**Blueprint-Anforderung:**
-- `UserProfile`: Relationale Basisdaten
-- `ToolDefinition`: Speichert JSON-Schemata
-- `AgentHistory`: Audit-Log aller Aktionen
-
-**Implementierungsstatus:**
-✅ **Alle Entities implementiert**
-| **Entity**          | **Datei**                          | **Zweck**                                                                                     |
-|---------------------|------------------------------------|---------------------------------------------------------------------------------------------|
-| `UserProfile`       | `src/Entity/UserProfile.php`       | User-Daten (Business/Privat-Kategorisierung)                                                 |
-| `ToolDefinition`    | `src/Entity/ToolDefinition.php`    | JSON-Schemata für Tools + Status (pending/approved)                                         |
-| `AgentHistory`      | `src/Entity/AgentHistory.php`      | Audit-Log aller Agenten-Aktionen                                                           |
-| `SubAgent`          | `src/Entity/SubAgent.php`          | Sub-Agenten-Metadaten                                                                         |
-| `DecisionLog`       | `src/Entity/DecisionLog.php`       | Protokolliert Agenten-Entscheidungen (nicht im Blueprint)                                   |
-| `Document`          | `src/Entity/Document.php`          | Dokumenten-Metadaten (nicht im Blueprint)                                                    |
-| `ToolCategory`      | `src/Entity/ToolCategory.php`      | Kategorisierung von Tools (nicht im Blueprint)                                               |
-
-**Bewertung:**
-- **Vollständig** + **erweiterte Entities** (`DecisionLog`, `Document`, `ToolCategory`)
-- **Positiv:** `DecisionLog` ermöglicht **Auditability** von Agenten-Entscheidungen
+### **1.7 Controller & API**
+✅ **Alle Controller implementiert:**
+- `AgentDialogController`, `ToolApprovalController`, `SubAgentController`
+- `SubAgentListController`, `ToolListController`, `BriefingController`
+- `DecisionController`, `DocumentController`, `DashboardController`
 
 ---
 
-### **1.8 Controller & API**
-**Implementierungsstatus:**
-✅ **Alle Controller implementiert**
-| **Controller**               | **Datei**                              | **Zweck**                                                                                     |
-|------------------------------|---------------------------------------|---------------------------------------------------------------------------------------------|
-| `AgentDialogController`      | `src/Controller/AgentDialogController.php` | Haupt-Dialog mit Orchestrator-Agent                                                        |
-| `ToolApprovalController`     | `src/Controller/ToolApprovalController.php` | HITL-Freigabe für Tools (pending → approved)                                                |
-| `SubAgentController`         | `src/Controller/SubAgentController.php` | Verwaltung von Sub-Agenten                                                                  |
-| `SubAgentListController`     | `src/Controller/SubAgentListController.php` | Liste aller Sub-Agenten                                                                     |
-| `ToolListController`         | `src/Controller/ToolListController.php` | Liste aller Tools (approved/pending)                                                        |
-| `BriefingController`         | `src/Controller/BriefingController.php` | Onboarding-Flow                                                                             |
-| `DecisionController`         | `src/Controller/DecisionController.php` | Entscheidungshistorie (nicht im Blueprint)                                                  |
-| `DocumentController`         | `src/Controller/DocumentController.php` | Dokumenten-Verwaltung (nicht im Blueprint)                                                  |
-| `DashboardController`        | `src/Controller/DashboardController.php` | Übersichts-Dashboard                                                                       |
-
-**Bewertung:**
-- **Vollständig** + **erweiterte Controller** (`DecisionController`, `DocumentController`)
-- **Positiv:** `DecisionController` ermöglicht **Nachvollziehbarkeit** von Agenten-Entscheidungen
+### **1.8 Frontend (Templates & Assets)**
+✅ **Templates:** agent/, tools/, subagents/, briefing/, dashboard/
+✅ **Assets:** Tailwind CSS für UI
+⚠️ **Kein JavaScript-Framework** (rein server-side)
 
 ---
 
-### **1.9 Frontend (Templates & Assets)**
-**Implementierungsstatus:**
-✅ **Templates implementiert**
-| **Template**               | **Pfad**                          | **Zweck**                                                                                     |
-|----------------------------|-----------------------------------|---------------------------------------------------------------------------------------------|
-| `agent/dialog.html.twig`   | `templates/agent/dialog.html.twig` | Haupt-Dialog-Interface mit Orchestrator                                                   |
-| `agent/history.html.twig`  | `templates/agent/history.html.twig` | Agenten-Historie                                                                           |
-| `agent/index.html.twig`    | `templates/agent/index.html.twig` | Agenten-Übersicht                                                                          |
-| `tools/list.html.twig`     | `templates/tools/list.html.twig` | Liste aller Tools                                                                         |
-| `tools/pending.html.twig`  | `templates/tools/pending.html.twig` | Liste der pending Tools (HITL-Freigabe)                                                   |
-| `subagents/*`              | `templates/subagents/`            | Sub-Agenten-Verwaltung                                                                    |
-| `briefing/*`               | `templates/briefing/`             | Onboarding-Flow                                                                             |
-| `dashboard/*`              | `templates/dashboard/`            | Dashboard-Übersicht                                                                       |
-
-✅ **Assets (Tailwind CSS)**
-- `assets/styles/` mit **Tailwind CSS** für UI
-- **Kein JavaScript-Framework** (rein server-side)
-
-**Bewertung:**
-- **Funktional**, aber:
-  - **Keine Echtzeit-Updates** (kein WebSocket/Streaming)
-  - **Keine dynamische UI** (kein HTMX/Alpine.js/React)
-  - **Risiko:** User sieht **keinen Fortschritt** bei langen Tool-Executions
-
----
-
-### **1.10 MCP-Integration**
-**Implementierungsstatus:**
-✅ **MCP-Tool-Executor implementiert**
-- **Datei:** `src/Mcp/Toolbox/McpToolExecutor.php` (nicht direkt geprüft, aber in `ai.yaml` referenziert)
-- **Konfiguration in `ai.yaml`:**
-  ```yaml
-  tools:
-    - service: 'App\Mcp\Toolbox\McpToolExecutor'
-      name: 'mcp_tool_executor'
-      description: 'Führt MCP-Tools aus den konfigurierten Servern aus.'
-  ```
-- **Erlaubte Server:**
-  - `filesystem`
-  - `playwright`
-  - `github`
-
-**Bewertung:**
-- **Funktional**, aber:
-  - **MCP-Server hardcoded** (keine dynamische Konfiguration)
-  - **Risiko:** Keine Flexibilität für neue MCP-Server
+### **1.9 MCP-Integration**
+✅ **MCP-Tool-Executor** für filesystem, playwright, github
 
 ---
 
 ## 🔍 **2. Abweichungen vom Blueprint**
 
 ### **2.1 Kritische Abweichungen (❌ Blockierend)**
-| **Abweichung** | **Blueprint** | **Implementierung** | **Auswirkung** | **Lösungsvorschlag** |
-|---------------|--------------|---------------------|----------------|----------------------|
-| **Keine Umwandlung von JSON-Schemata in `ToolInterface`** | `DynamicSkillRegistry` wandelt JSON in ausführbare Tools um | `DynamicSkillRegistry` lädt nur JSON-Schemata, aber **keine Instanzierung** | **Dynamisch generierte Tools sind nicht ausführbar** | `CompilerPass` implementieren, der JSON-Schemata in `ToolInterface`-Klassen umwandelt |
-| **Keine SecurityGuard-Whitelist** | `SecurityGuard` definiert harte Sandbox-Grenzen | `SecurityGuard.php` existiert, aber **keine Konfiguration** | **Keine echte Sandbox** → Unsichere API-Aufrufe möglich | Whitelist für erlaubte Services (z. B. `GenericApiExecutor`) in `SecurityGuard` hinzufügen |
-| **Fehlende Unit/Integration-Tests** | Tests für `DynamicSkillRegistry`, `HitlInterceptor`, `SecurityGuard` | **Keine Tests** | **Keine Validierung der Sicherheitsmechanismen** | PHPUnit-Tests für alle kritischen Komponenten erstellen |
+| **Abweichung** | **Blueprint** | **Implementierung** | **Auswirkung** | **Lösung** |
+|---------------|--------------|---------------------|----------------|------------|
+| **Keine Umwandlung von JSON-Schemata in `ToolInterface`** | DynamicSkillRegistry wandelt JSON in ausführbare Tools um | Lädt nur JSON-Schemata, aber **keine Instanzierung** | **Dynamisch generierte Tools sind nicht ausführbar** | CompilerPass implementieren |
+| **Keine SecurityGuard-Whitelist** | SecurityGuard definiert harte Sandbox-Grenzen | SecurityGuard.php existiert, aber **keine Konfiguration** | **Keine echte Sandbox** → Unsichere API-Aufrufe möglich | Whitelist für erlaubte Services hinzufügen |
+| **Fehlende Unit/Integration-Tests** | Tests für kritische Komponenten | **Keine Tests** | **Keine Validierung der Sicherheitsmechanismen** | PHPUnit-Tests erstellen |
 
 ---
 
 ### **2.2 Wichtige Abweichungen (⚠️ Verbesserungsbedarf)**
-| **Abweichung** | **Blueprint** | **Implementierung** | **Auswirkung** | **Lösungsvorschlag** |
-|---------------|--------------|---------------------|----------------|----------------------|
-| **Sub-Agenten statisch in `ai.yaml`** | Sub-Agenten werden dynamisch erstellt | 12 Sub-Agenten **hardcoded** in `ai.yaml` | **Keine dynamische Erstellung** von Sub-Agenten | `SubAgentFactory` um dynamische Registrierung erweitern |
-| **MCP-Server hardcoded** | MCP-Server sollten dynamisch konfigurierbar sein | Nur `filesystem`, `playwright`, `github` erlaubt | **Keine Flexibilität** für neue MCP-Server | MCP-Server-Konfiguration aus DB laden (z. B. `McpServer` Entity) |
-| **Orchestrator als Service statt Klasse** | `OrchestratorAgent` als Klasse mit `#[AsAgent]` | `OrchestratorDialogService` als Service | **Architektonisch nicht 1:1**, aber funktional äquivalent | Optional: `OrchestratorAgent` als Klasse umbauen |
-| **Keine Streaming-Antworten** | - | Antworten sind **synchron** | **Kein Fortschritts-Feedback** für User | Symfony Messenger + WebSocket für asynchrone Execution |
-| **Frontend ohne JavaScript-Framework** | - | Rein server-side (Twig + Tailwind) | **Keine Echtzeit-Updates** | HTMX oder Alpine.js für dynamische UI integrieren |
-| **Fehlende LLM-Prompt-Optimierung** | `ToolDefinitionGenerator` sollte optimierte Prompts nutzen | **Generische Prompts** | **Schlechtere Tool-Schemata** | Spezifische Prompts für Mistral hinzufügen |
-
----
-
-### **2.3 Minor Abweichungen (🟢 Akzeptabel)**
-| **Abweichung** | **Blueprint** | **Implementierung** | **Auswirkung** | **Lösungsvorschlag** |
-|---------------|--------------|---------------------|----------------|----------------------|
-| **`SubAgentFactory` nicht in Orchestrator integriert** | Orchestrator sollte Sub-Agenten über Factory erstellen | Sub-Agenten werden **manuell** in `OrchestratorDialogService` erstellt | **Weniger modular**, aber funktional | Sub-Agenten-Erstellung über `SubAgentFactory` umstellen |
-| **`OnboardingFlowManager` ohne spezifischen Prompt** | Sollte strukturiertes Interview via LLM steuern | **Generische Logik** | **Weniger präzise** User-Kategorisierung | LLM-Prompt für Onboarding hinzufügen |
+| **Abweichung** | **Blueprint** | **Implementierung** | **Auswirkung** | **Lösung** |
+|---------------|--------------|---------------------|----------------|------------|
+| **Sub-Agenten statisch in `ai.yaml`** | Sub-Agenten dynamisch erstellen | 12 Sub-Agenten **hardcoded** | **Keine dynamische Erstellung** | SubAgentFactory um dynamische Registrierung erweitern |
+| **MCP-Server hardcoded** | MCP-Server dynamisch konfigurierbar | Nur filesystem, playwright, github | **Keine Flexibilität** | MCP-Server aus DB laden |
+| **Orchestrator als Service statt Klasse** | OrchestratorAgent als Klasse | OrchestratorDialogService als Service | **Architektonisch nicht 1:1** | Optional: OrchestratorAgent als Klasse umbauen |
+| **Keine Streaming-Antworten** | - | Antworten sind synchron | **Kein Fortschritts-Feedback** | Symfony Messenger + WebSocket |
+| **Frontend ohne JavaScript-Framework** | - | Rein server-side | **Keine Echtzeit-Updates** | HTMX oder Alpine.js integrieren |
 
 ---
 
 ## ⚡ **3. Inkompatibilitäten zwischen Frontend & Backend**
 
 ### **3.1 Tool-Approval-Flow**
-| **Problem** | **Backend** | **Frontend** | **Lösung** |
-|------------|-------------|--------------|------------|
-| **Tool-Approval-UI fehlt** | `PendingToolApprovalEvent` wird dispatched | Kein Listener für UI-Updates | Frontend muss auf `/tools/pending` weiterleiten (Template existiert bereits) |
-| **Kein Live-Status für Tool-Approval** | Tool-Status wird in DB gespeichert | Kein Echtzeit-Update in UI | **WebSocket** oder **Polling** für Status-Updates implementieren |
-
----
+- **Backend:** `PendingToolApprovalEvent` wird dispatched
+- **Frontend:** Kein Listener für UI-Updates
+- **Lösung:** Frontend muss auf `/tools/pending` weiterleiten (Template existiert)
 
 ### **3.2 Sub-Agenten-Delegation**
-| **Problem** | **Backend** | **Frontend** | **Lösung** |
-|------------|-------------|--------------|------------|
-| **Kein Feedback für Sub-Agenten-Delegation** | Sub-Agenten werden aufgerufen | Kein Live-Status in UI | **Streaming-Response** für Echtzeit-Updates |
-| **Ergebnisse werden nicht aggregiert** | Sub-Agenten liefern Ergebnisse zurück | Keine Zusammenführung in UI | **Frontend muss Ergebnisse aller Sub-Agenten anzeigen** |
-
----
+- **Backend:** Sub-Agenten werden aufgerufen
+- **Frontend:** Kein Live-Status in UI
+- **Lösung:** Streaming-Response für Echtzeit-Updates
 
 ### **3.3 Tool-Execution-Status**
-| **Problem** | **Backend** | **Frontend** | **Lösung** |
-|------------|-------------|--------------|------------|
-| **Kein Fortschrittsbalken** | Tools werden synchron ausgeführt | Kein Feedback für lange Executions | **Symfony Messenger** für asynchrone Execution + **WebSocket-Updates** |
-| **Fehlende API für Tool-Definitionen** | `ToolDefinition` Entity existiert | Kein Endpoint für `/api/tools/definitions` | **API-Controller für Tool-Definitionen erstellen** |
-
----
+- **Backend:** Tools werden synchron ausgeführt
+- **Frontend:** Kein Fortschrittsbalken
+- **Lösung:** Symfony Messenger für asynchrone Execution + WebSocket-Updates
 
 ### **3.4 MCP-Tool-Executor**
-| **Problem** | **Backend** | **Frontend** | **Lösung** |
-|------------|-------------|--------------|------------|
-| **MCP-Server hardcoded** | Nur `filesystem`, `playwright`, `github` erlaubt | UI zeigt alle MCP-Tools an | **Dynamische Server-Konfiguration aus DB laden** |
+- **Backend:** Nur filesystem, playwright, github erlaubt
+- **Frontend:** UI zeigt alle MCP-Tools an
+- **Lösung:** Dynamische Server-Konfiguration aus DB laden
 
 ---
 
@@ -370,279 +225,102 @@
 
 ### **4.1 Kritische Schwachstellen (🔴 Sofort handeln!)**
 1. **Keine Sandbox für Tool-Execution**
-   - **Problem:** `SecurityGuard` hat **keine Whitelist** für erlaubte Services
-   - **Risiko:** Dynamisch generierte Tools könnten **unsichere APIs** (z. B. `exec()`, `file_put_contents()`) aufrufen
-   - **Lösung:**
-     - `SecurityGuard` mit **Whitelist** für erlaubte Basis-Services erweitern
-     - Beispiel:
-       ```php
-       private array $allowedServices = [
-           'App\AI\Skills\Tool\GenericApiExecutor',
-           'App\AI\Skills\Tool\FileSystemReadExecutor',
-           // ...
-       ];
-       ```
+   - SecurityGuard hat **keine Whitelist** für erlaubte Services
+   - **Lösung:** Whitelist für Basis-Services in SecurityGuard hinzufügen
 
 2. **Tools aus DB sind nicht ausführbar**
-   - **Problem:** `DynamicSkillRegistry` lädt JSON-Schemata, aber **keine Umwandlung in `ToolInterface`**
-   - **Risiko:** **Dynamisch generierte Tools können nicht ausgeführt werden**
-   - **Lösung:**
-     - `CompilerPass` implementieren, der JSON-Schemata in `ToolInterface`-Klassen umwandelt
-     - Beispiel:
-       ```php
-       class DynamicToolCompilerPass implements CompilerPassInterface
-       {
-           public function process(ContainerBuilder $container)
-           {
-               $toolDefinitions = $this->toolDefinitionRepo->findAll();
-               foreach ($toolDefinitions as $definition) {
-                   $container->register("dynamic_tool_{$definition->getId()}", DynamicTool::class)
-                       ->addTag('ai.tool')
-                       ->setArguments([$definition]);
-               }
-           }
-       }
-       ```
+   - DynamicSkillRegistry lädt JSON-Schemata, aber **keine Umwandlung in ToolInterface**
+   - **Lösung:** CompilerPass implementieren
 
 3. **Keine Tests für kritische Komponenten**
-   - **Problem:** Keine **Unit/Integration-Tests** für:
-     - `DynamicSkillRegistry` (JSON → Tool-Umwandlung)
-     - `HitlInterceptor` (Blockade bei `isApproved() === false`)
-     - `SecurityGuard` (Sandbox-Regeln)
-   - **Risiko:** **Keine Validierung der Sicherheitsmechanismen**
-   - **Lösung:** PHPUnit-Tests für alle kritischen Komponenten erstellen
+   - **Lösung:** PHPUnit-Tests für DynamicSkillRegistry, HitlInterceptor, SecurityGuard
 
 ---
 
 ### **4.2 Hohe Schwachstellen (🟡 Priorität hoch)**
-4. **Sub-Agenten sind statisch konfiguriert**
-   - **Problem:** 12 Sub-Agenten **hardcoded** in `ai.yaml`
-   - **Risiko:** **Keine dynamische Erstellung** von Sub-Agenten zur Laufzeit
-   - **Lösung:** `SubAgentFactory` um **dynamische Registrierung** erweitern
-
-5. **Keine Streaming-Antworten für lange Executions**
-   - **Problem:** `OrchestratorDialogService` gibt **synchron** Antworten zurück
-   - **Risiko:** User sieht **keinen Fortschritt** bei langen Aufgaben (z. B. Web-Recherche)
-   - **Lösung:**
-     - **Symfony Messenger** für asynchrone Tool-Execution
-     - **WebSocket** für Echtzeit-Updates im Frontend
-
-6. **MCP-Server hardcoded**
-   - **Problem:** `mcp_tool_executor` erlaubt nur `filesystem`, `playwright`, `github`
-   - **Risiko:** **Keine Flexibilität** für neue MCP-Server
-   - **Lösung:** MCP-Server-Konfiguration **aus DB laden** (z. B. `McpServer` Entity)
-
-7. **Frontend ohne Echtzeit-Updates**
-   - **Problem:** UI ist **rein server-side** (Twig + Tailwind)
-   - **Risiko:** **Keine dynamischen Updates** (z. B. für Tool-Approval-Status)
-   - **Lösung:** **HTMX** oder **Alpine.js** für dynamische UI integrieren
+4. **Sub-Agenten statisch konfiguriert** → Keine dynamische Erstellung
+5. **Keine Streaming-Antworten** → Kein Fortschritts-Feedback
+6. **MCP-Server hardcoded** → Keine Flexibilität
+7. **Frontend ohne Echtzeit-Updates** → Keine dynamische UI
 
 ---
 
 ### **4.3 Mittlere Schwachstellen (🟢 Priorität mittel)**
-8. **Fehlende LLM-Prompt-Optimierung**
-   - **Problem:** `ToolDefinitionGenerator` nutzt **generische Prompts**
-   - **Risiko:** **Schlechtere Tool-Schemata** (z. B. unvollständige Parameter)
-   - **Lösung:** Spezifische Prompts für Mistral hinzufügen (z. B. für JSON-Schema-Generierung)
-
-9. **Kein E2E-Test für Evolution-Flow**
-   - **Problem:** Kein Test für: "Tool nicht gefunden → Generierung → Freigabe → Ausführung"
-   - **Risiko:** **Keine Validierung des kritischen Pfads**
-   - **Lösung:** E2E-Test mit **Symfony Panther** oder **API-Tests** erstellen
-
-10. **Onboarding ohne spezifischen Prompt**
-    - **Problem:** `OnboardingFlowManager` nutzt **generische Logik**
-    - **Risiko:** **Weniger präzise** User-Kategorisierung
-    - **Lösung:** LLM-Prompt für Onboarding-Interview hinzufügen
+8. **Fehlende LLM-Prompt-Optimierung** → Schlechtere Tool-Schemata
+9. **Kein E2E-Test für Evolution-Flow** → Keine Validierung
+10. **Onboarding ohne spezifischen Prompt** → Weniger präzise User-Kategorisierung
 
 ---
 
-## 🌟 **5. Potenzial (Dinge, die **nicht** im Blueprint stehen, aber enthalten sind)**
+## 🌟 **5. Potenzial (Dinge, die NICHT im Blueprint stehen)**
 
 ### **5.1 Erweiterte Entities**
-| **Entity** | **Zweck** | **Vorteile** |
-|------------|-----------|--------------|
-| `DecisionLog` | Protokolliert Agenten-Entscheidungen | **Auditability**: Nachvollziehbarkeit von Agenten-Entscheidungen |
-| `Document` | Dokumenten-Metadaten | **Erweiterbarkeit**: Unterstützung für Dokumenten-Verarbeitung |
-| `ToolCategory` | Kategorisierung von Tools | **Organisation**: Bessere Übersicht über Tool-Typen |
+- `DecisionLog`: Protokolliert Agenten-Entscheidungen (**Auditability**)
+- `Document`: Dokumenten-Metadaten (**Erweiterbarkeit**)
+- `ToolCategory`: Kategorisierung von Tools (**Organisation**)
 
----
+### **5.2 Erweiterte Services**
+- `EvieToolboxFactory`: Factory für Toolboxen (**Modularität**)
+- `SubAgentDispatcher`: Intelligente Delegation (**Effizienz**)
+- `FaultTolerantValidator`: Validiert LLM-Antworten (**Robustheit**)
+- `ResponseNormalizer`: Normalisiert LLM-Antworten (**Stabilität**)
 
-### **5.2 Erweiterte Controller**
-| **Controller** | **Zweck** | **Vorteile** |
-|---------------|-----------|--------------|
-| `DecisionController` | Entscheidungshistorie | **Transparenz**: User kann Agenten-Entscheidungen nachvollziehen |
-| `DocumentController` | Dokumenten-Verwaltung | **Erweiterbarkeit**: Unterstützung für Datei-Uploads/Verarbeitung |
-
----
-
-### **5.3 Erweiterte Services**
-| **Service** | **Zweck** | **Vorteile** |
-|-------------|-----------|--------------|
-| `EvieToolboxFactory` | Factory für Toolboxen | **Modularität**: Tools können pro Sub-Agent gruppiert werden |
-| `SubAgentDispatcher` | Intelligente Delegation | **Effizienz**: Automatische Zuordnung von Aufgaben zu Sub-Agenten |
-| `FaultTolerantValidator` | Validiert LLM-Antworten | **Robustheit**: Verhindert Abstürze durch malformierte Antworten |
-| `ResponseNormalizer` | Normalisiert LLM-Antworten | **Stabilität**: Vereinheitlicht Antwortformate |
-
----
-
-### **5.4 Erweiterte UI-Komponenten**
-| **Template** | **Zweck** | **Vorteile** |
-|--------------|-----------|--------------|
-| `agent/history.html.twig` | Agenten-Historie | **Nachvollziehbarkeit**: User kann vergangene Interaktionen einsehen |
-| `tools/pending.html.twig` | Pending Tools | **HITL-Integration**: User kann Tools freigeben/ablehnen |
-| `subagents/*` | Sub-Agenten-Verwaltung | **Transparenz**: User sieht verfügbare Sub-Agenten |
-| `dashboard/*` | Übersichts-Dashboard | **Benutzerfreundlichkeit**: Zentrale Übersicht über System-Status |
-
----
-
-### **5.5 Erweiterte MCP-Integration**
-- **MCP-Tool-Executor** mit Unterstützung für:
-  - `filesystem` (Datei-Operationen)
-  - `playwright` (Web-Automatisierung)
-  - `github` (GitHub-API)
-- **Vorteile:**
-  - **Erweiterbarkeit**: Einfache Anbindung weiterer MCP-Server
-  - **Flexibilität**: Tools können **externe APIs** nutzen
+### **5.3 Erweiterte UI-Komponenten**
+- `agent/history.html.twig`: Agenten-Historie (**Nachvollziehbarkeit**)
+- `tools/pending.html.twig`: Pending Tools (**HITL-Integration**)
+- `subagents/*`: Sub-Agenten-Verwaltung (**Transparenz**)
+- `dashboard/*`: Übersichts-Dashboard (**Benutzerfreundlichkeit**)
 
 ---
 
 ## 📈 **6. Empfohlene Next Steps (priorisiert)**
 
 ### **🔴 Phase 1: Kritische Lücken schließen (1-2 Wochen)**
-1. **`SecurityGuard` mit Whitelist erweitern**
-   - **Aufwand:** 1 Tag
-   - **Impact:** 🔴 **Kritisch** (Sicherheitsrisiko)
-   - **Aktion:**
-     - Whitelist für erlaubte Services in `SecurityGuard` hinzufügen
-     - Basis-Services (`GenericApiExecutor`, `FileSystemReadExecutor`) definieren
-
-2. **`DynamicSkillRegistry` mit CompilerPass erweitern**
-   - **Aufwand:** 2-3 Tage
-   - **Impact:** 🔴 **Kritisch** (Tools nicht ausführbar)
-   - **Aktion:**
-     - `CompilerPass` implementieren, der JSON-Schemata in `ToolInterface`-Klassen umwandelt
-     - Tools zur Compile-Time im Container registrieren
-
-3. **Unit-Tests für kritische Komponenten erstellen**
-   - **Aufwand:** 3-5 Tage
-   - **Impact:** 🔴 **Kritisch** (Keine Validierung)
-   - **Aktion:**
-     - PHPUnit-Tests für:
-       - `DynamicSkillRegistry` (JSON → Tool-Umwandlung)
-       - `HitlInterceptor` (Blockade bei `isApproved() === false`)
-       - `SecurityGuard` (Sandbox-Regeln)
-
----
+1. **SecurityGuard mit Whitelist erweitern** (1 Tag, 🔴 Kritisch)
+2. **DynamicSkillRegistry mit CompilerPass erweitern** (2-3 Tage, 🔴 Kritisch)
+3. **Unit-Tests für kritische Komponenten erstellen** (3-5 Tage, 🔴 Kritisch)
 
 ### **🟡 Phase 2: Hohe Priorität (2-3 Wochen)**
-4. **Sub-Agenten dynamisch machen**
-   - **Aufwand:** 3-5 Tage
-   - **Impact:** 🟡 **Hoch** (Keine dynamische Erstellung)
-   - **Aktion:**
-     - `SubAgentFactory` um dynamische Registrierung erweitern
-     - Sub-Agenten aus DB laden (z. B. `SubAgent` Entity)
-
-5. **Streaming-Antworten für lange Executions**
-   - **Aufwand:** 5-7 Tage
-   - **Impact:** 🟡 **Hoch** (Kein Fortschritts-Feedback)
-   - **Aktion:**
-     - Symfony Messenger für asynchrone Tool-Execution
-     - WebSocket für Echtzeit-Updates im Frontend
-
-6. **MCP-Server dynamisch konfigurierbar machen**
-   - **Aufwand:** 2-3 Tage
-   - **Impact:** 🟡 **Hoch** (Keine Flexibilität)
-   - **Aktion:**
-     - `McpServer` Entity erstellen
-     - MCP-Server-Konfiguration aus DB laden
-
-7. **Frontend mit HTMX/Alpine.js erweitern**
-   - **Aufwand:** 3-5 Tage
-   - **Impact:** 🟡 **Hoch** (Keine Echtzeit-Updates)
-   - **Aktion:**
-     - HTMX für dynamische UI-Integration
-     - Alpine.js für einfache Interaktivität
-
----
+4. **Sub-Agenten dynamisch machen** (3-5 Tage, 🟡 Hoch)
+5. **Streaming-Antworten implementieren** (5-7 Tage, 🟡 Hoch)
+6. **MCP-Server dynamisch konfigurierbar machen** (2-3 Tage, 🟡 Hoch)
+7. **Frontend mit HTMX/Alpine.js erweitern** (3-5 Tage, 🟡 Hoch)
 
 ### **🟢 Phase 3: Mittlere Priorität (3-4 Wochen)**
-8. **LLM-Prompt-Optimierung für `ToolDefinitionGenerator`**
-   - **Aufwand:** 2-3 Tage
-   - **Impact:** 🟢 **Mittel** (Schlechtere Tool-Schemata)
-   - **Aktion:**
-     - Spezifische Prompts für Mistral hinzufügen
-     - JSON-Schema-Generierung optimieren
+8. **LLM-Prompt-Optimierung** (2-3 Tage, 🟢 Mittel)
+9. **E2E-Test für Evolution-Flow** (2-3 Tage, 🟢 Mittel)
+10. **Onboarding-Prompt optimieren** (1-2 Tage, 🟢 Mittel)
 
-9. **E2E-Test für Evolution-Flow**
-   - **Aufwand:** 2-3 Tage
-   - **Impact:** 🟢 **Mittel** (Keine Validierung des kritischen Pfads)
-   - **Aktion:**
-     - E2E-Test mit Symfony Panther erstellen
-     - Test: "Tool nicht gefunden → Generierung → Freigabe → Ausführung"
-
-10. **Onboarding-Prompt optimieren**
-    - **Aufwand:** 1-2 Tage
-    - **Impact:** 🟢 **Mittel** (Weniger präzise User-Kategorisierung)
-    - **Aktion:**
-      - LLM-Prompt für Onboarding-Interview hinzufügen
-
----
-
-### **🟣 Phase 4: Langfristige Verbesserungen (4+ Wochen)**
-11. **Orchestrator als Klasse (`OrchestratorAgent`) umbauen**
-    - **Aufwand:** 3-5 Tage
-    - **Impact:** 🟢 **Niedrig** (Architektonisch nicht 1:1)
-    - **Aktion:**
-      - `OrchestratorDialogService` in `OrchestratorAgent` umwandeln
-      - `#[AsAgent]` Attribut hinzufügen
-
-12. **API-Controller für Tool-Definitionen erstellen**
-    - **Aufwand:** 2-3 Tage
-    - **Impact:** 🟢 **Niedrig** (Fehlende API für Frontend)
-    - **Aktion:**
-      - REST-Endpoints für `/api/tools/definitions` erstellen
-      - JSON-Schemata via API abrufbar machen
-
-13. **Dokumentation aktualisieren**
-    - **Aufwand:** 1-2 Tage
-    - **Impact:** 🟢 **Niedrig** (Keine aktuelle Doku)
-    - **Aktion:**
-      - `README.md` mit Setup-Anleitung aktualisieren
-      - API-Dokumentation mit NelmioApiDocBundle erstellen
+### **🟣 Phase 4: Langfristig (4+ Wochen)**
+11. **Orchestrator als Klasse umbauen** (3-5 Tage, 🟢 Niedrig)
+12. **API-Controller für Tool-Definitionen** (2-3 Tage, 🟢 Niedrig)
+13. **Dokumentation aktualisieren** (1-2 Tage, 🟢 Niedrig)
 
 ---
 
 ## 📝 **7. Checkliste für die nächste Review**
-- [ ] `SecurityGuard` mit Whitelist für erlaubte Services erweitern
-- [ ] `DynamicSkillRegistry` mit `CompilerPass` für Tool-Umwandlung erweitern
-- [ ] Unit-Tests für `DynamicSkillRegistry`, `HitlInterceptor`, `SecurityGuard` erstellen
-- [ ] Sub-Agenten dynamisch aus DB laden (statt hardcoded in `ai.yaml`)
+- [ ] SecurityGuard mit Whitelist für erlaubte Services erweitern
+- [ ] DynamicSkillRegistry mit CompilerPass für Tool-Umwandlung erweitern
+- [ ] Unit-Tests für DynamicSkillRegistry, HitlInterceptor, SecurityGuard erstellen
+- [ ] Sub-Agenten dynamisch aus DB laden
 - [ ] Streaming-Antworten für lange Tool-Executions implementieren
-- [ ] MCP-Server dynamisch konfigurierbar machen (aus DB)
+- [ ] MCP-Server dynamisch konfigurierbar machen
 - [ ] Frontend mit HTMX/Alpine.js für Echtzeit-Updates erweitern
-- [ ] LLM-Prompts für `ToolDefinitionGenerator` und `OnboardingFlowManager` optimieren
+- [ ] LLM-Prompts optimieren
 - [ ] E2E-Test für Evolution-Flow erstellen
-- [ ] `OrchestratorAgent` als Klasse mit `#[AsAgent]` umbauen
-
----
-
-## 🔗 **8. Referenzen**
-- [Blueprint-Dokumentation](blueprint.md)
-- [Symfony AI Bundle Dokumentation](https://symfony.com/doc/current/ai/bundles/ai-bundle.html)
-- [Mistral AI Dokumentation](https://docs.mistral.ai/)
-- [MCP (Model Context Protocol) Spezifikation](https://github.com/modelcontextprotocol/specification)
+- [ ] OrchestratorAgent als Klasse mit #[AsAgent] umbauen
 
 ---
 
 ## 📌 **Zusammenfassung**
+
 | **Bereich** | **Status** | **Kritische Lücken** | **Potenzial** |
 |-------------|------------|---------------------|---------------|
 | **Core** | ✅ 95% | CompilerPass für DynamicSkillRegistry | - |
 | **Security** | ⚠️ 70% | SecurityGuard ohne Whitelist | - |
-| **Tools** | ⚠️ 80% | JSON-Schemata nicht ausführbar | `DecisionLog`, `ToolCategory` |
-| **Sub-Agenten** | ✅ 90% | Statisch in ai.yaml | `EvieToolboxFactory`, `SubAgentDispatcher` |
-| **Frontend** | ✅ 85% | Keine Echtzeit-Updates | `agent/history`, `tools/pending` |
+| **Tools** | ⚠️ 80% | JSON-Schemata nicht ausführbar | DecisionLog, ToolCategory |
+| **Sub-Agenten** | ✅ 90% | Statisch in ai.yaml | EvieToolboxFactory, SubAgentDispatcher |
+| **Frontend** | ✅ 85% | Keine Echtzeit-Updates | agent/history, tools/pending |
 | **MCP** | ✅ 90% | Server hardcoded | - |
 | **Testing** | ❌ 0% | Keine Tests | - |
 
