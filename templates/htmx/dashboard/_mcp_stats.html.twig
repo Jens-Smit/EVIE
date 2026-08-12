@@ -1,0 +1,57 @@
+{# templates/htmx/dashboard/_mcp_stats.html.twig #}
+
+<div class="card shadow-sm">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <h6 class="mb-0">
+            <i class="fas fa-chart-bar me-2 text-success"></i>
+            MCP-Server Statistik
+        </h6>
+        <button type="button" class="btn-close" 
+                hx-get="{{ path('htmx_dashboard') }}"
+                hx-target="#mcp-stats-container"
+                hx-trigger="click"></button>
+    </div>
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Name</th>
+                        <th>Typ</th>
+                        <th>Status</th>
+                        <th>Tools</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for name, server in available_servers %}
+                        <tr>
+                            <td>
+                                <code>{{ name }}</code>
+                            </td>
+                            <td>
+                                <span class="badge bg-{{ server.getType() == 'filesystem' ? 'primary' : server.getType() == 'playwright' ? 'success' : server.getType() == 'github' ? 'info' : 'secondary' }}">
+                                    {{ server.getType() }}
+                                </span>
+                            </td>
+                            <td>
+                                {% if server.isActive() %}
+                                    <span class="badge bg-success">Aktiv</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">Inaktiv</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-info">
+                                    {{ server.getAvailableTools()|length }}
+                                </span>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer bg-transparent">
+        <strong>{{ server_count }}</strong> MCP-Server insgesamt
+    </div>
+</div>
