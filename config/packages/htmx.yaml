@@ -1,0 +1,74 @@
+# config/packages/htmx.yaml
+# HTMX Konfiguration für EVIE
+
+htmx:
+    # Standard-Konfiguration für alle HTMX-Requests
+    default_config:
+        # History Management
+        history: true
+        history_cache_size: 10
+        
+        # Debugging
+        debug: '%kernel.debug%'
+        
+        # Indicator
+        indicator: '<span class="htmx-indicator">Loading...</span>'
+        
+        # Timeout
+        timeout: 10000
+        
+        # Scroll Behavior
+        scroll: 'body'
+        scroll_behavior: 'smooth'
+        
+        # Settle
+        settle: 200
+        
+        # Swap
+        swap: 'innerHTML'
+        
+        # Transition
+        transition: true
+        
+        # Confirm
+        confirm: null
+        
+        # Headers
+        headers:
+            'X-Requested-With': 'XMLHttpRequest'
+
+    # Konfiguration für spezifische Request-Typen
+    configs:
+        # Für Tool-Execution
+        tool_execution:
+            timeout: 30000  # 30 Sekunden für lange Tool-Executions
+            indicator: '<div class="spinner-border spinner-border-sm text-primary" role="status"></div>'
+            swap: 'innerHTML transition:true'
+
+        # Für Sub-Agenten
+        sub_agents:
+            timeout: 15000
+            indicator: '<i class="fas fa-spinner fa-spin text-primary"></i>'
+            swap: 'innerHTML transition:true'
+
+        # Für MCP-Tools
+        mcp_tools:
+            timeout: 20000
+            indicator: '<div class="d-flex align-items-center gap-2"><i class="fas fa-spinner fa-spin text-primary"></i><span>Processing...</span></div>'
+            swap: 'innerHTML transition:true'
+
+        # Für Streaming
+        streaming:
+            timeout: 60000  # 60 Sekunden für Streaming
+            swap: 'beforeend scroll:body:bottom'
+
+when@dev:
+    htmx:
+        default_config:
+            debug: true
+
+when@test:
+    htmx:
+        default_config:
+            debug: false
+            timeout: 100
