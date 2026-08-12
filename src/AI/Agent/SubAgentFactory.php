@@ -23,6 +23,7 @@ use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
  * - Dynamisches Laden aus der Datenbank (SubAgentDefinition)
  * - Fallback zu statischer Konfiguration (ai.yaml)
  * - Registrierung als Tools für den Orchestrator
+ * - Lazy-Loading für Runtime-Registrierung
  */
 final class SubAgentFactory
 {
@@ -120,6 +121,41 @@ final class SubAgentFactory
         }
 
         return $subAgents;
+    }
+
+    /**
+     * Lädt alle aktiven Sub-Agenten aus der Datenbank und registriert sie als Tools.
+     * Dies ist die Lazy-Loading-Alternative für den Fall, dass der CompilerPass nicht funktioniert.
+     * Wird zur Runtime aufgerufen (z. B. in einem EventListener oder Command).
+     */
+    public function registerAllFromDatabase(): void
+    {
+        $definitions = $this->subAgentDefinitionRepo->findAllActive();
+        
+        foreach ($definitions as $definition) {
+            try {
+                $subAgent = $this->createFromDefinition($definition);
+                
+                // Registriere den Sub-Agenten im DynamicSkillRegistry
+                $this->dynamicSkillRegistry->addToolFromAgent($subAgent);
+
+                $this->logger->info('Sub-Agent aus Datenbank registriert', [
+                    'name' => $definition->getName(),
+                    'class' => $definition->getClassName(),
+                ]);
+            } catch (\Exception $e) {
+                $this->logger->error('Fehler beim Registrieren des Sub-Agenten aus Datenbank', [
+                    'name' => $definition->getName(),
+                    'error' => $e->getMessage(),
+                ]);
+                continue;
+            }
+        }
+
+        $this->logger->info(sprintf(
+            '%d Sub-Agenten aus Datenbank registriert (Lazy-Loading).',
+            count($definitions)
+        ));
     }
 
     /**
