@@ -136,8 +136,11 @@ final class SubAgentFactory
             try {
                 $subAgent = $this->createFromDefinition($definition);
                 
-                // Registriere den Sub-Agenten im DynamicSkillRegistry
-                $this->dynamicSkillRegistry->addToolFromAgent($subAgent);
+                // Erstelle eine ToolDefinition für den Sub-Agenten
+                $toolDefinition = $this->createToolDefinitionForSubAgent($definition, $subAgent);
+                
+                // Registriere die ToolDefinition im DynamicSkillRegistry
+                $this->dynamicSkillRegistry->addTool($toolDefinition);
 
                 $this->logger->info('Sub-Agent aus Datenbank registriert', [
                     'name' => $definition->getName(),
@@ -156,6 +159,38 @@ final class SubAgentFactory
             '%d Sub-Agenten aus Datenbank registriert (Lazy-Loading).',
             count($definitions)
         ));
+    }
+
+    /**
+     * Erstellt eine ToolDefinition für einen Sub-Agenten.
+     */
+    private function createToolDefinitionForSubAgent(SubAgentDefinition $definition, AgentInterface $subAgent): ToolDefinition
+    {
+        $toolDefinition = new ToolDefinition();
+        $toolDefinition->setName('sub_agent_' . $definition->getName());
+        $toolDefinition->setDescription($definition->getDescription());
+        $toolDefinition->setStatus('approved');
+        $toolDefinition->setSchema([
+            'type' => 'object',
+            'properties' => [
+                'task' => [
+                    'type' => 'string',
+                    'description' => 'Die Aufgabe, die der Sub-Agent ausführen soll',
+                ],
+                'parameters' => [
+                    'type' => 'object',
+                    'description' => 'Zusätzliche Parameter für die Aufgabe',
+                    'additionalProperties' => true,
+                ],
+            ],
+            'required' => ['task'],
+        ]);
+        $toolDefinition->setParameters([
+            ['name' => 'task', 'type' => 'string', 'required' => true, 'description' => 'Aufgabe für den Sub-Agenten'],
+            ['name' => 'parameters', 'type' => 'object', 'required' => false, 'description' => 'Zusätzliche Parameter'],
+        ]);
+
+        return $toolDefinition;
     }
 
     /**
