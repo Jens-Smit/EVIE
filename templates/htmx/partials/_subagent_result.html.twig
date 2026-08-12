@@ -1,0 +1,54 @@
+{# templates/htmx/partials/_subagent_result.html.twig #}
+
+<div class="subagent-result border rounded p-3 mb-3 bg-light"
+     hx-swap-oob="true"
+     id="subagent-result-{{ timestamp|date('His') }}">
+    
+    <div class="d-flex justify-content-between align-items-center mb-2">
+        <h6 class="mb-0">
+            {% if status == 'success' %}
+                <i class="fas fa-check-circle text-success me-2"></i>
+            {% else %}
+                <i class="fas fa-exclamation-circle text-warning me-2"></i>
+            {% endif %}
+            Ergebnis: {{ sub_agent }}
+        </h6>
+        <span class="badge bg-{{ status == 'success' ? 'success' : 'warning' }}">
+            {{ timestamp|date('H:i:s') }}
+        </span>
+    </div>
+    
+    <div class="subagent-result-content">
+        {% if result is not empty %}
+            {% set resultType = result is iterable and result is not string ? 'array' : result is string ? 'string' : result is object ? 'object' : 'scalar' %}
+            
+            {% if resultType == 'array' %}
+                <pre class="bg-white p-3 rounded border mb-0">{{ result|json_encode|raw }}</pre>
+            {% elseif resultType == 'string' %}
+                <div class="bg-white p-3 rounded border">{{ result|nl2br }}</div>
+            {% elseif resultType == 'object' %}
+                <pre class="bg-white p-3 rounded border mb-0">{{ result|json_encode|raw }}</pre>
+            {% else %}
+                <div class="bg-white p-3 rounded border">{{ result|dump }}</div>
+            {% endif %}
+        {% else %}
+            <div class="bg-white p-3 rounded border text-muted">
+                Kein Ergebnis zurückgegeben
+            </div>
+        {% endif %}
+    </div>
+    
+    {% if task is defined %}
+        <div class="mt-2 text-muted small">
+            <strong>Aufgabe:</strong> {{ task }}
+        </div>
+    {% endif %}
+</div>
+
+<script>
+// Auto-scroll zu neuem Ergebnis
+const resultElement = document.getElementById('subagent-result-{{ timestamp|date('His') }}');
+if (resultElement) {
+    resultElement.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+</script>
