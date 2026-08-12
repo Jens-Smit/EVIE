@@ -1,0 +1,26 @@
+{# templates/htmx/partials/_streaming_session_started.html.twig #}
+
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    <div class="d-flex align-items-center">
+        <i class="fas fa-check-circle me-2"></i>
+        <div>
+            <strong>Streaming-Session gestartet!</strong>
+            <br>
+            <small class="text-muted">
+                Session-ID: <code>{{ session_id }}</code>
+                {% if tool_name is defined %}
+                    | Tool: <code>{{ tool_name }}</code>
+                {% endif %}
+            </small>
+        </div>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
+
+<script>
+// Auto-scroll zu der neuen Alert
+const alert = document.querySelector('.alert.alert-success:last-of-type');
+if (alert) {
+    alert.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+</script>
