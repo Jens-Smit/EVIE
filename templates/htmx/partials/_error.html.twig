@@ -1,0 +1,27 @@
+{# templates/htmx/partials/_error.html.twig #}
+
+<div class="alert alert-danger alert-dismissible fade show" role="alert">
+    <div class="d-flex align-items-center">
+        <i class="fas fa-exclamation-triangle me-2"></i>
+        <div>
+            <strong>Fehler:</strong> {{ error }}
+            {% if tool_name is defined %}
+                <br>
+                <small class="text-muted">Tool: {{ tool_name }}</small>
+            {% endif %}
+            {% if server_name is defined %}
+                <br>
+                <small class="text-muted">Server: {{ server_name }}</small>
+            {% endif %}
+            {% if session_id is defined %}
+                <br>
+                <small class="text-muted">Session: {{ session_id }}</small>
+            {% endif %}
+            {% if task is defined %}
+                <br>
+                <small class="text-muted">Aufgabe: {{ task }}</small>
+            {% endif %}
+        </div>
+    </div>
+    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+</div>
