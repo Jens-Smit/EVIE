@@ -4,25 +4,39 @@ namespace App\AI\Skills;
 
 use App\Entity\ToolDefinition;
 use App\Repository\ToolDefinitionRepository;
+use App\AI\Skills\Tool\DynamicToolFactory;
+use Symfony\AI\Agent\Tool\ToolRegistry;
 
 /**
  * DynamicSkillRegistry verwaltet die verfügbaren Tools.
  * Er lädt freigegebene Tools aus der Datenbank und stellt Metadaten für den DynamicToolDispatcher bereit.
  * 
- * Verbesserungen:
+ * Unterstützt:
+ * - Lazy-Loading von Tools zur Laufzeit
  * - Automatisches Nachladen von Tools nach Genehmigung
  * - Event-basierte Aktualisierung
- * - Bessere Fehlerbehandlung
+ * - Integration mit DynamicToolFactory für Tool-Erstellung
+ * - Registrierung im Symfony AI Bundle ToolRegistry
+ * 
+ * @see https://symfony.com/doc/current/ai/bundles/ai-bundle.html
  */
 class DynamicSkillRegistry
 {
     private ToolDefinitionRepository $toolDefinitionRepo;
+    private DynamicToolFactory $toolFactory;
+    private ?ToolRegistry $toolRegistry = null;
     private array $tools = [];
     private bool $initialized = false;
+    private bool $toolsRegistered = false;
 
-    public function __construct(ToolDefinitionRepository $toolDefinitionRepo)
-    {
+    public function __construct(
+        ToolDefinitionRepository $toolDefinitionRepo,
+        DynamicToolFactory $toolFactory,
+        ?ToolRegistry $toolRegistry = null,
+    ) {
         $this->toolDefinitionRepo = $toolDefinitionRepo;
+        $this->toolFactory = $toolFactory;
+        $this->toolRegistry = $toolRegistry;
     }
 
     /**
@@ -48,10 +62,6 @@ class DynamicSkillRegistry
         foreach ($toolDefinitions as $toolDefinition) {
             $this->tools[$toolDefinition->getName()] = $toolDefinition;
         }
-
-        // Log laden der Tools
-        // Note: Logger wird hier nicht injiziert, um Abhängigkeiten zu vermeiden
-        // Das Logging sollte über den Service erfolgen, der dieses Registry nutzt
     }
 
     /**
@@ -61,7 +71,63 @@ class DynamicSkillRegistry
     {
         $this->tools = [];
         $this->initialized = false;
+        $this->toolsRegistered = false;
         $this->initialize();
+    }
+
+    /**
+     * Registriert alle genehmigten Tools im Symfony AI Bundle ToolRegistry.
+     * 
+     * Dies ist die Lazy-Loading-Alternative zum CompilerPass.
+     * Wird aufgerufen, wenn Tools zur Laufzeit registriert werden müssen.
+     */
+    public function registerApprovedTools(): void
+    {
+        if ($this->toolsRegistered || $this->toolRegistry === null) {
+            return;
+        }
+
+        if (!$this->initialized) {
+            $this->initialize();
+        }
+
+        foreach ($this->tools as $name => $toolDefinition) {
+            try {
+                $tool = $this->toolFactory->createTool($toolDefinition);
+                $this->toolRegistry->registerTool(
+                    $tool,
+                    $toolDefinition->getName(),
+                    $toolDefinition->getDescription()
+                );
+            } catch (\Exception $e) {
+                // Logge Fehler, aber breche nicht ab
+                // In einer echten Implementierung würde hier ein Logger verwendet werden
+                continue;
+            }
+        }
+
+        $this->toolsRegistered = true;
+    }
+
+    /**
+     * Registriert ein einzelnes Tool im ToolRegistry.
+     */
+    public function registerTool(ToolDefinition $toolDefinition): void
+    {
+        if ($this->toolRegistry === null) {
+            return;
+        }
+
+        try {
+            $tool = $this->toolFactory->createTool($toolDefinition);
+            $this->toolRegistry->registerTool(
+                $tool,
+                $toolDefinition->getName(),
+                $toolDefinition->getDescription()
+            );
+        } catch (\Exception $e) {
+            // Logge Fehler
+        }
     }
 
     /**
@@ -114,6 +180,11 @@ class DynamicSkillRegistry
     {
         if ($toolDefinition->isApproved()) {
             $this->tools[$toolDefinition->getName()] = $toolDefinition;
+            
+            // Registriere das Tool sofort im ToolRegistry
+            if ($this->toolRegistry !== null) {
+                $this->registerTool($toolDefinition);
+            }
         }
     }
 
@@ -189,5 +260,21 @@ class DynamicSkillRegistry
     public function isInitialized(): bool
     {
         return $this->initialized;
+    }
+
+    /**
+     * Prüft, ob die Tools im ToolRegistry registriert wurden.
+     */
+    public function areToolsRegistered(): bool
+    {
+        return $this->toolsRegistered;
+    }
+
+    /**
+     * Setzt den ToolRegistry (für Dependency Injection).
+     */
+    public function setToolRegistry(ToolRegistry $toolRegistry): void
+    {
+        $this->toolRegistry = $toolRegistry;
     }
 }
