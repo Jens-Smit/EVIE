@@ -1,0 +1,118 @@
+{# templates/htmx/forms/_mcp_tool_form.html.twig #}
+
+<div class="mcp-tool-form-card card shadow-sm mb-3"
+     hx-target="#mcp-results-container"
+     hx-swap="beforeend">
+    
+    <div class="card-header bg-success text-white">
+        <h5 class="mb-0">
+            <i class="fas fa-server me-2"></i>
+            MCP-Tool ausführen
+        </h5>
+    </div>
+    
+    <div class="card-body">
+        <form 
+              hx-post="{{ path('htmx_mcp_tools_execute') }}"
+              hx-indicator="#mcp-loading-indicator"
+              hx-trigger="submit"
+              class="row g-3">
+            
+            <div class="col-md-4">
+                <label for="server_name" class="form-label">MCP-Server auswählen</label>
+                <select class="form-select" 
+                        id="server_name" 
+                        name="server_name" 
+                        hx-get="{{ path('htmx_mcp_server_tools', {'serverName': '__SELECTED__'}) }}"
+                        hx-target="#tool_name_container"
+                        hx-trigger="change"
+                        required>
+                    <option value="" selected disabled>Server auswählen...</option>
+                    {% for name, server in available_servers %}
+                        <option value="{{ name }}" 
+                                {% if selected_server == name %}selected{% endif %}>
+                            {{ name }} ({{ server.getType() }})
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="col-md-4" id="tool_name_container">
+                {% if selected_server %}
+                    {% include 'htmx/partials/_mcp_server_tools.html.twig' with {
+                        'server_name': selected_server,
+                        'tools': mcpToolExecutor.getServerTools(selected_server)
+                    } %}
+                {% else %}
+                    <label for="tool_name" class="form-label">Tool auswählen</label>
+                    <select class="form-select" id="tool_name" name="tool_name" disabled required>
+                        <option value="" selected disabled>Wähle zuerst einen Server</option>
+                    </select>
+                {% endif %}
+            </div>
+            
+            <div class="col-md-12">
+                <label for="mcp_arguments" class="form-label">Argumente (JSON)</label>
+                <textarea class="form-control font-mono" 
+                          id="mcp_arguments" 
+                          name="arguments" 
+                          rows="2" 
+                          placeholder='{"param1": "value1"}'
+                          required></textarea>
+            </div>
+            
+            <div class="col-12">
+                <div id="mcp-loading-indicator" class="htmx-indicator d-none">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fas fa-spinner fa-spin text-success"></i>
+                        <span>MCP-Tool wird ausgeführt...</span>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="col-12">
+                <button type="submit" class="btn btn-success w-100">
+                    <i class="fas fa-play me-1"></i> MCP-Tool ausführen
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// MCP-Tool-Formular Logik
+document.addEventListener('DOMContentLoaded', function() {
+    const serverSelect = document.getElementById('server_name');
+    const toolSelect = document.getElementById('tool_name');
+    const argumentsTextarea = document.getElementById('mcp_arguments');
+    
+    if (serverSelect && argumentsTextarea) {
+        // Server-spezifische Platzhalter
+        const serverPlaceholders = {
+            'filesystem': '{"path": "/path/to/file", "operation": "read"}',
+            'playwright': '{"url": "https://example.com", "action": "screenshot"}',
+            'github': '{"repo": "owner/repo", "action": "list_files"}',
+        };
+        
+        serverSelect.addEventListener('change', function() {
+            const selectedServer = this.value;
+            if (selectedServer && serverPlaceholders[selectedServer]) {
+                argumentsTextarea.placeholder = serverPlaceholders[selectedServer];
+            } else {
+                argumentsTextarea.placeholder = '{"param1": "value1"}';
+            }
+        });
+    }
+});
+
+// HTMX Event Handler für Tool-Liste
+ document.body.addEventListener('htmx:afterSwap', function(evt) {
+    if (evt.detail.target.id === 'tool_name_container') {
+        // Tool-Select aktualisieren
+        const toolSelect = document.getElementById('tool_name');
+        if (toolSelect) {
+            toolSelect.disabled = false;
+        }
+    }
+});
+</script>
