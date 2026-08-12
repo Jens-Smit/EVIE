@@ -3,35 +3,184 @@
 
 namespace App\AI\Agent;
 
+use App\Entity\SubAgentDefinition;
 use App\Entity\ToolDefinition;
+use App\Repository\SubAgentDefinitionRepository;
 use App\Repository\ToolDefinitionRepository;
 use App\AI\Skills\DynamicSkillRegistry;
+use Psr\Container\ContainerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\AI\Agent\Agent;
 use Symfony\AI\Agent\AgentInterface;
 use Symfony\AI\Agent\InputProcessor\SystemPromptInputProcessor;
 use Symfony\AI\Agent\Toolbox\Tool\Subagent;
 use Symfony\AI\Platform\PlatformInterface;
+use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 
 /**
- * Factory für die dynamische Erstellung von Sub-Agenten.
- * Verwendet die offizielle Symfony AI Subagent-Klasse.
- * Sub-Agenten werden als Tools für den Orchestrator registriert und können
- * spezifische Aufgaben übernehmen.
+ * Factory für die dynamische und statische Erstellung von Sub-Agenten.
+ * Unterstützt:
+ * - Dynamisches Laden aus der Datenbank (SubAgentDefinition)
+ * - Fallback zu statischer Konfiguration (ai.yaml)
+ * - Registrierung als Tools für den Orchestrator
  */
-final readonly class SubAgentFactory
+final class SubAgentFactory
 {
+    private PlatformInterface $platform;
+    private ToolDefinitionRepository $toolDefinitionRepo;
+    private DynamicSkillRegistry $dynamicSkillRegistry;
+    private LoggerInterface $logger;
+    private ContainerInterface $container;
+    private SubAgentDefinitionRepository $subAgentDefinitionRepo;
+    private ParameterBagInterface $params;
+
     public function __construct(
-        private PlatformInterface $platform,
-        private ToolDefinitionRepository $toolDefinitionRepo,
-        private DynamicSkillRegistry $dynamicSkillRegistry,
-        private LoggerInterface $logger,
+        PlatformInterface $platform,
+        ToolDefinitionRepository $toolDefinitionRepo,
+        DynamicSkillRegistry $dynamicSkillRegistry,
+        LoggerInterface $logger,
+        ContainerInterface $container,
+        SubAgentDefinitionRepository $subAgentDefinitionRepo,
+        ParameterBagInterface $params
     ) {
+        $this->platform = $platform;
+        $this->toolDefinitionRepo = $toolDefinitionRepo;
+        $this->dynamicSkillRegistry = $dynamicSkillRegistry;
+        $this->logger = $logger;
+        $this->container = $container;
+        $this->subAgentDefinitionRepo = $subAgentDefinitionRepo;
+        $this->params = $params;
+    }
+
+    /**
+     * Erstellt einen Sub-Agenten basierend auf einer Definition aus der Datenbank.
+     */
+    public function createFromDefinition(SubAgentDefinition $definition): AgentInterface
+    {
+        $name = $definition->getName();
+        $className = $definition->getClassName();
+        $configuration = $definition->getConfiguration();
+
+        $this->logger->info('Erstelle Sub-Agenten aus Datenbank-Definition', [
+            'name' => $name,
+            'class' => $className,
+        ]);
+
+        // 1. Prüfe, ob die Klasse existiert und ein AgentInterface implementiert
+        if (class_exists($className) && is_subclass_of($className, AgentInterface::class)) {
+            // Direkte Instanzierung, wenn es sich um eine konkrete Klasse handelt
+            $subAgent = $this->container->get($className);
+            if ($subAgent instanceof AgentInterface) {
+                $this->registerAsTool($name, $definition->getDescription(), $subAgent);
+                return $subAgent;
+            }
+        }
+
+        // 2. Falls nicht, erstelle einen generischen Agenten mit der Konfiguration
+        $model = $configuration['model'] ?? 'mistral-large-latest';
+        $role = $configuration['role'] ?? $name;
+
+        $subAgent = new Agent(
+            platform: $this->platform,
+            model: $model,
+            name: $name,
+            inputProcessors: [new SystemPromptInputProcessor($this->generatePromptForRole($role))],
+        );
+
+        $this->registerAsTool($name, $definition->getDescription(), $subAgent);
+
+        $this->logger->info('Sub-Agent aus Definition erstellt', [
+            'name' => $name,
+            'model' => $model,
+            'role' => $role,
+        ]);
+
+        return $subAgent;
+    }
+
+    /**
+     * Erstellt alle aktiven Sub-Agenten aus der Datenbank.
+     */
+    public function createAllFromDatabase(): array
+    {
+        $definitions = $this->subAgentDefinitionRepo->findAllActive();
+        $subAgents = [];
+
+        foreach ($definitions as $definition) {
+            try {
+                $subAgent = $this->createFromDefinition($definition);
+                $subAgents[$definition->getName()] = $subAgent;
+            } catch (\Exception $e) {
+                $this->logger->error('Fehler beim Laden des Sub-Agenten aus Definition', [
+                    'name' => $definition->getName(),
+                    'error' => $e->getMessage(),
+                ]);
+                continue;
+            }
+        }
+
+        return $subAgents;
+    }
+
+    /**
+     * Erstellt einen Sub-Agenten basierend auf einem Namen.
+     * 1. Versucht, aus der Datenbank zu laden
+     * 2. Fallback: Statische Erstellung
+     */
+    public function createByName(string $name): AgentInterface
+    {
+        // 1. Versuche, aus der Datenbank zu laden
+        $definition = $this->subAgentDefinitionRepo->findOneByName($name);
+        if ($definition !== null) {
+            return $this->createFromDefinition($definition);
+        }
+
+        // 2. Fallback: Statische Erstellung
+        return $this->createFromStaticConfig($name);
+    }
+
+    /**
+     * Erstellt einen Sub-Agenten aus der statischen Konfiguration.
+     */
+    private function createFromStaticConfig(string $name): AgentInterface
+    {
+        $this->logger->info('Erstelle Sub-Agenten aus statischer Konfiguration', [
+            'name' => $name,
+        ]);
+
+        $model = 'mistral-large-latest';
+        $role = $name;
+
+        $subAgent = new Agent(
+            platform: $this->platform,
+            model: $model,
+            name: $name,
+            inputProcessors: [new SystemPromptInputProcessor($this->generatePromptForRole($role))],
+        );
+
+        $this->registerAsTool($name, 'Sub-Agent für ' . $role, $subAgent);
+
+        return $subAgent;
+    }
+
+    /**
+     * Registriert einen neuen Sub-Agenten dynamisch in der Datenbank.
+     */
+    public function registerSubAgent(SubAgentDefinition $definition): void
+    {
+        $entityManager = $this->container->get('doctrine.orm.entity_manager');
+        $entityManager->persist($definition);
+        $entityManager->flush();
+
+        $this->logger->info('Sub-Agenten-Definition registriert', [
+            'name' => $definition->getName(),
+            'class' => $definition->getClassName(),
+        ]);
     }
 
     /**
      * Erstellt einen neuen Sub-Agenten mit dem gegebenen Namen und der Rolle.
-     * Verwendet die offizielle Symfony AI Subagent-Klasse.
+     * (Bestehende Methode für Abwärtskompatibilität)
      */
     public function createSubAgent(
         string $name,
@@ -44,7 +193,6 @@ final readonly class SubAgentFactory
             'role' => $role,
         ]);
 
-        // Erstelle den Sub-Agenten MIT PROMPT!
         $subAgent = new Agent(
             platform: $this->platform,
             model: $model,
@@ -52,8 +200,7 @@ final readonly class SubAgentFactory
             inputProcessors: [new SystemPromptInputProcessor($this->generatePromptForRole($role))],
         );
 
-        // Sub-Agent im DynamicSkillRegistry als Tool registrieren
-        $this->registerAsTool($name, $role, $subAgent);
+        $this->registerAsTool($name, 'Sub-Agent für ' . $role, $subAgent);
 
         $this->logger->info('Sub-Agent erstellt', [
             'name' => $name,
@@ -64,7 +211,6 @@ final readonly class SubAgentFactory
 
     /**
      * Erstellt einen Sub-Agenten als Subagent-Tool für den Orchestrator.
-     * Dies ermöglicht dem Orchestrator, den Sub-Agenten direkt als Tool aufzurufen.
      */
     public function createSubAgentTool(
         string $name,
@@ -77,7 +223,6 @@ final readonly class SubAgentFactory
             'role' => $role,
         ]);
 
-        // Erstelle den Sub-Agenten MIT PROMPT!
         $subAgent = new Agent(
             platform: $this->platform,
             model: $model,
@@ -85,10 +230,23 @@ final readonly class SubAgentFactory
             inputProcessors: [new SystemPromptInputProcessor($this->generatePromptForRole($role))],
         );
 
-        // Erstelle ein Subagent-Tool
         $subAgentTool = new Subagent($subAgent);
 
-        // Registriere in der Datenbank
+        $this->registerToolDefinition($name, $role);
+
+        $this->logger->info('SubAgent-Tool registriert', [
+            'tool_name' => 'sub_agent_' . $name,
+            'agent_name' => $name,
+        ]);
+
+        return $subAgentTool;
+    }
+
+    /**
+     * Registriert eine Tool-Definition für einen Sub-Agenten.
+     */
+    private function registerToolDefinition(string $name, string $role): void
+    {
         $toolDefinition = new ToolDefinition();
         $toolDefinition->setName('sub_agent_' . $name);
         $toolDefinition->setDescription('Sub-Agent für ' . $role);
@@ -115,13 +273,39 @@ final readonly class SubAgentFactory
 
         $this->toolDefinitionRepo->save($toolDefinition, true);
         $this->dynamicSkillRegistry->addTool($toolDefinition);
+    }
 
-        $this->logger->info('SubAgent-Tool registriert', [
-            'tool_name' => $toolDefinition->getName(),
-            'agent_name' => $name,
+    /**
+     * Registriert den Sub-Agenten als Tool für den Orchestrator.
+     */
+    private function registerAsTool(string $name, string $description, AgentInterface $agent): void
+    {
+        $toolDefinition = new ToolDefinition();
+        $toolDefinition->setName('sub_agent_' . $name);
+        $toolDefinition->setDescription($description);
+        $toolDefinition->setStatus('approved');
+        $toolDefinition->setSchema([
+            'type' => 'object',
+            'properties' => [
+                'task' => [
+                    'type' => 'string',
+                    'description' => 'Die Aufgabe, die der Sub-Agent ausführen soll',
+                ],
+                'parameters' => [
+                    'type' => 'object',
+                    'description' => 'Zusätzliche Parameter für die Aufgabe',
+                    'additionalProperties' => true,
+                ],
+            ],
+            'required' => ['task'],
+        ]);
+        $toolDefinition->setParameters([
+            ['name' => 'task', 'type' => 'string', 'required' => true, 'description' => 'Aufgabe für den Sub-Agenten'],
+            ['name' => 'parameters', 'type' => 'object', 'required' => false, 'description' => 'Zusätzliche Parameter'],
         ]);
 
-        return $subAgentTool;
+        $this->toolDefinitionRepo->save($toolDefinition, true);
+        $this->dynamicSkillRegistry->addTool($toolDefinition);
     }
 
     /**
@@ -144,44 +328,6 @@ final readonly class SubAgentFactory
         ];
 
         return $rolePrompts[$role] ?? 'Du bist ein Sub-Agent. Führe Aufgaben aus. ANTWORTE IMMER IM JSON-FORMAT: {"type":"result","content":"..."}';
-    }
-
-    /**
-     * Registriert den Sub-Agenten als Tool für den Orchestrator.
-     */
-    private function registerAsTool(string $name, string $role, AgentInterface $agent): void
-    {
-        $toolDefinition = new ToolDefinition();
-        $toolDefinition->setName('sub_agent_' . $name);
-        $toolDefinition->setDescription('Sub-Agent für ' . $role);
-        $toolDefinition->setStatus('approved');
-        $toolDefinition->setSchema([
-            'type' => 'object',
-            'properties' => [
-                'task' => [
-                    'type' => 'string',
-                    'description' => 'Die Aufgabe, die der Sub-Agent ausführen soll',
-                ],
-                'parameters' => [
-                    'type' => 'object',
-                    'description' => 'Zusätzliche Parameter für die Aufgabe',
-                    'additionalProperties' => true,
-                ],
-            ],
-            'required' => ['task'],
-        ]);
-        $toolDefinition->setParameters([
-            ['name' => 'task', 'type' => 'string', 'required' => true, 'description' => 'Aufgabe für den Sub-Agenten'],
-            ['name' => 'parameters', 'type' => 'object', 'required' => false, 'description' => 'Zusätzliche Parameter'],
-        ]);
-
-        $this->toolDefinitionRepo->save($toolDefinition, true);
-        $this->dynamicSkillRegistry->addTool($toolDefinition);
-
-        $this->logger->info('Sub-Agent als Tool registriert', [
-            'tool_name' => $toolDefinition->getName(),
-            'agent_name' => $name,
-        ]);
     }
 
     /**
@@ -317,11 +463,15 @@ final readonly class SubAgentFactory
     }
 
     /**
-     * Gibt alle verfügbaren Sub-Agenten zurück
+     * Gibt alle verfügbaren Sub-Agenten zurück (statisch + dynamisch)
      */
     public function getAvailableSubAgents(): array
     {
-        return [
+        // 1. Lade dynamische Sub-Agenten aus der DB
+        $dynamicSubAgents = $this->createAllFromDatabase();
+
+        // 2. Füge statische Sub-Agenten hinzu (falls nicht in DB)
+        $staticSubAgents = [
             'website_researcher' => $this->createWebsiteResearchAgent(),
             'data_analyst' => $this->createDataAnalysisAgent(),
             'code_assistant' => $this->createCodeAssistantAgent(),
@@ -334,6 +484,9 @@ final readonly class SubAgentFactory
             'marketing_manager' => $this->createMarketingManagerAgent(),
             'ceo_assistant' => $this->createCeoAssistantAgent(),
         ];
+
+        // 3. Merge: Dynamische Sub-Agenten überschreiben statische
+        return array_merge($staticSubAgents, $dynamicSubAgents);
     }
 
     /**
