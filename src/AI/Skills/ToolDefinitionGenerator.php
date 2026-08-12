@@ -7,6 +7,7 @@ use App\Entity\ToolDefinition;
 use App\Entity\ToolCategory;
 use App\Repository\ToolDefinitionRepository;
 use App\Repository\ToolCategoryRepository;
+use Symfony\AI\Agent\AgentInterface;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
 use Symfony\AI\Platform\PlatformInterface;
@@ -14,7 +15,9 @@ use Psr\Log\LoggerInterface;
 
 /**
  * Generiert Tool-Definitionen basierend auf User-Anforderungen.
- * NUTZT LLM, um intelligente, wiederverwendbare Tool-Schemata zu erstellen.
+ * NUTZT LLM mit optimiertem Prompt aus Phase 3, um intelligente, wiederverwendbare Tool-Schemata zu erstellen.
+ * 
+ * @see ROADMAP_PHASE3.md Maßnahme 8: LLM-Prompt-Optimierung
  */
 class ToolDefinitionGenerator
 {
@@ -22,20 +25,26 @@ class ToolDefinitionGenerator
         private ToolDefinitionRepository $toolDefinitionRepo,
         private ToolCategoryRepository $toolCategoryRepo,
         private PlatformInterface $platform,
+        private AgentInterface $toolGeneratorAgent,
         private LoggerInterface $logger
     ) {
     }
 
     /**
      * Generiert eine neue Tool-Definition basierend auf der User-Anfrage.
-     * NUTZT LLM, um ein intelligentes Schema zu erstellen.
+     * NUTZT den optimierten tool_generator-Agent mit File-Based Prompt aus Phase 3.
+     * 
+     * @param string $toolName Der Name des neuen Tools
+     * @param string $description Beschreibung des Tools
+     * @param array $context Zusätzlicher Kontext (z.B. ursprüngliche User-Anfrage)
+     * @return ToolDefinition Die generierte Tool-Definition
      */
     public function generateToolDefinition(
         string $toolName,
         string $description,
         array $context = []
     ): ToolDefinition {
-        $this->logger->info('Generiere Tool-Definition', [
+        $this->logger->info('Generiere Tool-Definition mit optimiertem Prompt (Phase 3)', [
             'tool_name' => $toolName,
             'description' => substr($description, 0, 100),
         ]);
@@ -50,8 +59,8 @@ class ToolDefinitionGenerator
             return $similarTool;
         }
 
-        // 2. LLM generiert ein intelligentes Schema
-        $schema = $this->generateSchemaWithLLM($toolName, $description, $context);
+        // 2. Nutze den tool_generator-Agent mit optimiertem Prompt aus Phase 3
+        $schema = $this->generateSchemaWithToolGeneratorAgent($toolName, $description, $context);
 
         // 3. Kategorie bestimmen
         $category = $this->determineCategory($description);
@@ -62,7 +71,11 @@ class ToolDefinitionGenerator
         // 5. Abhängigkeiten bestimmen
         $dependencies = $this->determineDependencies($description);
 
-        // 6. Erstelle die Tool-Definition
+        // 6. Sicherheitslevel aus Schema extrahieren oder standardmäßig setzen
+        $securityLevel = $this->extractSecurityLevel($schema);
+        $hitlRequired = $this->extractHitlRequirement($schema);
+
+        // 7. Erstelle die Tool-Definition
         $toolDefinition = new ToolDefinition();
         $toolDefinition->setName($this->sanitizeToolName($toolName));
         $toolDefinition->setDescription($description);
@@ -71,27 +84,142 @@ class ToolDefinitionGenerator
         $toolDefinition->setCategory($category);
         $toolDefinition->setComplexity($complexity);
         $toolDefinition->setDependencies($dependencies);
+        $toolDefinition->setSecurityLevel($securityLevel);
+        $toolDefinition->setHitlRequired($hitlRequired);
         $toolDefinition->setStatus('pending');
 
-        // 7. Metadaten für Wiederverwendung
+        // 8. Metadaten für Wiederverwendung und Phase 3-Optimierung
         $toolDefinition->setMetadata([
             'generated_by' => 'llm',
+            'generation_method' => 'tool_generator_agent',
+            'phase_3_optimized' => true,
+            'prompt_version' => '1.0',
             'reusable' => true,
             'generation_context' => $context,
             'generation_timestamp' => (new \DateTimeImmutable())->format(DATE_ATOM),
         ]);
 
-        // 8. Speichere in der Datenbank
+        // 9. Speichere in der Datenbank
         $this->toolDefinitionRepo->save($toolDefinition, true);
 
-        $this->logger->info('Neues Tool erstellt', [
+        $this->logger->info('Neues Tool mit optimiertem Prompt erstellt (Phase 3)', [
             'tool_id' => $toolDefinition->getId(),
             'tool_name' => $toolDefinition->getName(),
             'category' => $category?->getName(),
             'complexity' => $complexity,
+            'security_level' => $securityLevel,
+            'hitl_required' => $hitlRequired,
         ]);
 
         return $toolDefinition;
+    }
+
+    /**
+     * Generiert Schema mit dem tool_generator-Agent (Phase 3 Optimierung)
+     * 
+     * @param string $toolName Name des Tools
+     * @param string $description Beschreibung des Tools
+     * @param array $context Zusätzlicher Kontext
+     * @return array Das generierte JSON-Schema
+     */
+    private function generateSchemaWithToolGeneratorAgent(
+        string $toolName,
+        string $description,
+        array $context = []
+    ): array {
+        $userMessage = $context['original_request'] ?? $description;
+        
+        // Erstelle eine strukturierte Anfrage für den tool_generator-Agent
+        $requestData = [
+            'tool_name' => $toolName,
+            'description' => $description,
+            'user_request' => $userMessage,
+            'context' => $context,
+            'requirements' => [
+                'Follow EVIE ToolInterface Structure',
+                'Include security metadata (security_level, hitl_required)',
+                'Use JSON Schema Draft 2020-12',
+                'Provide clear parameter descriptions in German',
+                'Include validation patterns where applicable',
+                'Consider Symfony DI compatibility',
+            ]
+        ];
+
+        try {
+            // Nutze den tool_generator-Agent mit seinem optimierten Prompt
+            $messages = new MessageBag(
+                Message::ofUser(json_encode($requestData, JSON_THROW_ON_ERROR))
+            );
+            
+            $response = $this->toolGeneratorAgent->call($messages);
+            $responseContent = $response->getContent();
+
+            // Versuche, die Antwort als JSON zu parsen
+            $schema = json_decode($responseContent, true, 512, JSON_THROW_ON_ERROR);
+
+            // Validierung des Schemas
+            if (!isset($schema['type']) || $schema['type'] !== 'object') {
+                throw new \RuntimeException('Tool Generator Agent hat kein gültiges JSON-Schema generiert');
+            }
+
+            // Füge Metadaten hinzu, falls nicht vorhanden
+            $schema = $this->ensureSchemaMetadata($schema);
+
+            $this->logger->debug('Tool-Schema erfolgreich generiert', [
+                'tool_name' => $toolName,
+                'schema_size' => strlen($responseContent),
+            ]);
+
+            return $schema;
+
+        } catch (\Exception $e) {
+            $this->logger->error('Fehler bei der Schema-Generierung mit tool_generator-Agent', [
+                'error' => $e->getMessage(),
+                'tool_name' => $toolName,
+            ]);
+
+            // Fallback: Nutze den alten LLM-Ansatz
+            return $this->generateSchemaWithLLM($toolName, $description, $context);
+        }
+    }
+
+    /**
+     * Stell sicher, dass das Schema alle benötigten Metadaten enthält
+     */
+    private function ensureSchemaMetadata(array $schema): array
+    {
+        // Standard-Sicherheitslevel
+        if (!isset($schema['security_level'])) {
+            $schema['security_level'] = 'medium';
+        }
+
+        // Standard HITL-Anforderung
+        if (!isset($schema['hitl_required'])) {
+            $schema['hitl_required'] = true; // Standardmäßig HITL für neue Tools
+        }
+
+        // Standard Sub-Agent
+        if (!isset($schema['sub_agent'])) {
+            $schema['sub_agent'] = 'data_analyst'; // Standard-Sub-Agent
+        }
+
+        return $schema;
+    }
+
+    /**
+     * Extrahiere Sicherheitslevel aus dem Schema
+     */
+    private function extractSecurityLevel(array $schema): string
+    {
+        return $schema['security_level'] ?? 'medium';
+    }
+
+    /**
+     * Extrahiere HITL-Anforderung aus dem Schema
+     */
+    private function extractHitlRequirement(array $schema): bool
+    {
+        return $schema['hitl_required'] ?? true;
     }
 
     /**
@@ -140,7 +268,9 @@ class ToolDefinitionGenerator
     }
 
     /**
-     * LLM generiert ein JSON-Schema für das Tool
+     * LLM generiert ein JSON-Schema für das Tool (Fallback-Methode)
+     * 
+     * @deprecated Wird durch generateSchemaWithToolGeneratorAgent ersetzt
      */
     private function generateSchemaWithLLM(
         string $toolName,
@@ -171,11 +301,16 @@ Erstelle ein **JSON-Schema** für ein Tool mit folgendem Namen und Beschreibung:
 3. Nutze **sinnvolle Standardwerte** wo möglich
 4. Das Tool sollte **modular** sein
 5. Berücksichtige **Sicherheitsaspekte** (keine gefährlichen Operationen)
-6. Antworte **NUR mit dem JSON-Schema** in gültigem JSON-Format, ohne zusätzliche Erklärungen!
+6. Füge **Sicherheitsmetadaten** hinzu:
+   - security_level: "low"|"medium"|"high"
+   - hitl_required: true|false
+7. Antworte **NUR mit dem JSON-Schema** in gültigem JSON-Format, ohne zusätzliche Erklärungen!
 
 **Beispiel für ein gutes Schema:**
 {
     "type": "object",
+    "security_level": "medium",
+    "hitl_required": true,
     "properties": {
         "url": {
             "type": "string",
@@ -189,11 +324,6 @@ Erstelle ein **JSON-Schema** für ein Tool mit folgendem Namen und Beschreibung:
             "minimum": 1,
             "maximum": 5,
             "default": 2
-        },
-        "include_images": {
-            "type": "boolean",
-            "description": "Ob Bilder in die Analyse einbezogen werden sollen",
-            "default": false
         }
     },
     "required": ["url"]
@@ -212,10 +342,11 @@ PROMPT;
                 throw new \RuntimeException('LLM hat kein gültiges JSON-Schema generiert');
             }
 
-            return $schema;
+            // Füge fehlende Metadaten hinzu
+            return $this->ensureSchemaMetadata($schema);
 
         } catch (\Exception $e) {
-            $this->logger->error('Fehler bei der LLM-Schema-Generierung', [
+            $this->logger->error('Fehler bei der LLM-Schema-Generierung (Fallback)', [
                 'error' => $e->getMessage(),
                 'response' => $response ?? 'null',
             ]);
@@ -232,6 +363,8 @@ PROMPT;
     {
         return [
             'type' => 'object',
+            'security_level' => 'medium',
+            'hitl_required' => true,
             'properties' => [
                 'input' => [
                     'type' => 'string',
@@ -449,5 +582,58 @@ PROMPT;
     public function getToolsByCategory(ToolCategory $category): array
     {
         return $this->toolDefinitionRepo->findBy(['category' => $category]);
+    }
+
+    /**
+     * Generiert eine Tool-Definition direkt aus einer User-Anfrage (für den Orchestrator)
+     * 
+     * @param string $userRequest Die ursprüngliche User-Anfrage
+     * @return ToolDefinition Die generierte Tool-Definition
+     */
+    public function generateFromUserRequest(string $userRequest): ToolDefinition
+    {
+        // Extrahiere Tool-Name und Beschreibung aus der Anfrage
+        $toolName = $this->extractToolNameFromRequest($userRequest);
+        $description = $this->extractDescriptionFromRequest($userRequest);
+
+        return $this->generateToolDefinition($toolName, $description, [
+            'original_request' => $userRequest,
+            'source' => 'user_request',
+        ]);
+    }
+
+    /**
+     * Extrahiere Tool-Name aus einer User-Anfrage
+     */
+    private function extractToolNameFromRequest(string $request): string
+    {
+        // Versuche, einen Tool-Namen zu extrahieren
+        $requestLower = strtolower($request);
+        
+        // Muster für "Erstelle ein Tool für..."
+        if (preg_match('/(erstelle|erzeuge|mache|baue|entwickle)\s+(ein|einen|eine)?\s*(tool|funktion|werkzeug|feature)\s+(für|zum|zur)?\s+(.+)/i', $request, $matches)) {
+            $baseName = $matches[5] ?? $request;
+            return $this->sanitizeToolName($baseName);
+        }
+
+        // Muster für "Ich brauche ein Tool, das..."
+        if (preg_match('/(brauche|benötige|möchte|will)\s+(ein|einen|eine)?\s*(tool|funktion|werkzeug)\s+(.+)/i', $request, $matches)) {
+            $baseName = $matches[4] ?? $request;
+            return $this->sanitizeToolName($baseName);
+        }
+
+        // Standard: Nutze die ersten Wörter der Anfrage
+        $words = preg_split('/\s+/', $request);
+        $firstWords = array_slice($words, 0, 3);
+        return $this->sanitizeToolName(implode('_', $firstWords));
+    }
+
+    /**
+     * Extrahiere Beschreibung aus einer User-Anfrage
+     */
+    private function extractDescriptionFromRequest(string $request): string
+    {
+        // Die gesamte Anfrage als Beschreibung nutzen
+        return $request;
     }
 }
