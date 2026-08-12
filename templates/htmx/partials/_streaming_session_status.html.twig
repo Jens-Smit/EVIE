@@ -1,0 +1,132 @@
+{# templates/htmx/partials/_streaming_session_status.html.twig #}
+
+{% set statusBadges = {
+    'pending': 'secondary',
+    'running': 'primary',
+    'completed': 'success',
+    'failed': 'danger',
+    'cancelled': 'warning'
+} %}
+
+{% set statusIcons = {
+    'pending': 'fa-clock',
+    'running': 'fa-spinner fa-spin',
+    'completed': 'fa-check-circle',
+    'failed': 'fa-exclamation-circle',
+    'cancelled': 'fa-times-circle'
+} %}
+
+<div class="streaming-session-status card shadow-sm mb-3"
+     hx-swap-oob="true"
+     id="streaming-session-{{ session.sessionId }}">
+    
+    <div class="card-header bg-{{ statusBadges[session.status] ?? 'secondary' }} text-white">
+        <h6 class="mb-0">
+            <i class="fas {{ statusIcons[session.status] ?? 'fa-question-circle' }} me-2"></i>
+            Session: {{ session.sessionId|truncate(20) }}
+        </h6>
+    </div>
+    
+    <div class="card-body">
+        <div class="row">
+            <div class="col-md-6">
+                <dl class="row mb-0">
+                    <dt class="col-sm-4">Tool:</dt>
+                    <dd class="col-sm-8"><code>{{ session.toolName }}</code></dd>
+
+                    <dt class="col-sm-4">Status:</dt>
+                    <dd class="col-sm-8">
+                        <span class="badge bg-{{ statusBadges[session.status] ?? 'secondary' }}">
+                            {{ session.status }}
+                        </span>
+                    </dd>
+
+                    <dt class="col-sm-4">Fortschritt:</dt>
+                    <dd class="col-sm-8">
+                        {% if session.progressPercentage is not null %}
+                            <div class="d-flex align-items-center gap-2">
+                                <div class="progress flex-grow-1" style="height: 20px;">
+                                    <div class="progress-bar bg-primary" 
+                                         role="progressbar" 
+                                         style="width: {{ session.progressPercentage }}%" 
+                                         aria-valuenow="{{ session.progressPercentage }}" 
+                                         aria-valuemin="0" 
+                                         aria-valuemax="100">
+                                        {{ session.progressPercentage|round(1) }}%
+                                    </div>
+                                </div>
+                            </div>
+                        {% else %}
+                            <span class="text-muted">N/A</span>
+                        {% endif %}
+                    </dd>
+
+                    <dt class="col-sm-4">Erstellt:</dt>
+                    <dd class="col-sm-8">{{ session.createdAt|date('H:i:s') }}</dd>
+
+                    {% if session.startedAt is not null %}
+                        <dt class="col-sm-4">Gestartet:</dt>
+                        <dd class="col-sm-8">{{ session.startedAt|date('H:i:s') }}</dd>
+                    {% endif %}
+
+                    {% if session.completedAt is not null %}
+                        <dt class="col-sm-4">Abgeschlossen:</dt>
+                        <dd class="col-sm-8">{{ session.completedAt|date('H:i:s') }}</dd>
+                    {% endif %}
+                </dl>
+            </div>
+            
+            <div class="col-md-6">
+                <div class="mb-3">
+                    <h6>Aktueller Fortschritt:</h6>
+                    <p class="mb-0">{{ session.currentProgress|default('N/A') }}</p>
+                </div>
+                
+                {% if session.partialResults is not empty %}
+                    <div class="mb-3">
+                        <h6>Teilergebnisse:</h6>
+                        <pre class="bg-light p-2 rounded small">{{ session.partialResults|json_encode|raw }}</pre>
+                    </div>
+                {% endif %}
+
+                {% if session.finalResult is not empty %}
+                    <div class="mb-3">
+                        <h6>Endergebnis:</h6>
+                        <pre class="bg-light p-2 rounded small">{{ session.finalResult|json_encode|raw }}</pre>
+                    </div>
+                {% endif %}
+
+                {% if session.errorData is not empty %}
+                    <div class="alert alert-danger mb-0">
+                        <h6>Fehler:</h6>
+                        <p class="mb-0">{{ session.errorData.message|default('Unbekannter Fehler') }}</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <div class="card-footer bg-transparent d-flex justify-content-end gap-2">
+        {% if session.isActive() %}
+            <form 
+                  hx-post="{{ path('api_streaming_session_cancel', {'sessionId': session.sessionId}) }}"
+                  hx-target="#streaming-session-{{ session.sessionId }}"
+                  hx-swap="outerHTML"
+                  hx-confirm="Möchtest du diese Session wirklich abbrechen?">
+                <button type="submit" class="btn btn-sm btn-outline-warning">
+                    <i class="fas fa-times me-1"></i> Abbrechen
+                </button>
+            </form>
+        {% endif %}
+        
+        <form 
+              hx-delete="{{ path('api_streaming_session_delete', {'sessionId': session.sessionId}) }}"
+              hx-target="#streaming-session-{{ session.sessionId }}"
+              hx-swap="outerHTML"
+              hx-confirm="Möchtest du diese Session wirklich löschen?">
+            <button type="submit" class="btn btn-sm btn-outline-danger">
+                <i class="fas fa-trash me-1"></i> Löschen
+            </button>
+        </form>
+    </div>
+</div>
