@@ -1,0 +1,92 @@
+{# templates/htmx/forms/_subagent_form.html.twig #}
+
+<div class="subagent-form-card card shadow-sm mb-3"
+     hx-target="#subagent-results-container"
+     hx-swap="beforeend">
+    
+    <div class="card-header bg-info text-white">
+        <h5 class="mb-0">
+            <i class="fas fa-user-cog me-2"></i>
+            Aufgabe an Sub-Agenten delegieren
+        </h5>
+    </div>
+    
+    <div class="card-body">
+        <form 
+              hx-post="{{ path('htmx_subagents_delegate') }}"
+              hx-indicator="#subagent-loading-indicator"
+              hx-trigger="submit"
+              class="row g-3">
+            
+            <div class="col-md-5">
+                <label for="sub_agent_name" class="form-label">Sub-Agent auswählen</label>
+                <select class="form-select" id="sub_agent_name" name="sub_agent_name">
+                    <option value="" selected disabled>Sub-Agent auswählen...</option>
+                    <option value="">Automatisch auswählen</option>
+                    {% for name, subAgent in available_subagents %}
+                        <option value="{{ name }}" 
+                                {% if selected_subagent == name %}selected{% endif %}>
+                            {{ name }}
+                        </option>
+                    {% endfor %}
+                </select>
+            </div>
+            
+            <div class="col-md-5">
+                <label for="task" class="form-label">Aufgabe</label>
+                <textarea class="form-control" 
+                          id="task" 
+                          name="task" 
+                          rows="2" 
+                          placeholder="Beschreibe die Aufgabe, z. B.: Analysiere diese Daten @data_analyst"
+                          required></textarea>
+                <div class="form-text">
+                    Verwende <code>@agentname</code> um einen bestimmten Sub-Agenten zu adressieren.
+                </div>
+            </div>
+            
+            <div class="col-md-2 d-flex align-items-end">
+                <button type="submit" class="btn btn-info w-100">
+                    <i class="fas fa-paper-plane me-1"></i> Delegieren
+                </button>
+            </div>
+            
+            <div class="col-12">
+                <div id="subagent-loading-indicator" class="htmx-indicator d-none">
+                    <div class="d-flex align-items-center gap-2">
+                        <i class="fas fa-spinner fa-spin text-info"></i>
+                        <span>Aufgabe wird delegiert...</span>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<script>
+// Sub-Agenten-Formular Logik
+document.addEventListener('DOMContentLoaded', function() {
+    const subAgentSelect = document.getElementById('sub_agent_name');
+    const taskTextarea = document.getElementById('task');
+    
+    if (subAgentSelect && taskTextarea) {
+        // Sub-Agenten-spezifische Platzhalter
+        const subAgentPlaceholders = {
+            'website_researcher': 'Recherchiere die Webseite: @website_researcher https://example.com',
+            'data_analyst': 'Analysiere diese Daten: @data_analyst {"data": [1, 2, 3]}',
+            'code_assistant': 'Schreibe Code für: @code_assistant eine Funktion, die...',
+            'document_processor': 'Verarbeite dieses Dokument: @document_processor /path/to/file.pdf',
+            'communication_manager': 'Sende eine E-Mail: @communication_manager an recipient@example.com',
+        };
+        
+        subAgentSelect.addEventListener('change', function() {
+            const selectedAgent = this.value;
+            if (selectedAgent && subAgentPlaceholders[selectedAgent]) {
+                taskTextarea.placeholder = subAgentPlaceholders[selectedAgent];
+            } else {
+                taskTextarea.placeholder = 'Beschreibe die Aufgabe, z. B.: Analysiere diese Daten @data_analyst';
+            }
+        });
+    }
+});
+</script>
