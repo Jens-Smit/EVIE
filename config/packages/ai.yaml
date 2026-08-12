@@ -1,7 +1,9 @@
 # Symfony AI Bundle Configuration for EVIE
 # This configuration follows the official Symfony AI best practices
 # Reference: https://symfony.com/doc/current/ai/bundles/ai-bundle.html
-# UPDATED: Added 6 new sub-agents for enterprise functions
+# UPDATED: Added Phase 3 optimizations - LLM Prompt Optimization & Onboarding Prompt
+# Date: 2026-08-12
+# Author: EVIE System
 
 ai:
     platform:
@@ -11,7 +13,56 @@ ai:
             api_key: '%env(GEMINI_API_KEY)%'
 
     agent:
-        # Main orchestrator agent - analyzes requests and delegates to sub-agents
+        # =====================================================================
+        # PHASE 3 OPTIMIZATION: Tool Generator Agent with File-Based Prompt
+        # =====================================================================
+        # NEW: Dedicated agent for generating precise tool schemas
+        # Uses the optimized tool_schema_optimizer.txt prompt file
+        # Reference: ROADMAP_PHASE3.md - Measure 8: LLM-Prompt-Optimierung
+        tool_generator:
+            platform: 'ai.platform.mistral'
+            model: 'mistral-large-latest'
+            prompt:
+                file: '%kernel.project_dir%/config/prompts/tool_schema_optimizer.txt'
+                include_tools: true
+            memory:
+                service: 'App\AI\Onboarding\ContextMemoryProvider'
+            tools:
+                # Tool definition generation tools
+                - service: 'App\AI\Skills\ToolDefinitionGenerator'
+                  name: 'tool_definition_generator'
+                  description: 'Generates JSON schemas for new tools based on user requests'
+                # Dynamic tool registry for validation
+                - service: 'App\AI\Skills\DynamicSkillRegistry'
+                  name: 'dynamic_skill_registry'
+                  description: 'Registry for dynamic tool definitions'
+            # Security settings for tool generation
+            security_level: 'high'
+            hitl_required: true
+
+        # =====================================================================
+        # PHASE 3 OPTIMIZATION: Onboarding Agent with File-Based Prompt
+        # =====================================================================
+        # NEW: Dedicated agent for structured user onboarding
+        # Uses the optimized onboarding_prompt.json file
+        # Reference: ROADMAP_PHASE3.md - Measure 10: Onboarding-Prompt optimieren
+        onboarding:
+            platform: 'ai.platform.mistral'
+            model: 'mistral-large-latest'
+            prompt:
+                file: '%kernel.project_dir%/config/prompts/onboarding_prompt.json'
+                include_tools: false
+            memory:
+                service: 'App\AI\Onboarding\ContextMemoryProvider'
+            tools: false
+            # Onboarding-specific settings
+            max_tool_calls: 0
+            exclude_tool_messages: true
+
+        # =====================================================================
+        # MAIN ORCHESTRATOR AGENT - Updated with Phase 3 Improvements
+        # =====================================================================
+        # UPDATED: Enhanced prompt with better tool delegation and error handling
         orchestrator:
             platform: 'ai.platform.mistral'
             model: 'mistral-small-latest'
@@ -21,9 +72,15 @@ ai:
                     
                     **Deine Rolle:**
                     - Analysiere User-Anfragen und entscheide, ob ein passendes Tool oder Sub-Agent existiert
-                    - Falls kein Tool existiert, schlage die Erstellung eines neuen Tools vor
+                    - Falls kein Tool existiert, delegiere an den tool_generator-Agent zur Erstellung
                     - Delegiere Aufgaben an spezialisierte Sub-Agenten
+                    - Nutze den onboarding-Agent für neue Benutzer
                     - Führe KEINE Aufgaben direkt aus - du bist nur der Koordinator
+                    
+                    **WICHTIGE NEUERUNGEN (Phase 3):**
+                    - Nutze den tool_generator-Agent für neue Tool-Anfragen
+                    - Nutze den onboarding-Agent für Benutzer-Onboarding
+                    - Alle Tool-Schemata müssen dem EVIE-Standard entsprechen (siehe tool_schema_optimizer.txt)
                     
                     **Verfügbare Sub-Agenten:**
                     - website_researcher: Für Webseiten-Recherche und Inhaltszusammenfassung
@@ -37,14 +94,20 @@ ai:
                     - hr_manager: Für Personalwesen und Mitarbeiterverwaltung
                     - marketing_manager: Für Marketing, Kampagnen, Social Media
                     - ceo_assistant: Für Strategie, Planung und Entscheidungen
+                    - tool_generator: Für die Erstellung neuer Tool-Schemata (NEU in Phase 3)
+                    - onboarding: Für Benutzer-Onboarding (NEU in Phase 3)
                     
-                    **WICHTIG:**
-                    - Nutze die verfügbaren Tools und Sub-Agenten optimal
-                    - Sei präzise in deiner Analyse
-                    - Gib klare Empfehlungen für neue Tools
-                    - Antworte IMMER im JSON-Format:
-                      {"type": "subagent_delegation|tool_call|no_tool_found|dialog", "subagent": "agent_name", "task": "Aufgabenbeschreibung", "reason": "Begründung"}
-
+                    **ANTWORTFORMAT:**
+                    IMMER im JSON-Format antworten:
+                    {
+                      "type": "subagent_delegation|tool_call|tool_generation|onboarding|dialog",
+                      "subagent": "agent_name",
+                      "task": "Aufgabenbeschreibung",
+                      "reason": "Begründung",
+                      "tool_name": "tool_name" (nur bei tool_generation),
+                      "parameters": {} (nur bei tool_generation)
+                    }
+                    
                     **VERFÜGBARE DIREKTE TOOLS (nutze diese zuerst, kein MCP-Server nötig):**
                     - weather: Liefert Wetterdaten für eine Stadt (Parameter: {"city": "Stadtname"}) - NUTZE DIESES TOOL für Wetterfragen!
                     - file_read: Liest Dateien aus dem Sandbox-Verzeichnis
@@ -55,7 +118,17 @@ ai:
                     - linkedin: LinkedIn-Integration
                     - oauth: OAuth-Authentifizierung
                     - rest_api: Allgemeine REST-API-Aufrufe
-
+                    - dynamic_tool_executor: Führt dynamisch generierte Tools aus
+                    
+                    **TOOL-GENERIERUNG:**
+                    - Falls kein passendes Tool existiert, delegiere an tool_generator-Agent
+                    - Der tool_generator erstellt ein neues Tool-Schema basierend auf der Anfrage
+                    - Das Schema wird dann in der Datenbank gespeichert und kann nach HITL-Freigabe genutzt werden
+                    
+                    **ONBOARDING:**
+                    - Für neue Benutzer oder bei Anfragen wie "Hilfe", "Anleitung", "Loslegen"
+                    - Delegiere an onboarding-Agent für strukturiertes Onboarding
+                    
                     **MCP-Tool-Executor (mcp_tool_executor):**
                     - Führt entfernte Tools nur auf diesen konfigurierten Servern aus: filesystem, playwright, github
                     - Erfinde NIEMALS neue Server-Aliase wie "weather_server" oder "weather_api" - diese existieren NICHT!
@@ -68,7 +141,7 @@ ai:
                 - service: 'App\Mcp\Toolbox\McpToolExecutor'
                   name: 'mcp_tool_executor'
                   description: 'Führt MCP-Tools aus den konfigurierten Servern aus.'
-                
+
                 # Statische Tools (NICHT Sub-Agenten!)
                 - { service: 'App\AI\Skills\Tool\WeatherTool' }
                 - { service: 'App\AI\Skills\Tool\FileReadTool' }
@@ -228,13 +301,13 @@ ai:
                 - agent: 'api_integration'
                   description: 'Bindet externe APIs an, verwaltet OAuth und Authentifizierung'
                 - agent: 'project_manager'
-                  description: 'Verwaltet Aufgaben, Termine, Ressourcen und Projekte'
+                  description: 'Verwalte Aufgaben, Termine, Ressourcen und Projekte'
                 - agent: 'finance_manager'
                   description: 'Verwaltet Buchhaltung, Rechnungen, Zahlungen'
                 - agent: 'hr_manager'
                   description: 'Verwaltet Mitarbeiter, Gehälter, Verträge'
                 - agent: 'marketing_manager'
-                  description: 'Verwaltet Kampagnen, Social Media, Content'
+                  description: 'Verwalte Kampagnen, Social Media, Content'
 
         # Fallback Agent
         fallback:
@@ -250,6 +323,28 @@ ai:
         evie:
             orchestrator: 'orchestrator'
             handoffs:
+                # Onboarding (NEU in Phase 3)
+                onboarding:
+                    - 'onboarding'
+                    - 'anleitung'
+                    - 'hilfe'
+                    - 'loslegen'
+                    - 'start'
+                    - 'begin'
+                    - 'neu'
+                    - 'anfänger'
+                    - 'tutorial'
+                    - 'erklärung'
+
+                # Tool Generation (NEU in Phase 3)
+                tool_generator:
+                    - 'neues tool'
+                    - 'tool erstellen'
+                    - 'tool generieren'
+                    - 'schema erstellen'
+                    - 'funktion hinzufügen'
+                    - 'neue funktion'
+
                 # Webseiten-Recherche
                 website_researcher: 
                     - 'webseite'
@@ -265,7 +360,7 @@ ai:
                     - 'standort'
                     - 'branche'
                     - 'visiongastro'
-                
+
                 # Datenanalyse
                 data_analyst:
                     - 'daten'
@@ -274,7 +369,7 @@ ai:
                     - 'auswertung'
                     - 'zahlen'
                     - 'diagramm'
-                
+
                 # Code-Assistenz
                 code_assistant:
                     - 'code'
@@ -285,7 +380,7 @@ ai:
                     - 'php'
                     - 'symfony'
                     - 'entwickeln'
-                
+
                 # Dokumentenverarbeitung
                 document_processor:
                     - 'dokument'
@@ -295,7 +390,7 @@ ai:
                     - 'verarbeiten'
                     - 'lesen'
                     - 'extrahieren'
-                
+
                 # Kommunikation
                 communication_manager:
                     - 'mail'
@@ -305,7 +400,7 @@ ai:
                     - 'linkedin'
                     - 'slack'
                     - 'twilio'
-                
+
                 # API-Integration
                 api_integration:
                     - 'api'
@@ -315,7 +410,7 @@ ai:
                     - 'rest'
                     - 'graphql'
                     - 'endpoint'
-                
+
                 # Projektmanagement
                 project_manager:
                     - 'projekt'
@@ -323,7 +418,7 @@ ai:
                     - 'termin'
                     - 'ressource'
                     - 'planung'
-                
+
                 # Finanzen
                 finance_manager:
                     - 'finanzen'
@@ -331,7 +426,7 @@ ai:
                     - 'rechnung'
                     - 'zahlung'
                     - 'geld'
-                
+
                 # Personalwesen
                 hr_manager:
                     - 'mitarbeiter'
@@ -339,7 +434,7 @@ ai:
                     - 'gehalt'
                     - 'vertrag'
                     - 'hr'
-                
+
                 # Marketing
                 marketing_manager:
                     - 'marketing'
@@ -347,6 +442,7 @@ ai:
                     - 'social media'
                     - 'content'
                     - 'werbung'
+
             fallback: 'fallback'
 
     # Message Store für Dialogverlauf
