@@ -594,39 +594,7 @@ final readonly class OrchestratorDialogService
         return 'Führt spezifische Aufgaben basierend auf der User-Anfrage aus.';
     }
 
-    /**
-     * Behandelt den Fall, wenn der Orchestrator einen Sub-Agenten vorschlägt.
-     */
-    private function handleSubAgentSuggestion(string $userMessage, string $userIdentifier): string
-    {
-        $this->logger->info('Orchestrator schlägt Sub-Agenten vor. Erstelle und registriere...');
-
-        // Sub-Agenten bestimmen
-        $subAgent = $this->determineAndCreateSubAgent($userMessage);
-
-        // Tool-Definition für die Delegation erstellen
-        $toolName = 'delegate_to_' . $subAgent->getName();
-        $description = sprintf('Delegiert die Aufgabe an den %s Sub-Agenten', $subAgent->getName());
-
-        $toolDefinition = $this->toolGenerator->generateToolDefinition(
-            $toolName,
-            $description,
-            [
-                'user_identifier' => $userIdentifier,
-                'original_request' => $userMessage,
-                'sub_agent' => $subAgent->getName(),
-            ]
-        );
-
-        // Tool genehmigen, da es sich um eine Delegation handelt
-        $this->toolGenerator->approveTool($toolDefinition);
-
-        return sprintf(
-            "Ich habe deine Anfrage an den **%s** Sub-Agenten delegiert, der sich um diese Aufgabe kümmern wird. " .
-            "Der Agent wird die Anfrage bearbeiten und dir das Ergebnis liefern.",
-            $subAgent->getName()
-        );
-    }
+    
 
     /**
      * Behandelt unstrukturierte Antworten vom LLM

@@ -13,6 +13,7 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
+use Doctrine\ORM\EntityManagerInterface;
 
 /**
  * Controller für Streaming-Antworten.
@@ -23,15 +24,18 @@ class StreamingController extends AbstractController
     private StreamingSessionManager $sessionManager;
     private StreamingSessionRepository $sessionRepo;
     private MessageBusInterface $messageBus;
+    private EntityManagerInterface$entityManager;
 
     public function __construct(
         StreamingSessionManager $sessionManager,
         StreamingSessionRepository $sessionRepo,
-        MessageBusInterface $messageBus
+        MessageBusInterface $messageBus,
+        EntityManagerInterface $entityManager
     ) {
         $this->sessionManager = $sessionManager;
         $this->sessionRepo = $sessionRepo;
         $this->messageBus = $messageBus;
+        $this->entityManager = $entityManager;
     }
 
     /**

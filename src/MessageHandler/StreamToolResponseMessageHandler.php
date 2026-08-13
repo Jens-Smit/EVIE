@@ -5,6 +5,7 @@ namespace App\MessageHandler;
 
 use App\AI\Streaming\StreamingSessionManager;
 use App\Message\StreamToolResponseMessage;
+use App\AI\Streaming\StreamingPublisher;
 use Psr\Log\LoggerInterface;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
@@ -21,15 +22,18 @@ class StreamToolResponseMessageHandler
     private LoggerInterface $logger;
     // In einer echten Implementierung:
     // private MercureHubInterface $mercureHub;
+    private StreamingPublisher $streamingPublisher;
 
     public function __construct(
         StreamingSessionManager $sessionManager,
-        LoggerInterface $logger
+        LoggerInterface $logger,
+        StreamingPublisher $streamingPublisher
         // In einer echten Implementierung:
         // MercureHubInterface $mercureHub
     ) {
         $this->sessionManager = $sessionManager;
         $this->logger = $logger;
+        $this->streamingPublisher = $streamingPublisher;
         // $this->mercureHub = $mercureHub;
     }
 

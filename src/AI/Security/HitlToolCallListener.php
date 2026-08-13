@@ -14,6 +14,7 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 final class HitlToolCallListener
 {
     public function __construct(
+        private SecurityGuard $securityGuard, 
         private ToolDefinitionRepository $toolDefinitionRepo,
         private EventDispatcherInterface $eventDispatcher,
     ) {
