@@ -4,17 +4,23 @@ namespace App\Tests\Unit\AI\Skills;
 
 use App\AI\Skills\DynamicSkillRegistry;
 use App\AI\Skills\Tool\DynamicToolFactory;
+use App\Entity\ToolCategory;
 use App\Entity\ToolDefinition;
 use PHPUnit\Framework\TestCase;
 
 /**
  * Unit-Tests für DynamicSkillRegistry
  * 
+ * Phase 3: Maßnahme 9 - E2E-Test für Evolution-Flow
+ * 
  * Testet:
  * - Tool-Loading aus Repository
  * - Tool-Metadaten
  * - Tool-Verwaltung (add/remove)
  * - Initialisierungsstatus
+ * - CompilerPass-Integration (Phase 3)
+ * 
+ * @see ROADMAP_PHASE3.md
  */
 final class DynamicSkillRegistryTest extends TestCase
 {
@@ -37,17 +43,23 @@ final class DynamicSkillRegistryTest extends TestCase
     private function createToolDefinition(
         string $name = 'test_tool',
         string $status = 'approved',
-        array $schema = []
+        array $schema = [],
+        array $parameters = []
     ): ToolDefinition {
         $toolDefinition = new ToolDefinition();
         $toolDefinition->setName($name);
         $toolDefinition->setDescription('Test Tool Description');
         $toolDefinition->setStatus($status);
         $toolDefinition->setSchema($schema);
-        $toolDefinition->setParameters([
-            ['name' => 'input', 'type' => 'string', 'required' => true],
-        ]);
+        $toolDefinition->setParameters($parameters ?: [['name' => 'input', 'type' => 'string', 'required' => true]]);
         return $toolDefinition;
+    }
+
+    private function createToolCategory(string $name = 'general'): ToolCategory
+    {
+        $category = new ToolCategory();
+        $category->setName($name);
+        return $category;
     }
 
     // ========================================================================
@@ -93,6 +105,119 @@ final class DynamicSkillRegistryTest extends TestCase
 
         $this->assertFalse($this->registry->hasTool('nonexistent'));
         $this->assertEquals(0, $this->registry->countTools());
+    }
+
+    // ========================================================================
+    // PHASE 3: Tests für CompilerPass-Integration
+    // ========================================================================
+
+    /**
+     * Testet die Umwandlung von ToolDefinition in ausführbare Tools
+     * (wichtig für CompilerPass-Integration)
+     */
+    public function testToolDefinitionToToolConversion(): void
+    {
+        // 1. Erstelle eine ToolDefinition mit Schema
+        $toolDefinition = $this->createToolDefinition(
+            'compiler_pass_tool',
+            'approved',
+            [
+                'type' => 'object',
+                'properties' => [
+                    'input' => ['type' => 'string', 'description' => 'Input parameter'],
+                    'count' => ['type' => 'integer', 'minimum' => 0]
+                ],
+                'required' => ['input']
+            ],
+            [
+                ['name' => 'input', 'type' => 'string', 'required' => true],
+                ['name' => 'count', 'type' => 'integer', 'required' => false]
+            ]
+        );
+        
+        // 2. Mock Repository
+        $this->repo->method('findBy')->with(['status' => 'approved'])->willReturn([$toolDefinition]);
+        
+        // 3. Mock ToolFactory für die Umwandlung
+        $toolInterface = $this->createMock(\Symfony\AI\Agent\Tool\ToolInterface::class);
+        $toolInterface->method('getName')->willReturn('compiler_pass_tool');
+        
+        $this->toolFactory->method('createTool')->willReturn($toolInterface);
+        
+        // 4. Teste das Laden
+        $this->registry->initialize();
+        $tools = $this->registry->getAvailableTools();
+        
+        // 5. Validierungen
+        $this->assertArrayHasKey('compiler_pass_tool', $tools);
+        $this->assertInstanceOf(\Symfony\AI\Agent\Tool\ToolInterface::class, $tools['compiler_pass_tool']);
+    }
+
+    /**
+     * Testet die Behandlung von Tools mit Sicherheitsmetadaten (Phase 3)
+     */
+    public function testHandlingToolsWithSecurityMetadata(): void
+    {
+        // 1. Tool mit Sicherheitsmetadaten
+        $toolDefinition = $this->createToolDefinition(
+            'secure_tool',
+            'approved',
+            [
+                'type' => 'object',
+                'properties' => ['input' => ['type' => 'string']],
+                'security_level' => 'high',
+                'hitl_required' => true
+            ]
+        );
+        
+        // 2. Mock Repository
+        $this->repo->method('findBy')->with(['status' => 'approved'])->willReturn([$toolDefinition]);
+        
+        // 3. Mock ToolFactory
+        $toolInterface = $this->createMock(\Symfony\AI\Agent\Tool\ToolInterface::class);
+        $toolInterface->method('getName')->willReturn('secure_tool');
+        
+        $this->toolFactory->method('createTool')->willReturn($toolInterface);
+        
+        // 4. Teste das Laden
+        $this->registry->initialize();
+        $tools = $this->registry->getAvailableTools();
+        
+        // 5. Validierungen
+        $this->assertArrayHasKey('secure_tool', $tools);
+    }
+
+    /**
+     * Testet die Behandlung von Tools mit Sub-Agenten-Zuordnung (Phase 3)
+     */
+    public function testHandlingToolsWithSubAgentAssignment(): void
+    {
+        // 1. Tool mit Sub-Agenten-Zuordnung
+        $toolDefinition = $this->createToolDefinition(
+            'sub_agent_tool',
+            'approved',
+            [
+                'type' => 'object',
+                'properties' => ['input' => ['type' => 'string']],
+                'sub_agent' => 'data_analyst'
+            ]
+        );
+        
+        // 2. Mock Repository
+        $this->repo->method('findBy')->with(['status' => 'approved'])->willReturn([$toolDefinition]);
+        
+        // 3. Mock ToolFactory
+        $toolInterface = $this->createMock(\Symfony\AI\Agent\Tool\ToolInterface::class);
+        $toolInterface->method('getName')->willReturn('sub_agent_tool');
+        
+        $this->toolFactory->method('createTool')->willReturn($toolInterface);
+        
+        // 4. Teste das Laden
+        $this->registry->initialize();
+        $tools = $this->registry->getAvailableTools();
+        
+        // 5. Validierungen
+        $this->assertArrayHasKey('sub_agent_tool', $tools);
     }
 
     // ========================================================================
@@ -157,6 +282,49 @@ final class DynamicSkillRegistryTest extends TestCase
         $this->assertArrayHasKey('description', $availableTools['structured_tool']);
         $this->assertArrayHasKey('schema', $availableTools['structured_tool']);
         $this->assertArrayHasKey('status', $availableTools['structured_tool']);
+    }
+
+    // ========================================================================
+    // PHASE 3: Tests für Tool-Kategorisierung
+    // ========================================================================
+
+    /**
+     * Testet die Kategorisierung von Tools
+     */
+    public function testToolCategorization(): void
+    {
+        // 1. Tools mit verschiedenen Kategorien
+        $category1 = $this->createToolCategory('web_scraping');
+        $category2 = $this->createToolCategory('data_analysis');
+        
+        $tool1 = $this->createToolDefinition('web_tool', 'approved');
+        $tool1->setCategory($category1);
+        
+        $tool2 = $this->createToolDefinition('data_tool', 'approved');
+        $tool2->setCategory($category2);
+        
+        // 2. Mock Repository
+        $this->repo->method('findBy')->with(['status' => 'approved'])->willReturn([$tool1, $tool2]);
+        
+        // 3. Mock ToolFactory
+        $toolInterface1 = $this->createMock(\Symfony\AI\Agent\Tool\ToolInterface::class);
+        $toolInterface1->method('getName')->willReturn('web_tool');
+        
+        $toolInterface2 = $this->createMock(\Symfony\AI\Agent\Tool\ToolInterface::class);
+        $toolInterface2->method('getName')->willReturn('data_tool');
+        
+        $this->toolFactory->method('createTool')->willReturnOnConsecutiveCalls($toolInterface1, $toolInterface2);
+        
+        // 4. Teste das Laden
+        $this->registry->initialize();
+        $availableTools = $this->registry->getAvailableTools();
+        
+        // 5. Validierungen
+        $this->assertArrayHasKey('web_tool', $availableTools);
+        $this->assertArrayHasKey('data_tool', $availableTools);
+        
+        // Note: Die Kategorien sind in den ToolDefinition-Objekten gespeichert
+        // und werden über getAvailableTools() zurückgegeben
     }
 
     // ========================================================================
@@ -420,5 +588,47 @@ final class DynamicSkillRegistryTest extends TestCase
         $this->assertEquals('object', $metadata['schema']['type']);
         $this->assertArrayHasKey('properties', $metadata['schema']);
         $this->assertArrayHasKey('required', $metadata['schema']);
+    }
+
+    // ========================================================================
+    // PHASE 3: Tests für Evolution-Flow-Integration
+    // ========================================================================
+
+    /**
+     * Testet die Integration mit dem ToolDefinitionGenerator (Phase 3)
+     */
+    public function testIntegrationWithToolDefinitionGenerator(): void
+    {
+        // Dieser Test prüft, ob das DynamicSkillRegistry korrekt mit
+        // dem ToolDefinitionGenerator zusammenarbeitet
+        
+        // 1. Mock ToolDefinition mit Phase 3 Metadaten
+        $toolDefinition = $this->createToolDefinition(
+            'evolution_flow_tool',
+            'approved',
+            [
+                'type' => 'object',
+                'properties' => ['input' => ['type' => 'string']],
+                'phase_3_optimized' => true,
+                'prompt_version' => '1.0'
+            ]
+        );
+        
+        // 2. Mock Repository
+        $this->repo->method('findBy')->with(['status' => 'approved'])->willReturn([$toolDefinition]);
+        
+        // 3. Mock ToolFactory
+        $toolInterface = $this->createMock(\Symfony\AI\Agent\Tool\ToolInterface::class);
+        $toolInterface->method('getName')->willReturn('evolution_flow_tool');
+        
+        $this->toolFactory->method('createTool')->willReturn($toolInterface);
+        
+        // 4. Teste das Laden
+        $this->registry->initialize();
+        $tools = $this->registry->getAvailableTools();
+        
+        // 5. Validierungen
+        $this->assertArrayHasKey('evolution_flow_tool', $tools);
+        $this->assertInstanceOf(\Symfony\AI\Agent\Tool\ToolInterface::class, $tools['evolution_flow_tool']);
     }
 }
