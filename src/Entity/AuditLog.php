@@ -18,10 +18,10 @@ class AuditLog
     private ?int $id = null;
 
     #[ORMColumn(type: Types::STRING, length: 100)]
-    private ?string $action = null; // 'tool_execution', 'tool_registration', 'hitl_approval', 'security_violation'
+    private ?string $action = null;
 
     #[ORMColumn(type: Types::STRING, length: 255, nullable: true)]
-    private ?string $entityType = null; // 'ToolDefinition', 'User', 'DynamicTool'
+    private ?string $entityType = null;
 
     #[ORMColumn(type: Types::INTEGER, nullable: true)]
     private ?int $entityId = null;
@@ -42,7 +42,7 @@ class AuditLog
     private ?string $userAgent = null;
 
     #[ORMColumn(type: Types::STRING, length: 50, nullable: true)]
-    private ?string $status = null; // 'success', 'failure', 'warning'
+    private ?string $status = null;
 
     #[ORMColumn(type: Types::DATETIME_IMMUTABLE)]
     private ?DateTimeImmutable $createdAt = null;
@@ -52,7 +52,6 @@ class AuditLog
         $this->createdAt = new DateTimeImmutable();
     }
 
-    // Getter und Setter
     public function getId(): ?int
     {
         return $this->id;
@@ -168,9 +167,6 @@ class AuditLog
         return $this;
     }
 
-    /**
-     * Konvertiere zu Array für Logging
-     */
     public function toArray(): array
     {
         return [
