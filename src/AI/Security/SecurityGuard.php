@@ -1,103 +1,96 @@
 <?php
 
-namespace App\AI\Security;
+namespace AppAISecurity;
 
-use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
+use AppAISkillsToolDynamicTool;
+use PsrLogLoggerInterface;
 
 /**
- * SecurityGuard - Implementiert harte Sandbox-Grenzen für EVIE
- * 
- * Verhindert, dass dynamisch generierte Tools unsichere Services oder Ressourcen nutzen.
- * Integriert mit Symfony AI Bundle Best Practices.
- * 
- * @see https://symfony.com/doc/current/ai/bundles/ai-bundle.html
+ * SecurityGuard - Überprüft ob Tools sicher ausgeführt werden dürfen
+ * Keine Wildcards mehr, nur explizite Executor-IDs
  */
-final readonly class SecurityGuard
+class SecurityGuard
 {
-    private ParameterBagInterface $params;
+    private array $allowedExecutors = [
+        'api',
+        'database',
+        'filesystem',
+        'http',
+        'generic'
+    ];
 
-    public function __construct(ParameterBagInterface $params)
-    {
-        $this->params = $params;
+    private array $blockedResources = [
+        'localhost',
+        '127.0.0.1',
+        '192.168.',
+        '10.',
+        '172.16.',
+        '169.254.',
+        '0.0.0.0',
+        '::1',
+        'fe80::',
+        'fc00::',
+    ];
+
+    private array $blockedPaths = [
+        '/etc',
+        '/root',
+        '/home',
+        '/var',
+        '/usr',
+        '/bin',
+        '/sbin',
+        '/proc',
+        '/sys',
+        '/dev',
+        '/boot',
+    ];
+
+    private array $blockedUrls = [
+        'http://localhost',
+        'https://localhost',
+        'http://127.0.0.1',
+        'https://127.0.0.1',
+    ];
+
+    private array $allowedServices = [
+        'AppAISkillsExecutorGenericApiExecutor',
+        'AppAISkillsExecutorGenericFileExecutor',
+        'AppAISkillsExecutorGenericDatabaseExecutor',
+        'AppAISkillsExecutorGenericHttpExecutor',
+        'AppAISkillsExecutorGenericExecutor',
+        'AppAIMcpFilesystemMcpClient',
+        'AppAIMcpPlaywrightMcpClient',
+        'AppAIMcpGitHubMcpClient',
+    ];
+
+    public function __construct(
+        private LoggerInterface $logger
+    ) {
     }
 
     /**
-     * Prüft, ob ein Service in der Whitelist enthalten ist.
-     * Unterstützt:
-     * - Direkte Übereinstimmung
-     * - Vererbung (is_a() Prüfung)
-     * - Wildcard-Patterns (z. B. 'App\AI\Skills\Tool\*')
+     * Prüfe ob ein Tool sicher ist
      */
-    public function isServiceAllowed(string $serviceClass): bool
+    public function isToolSafe(DynamicTool $tool): bool
     {
-        $allowedServices = $this->getAllowedServices();
-
-        // 1. Direkte Übereinstimmung
-        if (in_array($serviceClass, $allowedServices, true)) {
-            return true;
-        }
-
-        // 2. Prüfe auf Wildcard-Patterns
-        foreach ($allowedServices as $allowedService) {
-            if (str_contains($allowedService, '*')) {
-                $pattern = str_replace('\*', '.*', $allowedService);
-                if (preg_match('/^' . $pattern . '$/', $serviceClass)) {
-                    return true;
-                }
-            }
-        }
-
-        // 3. Prüfe auf Vererbung
-        foreach ($allowedServices as $allowedService) {
-            if (class_exists($allowedService) && is_a($serviceClass, $allowedService, true)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Prüft, ob eine Ressource (z. B. URL, Dateipfad) blockiert ist.
-     */
-    public function isResourceBlocked(string $resource): bool
-    {
-        $blockedPatterns = $this->getBlockedPatterns();
-
-        foreach ($blockedPatterns as $pattern) {
-            if (str_contains($resource, $pattern)) {
-                return true;
-            }
-        }
-
-        return false;
-    }
-
-    /**
-     * Validiert eine Tool-Konfiguration auf Sicherheitskonformität.
-     * 
-     * @param array $config Tool-Konfiguration (Schema)
-     * @return bool True, wenn das Tool sicher ist
-     */
-    public function validateToolConfiguration(array $config): bool
-    {
-        // 1. Prüfe, ob das Tool einen erlaubten Service referenziert
-        if (isset($config['service']) && !$this->isServiceAllowed($config['service'])) {
+        $executorType = $tool->getExecutorType();
+        
+        // Prüfe ob Executor erlaubt ist
+        if (!in_array($executorType, $this->allowedExecutors, true)) {
+            $this->logger->warning('Tool hat nicht erlaubten Executor-Type', [
+                'tool_name' => $tool->getName(),
+                'executor_type' => $executorType
+            ]);
             return false;
         }
 
-        // 2. Prüfe, ob das Tool auf blockierte Ressourcen zugreift
-        if (isset($config['resource']) && $this->isResourceBlocked($config['resource'])) {
-            return false;
-        }
-
-        // 3. Prüfe blockierte URLs
-        if (isset($config['url']) && $this->isResourceBlocked($config['url'])) {
-            return false;
-        }
-
-        // 4. Prüfe blockierte Dateipfade
-        if (isset($config['path']) && $this->isResourceBlocked($config['path'])) {
+        // Prüfe Security Policy des Tools
+        $securityPolicy = $tool->getSecurityPolicy();
+        if (isset($securityPolicy['allowed']) && $securityPolicy['allowed'] === false) {
+            $this->logger->warning('Tool ist explizit blockiert', [
+                'tool_name' => $tool->getName()
+            ]);
             return false;
         }
 
@@ -105,128 +98,135 @@ final readonly class SecurityGuard
     }
 
     /**
-     * Wirft eine Exception, wenn ein Tool nicht erlaubt ist.
-     * 
-     * @param array $toolSchema Tool-Schema
-     * @param string $toolName Name des Tools
-     * @throws \RuntimeException Wenn das Tool nicht erlaubt ist
+     * Prüfe ob eine URL sicher ist (SSRF-Schutz)
      */
-    public function assertToolAllowed(array $toolSchema, string $toolName): void
+    public function isUrlSafe(string $url): bool
     {
-        if (!$this->validateToolConfiguration($toolSchema)) {
-            throw new \RuntimeException(sprintf(
-                'Tool "%s" ist nicht in der SecurityGuard-Whitelist enthalten. ' .
-                'Erlaubte Services: %s. Blockierte Patterns: %s. ' .
-                'Tool-Schema: %s',
-                $toolName,
-                implode(', ', $this->getAllowedServices()),
-                implode(', ', $this->getBlockedPatterns()),
-                json_encode($toolSchema, JSON_PRETTY_PRINT)
-            ));
+        // Prüfe gegen geblockte URLs
+        foreach ($this->blockedUrls as $blockedUrl) {
+            if (str_starts_with($url, $blockedUrl)) {
+                $this->logger->warning('URL ist geblockt', ['url' => $url]);
+                return false;
+            }
+        }
+
+        // Prüfe Host
+        $host = parse_url($url, PHP_URL_HOST) ?: $url;
+        foreach ($this->blockedResources as $blocked) {
+            if (str_starts_with($host, $blocked) || str_contains($host, $blocked)) {
+                $this->logger->warning('Host ist geblockt', ['host' => $host]);
+                return false;
+            }
+        }
+
+        // Prüfe ob es eine private IP ist
+        if ($this->isPrivateIp($host)) {
+            $this->logger->warning('Private IP-Adresse geblockt', ['host' => $host]);
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Prüfe ob ein Pfad sicher ist
+     */
+    public function isPathSafe(string $path): bool
+    {
+        foreach ($this->blockedPaths as $blockedPath) {
+            if (str_starts_with($path, $blockedPath)) {
+                $this->logger->warning('Pfad ist geblockt', ['path' => $path]);
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /**
+     * Prüfe ob ein Service erlaubt ist (keine Wildcards mehr!)
+     */
+    public function isServiceAllowed(string $serviceClass): bool
+    {
+        // Explizite Prüfung - keine Wildcards!
+        return in_array($serviceClass, $this->allowedServices, true);
+    }
+
+    /**
+     * Prüfe ob eine IP privat ist
+     */
+    private function isPrivateIp(string $host): bool
+    {
+        if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+            $ip = ip2long($host);
+            return 
+                ($ip >= ip2long('10.0.0.0') && $ip <= ip2long('10.255.255.255')) ||
+                ($ip >= ip2long('172.16.0.0') && $ip <= ip2long('172.31.255.255')) ||
+                ($ip >= ip2long('192.168.0.0') && $ip <= ip2long('192.168.255.255')) ||
+                ($ip >= ip2long('169.254.0.0') && $ip <= ip2long('169.254.255.255')) ||
+                $ip === ip2long('127.0.0.1') ||
+                $ip === ip2long('0.0.0.0');
+        }
+
+        return false;
+    }
+
+    /**
+     * Füge erlaubten Executor hinzu
+     */
+    public function addAllowedExecutor(string $executorType): void
+    {
+        if (!in_array($executorType, $this->allowedExecutors, true)) {
+            $this->allowedExecutors[] = $executorType;
         }
     }
 
     /**
-     * Gibt die Liste der erlaubten Services zurück.
+     * Füge geblockte Ressource hinzu
      */
+    public function addBlockedResource(string $resource): void
+    {
+        if (!in_array($resource, $this->blockedResources, true)) {
+            $this->blockedResources[] = $resource;
+        }
+    }
+
+    /**
+     * Füge erlaubten Service hinzu
+     */
+    public function addAllowedService(string $serviceClass): void
+    {
+        if (!in_array($serviceClass, $this->allowedServices, true)) {
+            $this->allowedServices[] = $serviceClass;
+        }
+    }
+
+    /**
+     * Entferne erlaubten Service
+     */
+    public function removeAllowedService(string $serviceClass): void
+    {
+        $key = array_search($serviceClass, $this->allowedServices, true);
+        if ($key !== false) {
+            unset($this->allowedServices[$key]);
+        }
+    }
+
+    /**
+     * Getter für Testzwecke
+     */
+    public function getAllowedExecutors(): array
+    {
+        return $this->allowedExecutors;
+    }
+
     public function getAllowedServices(): array
     {
-        return $this->params->get('evie.security.allowed_services', [
-            // Standardmäßig erlaubte Services
-            'App\AI\Skills\Tool\GenericApiExecutor',
-            'App\AI\Skills\Tool\FileSystemReadExecutor',
-            'App\AI\Skills\Tool\DatabaseQueryExecutor',
-            'App\AI\Skills\Tool\HttpClientExecutor',
-            // Symfony AI Bundle Tools
-            'Symfony\AI\Agent\Bridge\Wikipedia\Wikipedia',
-            'Symfony\AI\Agent\Bridge\Firecrawl\Firecrawl',
-            'Symfony\AI\Agent\Bridge\Tavily\Tavily',
-            // Wildcard für alle EVIE Tools
-            'App\AI\Skills\Tool\*',
-        ]);
+        return $this->allowedServices;
     }
 
-    /**
-     * Gibt die Liste der blockierten Patterns zurück.
-     */
-    public function getBlockedPatterns(): array
+    public function getBlockedResources(): array
     {
-        return $this->params->get('evie.security.blocked_patterns', [
-            // Lokale Server
-            'localhost',
-            '127.0.0.1',
-            // Sensible Verzeichnisse
-            '/etc/',
-            '/root/',
-            '/var/',
-            '/bin/',
-            '/sbin/',
-            // Sensible Dateien
-            '*.env',
-            '*.env.',
-            '*.pem',
-            '*.key',
-            '*.crt',
-            'composer.json',
-            'composer.lock',
-            // Datenbank-Verbindungen
-            'mysql:',
-            'postgresql:',
-            'sqlite:',
-            // Interne Netzwerke
-            '192.168.',
-            '10.',
-            '172.16.',
-        ]);
-    }
-
-    /**
-     * Fügt einen Service zur Whitelist hinzu.
-     */
-    public function allowService(string $serviceName): void
-    {
-        $allowedServices = $this->getAllowedServices();
-        if (!in_array($serviceName, $allowedServices, true)) {
-            $allowedServices[] = $serviceName;
-            $this->params->set('evie.security.allowed_services', $allowedServices);
-        }
-    }
-
-    /**
-     * Entfernt einen Service aus der Whitelist.
-     */
-    public function blockService(string $serviceName): void
-    {
-        $allowedServices = $this->getAllowedServices();
-        $key = array_search($serviceName, $allowedServices, true);
-        if ($key !== false) {
-            unset($allowedServices[$key]);
-            $this->params->set('evie.security.allowed_services', array_values($allowedServices));
-        }
-    }
-
-    /**
-     * Fügt ein Pattern zur Blocklist hinzu.
-     */
-    public function blockPattern(string $pattern): void
-    {
-        $blockedPatterns = $this->getBlockedPatterns();
-        if (!in_array($pattern, $blockedPatterns, true)) {
-            $blockedPatterns[] = $pattern;
-            $this->params->set('evie.security.blocked_patterns', $blockedPatterns);
-        }
-    }
-
-    /**
-     * Entfernt ein Pattern aus der Blocklist.
-     */
-    public function allowPattern(string $pattern): void
-    {
-        $blockedPatterns = $this->getBlockedPatterns();
-        $key = array_search($pattern, $blockedPatterns, true);
-        if ($key !== false) {
-            unset($blockedPatterns[$key]);
-            $this->params->set('evie.security.blocked_patterns', array_values($blockedPatterns));
-        }
+        return $this->blockedResources;
     }
 }
