@@ -2,6 +2,7 @@
 
 namespace App\AI\Agent;
 
+use App\AI\Skills\DynamicSkillRegistryInterface; 
 use Symfony\AI\Agent\AgentInterface;
 use App\Entity\SubAgentDefinition;
 use Symfony\AI\Agent\Toolbox\Tool\Subagent;

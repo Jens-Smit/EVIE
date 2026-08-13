@@ -14,7 +14,7 @@ use Symfony\AI\Agent\AgentInterface;
 use Symfony\AI\Agent\InputProcessor\SystemPromptInputProcessor;
 use Symfony\AI\Platform\PlatformInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
-
+use App\AI\Skills\DynamicSkillRegistryInterface; 
 /**
  * Factory für die dynamische und statische Erstellung von Sub-Agenten.
  * Unterstützt:

@@ -227,7 +227,7 @@ services:
         arguments:
             $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
             $toolFactory: '@App\AI\Skills\Tool\DynamicToolFactory'
-            $toolRegistry: '@ai.agent.tool_registry'
+            #$toolRegistry: '@ai.agent.tool_registry'
 
     # Dynamic Tool Factory - UPDATED: DynamicSkillRegistry wird über Setter Injection injiziert
     App\AI\Skills\Tool\DynamicToolFactory:
@@ -531,7 +531,7 @@ services:
         arguments:
             $sessionManager: '@App\AI\Streaming\StreamingSessionManager'
             $sessionRepo: '@App\Repository\StreamingSessionRepository'
-            $messageBus: '@message_bus'
+            $messageBus: '@messenger.routable_message_bus'
             $entityManager: '@doctrine.orm.entity_manager'
         tags: ['controller.service_arguments']
 
