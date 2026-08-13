@@ -4,8 +4,7 @@ namespace App\AI\Skills\Tool;
 
 use App\Entity\ToolDefinition;
 use App\Repository\ToolDefinitionRepository;
-use App\AI\Agent\SubAgentFactory;
-use App\AI\Skills\DynamicSkillRegistry;
+use App\AI\Agent\SubAgentFactoryInterface;
 use App\AI\Security\SecurityGuard;
 use Psr\Log\LoggerInterface;
 use Symfony\AI\Agent\AgentInterface;
@@ -19,6 +18,7 @@ use Symfony\Component\DependencyInjection\ContainerInterface;
  * 1. Erstellung von DynamicTool-Instanzien für CompilerPass-Integration
  * 2. Sub-Agenten-Delegation für komplexe Aufgaben
  * 3. SecurityGuard-Integration für Sicherheitsprüfungen
+ * 4. Vermeidung zirkulärer Abhängigkeiten durch Interface-Nutzung
  * 
  * @see https://symfony.com/doc/current/ai/bundles/ai-bundle.html#register-tools
  */
@@ -28,8 +28,7 @@ final readonly class DynamicToolFactory
         private ContainerInterface $container,
         private ToolDefinitionRepository $toolDefinitionRepo,
         private LoggerInterface $logger,
-        private SubAgentFactory $subAgentFactory,
-        private DynamicSkillRegistry $dynamicSkillRegistry,
+        private SubAgentFactoryInterface $subAgentFactory,  // ✅ Interface statt konkreter Klasse
         private SecurityGuard $securityGuard,
     ) {
     }
@@ -327,9 +326,9 @@ final readonly class DynamicToolFactory
         return new class($toolDefinition, $this->logger, $this->subAgentFactory) implements ToolInterface {
             private ToolDefinition $toolDefinition;
             private LoggerInterface $logger;
-            private SubAgentFactory $subAgentFactory;
+            private SubAgentFactoryInterface $subAgentFactory;
 
-            public function __construct(ToolDefinition $toolDefinition, LoggerInterface $logger, SubAgentFactory $subAgentFactory)
+            public function __construct(ToolDefinition $toolDefinition, LoggerInterface $logger, SubAgentFactoryInterface $subAgentFactory)
             {
                 $this->toolDefinition = $toolDefinition;
                 $this->logger = $logger;
@@ -403,5 +402,16 @@ final readonly class DynamicToolFactory
         } catch (\Exception $e) {
             return false;
         }
+    }
+
+    /**
+     * Setzt das DynamicSkillRegistry (für Setter Injection zur Vermeidung zirkulärer Abhängigkeiten).
+     */
+    public function setDynamicSkillRegistry(DynamicSkillRegistryInterface $dynamicSkillRegistry): void
+    {
+        // Diese Methode wird nicht direkt verwendet, da DynamicSkillRegistry
+        // nicht in DynamicToolFactory benötigt wird. Sie ist hier für zukünftige
+        // Erweiterungen oder falls die Architektur sich ändert.
+        // Die eigentliche Abhängigkeit wird über SubAgentFactoryInterface gelöst.
     }
 }
