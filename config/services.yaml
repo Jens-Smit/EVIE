@@ -1,12 +1,11 @@
 services:
     # Default configuration for services in *this* file
     _defaults:
-        autowire: true      # Automatically injects dependencies in your services
-        autoconfigure: true # Automatically registers your services as commands, event subscribers, etc.
+        autowire: true
+        autoconfigure: true
 
     # makes classes in src/ available to be used as services
-    # this creates a PHP proxy for the service and runs it through the Symfony dependency injection system
-    App:
+    App\:
         resource: '../src/'
         exclude:
             - '../src/DependencyInjection/'
@@ -14,121 +13,29 @@ services:
             - '../src/Kernel.php'
             - '../src/Tests/'
 
-    # explicitly configure the services that cannot be autowired
-    # or need to be public for some reason
-    AppAISkillsToolDynamicToolFactory:
-        arguments:
-            $definitionLoader: '@AppAISkillsSubAgentDefinitionLoader'
-            $toolFactory: '@AppAISkillsSubAgentToolFactory'
-            $registry: '@AppAISkillsSubAgentRegistry'
-            $promptResolver: '@AppAISkillsSubAgentPromptResolver'
-            $logger: '@logger'
-
-    AppAISkillsSubAgentDefinitionLoader:
-        arguments:
-            $entityManager: '@doctrine.orm.entity_manager'
-
-    AppAISkillsSubAgentToolFactory:
-        arguments:
-            $definitionLoader: '@AppAISkillsSubAgentDefinitionLoader'
-
-    AppAISkillsSubAgentRegistry:
-        arguments:
-            $toolFactory: '@AppAISkillsSubAgentToolFactory'
-            $definitionLoader: '@AppAISkillsSubAgentDefinitionLoader'
-            $logger: '@logger'
-
-    AppAISkillsSubAgentPromptResolver:
-        arguments:
-            $promptDirectory: '%kernel.project_dir%/config/prompts'
-
-    # Executor Services
-    AppAISkillsExecutorExecutorResolver:
-        arguments:
-            $logger: '@logger'
-
-    AppAISkillsExecutorGenericDatabaseExecutor:
-        arguments:
-            $connection: '@doctrine.dbal.default_connection'
-
-    AppAISkillsToolDynamicToolExecutor:
-        arguments:
-            $executorResolver: '@AppAISkillsExecutorExecutorResolver'
-            $logger: '@logger'
-
     # RAG Services
-    AppAIRagMistralEmbeddingService:
-        arguments:
-            $httpClient: '@http_client'
-            $apiKey: '%env(SYMFONY_AI_MISTRAL_KEY)%'
-
-    AppAIRagVectorStore:
-        arguments:
-            $embeddingRepository: '@AppRepositoryEmbeddingRepository'
-            $entityManager: '@doctrine.orm.entity_manager'
-            $embeddingService: '@AppAIRagEmbeddingServiceInterface'
-
-    AppAIRagRetriever:
-        arguments:
-            $vectorStore: '@AppAIRagVectorStore'
-
-    AppAIRagContextInjector:
-        arguments:
-            $retriever: '@AppAIRagRetriever'
+    App\AI\Rag\EmbeddingServiceInterface: '@App\AI\Rag\MistralEmbeddingService'
 
     # Security Services
-    AppAISecuritySecurityGuard:
+    App\Security\UserProvider:
         arguments:
-            $logger: '@logger'
+            $userRepository: '@App\Repository\UserRepository'
 
-    AppAISecurityOutboundRequestPolicy:
-        arguments:
-            $logger: '@logger'
-
-    AppAISecurityAuditLogger:
-        arguments:
-            $auditLogRepository: '@AppRepositoryAuditLogRepository'
-            $requestStack: '@request_stack'
-
-    # Workflow Services
-    AppAIWorkflowHitlWorkflowManager:
-        arguments:
-            $entityManager: '@doctrine.orm.entity_manager'
-            $skillRegistry: '@AppAISkillsDynamicSkillRegistry'
-            $auditLogger: '@AppAISecurityAuditLogger'
-            $logger: '@logger'
-
-    # Onboarding Services
-    AppAIOnboardingContextStoreManager:
-        arguments:
-            $entityManager: '@doctrine.orm.entity_manager'
-            $vectorStore: '@AppAIRagVectorStore'
-            $retriever: '@AppAIRagRetriever'
-            $logger: '@logger'
-
-    # Security
-    AppSecurityUserProvider:
-        arguments:
-            $userRepository: '@AppRepositoryUserRepository'
-
-    AppSecurityAuthenticatorLoginFormAuthenticator:
+    App\Security\Authenticator\LoginFormAuthenticator:
         arguments:
             $urlGenerator: '@router'
 
+    # Controllers
+    App\Controller\SecurityController:
+        tags: ['controller.service_arguments']
+        arguments:
+            $userRepository: '@App\Repository\UserRepository'
+
     # Event Listeners
-    AppEventListenerApiSecurityListener:
+    App\EventListener\ApiSecurityListener:
         tags:
             - { name: kernel.event_listener, event: kernel.controller, priority: 10 }
 
-    AppEventListenerToolSecurityListener:
+    App\EventListener\ToolSecurityListener:
         tags:
             - { name: kernel.event_listener, event: kernel.view, priority: 5 }
-
-    # Controllers
-    AppControllerSecurityController:
-        tags: ['controller.service_arguments']
-        arguments:
-            $userRepository: '@AppRepositoryUserRepository'
-
-    # Alias für EmbeddingServiceInterface
-    AppAIRagEmbeddingServiceInterface: '@AppAIRagMistralEmbeddingService'
