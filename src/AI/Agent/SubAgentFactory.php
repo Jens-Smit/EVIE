@@ -7,13 +7,12 @@ use App\Entity\SubAgentDefinition;
 use App\Entity\ToolDefinition;
 use App\Repository\SubAgentDefinitionRepository;
 use App\Repository\ToolDefinitionRepository;
-use App\AI\Skills\DynamicSkillRegistry;
+use App\AI\Skills\DynamicSkillRegistryInterface;
 use Psr\Container\ContainerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\AI\Agent\Agent;
 use Symfony\AI\Agent\AgentInterface;
 use Symfony\AI\Agent\InputProcessor\SystemPromptInputProcessor;
-use Symfony\AI\Agent\Toolbox\Tool\Subagent;
 use Symfony\AI\Platform\PlatformInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 
@@ -24,12 +23,15 @@ use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
  * - Fallback zu statischer Konfiguration (ai.yaml)
  * - Registrierung als Tools für den Orchestrator
  * - Lazy-Loading für Runtime-Registrierung
+ * - Implementiert SubAgentFactoryInterface zur Vermeidung zirkulärer Abhängigkeiten
+ * 
+ * @implements SubAgentFactoryInterface
  */
-final class SubAgentFactory
+final class SubAgentFactory implements SubAgentFactoryInterface
 {
     private PlatformInterface $platform;
     private ToolDefinitionRepository $toolDefinitionRepo;
-    private DynamicSkillRegistry $dynamicSkillRegistry;
+    private ?DynamicSkillRegistryInterface $dynamicSkillRegistry = null;
     private LoggerInterface $logger;
     private ContainerInterface $container;
     private SubAgentDefinitionRepository $subAgentDefinitionRepo;
@@ -38,7 +40,6 @@ final class SubAgentFactory
     public function __construct(
         PlatformInterface $platform,
         ToolDefinitionRepository $toolDefinitionRepo,
-        DynamicSkillRegistry $dynamicSkillRegistry,
         LoggerInterface $logger,
         ContainerInterface $container,
         SubAgentDefinitionRepository $subAgentDefinitionRepo,
@@ -46,11 +47,18 @@ final class SubAgentFactory
     ) {
         $this->platform = $platform;
         $this->toolDefinitionRepo = $toolDefinitionRepo;
-        $this->dynamicSkillRegistry = $dynamicSkillRegistry;
         $this->logger = $logger;
         $this->container = $container;
         $this->subAgentDefinitionRepo = $subAgentDefinitionRepo;
         $this->params = $params;
+    }
+
+    /**
+     * Setzt das DynamicSkillRegistry (für Setter Injection zur Vermeidung zirkulärer Abhängigkeiten).
+     */
+    public function setDynamicSkillRegistry(DynamicSkillRegistryInterface $dynamicSkillRegistry): void
+    {
+        $this->dynamicSkillRegistry = $dynamicSkillRegistry;
     }
 
     /**
@@ -140,7 +148,9 @@ final class SubAgentFactory
                 $toolDefinition = $this->createToolDefinitionForSubAgent($definition, $subAgent);
                 
                 // Registriere die ToolDefinition im DynamicSkillRegistry
-                $this->dynamicSkillRegistry->addTool($toolDefinition);
+                if ($this->dynamicSkillRegistry !== null) {
+                    $this->dynamicSkillRegistry->addTool($toolDefinition);
+                }
 
                 $this->logger->info('Sub-Agent aus Datenbank registriert', [
                     'name' => $definition->getName(),
@@ -288,7 +298,7 @@ final class SubAgentFactory
         string $role,
         string $model = 'mistral-large-latest',
         array $tools = [],
-    ): Subagent {
+    ): \Symfony\AI\Agent\Toolbox\Tool\Subagent {
         $this->logger->info('Erstelle SubAgent-Tool für Orchestrator', [
             'name' => $name,
             'role' => $role,
@@ -301,7 +311,7 @@ final class SubAgentFactory
             inputProcessors: [new SystemPromptInputProcessor($this->generatePromptForRole($role))],
         );
 
-        $subAgentTool = new Subagent($subAgent);
+        $subAgentTool = new \Symfony\AI\Agent\Toolbox\Tool\Subagent($subAgent);
 
         $this->registerToolDefinition($name, $role);
 
@@ -343,7 +353,9 @@ final class SubAgentFactory
         ]);
 
         $this->toolDefinitionRepo->save($toolDefinition, true);
-        $this->dynamicSkillRegistry->addTool($toolDefinition);
+        if ($this->dynamicSkillRegistry !== null) {
+            $this->dynamicSkillRegistry->addTool($toolDefinition);
+        }
     }
 
     /**
@@ -376,7 +388,9 @@ final class SubAgentFactory
         ]);
 
         $this->toolDefinitionRepo->save($toolDefinition, true);
-        $this->dynamicSkillRegistry->addTool($toolDefinition);
+        if ($this->dynamicSkillRegistry !== null) {
+            $this->dynamicSkillRegistry->addTool($toolDefinition);
+        }
     }
 
     /**
