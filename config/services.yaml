@@ -166,16 +166,17 @@ services:
             $platform: '@ai.platform.mistral'
             $logger: '@logger'
 
-    # Sub-Agent Factory - UPDATED mit Container und SubAgentDefinitionRepository
+    # Sub-Agent Factory - UPDATED: DynamicSkillRegistry wird über Setter Injection injiziert
     App\AI\Agent\SubAgentFactory:
         arguments:
             $platform: '@ai.platform.mistral'
             $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
-            $dynamicSkillRegistry: '@App\AI\Skills\DynamicSkillRegistry'
             $logger: '@logger'
             $container: '@service_container'
             $subAgentDefinitionRepo: '@App\Repository\SubAgentDefinitionRepository'
             $params: '@parameter_bag'
+        calls:
+            - [setDynamicSkillRegistry, ['@App\AI\Skills\DynamicSkillRegistry']]
 
     # Sub-Agent Dispatcher - UPDATED mit SubAgentFactory und SubAgentDefinitionRepository
     App\AI\Agent\SubAgentDispatcher:
@@ -227,15 +228,16 @@ services:
             $toolFactory: '@App\AI\Skills\Tool\DynamicToolFactory'
             $toolRegistry: '@ai.agent.tool_registry'
 
-    # Dynamic Tool Factory - UPDATED mit SecurityGuard und Container
+    # Dynamic Tool Factory - UPDATED: DynamicSkillRegistry wird über Setter Injection injiziert
     App\AI\Skills\Tool\DynamicToolFactory:
         arguments:
             $container: '@service_container'
             $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
             $logger: '@logger'
             $subAgentFactory: '@App\AI\Agent\SubAgentFactory'
-            $dynamicSkillRegistry: '@App\AI\Skills\DynamicSkillRegistry'
             $securityGuard: '@App\AI\Security\SecurityGuard'
+        calls:
+            - [setDynamicSkillRegistry, ['@App\AI\Skills\DynamicSkillRegistry']]
 
     # Dynamic Tool Executor
     App\AI\Skills\Tool\DynamicToolExecutor:
@@ -582,46 +584,3 @@ services:
     App\Repository\StreamingSessionRepository:
         arguments:
             $registry: '@doctrine'
-
-    # ========================================================================
-    # Streaming Services (Phase 2 - Measure 5)
-    # ========================================================================
-
-    # Streaming Session Manager
-    App\AI\Streaming\StreamingSessionManager:
-        arguments:
-            $entityManager: '@doctrine.orm.entity_manager'
-            $sessionRepo: '@App\Repository\StreamingSessionRepository'
-            $logger: '@logger'
-
-    # Streaming Publisher (Mercure Integration)
-    App\AI\Streaming\StreamingPublisher:
-        arguments:
-            $mercureHub: '@mercure.hub'
-            $logger: '@logger'
-
-    # Message Handlers (automatically registered via AsMessageHandler attribute)
-    App\MessageHandler\ExecuteToolMessageHandler:
-        arguments:
-            $toolExecutor: '@App\AI\Skills\Tool\DynamicToolExecutor'
-            $sessionManager: '@App\AI\Streaming\StreamingSessionManager'
-            $messageBus: '@message_bus'
-            $logger: '@logger'
-
-    App\MessageHandler\StreamToolResponseMessageHandler:
-        arguments:
-            $sessionManager: '@App\AI\Streaming\StreamingSessionManager'
-            $streamingPublisher: '@App\AI\Streaming\StreamingPublisher'
-            $logger: '@logger'
-
-    App\MessageHandler\StartStreamingSessionMessageHandler:
-        arguments:
-            $sessionManager: '@App\AI\Streaming\StreamingSessionManager'
-            $streamingPublisher: '@App\AI\Streaming\StreamingPublisher'
-            $logger: '@logger'
-
-    App\MessageHandler\EndStreamingSessionMessageHandler:
-        arguments:
-            $sessionManager: '@App\AI\Streaming\StreamingSessionManager'
-            $streamingPublisher: '@App\AI\Streaming\StreamingPublisher'
-            $logger: '@logger'
