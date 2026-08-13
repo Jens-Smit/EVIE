@@ -17,12 +17,12 @@ class UserProvider implements UserProviderInterface
 
     public function loadUserByIdentifier(string $identifier): UserInterface
     {
-        $user = $this->userRepository->findActiveByEmail($identifier);
-
+        $user = $this->userRepository->findByEmail($identifier);
+        
         if (!$user) {
-            throw new UserNotFoundException(sprintf('User with email "%s" not found.', $identifier));
+            throw new UserNotFoundException();
         }
-
+        
         return $user;
     }
 
@@ -33,11 +33,7 @@ class UserProvider implements UserProviderInterface
 
     public function refreshUser(UserInterface $user): UserInterface
     {
-        if (!$user instanceof User) {
-            throw new InvalidArgumentException(sprintf('Expected instance of %s, got %s.', User::class, $user::class));
-        }
-
-        return $this->userRepository->find($user->getId());
+        return $user;
     }
 
     public function supportsClass(string $class): bool
