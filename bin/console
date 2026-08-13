@@ -1,0 +1,20 @@
+#!/usr/bin/env php
+<?php
+
+use SymfonyComponentConsoleInputArgvInput;
+
+if (PHP_VERSION_ID < 80200) {
+    echo "PHP 8.2 or higher is required.
+";
+    exit(1);
+}
+
+set_error_handler(function ($severity, $message, $file, $line) {
+    if ($severity & error_reporting()) {
+        throw new ErrorException($message, 0, $severity, $file, $line);
+    }
+});
+
+require __DIR__.'/../vendor/autoload_runtime.php';
+
+return (new SymfonyComponentRuntimeApplication())->run(new ArgvInput());
