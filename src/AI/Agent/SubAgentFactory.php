@@ -7,7 +7,6 @@ use App\Entity\SubAgentDefinition;
 use App\Entity\ToolDefinition;
 use App\Repository\SubAgentDefinitionRepository;
 use App\Repository\ToolDefinitionRepository;
-use App\AI\Skills\DynamicSkillRegistryInterface;  // ✅ Korrekter Namespace
 use Psr\Container\ContainerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\AI\Agent\Agent;
@@ -31,8 +30,10 @@ final class SubAgentFactory implements SubAgentFactoryInterface
 {
     private PlatformInterface $platform;
     private ToolDefinitionRepository $toolDefinitionRepo;
-    /** @var \App\AI\Skills\DynamicSkillRegistryInterface|null */  // ✅ Vollqualifizierter Name im DocBlock
+    
+    /** @var \App\AI\Skills\DynamicSkillRegistryInterface|null */
     private $dynamicSkillRegistry = null;
+    
     private LoggerInterface $logger;
     private ContainerInterface $container;
     private SubAgentDefinitionRepository $subAgentDefinitionRepo;
@@ -57,7 +58,7 @@ final class SubAgentFactory implements SubAgentFactoryInterface
     /**
      * Setzt das DynamicSkillRegistry (für Setter Injection zur Vermeidung zirkulärer Abhängigkeiten).
      */
-    public function setDynamicSkillRegistry(DynamicSkillRegistryInterface $dynamicSkillRegistry): void
+    public function setDynamicSkillRegistry(\App\AI\Skills\DynamicSkillRegistryInterface $dynamicSkillRegistry): void
     {
         $this->dynamicSkillRegistry = $dynamicSkillRegistry;
     }
