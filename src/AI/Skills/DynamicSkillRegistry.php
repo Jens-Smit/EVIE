@@ -17,10 +17,12 @@ use Symfony\AI\Agent\Tool\ToolRegistry;
  * - Event-basierte Aktualisierung
  * - Integration mit DynamicToolFactory für Tool-Erstellung
  * - Registrierung im Symfony AI Bundle ToolRegistry
+ * - Implementiert DynamicSkillRegistryInterface zur Vermeidung zirkulärer Abhängigkeiten
  * 
  * @see https://symfony.com/doc/current/ai/bundles/ai-bundle.html
+ * @implements DynamicSkillRegistryInterface
  */
-class DynamicSkillRegistry
+class DynamicSkillRegistry implements DynamicSkillRegistryInterface
 {
     private ToolDefinitionRepository $toolDefinitionRepo;
     private DynamicToolFactory $toolFactory;
