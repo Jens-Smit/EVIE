@@ -1,126 +1,44 @@
-# Node.js
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.pnp
-.pnp.js
-
-# Vite
-dist/
-dist-ssr/
-*.local
-.vite/
-
-# Environment variables
-.env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-.env.*.local
-
-# Pachag JWT config (wie vom Benutzer angefordert)
-config/jwt/
-pachag.config.js
-pachag.config.json
-*.pachag
-pachag*
-
-# Docker
-docker-compose.override.yml
-docker-compose.*.yml
-.env.docker
-
-# Symfony
-vendor/
-var/
-bin/
-config/packages/dev/
-config/packages/test/
-public/bundles/
-public/uploads/
-translations/
-*.php_cs.cache
+# Dependencies
+/vendor/
 
 # IDE
-.vscode/
-.idea/
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
-
-# OS generated files
-.DS_Store
-.DS_Store?
-._*
-.Spotlight-V100
-.Trashes
-ehthumbs.db
-Thumbs.db
-
-# Logs
-logs
-*.log
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-pnpm-debug.log*
-
-# Runtime data
-pids
-*.pid
-*.seed
-*.pid.lock
-
-# Coverage directory used by tools like istanbul
-coverage/
-*.lcov
-
-# Optional npm cache directory
-.npm
-
-# Optional eslint cache
-.eslintcache
-
-# Optional REPL history
-.node_repl_history
-
-# Output of 'npm pack'
-*.tgz
-
-# Yarn Integrity file
-.yarn-integrity
-
-# parcel-bundler cache
-.cache
-.parcel-cache
-
-# Serverless directories
-.serverless/
-
-# Built applications
-*.exe
-*.dll
-*.so
-*.dylib
-
-# Java metadata
-*.class
-
-# Cache directory for Electron
-electron-cache/
-
-# Cache directory for Yarn
-yarn-cache/
-
-# Cache directory for pnpm
-pnpm-store/
-
-# Editor directories and files
 .idea/
 .vscode/
 *.swp
 *.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Cache
+/var/cache/
+/var/log/
+/var/sessions/
+
+# Build
+/public/build/
+
+# Docker
+.docker/
+
+# Composer
+composer.lock
+
+# Local configuration
+phpunit.xml
+phpunit.xml.dist
+
+# IDE specific
+.phpstorm.meta.php
+
+# Security - never commit these!
+*.pem
+*.key
+*.crt
