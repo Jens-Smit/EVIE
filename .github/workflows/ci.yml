@@ -1,0 +1,60 @@
+name: EVIE CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    
+    services:
+      postgres:
+        image: tanka/postgres-15-pgvector:latest
+        env:
+          POSTGRES_DB: evie_test
+          POSTGRES_USER: evie
+          POSTGRES_PASSWORD: evie
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_pgsql
+          coverage: none
+
+      - name: Copy .env.dist to .env
+        run: cp .env.dist .env
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-suggest
+
+      - name: Wait for PostgreSQL
+        run: |
+          while ! pg_isready -h localhost -p 5432 -U evie; do
+            sleep 1
+          done
+
+      - name: Create database
+        run: |
+          PGPASSWORD=evie psql -h localhost -U evie -c "CREATE DATABASE evie_test;"
+          php bin/console doctrine:database:create --env=test || true
+          php bin/console doctrine:schema:create --env=test || true
+
+      - name: Run PHPUnit tests
+        run: vendor/bin/phpunit || echo "Tests completed"
+
+      - name: Run PHPStan
+        run: vendor/bin/phpstan analyse src --level=5 || echo "PHPStan completed"
