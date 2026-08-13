@@ -1,106 +1,139 @@
 <?php
 
-namespace App\AI\Onboarding;
+namespace AppAIOnboarding;
 
-use App\Entity\UserProfile;
-use App\Repository\UserProfileRepository;
-use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
+use AppEntityUserProfile;
+use AppEntityEmbedding;
+use AppAIRagVectorStore;
+use AppAIRagRetriever;
+use DoctrineORMEntityManagerInterface;
+use PsrLogLoggerInterface;
 
-#[Autoconfigure(tags: ['ai.context_manager'])]
 class ContextStoreManager
 {
-    private UserProfileRepository $userProfileRepo;
-
-    public function __construct(UserProfileRepository $userProfileRepo)
-    {
-        $this->userProfileRepo = $userProfileRepo;
+    public function __construct(
+        private EntityManagerInterface $entityManager,
+        private VectorStore $vectorStore,
+        private Retriever $retriever,
+        private LoggerInterface $logger
+    ) {
     }
 
-    /**
-     * Loads the user context from the store.
-     */
-    public function loadContext(string $userIdentifier): array
+    public function storeUserContext(UserProfile $userProfile, string $context, array $metadata = []): Embedding
     {
-        $userProfile = $this->userProfileRepo->findOneBy(['userIdentifier' => $userIdentifier]);
-
-        if (!$userProfile) {
-            return [
-                'user_type' => 'unknown',
-                'preferences' => [],
-                'context_embedding' => null,
-            ];
-        }
-
-        return [
-            'user_type' => $userProfile->getUserType(),
-            'preferences' => $userProfile->getPreferences(),
-            'context_embedding' => $userProfile->getContextEmbedding(),
-        ];
+        return $this->vectorStore->store(
+            $context,
+            'user_profile',
+            'user_' . $userProfile->getId(),
+            array_merge($metadata, [
+                'user_id' => $userProfile->getId(),
+                'user_type' => $userProfile->getUserType(),
+            ])
+        );
     }
 
-    /**
-     * Saves the user context to the store.
-     */
-    public function saveContext(string $userIdentifier, array $context): void
+    public function storeConversationMemory(string $sessionId, string $content, array $metadata = []): Embedding
     {
-        $userProfile = $this->userProfileRepo->findOneBy(['userIdentifier' => $userIdentifier]);
-
-        if (!$userProfile) {
-            $userProfile = new UserProfile();
-            $userProfile->setUserIdentifier($userIdentifier);
-        }
-
-        if (isset($context['user_type'])) {
-            $userProfile->setUserType($context['user_type']);
-        }
-
-        if (isset($context['preferences'])) {
-            $userProfile->setPreferences($context['preferences']);
-        }
-
-        if (isset($context['context_embedding'])) {
-            $userProfile->setContextEmbedding($context['context_embedding']);
-        }
-
-        $userProfile->setUpdatedAt(new \DateTimeImmutable());
-        $this->userProfileRepo->save($userProfile, true);
+        return $this->vectorStore->store(
+            $content,
+            'conversation',
+            'session_' . $sessionId,
+            array_merge($metadata, ['session_id' => $sessionId])
+        );
     }
 
-    /**
-     * Updates the user's context embedding.
-     */
-    public function updateContextEmbedding(string $userIdentifier, string $embedding): void
+    public function storeToolMemory(string $toolName, string $content, array $metadata = []): Embedding
     {
-        $userProfile = $this->userProfileRepo->findOneBy(['userIdentifier' => $userIdentifier]);
-
-        if (!$userProfile) {
-            $userProfile = new UserProfile();
-            $userProfile->setUserIdentifier($userIdentifier);
-        }
-
-        $userProfile->setContextEmbedding($embedding);
-        $userProfile->setUpdatedAt(new \DateTimeImmutable());
-        $this->userProfileRepo->save($userProfile, true);
+        return $this->vectorStore->store(
+            $content,
+            'tool_memory',
+            'tool_' . $toolName,
+            array_merge($metadata, ['tool_name' => $toolName])
+        );
     }
 
-    /**
-     * Retrieves the user's context as a system prompt for the LLM.
-     */
-    public function getSystemPrompt(string $userIdentifier): string
+    public function storeKnowledge(string $content, string $source, array $metadata = []): Embedding
     {
-        $context = $this->loadContext($userIdentifier);
+        return $this->vectorStore->store(
+            $content,
+            'knowledge',
+            $source,
+            $metadata
+        );
+    }
 
-        $promptParts = [];
-        $promptParts[] = sprintf("User Type: %s", $context['user_type'] ?? 'unknown');
+    public function getRelevantUserContext(UserProfile $userProfile, string $query, int $limit = 5): array
+    {
+        $result = $this->retriever->retrieveForType($query, 'user_profile', $limit);
+        return array_filter($result->getItems(), function($item) use ($userProfile) {
+            return ($item->getMetadata()['user_id'] ?? null) === $userProfile->getId();
+        });
+    }
 
-        if (!empty($context['preferences'])) {
-            $promptParts[] = "Preferences: " . json_encode($context['preferences']);
+    public function getRelevantConversationContext(string $sessionId, string $query, int $limit = 5): array
+    {
+        $result = $this->retriever->retrieveForType($query, 'conversation', $limit);
+        return array_filter($result->getItems(), function($item) use ($sessionId) {
+            return ($item->getMetadata()['session_id'] ?? null) === $sessionId;
+        });
+    }
+
+    public function getRelevantToolContext(string $toolName, string $query, int $limit = 5): array
+    {
+        $result = $this->retriever->retrieveForType($query, 'tool_memory', $limit);
+        return array_filter($result->getItems(), function($item) use ($toolName) {
+            return ($item->getMetadata()['tool_name'] ?? null) === $toolName;
+        });
+    }
+
+    public function getRelevantKnowledge(string $query, int $limit = 5): array
+    {
+        $result = $this->retriever->retrieveForType($query, 'knowledge', $limit);
+        return $result->getItems();
+    }
+
+    public function createSystemPromptWithContext(UserProfile $userProfile, string $query, array $options = []): string
+    {
+        $basePrompt = $userProfile->getSystemPrompt() ?? 'Du bist ein hilfreicher AI-Assistent.';
+        
+        $userContext = $this->getRelevantUserContext($userProfile, $query);
+        $knowledgeContext = $this->getRelevantKnowledge($query);
+        
+        $contexts = [];
+        foreach ($userContext as $item) {
+            $contexts[] = sprintf("[User Context - %s]
+%s", $item->getSource(), $item->getContent());
+        }
+        
+        foreach ($knowledgeContext as $item) {
+            $contexts[] = sprintf("[Knowledge - %s]
+%s", $item->getSource(), $item->getContent());
         }
 
-        if ($context['context_embedding']) {
-            $promptParts[] = "Context Embedding: [Vector data - omitted for readability]";
+        if (empty($contexts)) {
+            return $basePrompt;
         }
 
-        return implode("\n", $promptParts);
+        $contextString = implode("
+
+---
+
+", $contexts);
+        return $basePrompt . "
+
+## Relevanter Kontext:
+" . $contextString . "
+
+";
+    }
+
+    public function deleteUserContext(UserProfile $userProfile): int
+    {
+        return $this->vectorStore->delete('user_profile', 'user_' . $userProfile->getId());
+    }
+
+    public function deleteSessionContext(string $sessionId): int
+    {
+        return $this->vectorStore->delete('conversation', 'session_' . $sessionId);
     }
 }
