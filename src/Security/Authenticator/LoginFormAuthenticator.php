@@ -8,12 +8,13 @@ use SymfonyComponentHttpFoundationResponse;
 use SymfonyComponentRoutingGeneratorUrlGeneratorInterface;
 use SymfonyComponentSecurityCoreAuthenticationTokenTokenInterface;
 use SymfonyComponentSecurityCoreAuthenticatorAbstractAuthenticator;
-use SymfonyComponentSecurityCoreAuthenticatorPassportBadgeCsrfTokenBadge;
-use SymfonyComponentSecurityCoreAuthenticatorPassportCredentialsPasswordCredentials;
+use SymfonyComponentSecurityCoreAuthenticatorPassportBadgeUserBadge;
 use SymfonyComponentSecurityCoreAuthenticatorPassportPassport;
-use SymfonyComponentSecurityCoreExceptionAuthenticationException;
+use SymfonyComponentSecurityCoreAuthenticatorPassportCredentialsPasswordCredentials;
 use SymfonyComponentSecurityCoreExceptionCustomUserMessageAuthenticationException;
 use SymfonyComponentSecurityHttpAuthenticatorPassportBadgeRememberMeBadge;
+use SymfonyComponentSecurityHttpAuthenticatorPassportBadgeCsrfTokenBadge;
+use SymfonyComponentSecurityHttpAuthenticatorPassportCredentialsPasswordCredentials as SymfonyPasswordCredentials;
 
 class LoginFormAuthenticator extends AbstractAuthenticator
 {
@@ -24,7 +25,7 @@ class LoginFormAuthenticator extends AbstractAuthenticator
 
     public function supports(Request $request): ?bool
     {
-        return $request->isMethod('POST') && $request->getPathInfo() === '/login';
+        return $request->isMethod('POST') && $request->request->has('email');
     }
 
     public function authenticate(Request $request): Passport
@@ -33,13 +34,9 @@ class LoginFormAuthenticator extends AbstractAuthenticator
         $password = $request->request->get('password');
         $csrfToken = $request->request->get('_csrf_token');
 
-        if (!$email || !$password) {
-            throw new CustomUserMessageAuthenticationException('Bitte geben Sie E-Mail und Passwort ein.');
-        }
-
         return new Passport(
-            new SymfonyComponentSecurityCoreAuthenticatorPassportBadgeUserBadge($email),
-            new PasswordCredentials($password),
+            new UserBadge($email),
+            new SymfonyPasswordCredentials($password),
             [
                 new CsrfTokenBadge('authenticate', $csrfToken),
                 new RememberMeBadge(),
@@ -49,20 +46,16 @@ class LoginFormAuthenticator extends AbstractAuthenticator
 
     public function onAuthenticationSuccess(Request $request, TokenInterface $token, string $firewallName): ?Response
     {
-        $user = $token->getUser();
-        
-        if ($user instanceof AppEntityUser) {
-            $user->setLastLoginAt(new DateTimeImmutable());
-        }
-
-        $targetPath = $request->getSession()->get('_security.main.target_path') ?? '/dashboard';
-        
-        return new RedirectResponse($this->urlGenerator->generate($targetPath));
+        return new RedirectResponse($this->urlGenerator->generate('app_home'));
     }
 
     public function onAuthenticationFailure(Request $request, AuthenticationException $exception): ?Response
     {
-        $request->getSession()->set('_security.main.last_error', $exception->getMessage());
+        return new RedirectResponse($this->urlGenerator->generate('app_login'));
+    }
+
+    public function start(Request $request, AuthenticationException $authException = null): Response
+    {
         return new RedirectResponse($this->urlGenerator->generate('app_login'));
     }
 }
