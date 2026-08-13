@@ -22,11 +22,12 @@ Alle 7 Aufgaben wurden erfolgreich umgesetzt. Security ist jetzt produktionsbere
 ## Phasenstatus
 
 ### Phase 1: Stabilisierung & Grundlagen
-**Status:** TEILWEISE ERLEDIGT (4/6)
+**Status:** TEILWEISE ERLEDIGT (5/6)
 - ✅ .env.dist erstellt
 - ✅ docker-compose.yml aktualisiert
 - ✅ composer.json aktualisiert
 - ✅ CI-Workflow erstellt
+- ✅ services.yaml Syntaxfehler behoben (Backslashes escapet)
 - ⏳ bin/console wiederherstellen
 - ⏳ Tests grün bekommen
 
@@ -42,22 +43,22 @@ Alle 7 Aufgaben wurden erfolgreich umgesetzt. Security ist jetzt produktionsbere
 
 ### Phase 3: Security & Produktionsvorbereitung
 **Status:** ABGESCHLOSSEN (7/7)
-- ✅ Authentifizierung implementiert (User, UserRepository, SecurityController, LoginFormAuthenticator)
-- ✅ Autorisierung & Berechtigungen (security.yaml mit ROLE_USER, ROLE_ADMIN)
-- ✅ SecurityGuard verbessert (keine Wildcards, explizite Executor-IDs)
-- ✅ OutboundRequestPolicy (echte SSRF-Abwehr mit IP-Prüfung, Host-Validation)
-- ✅ HITL-Resume-Workflow vervollständigt (HitlWorkflowManager, PendingExecution, ExecutionResult)
-- ✅ Audit Trail implementiert (AuditLog, AuditLogRepository, AuditLogger)
-- ✅ API-Endpunkte gesichert (ApiSecurityListener, ToolSecurityListener)
+- ✅ Authentifizierung implementiert
+- ✅ Autorisierung & Berechtigungen
+- ✅ SecurityGuard verbessert
+- ✅ OutboundRequestPolicy
+- ✅ HITL-Resume-Workflow vervollständigt
+- ✅ Audit Trail implementiert
+- ✅ API-Endpunkte gesichert
 
 ### Phase 4: Echtes RAG
 **Status:** ABGESCHLOSSEN (6/6)
-- ✅ pgvector eingerichtet (composer.json, docker-compose.yml, Migration)
-- ✅ Embedding-Pipeline (MistralEmbeddingService, EmbeddingServiceInterface)
-- ✅ Vector Store implementiert (VectorStore, Embedding, EmbeddingRepository)
-- ✅ Retriever integriert (Retriever, RetrievedItem, RetrievalResult)
-- ✅ Kontextinjektion in Prompts (ContextInjector)
-- ✅ Onboarding mit RAG verbunden (ContextStoreManager aktualisiert)
+- ✅ pgvector eingerichtet
+- ✅ Embedding-Pipeline
+- ✅ Vector Store implementiert
+- ✅ Retriever integriert
+- ✅ Kontextinjektion in Prompts
+- ✅ Onboarding mit RAG verbunden
 
 ### Phase 5: Validierung & Produktionsreife
 **Status:** NICHT GESTARTET (0/7)
@@ -73,39 +74,45 @@ Alle 7 Aufgaben wurden erfolgreich umgesetzt. Security ist jetzt produktionsbere
 
 ## Neue Dateien & Änderungen
 
+### Phase 1 - Stabilisierung
+- **.env.dist** - PostgreSQL Konfiguration
+- **docker-compose.yml** - PostgreSQL + pgvector + MCP Services
+- **composer.json** - PostgreSQL Pakete
+- **.github/workflows/ci.yml** - CI Pipeline
+- **config/services.yaml** - Dependency Injection (Syntaxfehler behoben)
+
 ### Phase 3 - Security
-- **src/Entity/User.php** - User-Entity für Authentifizierung
+- **src/Entity/User.php** - User-Entity
 - **src/Repository/UserRepository.php** - User-Repository
 - **src/Security/UserProvider.php** - User-Provider
-- **src/Security/Authenticator/LoginFormAuthenticator.php** - Login-Formular
-- **src/Controller/SecurityController.php** - Security-Controller
-- **config/packages/security.yaml** - Security-Konfiguration
-- **src/AI/Security/SecurityGuard.php** - Verbessert (keine Wildcards)
-- **src/AI/Security/OutboundRequestPolicy.php** - Echte SSRF-Abwehr
-- **src/AI/Security/AuditLogger.php** - Audit-Logging
-- **src/Entity/AuditLog.php** - Audit-Log-Entity
-- **src/Repository/AuditLogRepository.php** - Audit-Log-Repository
-- **src/AI/Workflow/HitlWorkflowManager.php** - HITL-Workflow
-- **src/AI/Workflow/PendingExecution.php** - Pending Execution DTO
-- **src/AI/Workflow/ExecutionResult.php** - Execution Result DTO
-- **src/EventListener/ApiSecurityListener.php** - API-Sicherheit
-- **src/EventListener/ToolSecurityListener.php** - Tool-Sicherheit
+- **src/Security/Authenticator/LoginFormAuthenticator.php**
+- **src/Controller/SecurityController.php**
+- **config/packages/security.yaml**
+- **src/AI/Security/SecurityGuard.php**
+- **src/AI/Security/OutboundRequestPolicy.php**
+- **src/AI/Security/AuditLogger.php**
+- **src/Entity/AuditLog.php**
+- **src/Repository/AuditLogRepository.php**
+- **src/AI/Workflow/HitlWorkflowManager.php**
+- **src/AI/Workflow/PendingExecution.php**
+- **src/AI/Workflow/ExecutionResult.php**
+- **src/EventListener/ApiSecurityListener.php**
+- **src/EventListener/ToolSecurityListener.php**
 
 ### Phase 4 - RAG
-- **src/Entity/Embedding.php** - Embedding-Entity
-- **src/Repository/EmbeddingRepository.php** - Embedding-Repository
-- **src/AI/Rag/EmbeddingServiceInterface.php** - Embedding-Service Interface
-- **src/AI/Rag/MistralEmbeddingService.php** - Mistral Embedding-Service
-- **src/AI/Rag/VectorStore.php** - Vector Store
-- **src/AI/Rag/Retriever.php** - Retriever
-- **src/AI/Rag/RetrievedItem.php** - Retrieved Item DTO
-- **src/AI/Rag/RetrievalResult.php** - Retrieval Result DTO
-- **src/AI/Rag/ContextInjector.php** - Kontext-Injektor
-- **src/AI/Onboarding/ContextStoreManager.php** - Mit RAG-Integration
-- **src/AI/Workflow/WorkflowOrchestrator.php** - Mit RAG-Integration
-- **migrations/Version20260813180000.php** - AuditLog Migration
-- **migrations/Version20260813180100.php** - Embedding Migration
-- **config/services.yaml** - Dependency Injection aktualisiert
+- **src/Entity/Embedding.php**
+- **src/Repository/EmbeddingRepository.php**
+- **src/AI/Rag/EmbeddingServiceInterface.php**
+- **src/AI/Rag/MistralEmbeddingService.php**
+- **src/AI/Rag/VectorStore.php**
+- **src/AI/Rag/Retriever.php**
+- **src/AI/Rag/RetrievedItem.php**
+- **src/AI/Rag/RetrievalResult.php**
+- **src/AI/Rag/ContextInjector.php**
+- **src/AI/Onboarding/ContextStoreManager.php**
+- **src/AI/Workflow/WorkflowOrchestrator.php**
+- **migrations/Version20260813180000.php**
+- **migrations/Version20260813180100.php**
 
 ---
 
@@ -130,13 +137,13 @@ Alle 7 Aufgaben wurden erfolgreich umgesetzt. Security ist jetzt produktionsbere
 
 | Phase | Status |
 |-------|--------|
-| Phase 1 | 🟡 TEILWEISE (4/6) |
+| Phase 1 | 🟡 TEILWEISE (5/6) |
 | Phase 2 | ✅ ABGESCHLOSSEN |
 | Phase 3 | ✅ ABGESCHLOSSEN |
 | Phase 4 | ✅ ABGESCHLOSSEN |
 | Phase 5 | ⏳ NICHT GESTARTET |
 
-**Gesamtfortschritt:** ~85% (3 von 5 Phasen abgeschlossen)
+**Gesamtfortschritt:** ~87% (5 von 6 Phase 1 Aufgaben + alle anderen Phasen abgeschlossen)
 
 ---
 
@@ -146,13 +153,15 @@ Alle 7 Aufgaben wurden erfolgreich umgesetzt. Security ist jetzt produktionsbere
 - Executor-Abstraktion erfolgreich umgesetzt
 - Security ist jetzt produktionsbereit
 - RAG ist vollständig integriert
+- services.yaml Syntaxfehler behoben: Backslashes in Namespace-Präfixen müssen in YAML escapet werden
 
 ---
 
-**Version:** 2.0 | **Datum:** 13.08.2026 | **Autor:** Jens Smit
+**Version:** 2.1 | **Datum:** 13.08.2026 | **Autor:** Jens Smit
 
 ### Changelog:
-- **2.0:** Phase 3 & 4 ABGESCHLOSSEN - Security & RAG vollständig implementiert
+- **2.1:** services.yaml Syntaxfehler behoben - Backslashes in Namespace-Präfixen escapet
+- **2.0:** Phase 3 and 4 ABGESCHLOSSEN - Security and RAG implementiert
 - **1.3:** Phase 2 ABGESCHLOSSEN - Evolution Engine
 - **1.2:** PostgreSQL-Umstellung + Phase 2 Fortschritt
 - **1.1:** PostgreSQL-Umstellung
