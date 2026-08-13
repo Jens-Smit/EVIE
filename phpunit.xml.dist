@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!-- https://phpunit.readthedocs.io/en/latest/configuration.html -->
+<!-- Updated for Phase 3: E2E-Tests for Evolution Flow -->
 <phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:noNamespaceSchemaLocation="https://schema.phpunit.de/10.0/phpunit.xsd"
          bootstrap="tests/bootstrap.php"
@@ -11,12 +12,16 @@
          beStrictAboutOutputDuringTests="true"
          failOnRisky="true"
          failOnWarning="true">
+    
+    <!-- Test Suites -->
     <testsuites>
+        <!-- Haupt-Test-Suite -->
         <testsuite name="Application Test Suite">
             <directory>tests</directory>
             <exclude>
                 <directory suffix=".php">tests/Unit/AI</directory>
                 <directory suffix=".php">tests/Integration/AI</directory>
+                <directory suffix=".php">tests/Functional/AI</directory>
             </exclude>
         </testsuite>
 
@@ -27,6 +32,11 @@
 
         <testsuite name="EVIE AI Integration Tests">
             <directory>tests/Integration/AI</directory>
+        </testsuite>
+
+        <!-- PHASE 3: Neue Test-Suite für Evolution-Flow -->
+        <testsuite name="EVIE AI Functional Tests">
+            <directory>tests/Functional/AI</directory>
         </testsuite>
 
         <!-- Spezifische Test-Suites für AI-Komponenten -->
@@ -41,8 +51,15 @@
         <testsuite name="EVIE AI Agent Tests">
             <directory>tests/Unit/AI/Agent</directory>
         </testsuite>
+
+        <!-- PHASE 3: Spezifische Test-Suite für Evolution-Flow -->
+        <testsuite name="EVIE Phase 3 Tests">
+            <file>tests/Functional/AI/ToolEvolutionTest.php</file>
+            <file>tests/Unit/AI/Skills/DynamicSkillRegistryTest.php</file>
+        </testsuite>
     </testsuites>
 
+    <!-- Source Configuration -->
     <source>
         <include>
             <directory suffix=".php">src</directory>
@@ -59,7 +76,7 @@
         </whitelist>
     </filter>
 
-    <!-- Code Coverage Konfiguration -->
+    <!-- Code Coverage Konfiguration für Phase 3 -->
     <coverage cacheDirectory=".phpunit.cache" processUncoveredFiles="true">
         <include>
             <directory suffix=".php">src/AI</directory>
@@ -69,20 +86,49 @@
         </exclude>
     </coverage>
 
-    <!-- Logging -->
+    <!-- Logging für Phase 3 -->
     <logging>
         <log type="coverage-html" target="build/coverage" title="EVIE Test Coverage" charset="UTF-8" yui="true" highlight="true"/>
         <log type="coverage-clover" target="build/logs/clover.xml"/>
         <log type="coverage-crap4j" target="build/logs/crap4j.xml" threshold="30"/>
         <log type="coverage-text" target="php://stdout" showOnlyPercentage="true"/>
         <log type="junit" target="build/logs/junit.xml"/>
+        
+        <!-- PHASE 3: Separate Log-Datei für Evolution-Flow-Tests -->
+        <log type="junit" target="build/logs/phase3-evolution-flow.xml" 
+             include="EVIE Phase 3 Tests"/>
     </logging>
 
-    <!-- PHP Einstellungen -->
+    <!-- PHP Einstellungen für Phase 3 -->
     <php>
         <ini name="error_reporting" value="-1" />
         <server name="APP_ENV" value="test" />
         <server name="KERNEL_CLASS" value="App\Kernel" />
         <server name="SYMFONY_DEPRECATIONS_HELPER" value="weak_vendors" />
+        
+        <!-- PHASE 3: Test-Konfiguration für AI Bundle -->
+        <server name="AI_TEST_MODE" value="true" />
+        <server name="AI_PLATFORM" value="mock" />
     </php>
+
+    <!-- PHASE 3: Gruppen für selektive Test-Ausführung -->
+    <groups>
+        <group name="phase3">
+            <include>
+                <file>tests/Functional/AI/ToolEvolutionTest.php</file>
+                <file>tests/Unit/AI/Skills/DynamicSkillRegistryTest.php</file>
+            </include>
+        </group>
+        <group name="evolution-flow">
+            <include>
+                <file>tests/Functional/AI/ToolEvolutionTest.php</file>
+            </include>
+        </group>
+        <group name="unit">
+            <directory>tests/Unit</directory>
+        </group>
+        <group name="functional">
+            <directory>tests/Functional</directory>
+        </group>
+    </groups>
 </phpunit>
