@@ -158,12 +158,13 @@ services:
             $responseNormalizer: '@App\AI\Response\ResponseNormalizer'
             $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
 
-    # Tool Definition Generator - UPDATED with ToolCategoryRepository
+    # Tool Definition Generator - FIXED: toolGeneratorAgent wird als Service injiziert
     App\AI\Skills\ToolDefinitionGenerator:
         arguments:
             $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
             $toolCategoryRepo: '@App\Repository\ToolCategoryRepository'
             $platform: '@ai.platform.mistral'
+            $toolGeneratorAgent: '@ai.agent.tool_generator'  # ✅ FIXED: Konkreter Agent-Service
             $logger: '@logger'
 
     # Sub-Agent Factory - UPDATED: DynamicSkillRegistry wird über Setter Injection injiziert
