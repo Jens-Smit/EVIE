@@ -1,10 +1,10 @@
 <?php
 
-namespace AppAIRag;
+namespace App\AI\Rag;
 
-use AppEntityEmbedding;
-use AppRepositoryEmbeddingRepository;
-use DoctrineORMEntityManagerInterface;
+use App\Entity\Embedding;
+use App\Repository\EmbeddingRepository;
+use Doctrine\ORM\EntityManagerInterface;
 
 class VectorStore
 {

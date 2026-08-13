@@ -1,18 +1,20 @@
 <?php
 
-namespace AppAIWorkflow;
+namespace App\AI\Workflow;
 
-use AppEntityToolDefinition;
-use AppEntityUserProfile;
-use AppAIRagContextInjector;
-use AppAISkillsToolDynamicTool;
-use AppAISkillsDynamicToolFactory;
-use AppAISkillsToolDynamicToolExecutor;
-use AppAISkillsToolDefinitionGenerator;
-use AppAISkillsDynamicSkillRegistry;
-use AppAIWorkflowHitlWorkflowManager;
-use PsrLogLoggerInterface;
-use SymfonyComponentSecurityCoreUserUserInterface;
+use App\Entity\ToolDefinition;
+use App\Entity\UserProfile;
+use App\AI\Rag\ContextInjector;
+use App\AI\Skills\Tool\DynamicTool;
+use App\AI\Skills\Tool\DynamicToolFactory;
+use App\AI\Skills\Tool\DynamicToolExecutor;
+use App\AI\Skills\ToolDefinitionGenerator;
+use App\AI\Skills\DynamicSkillRegistry;
+use App\AI\Workflow\HitlWorkflowManager;
+use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
+use RuntimeException;
+use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
  * WorkflowOrchestrator - Haupt-Orchestrator mit RAG-Integration
@@ -29,6 +31,7 @@ class WorkflowOrchestrator
         private DynamicSkillRegistry $skillRegistry,
         private HitlWorkflowManager $hitlWorkflowManager,
         private ContextInjector $contextInjector,
+        private EntityManagerInterface $entityManager,
         private LoggerInterface $logger
     ) {
     }
@@ -59,7 +62,7 @@ class WorkflowOrchestrator
             // 2. Kein Tool gefunden - generiere neues Tool
             return $this->generateAndExecuteTool($request);
 
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $this->logger->error('Fehler bei Request-Verarbeitung', [
                 'request' => $request,
                 'error' => $e->getMessage()
@@ -281,14 +284,5 @@ class WorkflowOrchestrator
     {
         $pending = $this->hitlWorkflowManager->getPendingExecutions();
         return array_map(fn($pe) => $pe->toArray(), $pending);
-    }
-
-    /**
-     * Getter für Dependency Injection
-     */
-    private function getEntityManager()
-    {
-        // Wird über Property Injection gespritzt
-        return $this->entityManager ?? throw new RuntimeException('EntityManager nicht verfügbar');
     }
 }

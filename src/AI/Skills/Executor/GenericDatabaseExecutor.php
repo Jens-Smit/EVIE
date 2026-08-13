@@ -1,9 +1,10 @@
 <?php
 
-namespace AppAISkillsExecutor;
+namespace App\AI\Skills\Executor;
 
-use AppAISkillsToolDynamicTool;
-use DoctrineDBALConnection;
+use App\AI\Skills\Tool\DynamicTool;
+use Doctrine\DBAL\Connection;
+use RuntimeException;
 
 class GenericDatabaseExecutor implements ExecutorInterface
 {

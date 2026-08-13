@@ -1,8 +1,10 @@
 <?php
 
-namespace AppAISkills;
+namespace App\AI\Skills;
 
-use AppEntityToolDefinition;
+use App\Entity\ToolDefinition;
+use Exception;
+use Throwable;
 
 class ToolRegistrationException extends Exception
 {
@@ -14,7 +16,7 @@ class ToolRegistrationException extends Exception
         ?ToolDefinition $definition = null,
         ?array $context = null,
         int $code = 0,
-        Throwable $previous = null
+        ?Throwable $previous = null
     ) {
         parent::__construct($message, $code, $previous);
         $this->definition = $definition;

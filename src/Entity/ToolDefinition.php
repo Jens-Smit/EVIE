@@ -1,71 +1,72 @@
 <?php
 
-namespace AppEntity;
+namespace App\Entity;
 
-use AppRepositoryToolDefinitionRepository;
-use DoctrineDBALTypesTypes;
-use DoctrineORMMapping as ORM;
+use App\Repository\ToolDefinitionRepository;
+use DateTimeImmutable;
+use Doctrine\DBAL\Types\Types;
+use Doctrine\ORM\Mapping as ORM;
 
-#[ORMEntity(repositoryClass: ToolDefinitionRepository::class)]
-#[ORMTable(name: 'tool_definitions')]
+#[ORM\Entity(repositoryClass: ToolDefinitionRepository::class)]
+#[ORM\Table(name: 'tool_definitions')]
 class ToolDefinition
 {
-    #[ORMId]
-    #[ORMGeneratedValue]
-    #[ORMColumn]
+    #[ORM\Id]
+    #[ORM\GeneratedValue]
+    #[ORM\Column]
     private ?int $id = null;
 
-    #[ORMColumn(type: Types::STRING, length: 255)]
+    #[ORM\Column(type: Types::STRING, length: 255)]
     private ?string $name = null;
 
-    #[ORMColumn(type: Types::TEXT)]
+    #[ORM\Column(type: Types::TEXT)]
     private ?string $description = null;
 
-    #[ORMColumn(type: Types::JSON)]
+    #[ORM\Column(type: Types::JSON)]
     private array $schema = [];
 
-    #[ORMColumn(type: Types::STRING, length: 255)]
+    #[ORM\Column(type: Types::STRING, length: 255)]
     private ?string $category = null;
 
-    #[ORMColumn(type: Types::INTEGER, options: ['default' => 1])]
+    #[ORM\Column(type: Types::INTEGER, options: ['default' => 1])]
     private ?int $complexity = 1;
 
-    #[ORMColumn(type: Types::JSON, nullable: true)]
+    #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $dependencies = null;
 
-    #[ORMColumn(type: Types::STRING, length: 50, options: ['default' => 'low'])]
+    #[ORM\Column(type: Types::STRING, length: 50, options: ['default' => 'low'])]
     private ?string $securityLevel = 'low';
 
-    #[ORMColumn(type: Types::BOOLEAN, options: ['default' => false])]
+    #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     private ?bool $requiresHitl = false;
 
-    #[ORMColumn(type: Types::JSON, nullable: true)]
+    #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $metadata = null;
 
-    #[ORMColumn(type: Types::STRING, length: 50, options: ['default' => 'pending'])]
+    #[ORM\Column(type: Types::STRING, length: 50, options: ['default' => 'pending'])]
     private ?string $status = 'pending';
 
-    #[ORMColumn(type: Types::DATETIME_IMMUTABLE)]
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private ?DateTimeImmutable $createdAt = null;
 
-    #[ORMColumn(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
     private ?DateTimeImmutable $updatedAt = null;
 
     // ========== NEUE FELDER FÜR PHASE 2 ==========
 
-    #[ORMColumn(type: Types::STRING, length: 50, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 50, nullable: true)]
     private ?string $executorType = null;
 
-    #[ORMColumn(type: Types::JSON, nullable: true)]
+    #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $executorConfig = null;
 
-    #[ORMColumn(type: Types::JSON, nullable: true)]
+    #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $securityPolicy = null;
 
-    #[ORMColumn(type: Types::JSON, nullable: true)]
+    #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $hitlPolicy = null;
 
-    #[ORMColumn(type: Types::STRING, length: 50, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 50, nullable: true)]
     private ?string $version = '1.0';
     // ================================================
 

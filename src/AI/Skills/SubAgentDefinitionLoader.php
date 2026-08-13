@@ -1,9 +1,9 @@
 <?php
 
-namespace AppAISkills;
+namespace App\AI\Skills;
 
-use AppEntityToolDefinition;
-use DoctrineORMEntityManagerInterface;
+use App\Entity\ToolDefinition;
+use Doctrine\ORM\EntityManagerInterface;
 
 /**
  * Lädt Tool-Definitionen aus verschiedenen Quellen (DB, statisch, dynamisch)

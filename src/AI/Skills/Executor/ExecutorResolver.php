@@ -1,8 +1,8 @@
 <?php
 
-namespace AppAISkillsExecutor;
+namespace App\AI\Skills\Executor;
 
-use PsrLogLoggerInterface;
+use Psr\Log\LoggerInterface;
 
 class ExecutorResolver implements ExecutorResolverInterface
 {

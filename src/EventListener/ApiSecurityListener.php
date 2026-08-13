@@ -1,14 +1,16 @@
 <?php
 
-namespace AppEventListener;
+namespace App\EventListener;
 
-use AppAISecurityAuditLogger;
-use AppAISecuritySecurityGuard;
-use SymfonyComponentHttpFoundationJsonResponse;
-use SymfonyComponentHttpKernelEventControllerEvent;
-use SymfonyComponentHttpKernelKernelEvents;
-use SymfonyComponentEventDispatcherAttributeAsEventListener;
-use SymfonyComponentSecurityCoreUserUserInterface;
+use App\AI\Security\AuditLogger;
+use App\AI\Security\SecurityGuard;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\HttpKernel\Event\ControllerEvent;
+use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
+use Symfony\Component\HttpKernel\KernelEvents;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
+use Symfony\Component\Security\Core\User\UserInterface;
+
 
 #[AsEventListener(event: KernelEvents::CONTROLLER, method: 'onKernelController', priority: 10)]
 class ApiSecurityListener
@@ -46,7 +48,7 @@ class ApiSecurityListener
         
         // Prüfe ob User authentifiziert ist
         if (!$user instanceof UserInterface) {
-            throw new SymfonyComponentHttpKernelExceptionAccessDeniedHttpException('Zugriff verweigert: Authentifizierung erforderlich');
+            throw new AccessDeniedHttpException('Zugriff verweigert: Authentifizierung erforderlich');
         }
 
         // Logge API-Aufruf

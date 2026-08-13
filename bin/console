@@ -1,20 +1,21 @@
 #!/usr/bin/env php
 <?php
 
-use SymfonyComponentConsoleInputArgvInput;
+use App\Kernel;
+use Symfony\Bundle\FrameworkBundle\Console\Application;
 
-if (PHP_VERSION_ID < 80200) {
-    echo "PHP 8.2 or higher is required.
-";
-    exit(1);
+if (!is_dir(dirname(__DIR__).'/vendor')) {
+    throw new LogicException('Dependencies are missing. Try running "composer install".');
 }
 
-set_error_handler(function ($severity, $message, $file, $line) {
-    if ($severity & error_reporting()) {
-        throw new ErrorException($message, 0, $severity, $file, $line);
-    }
-});
+if (!is_file(dirname(__DIR__).'/vendor/autoload_runtime.php')) {
+    throw new LogicException('Symfony Runtime is missing. Try running "composer require symfony/runtime".');
+}
 
-require __DIR__.'/../vendor/autoload_runtime.php';
+require_once dirname(__DIR__).'/vendor/autoload_runtime.php';
 
-return (new SymfonyComponentRuntimeApplication())->run(new ArgvInput());
+return function (array $context) {
+    $kernel = new Kernel($context['APP_ENV'], (bool) $context['APP_DEBUG']);
+
+    return new Application($kernel);
+};

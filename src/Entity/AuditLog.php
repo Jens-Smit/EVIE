@@ -1,50 +1,51 @@
 <?php
 
-namespace AppEntity;
+namespace App\Entity;
 
-use DoctrineDBALTypesTypes;
-use DoctrineORMMapping as ORM;
+use DateTimeImmutable;
+use Doctrine\DBAL\Types\Types;
+use Doctrine\ORM\Mapping as ORM;
 
-#[ORMEntity(repositoryClass: AuditLogRepository::class)]
-#[ORMTable(name: 'audit_logs')]
-#[ORMIndex(name: 'idx_audit_user', columns: ['user_id'])]
-#[ORMIndex(name: 'idx_audit_action', columns: ['action'])]
-#[ORMIndex(name: 'idx_audit_created', columns: ['created_at'])]
+#[ORM\Entity(repositoryClass: \App\Repository\AuditLogRepository::class)]
+#[ORM\Table(name: 'audit_logs')]
+#[ORM\Index(name: 'idx_audit_user', columns: ['user_id'])]
+#[ORM\Index(name: 'idx_audit_action', columns: ['action'])]
+#[ORM\Index(name: 'idx_audit_created', columns: ['created_at'])]
 class AuditLog
 {
-    #[ORMId]
-    #[ORMGeneratedValue]
-    #[ORMColumn]
+    #[ORM\Id]
+    #[ORM\GeneratedValue]
+    #[ORM\Column]
     private ?int $id = null;
 
-    #[ORMColumn(type: Types::STRING, length: 100)]
+    #[ORM\Column(type: Types::STRING, length: 100)]
     private ?string $action = null;
 
-    #[ORMColumn(type: Types::STRING, length: 255, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
     private ?string $entityType = null;
 
-    #[ORMColumn(type: Types::INTEGER, nullable: true)]
+    #[ORM\Column(type: Types::INTEGER, nullable: true)]
     private ?int $entityId = null;
 
-    #[ORMColumn(type: Types::INTEGER, nullable: true)]
+    #[ORM\Column(type: Types::INTEGER, nullable: true)]
     private ?int $userId = null;
 
-    #[ORMColumn(type: Types::TEXT, nullable: true)]
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $details = null;
 
-    #[ORMColumn(type: Types::JSON, nullable: true)]
+    #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $context = null;
 
-    #[ORMColumn(type: Types::STRING, length: 50, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 50, nullable: true)]
     private ?string $ipAddress = null;
 
-    #[ORMColumn(type: Types::STRING, length: 500, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 500, nullable: true)]
     private ?string $userAgent = null;
 
-    #[ORMColumn(type: Types::STRING, length: 50, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 50, nullable: true)]
     private ?string $status = null;
 
-    #[ORMColumn(type: Types::DATETIME_IMMUTABLE)]
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private ?DateTimeImmutable $createdAt = null;
 
     public function __construct()

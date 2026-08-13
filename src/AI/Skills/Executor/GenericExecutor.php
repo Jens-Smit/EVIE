@@ -1,8 +1,8 @@
 <?php
 
-namespace AppAISkillsExecutor;
+namespace App\AI\Skills\Executor;
 
-use AppAISkillsToolDynamicTool;
+use App\AI\Skills\Tool\DynamicTool;
 
 class GenericExecutor implements ExecutorInterface
 {

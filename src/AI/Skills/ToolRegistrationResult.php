@@ -1,9 +1,9 @@
 <?php
 
-namespace AppAISkills;
+namespace App\AI\Skills;
 
-use AppEntityToolDefinition;
-use AppAISkillsToolDynamicTool;
+use App\Entity\ToolDefinition;
+use App\AI\Skills\Tool\DynamicTool;
 
 /**
  * Ergebnis der Tool-Registrierung

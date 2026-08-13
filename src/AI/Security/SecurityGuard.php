@@ -1,9 +1,9 @@
 <?php
 
-namespace AppAISecurity;
+namespace App\AI\Security;
 
-use AppAISkillsToolDynamicTool;
-use PsrLogLoggerInterface;
+use App\AI\Skills\Tool\DynamicTool;
+use Psr\Log\LoggerInterface;
 
 /**
  * SecurityGuard - Überprüft ob Tools sicher ausgeführt werden dürfen
@@ -54,14 +54,14 @@ class SecurityGuard
     ];
 
     private array $allowedServices = [
-        'AppAISkillsExecutorGenericApiExecutor',
-        'AppAISkillsExecutorGenericFileExecutor',
-        'AppAISkillsExecutorGenericDatabaseExecutor',
-        'AppAISkillsExecutorGenericHttpExecutor',
-        'AppAISkillsExecutorGenericExecutor',
-        'AppAIMcpFilesystemMcpClient',
-        'AppAIMcpPlaywrightMcpClient',
-        'AppAIMcpGitHubMcpClient',
+        'App\AI\Skills\Executor\GenericApiExecutor',
+        'App\AI\Skills\Executor\GenericFileExecutor',
+        'App\AI\Skills\Executor\GenericDatabaseExecutor',
+        'App\AI\Skills\Executor\GenericHttpExecutor',
+        'App\AI\Skills\Executor\GenericExecutor',
+        'App\AI\Mcp\Filesystem\McpClient',
+        'App\AI\Mcp\Playwright\McpClient',
+        'App\AI\Mcp\GitHub\McpClient',
     ];
 
     public function __construct(

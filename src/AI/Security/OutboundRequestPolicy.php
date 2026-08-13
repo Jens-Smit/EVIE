@@ -1,8 +1,8 @@
 <?php
 
-namespace AppAISecurity;
+namespace App\AI\Security;
 
-use PsrLogLoggerInterface;
+use Psr\Log\LoggerInterface;
 
 /**
  * OutboundRequestPolicy - Echte SSRF-Abwehr
@@ -87,7 +87,7 @@ class OutboundRequestPolicy
 
             return true;
 
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $this->logger->error('Fehler bei URL-Prüfung', [
                 'url' => $url,
                 'error' => $e->getMessage()

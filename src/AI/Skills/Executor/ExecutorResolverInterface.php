@@ -1,6 +1,6 @@
 <?php
 
-namespace AppAISkillsExecutor;
+namespace App\AI\Skills\Executor;
 
 interface ExecutorResolverInterface
 {

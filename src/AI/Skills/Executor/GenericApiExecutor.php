@@ -1,8 +1,9 @@
 <?php
 
-namespace AppAISkillsExecutor;
+namespace App\AI\Skills\Executor;
 
-use AppAISkillsToolDynamicTool;
+use App\AI\Skills\Tool\DynamicTool;
+use RuntimeException;
 
 class GenericApiExecutor implements ExecutorInterface
 {

@@ -1,10 +1,11 @@
 <?php
 
-namespace AppRepository;
+namespace App\Repository;
 
-use AppEntityAuditLog;
-use DoctrineBundleDoctrineBundleRepositoryServiceEntityRepository;
-use DoctrinePersistenceManagerRegistry;
+use App\Entity\AuditLog;
+use DateTimeImmutable;
+use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\Persistence\ManagerRegistry;
 
 class AuditLogRepository extends ServiceEntityRepository
 {

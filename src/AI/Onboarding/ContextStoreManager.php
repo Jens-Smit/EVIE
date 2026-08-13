@@ -1,13 +1,13 @@
 <?php
 
-namespace AppAIOnboarding;
+namespace App\AI\Onboarding;
 
-use AppEntityUserProfile;
-use AppEntityEmbedding;
-use AppAIRagVectorStore;
-use AppAIRagRetriever;
-use DoctrineORMEntityManagerInterface;
-use PsrLogLoggerInterface;
+use App\Entity\UserProfile;
+use App\Entity\Embedding;
+use App\AI\Rag\VectorStore;
+use App\AI\Rag\Retriever;
+use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 
 class ContextStoreManager
 {

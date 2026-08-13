@@ -1,9 +1,10 @@
 <?php
 
-namespace AppAIWorkflow;
+namespace App\AI\Workflow;
 
-use AppEntityUser;
-use AppAISkillsToolDynamicTool;
+use App\Entity\User;
+use App\AI\Skills\Tool\DynamicTool;
+use DateTimeImmutable;
 
 /**
  * DTO für blockierte Executions

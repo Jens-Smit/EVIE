@@ -1,8 +1,8 @@
 <?php
 
-namespace AppAISkills;
+namespace App\AI\Skills;
 
-use AppEntityToolDefinition;
+use App\Entity\ToolDefinition;
 
 /**
  * Löst Prompts für Sub-Agenten auf

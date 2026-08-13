@@ -1,11 +1,11 @@
 <?php
 
-namespace AppAISecurity;
+namespace App\AI\Security;
 
-use AppEntityAuditLog;
-use AppRepositoryAuditLogRepository;
-use SymfonyComponentHttpFoundationRequestStack;
-use SymfonyComponentSecurityCoreUserUserInterface;
+use App\Entity\AuditLog;
+use App\Repository\AuditLogRepository;
+use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
  * AuditLogger - Logging für alle kritischen Aktionen

@@ -1,13 +1,13 @@
 <?php
 
-namespace AppAISkillsTool;
+namespace App\AI\Skills\Tool;
 
-use AppEntityToolDefinition;
-use AppAISkillsSubAgentDefinitionLoader;
-use AppAISkillsSubAgentToolFactory;
-use AppAISkillsSubAgentRegistry;
-use AppAISkillsSubAgentPromptResolver;
-use PsrLogLoggerInterface;
+use App\Entity\ToolDefinition;
+use App\AI\Skills\SubAgentDefinitionLoader;
+use App\AI\Skills\SubAgentToolFactory;
+use App\AI\Skills\SubAgentRegistry;
+use App\AI\Skills\SubAgentPromptResolver;
+use Psr\Log\LoggerInterface;
 
 /**
  * Factory für DynamicTools - vereinfacht nach Phase 2

@@ -1,10 +1,10 @@
 <?php
 
-namespace AppAISkillsTool;
+namespace App\AI\Skills\Tool;
 
-use AppAISkillsExecutorExecutorResolverInterface;
-use PsrLogLoggerInterface;
-use SymfonyComponentAiMessengerToolToolExecutionResult;
+use App\AI\Skills\Executor\ExecutorResolverInterface;
+use Psr\Log\LoggerInterface;
+use Symfony\Component\AiMessenger\Tool\ToolExecutionResult;
 
 /**
  * DynamicToolExecutor - Nutzt ExecutorResolver statt hardcoded Logik
@@ -56,7 +56,7 @@ class DynamicToolExecutor
                 $result
             );
 
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $this->logger->error('Fehler bei Tool-Ausführung', [
                 'tool_name' => $tool->getName(),
                 'executor_type' => $executorType,

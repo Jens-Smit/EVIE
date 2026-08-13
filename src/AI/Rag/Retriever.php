@@ -1,6 +1,6 @@
 <?php
 
-namespace AppAIRag;
+namespace App\AI\Rag;
 
 class Retriever
 {

@@ -1,10 +1,10 @@
 <?php
 
-namespace AppAISkills;
+namespace App\AI\Skills;
 
-use AppEntityToolDefinition;
-use AppAISkillsToolDynamicTool;
-use PsrLogLoggerInterface;
+use App\Entity\ToolDefinition;
+use App\AI\Skills\Tool\DynamicTool;
+use Psr\Log\LoggerInterface;
 
 /**
  * Registriert und verwaltet DynamicTools
@@ -53,7 +53,7 @@ class SubAgentRegistry
             try {
                 $tool = $this->toolFactory->createFromDefinition($definition);
                 $this->registerTool($tool, $definition);
-            } catch (Exception $e) {
+            } catch (\Exception $e) {
                 $this->logger->error('Fehler beim Registrieren des Tools', [
                     'tool_id' => $definition->getId(),
                     'error' => $e->getMessage()

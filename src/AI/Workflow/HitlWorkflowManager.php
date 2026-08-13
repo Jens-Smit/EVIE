@@ -1,14 +1,14 @@
 <?php
 
-namespace AppAIWorkflow;
+namespace App\AI\Workflow;
 
-use AppEntityToolDefinition;
-use AppEntityUser;
-use AppAISkillsToolDynamicTool;
-use AppAISkillsDynamicSkillRegistry;
-use AppAISecurityAuditLogger;
-use DoctrineORMEntityManagerInterface;
-use PsrLogLoggerInterface;
+use App\Entity\ToolDefinition;
+use App\Entity\User;
+use App\AI\Skills\Tool\DynamicTool;
+use App\AI\Skills\DynamicSkillRegistry;
+use App\AI\Security\AuditLogger;
+use Doctrine\ORM\EntityManagerInterface;
+use Psr\Log\LoggerInterface;
 
 /**
  * HITL-Workflow-Manager - Vollständiger Workflow:
@@ -122,7 +122,7 @@ class HitlWorkflowManager
                 $pendingExecution->getOriginalRequest()
             );
 
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $this->logger->error('Fehler bei HITL-Execution', [
                 'execution_id' => $executionId,
                 'error' => $e->getMessage()

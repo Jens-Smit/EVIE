@@ -1,13 +1,14 @@
 <?php
 
-namespace AppEventListener;
+namespace App\EventListener;
 
-use AppAISecurityAuditLogger;
-use AppAISecuritySecurityGuard;
-use AppAISkillsToolDynamicTool;
-use SymfonyComponentHttpKernelEventViewEvent;
-use SymfonyComponentHttpKernelKernelEvents;
-use SymfonyComponentEventDispatcherAttributeAsEventListener;
+use App\AI\Security\AuditLogger;
+use App\AI\Security\SecurityGuard;
+use App\AI\Skills\Tool\DynamicTool;
+use Symfony\Component\HttpKernel\Event\ViewEvent;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
+use Symfony\Component\HttpKernel\KernelEvents;
+use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 
 #[AsEventListener(event: KernelEvents::VIEW, method: 'onKernelView', priority: 5)]
 class ToolSecurityListener
@@ -37,7 +38,7 @@ class ToolSecurityListener
                     ['tool_name' => $tool->getName()]
                 );
                 
-                throw new SymfonyComponentHttpKernelExceptionBadRequestHttpException(
+                throw new BadRequestHttpException(
                     'Tool kann nicht ausgeführt werden: Sicherheitsrichtlinien verweigern die Ausführung.'
                 );
             }

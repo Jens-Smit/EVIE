@@ -1,8 +1,8 @@
 <?php
 
-namespace AppAIRag;
+namespace App\AI\Rag;
 
-use SymfonyContractsHttpClientHttpClientInterface;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class MistralEmbeddingService implements EmbeddingServiceInterface
 {
@@ -32,7 +32,7 @@ class MistralEmbeddingService implements EmbeddingServiceInterface
 
             $data = json_decode($response->getContent(), true);
             return $data['data'][0]['embedding'] ?? [];
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             // Fallback: Dummy-Vektor für Entwicklung
             return array_fill(0, self::DIMENSION, 0.0);
         }
@@ -58,7 +58,7 @@ class MistralEmbeddingService implements EmbeddingServiceInterface
                 $embeddings[] = $item['embedding'] ?? [];
             }
             return $embeddings;
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             // Fallback
             return array_fill(0, count($texts), array_fill(0, self::DIMENSION, 0.0));
         }

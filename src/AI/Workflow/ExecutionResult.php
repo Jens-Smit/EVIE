@@ -1,6 +1,6 @@
 <?php
 
-namespace AppAIWorkflow;
+namespace App\AI\Workflow;
 
 /**
  * Ergebnis einer Execution

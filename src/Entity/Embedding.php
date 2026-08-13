@@ -1,38 +1,39 @@
 <?php
 
-namespace AppEntity;
+namespace App\Entity;
 
-use DoctrineDBALTypesTypes;
-use DoctrineORMMapping as ORM;
+use DateTimeImmutable;
+use Doctrine\DBAL\Types\Types;
+use Doctrine\ORM\Mapping as ORM;
 
-#[ORMEntity(repositoryClass: EmbeddingRepository::class)]
-#[ORMTable(name: 'embeddings')]
+#[ORM\Entity(repositoryClass: \App\Repository\EmbeddingRepository::class)]
+#[ORM\Table(name: 'embeddings')]
 class Embedding
 {
-    #[ORMId]
-    #[ORMGeneratedValue]
-    #[ORMColumn]
+    #[ORM\Id]
+    #[ORM\GeneratedValue]
+    #[ORM\Column]
     private ?int $id = null;
 
-    #[ORMColumn(type: Types::STRING, length: 255)]
+    #[ORM\Column(type: Types::STRING, length: 255)]
     private ?string $contentHash = null;
 
-    #[ORMColumn(type: Types::TEXT)]
+    #[ORM\Column(type: Types::TEXT)]
     private ?string $content = null;
 
-    #[ORMColumn(type: Types::STRING, length: 100)]
+    #[ORM\Column(type: Types::STRING, length: 100)]
     private ?string $contentType = null;
 
-    #[ORMColumn(type: Types::STRING, length: 255, nullable: true)]
+    #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
     private ?string $source = null;
 
-    #[ORMColumn(type: Types::JSON)]
+    #[ORM\Column(type: Types::JSON)]
     private array $metadata = [];
 
-    #[ORMColumn(type: Types::FLOAT_ARRAY, name: 'vector')]
+    #[ORM\Column(type: Types::FLOAT_ARRAY, name: 'vector')]
     private array $vector = [];
 
-    #[ORMColumn(type: Types::DATETIME_IMMUTABLE)]
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private ?DateTimeImmutable $createdAt = null;
 
     public function __construct()

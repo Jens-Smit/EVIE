@@ -1,8 +1,8 @@
 <?php
 
-namespace AppAISkillsTool;
+namespace App\AI\Skills\Tool;
 
-use SymfonyComponentAiMessengerToolTool;
+use Symfony\AI\Platform\Tool\Tool;
 
 /**
  * DynamicTool - Erweitert um executorType, executorConfig, securityPolicy, hitlPolicy, version

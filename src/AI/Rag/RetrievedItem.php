@@ -1,8 +1,8 @@
 <?php
 
-namespace AppAIRag;
+namespace App\AI\Rag;
 
-use AppEntityEmbedding;
+use App\Entity\Embedding;
 
 class RetrievedItem
 {

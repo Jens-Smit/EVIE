@@ -1,48 +1,51 @@
 <?php
 
-namespace AppEntity;
+namespace App\Entity;
 
-use DoctrineORMMapping as ORM;
-use SymfonyComponentSecurityCoreUserPasswordAuthenticatedUserInterface;
-use SymfonyComponentSecurityCoreUserUserInterface;
+use App\Repository\UserRepository;
+use DateTimeImmutable;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\ORM\Mapping as ORM;
+use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
+use Symfony\Component\Security\Core\User\UserInterface;
 
-#[ORMEntity(repositoryClass: UserRepository::class)]
-#[ORMTable(name: 'users')]
+#[ORM\Entity(repositoryClass: UserRepository::class)]
+#[ORM\Table(name: 'users')]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
-    #[ORMId]
-    #[ORMGeneratedValue]
-    #[ORMColumn]
+    #[ORM\Id]
+    #[ORM\GeneratedValue]
+    #[ORM\Column]
     private ?int $id = null;
 
-    #[ORMColumn(length: 180, unique: true)]
+    #[ORM\Column(length: 180, unique: true)]
     private ?string $email = null;
 
-    #[ORMColumn]
+    #[ORM\Column]
     private array $roles = [];
 
-    #[ORMColumn]
+    #[ORM\Column]
     private ?string $password = null;
 
-    #[ORMColumn(length: 100)]
+    #[ORM\Column(length: 100)]
     private ?string $firstName = null;
 
-    #[ORMColumn(length: 100)]
+    #[ORM\Column(length: 100)]
     private ?string $lastName = null;
 
-    #[ORMColumn(type: 'boolean')]
+    #[ORM\Column(type: 'boolean')]
     private bool $isActive = true;
 
-    #[ORMColumn(type: 'datetime_immutable')]
+    #[ORM\Column(type: 'datetime_immutable')]
     private ?DateTimeImmutable $createdAt = null;
 
-    #[ORMColumn(type: 'datetime_immutable', nullable: true)]
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?DateTimeImmutable $updatedAt = null;
 
-    #[ORMColumn(type: 'datetime_immutable', nullable: true)]
+    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?DateTimeImmutable $lastLoginAt = null;
 
-    #[ORMOneToOne(mappedBy: 'user', targetEntity: UserProfile::class, cascade: ['persist'])]
+    #[ORM\OneToOne(mappedBy: 'user', targetEntity: UserProfile::class, cascade: ['persist'])]
     private ?UserProfile $profile = null;
 
     public function __construct()

@@ -1,9 +1,10 @@
 <?php
 
-namespace AppAISkillsExecutor;
+namespace App\AI\Skills\Executor;
 
-use AppAISkillsToolDynamicTool;
-use SymfonyContractsHttpClientHttpClientInterface;
+use App\AI\Skills\Tool\DynamicTool;
+use RuntimeException;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class GenericHttpExecutor implements ExecutorInterface
 {

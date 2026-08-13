@@ -1,10 +1,10 @@
 <?php
 
-namespace AppRepository;
+namespace App\Repository;
 
-use AppEntityEmbedding;
-use DoctrineBundleDoctrineBundleRepositoryServiceEntityRepository;
-use DoctrinePersistenceManagerRegistry;
+use App\Entity\Embedding;
+use Doctrine\Bundle\DoctrineBundle\Repository\ServiceEntityRepository;
+use Doctrine\Persistence\ManagerRegistry;
 
 class EmbeddingRepository extends ServiceEntityRepository
 {
@@ -27,13 +27,13 @@ class EmbeddingRepository extends ServiceEntityRepository
         ';
         
         $stmt = $conn->prepare($sql);
-        $stmt->executeStatement([
+        $result = $stmt->executeQuery([
             'query_vector' => json_encode($queryVector),
             'content_type' => $contentType,
             'limit' => $limit
         ]);
         
-        $results = $stmt->fetchAllAssociative();
+        $results = $result->fetchAllAssociative();
         
         $filtered = [];
         foreach ($results as $row) {
