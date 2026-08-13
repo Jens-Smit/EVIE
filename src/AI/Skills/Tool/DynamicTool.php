@@ -1,92 +1,95 @@
 <?php
 
-namespace App\AI\Skills\Tool;
+namespace AppAISkillsTool;
 
-use App\Entity\ToolDefinition;
-use Symfony\AI\Agent\Tool\ToolInterface;
-use Symfony\Component\DependencyInjection\Attribute\AsTool;
+use SymfonyComponentAiMessengerToolTool;
 
 /**
- * DynamicTool - Implementiert ToolInterface für dynamisch generierte Tools
- * 
- * Diese Klasse ermöglicht die Ausführung von Tools, die zur Laufzeit
- * aus ToolDefinition-Entities generiert werden.
- * 
- * @see https://symfony.com/doc/current/ai/bundles/ai-bundle.html#register-tools
+ * DynamicTool - Erweitert um executorType, executorConfig, securityPolicy, hitlPolicy, version
  */
-#[AsTool]
-final readonly class DynamicTool implements ToolInterface
+class DynamicTool extends Tool
 {
+    private ?string $executorType;
+    private array $executorConfig;
+    private array $securityPolicy;
+    private array $hitlPolicy;
+    private string $version;
+
     public function __construct(
-        private ToolDefinition $toolDefinition,
-        private DynamicToolExecutor $executor,
+        string $name,
+        ?string $description = null,
+        array $schema = [],
+        ?string $executorType = null,
+        array $executorConfig = [],
+        array $securityPolicy = [],
+        array $hitlPolicy = [],
+        string $version = '1.0'
     ) {
+        parent::__construct($name, $description, $schema);
+        
+        $this->executorType = $executorType;
+        $this->executorConfig = $executorConfig;
+        $this->securityPolicy = $securityPolicy;
+        $this->hitlPolicy = $hitlPolicy;
+        $this->version = $version;
+    }
+
+    public function getExecutorType(): ?string
+    {
+        return $this->executorType;
+    }
+
+    public function getExecutorConfig(): array
+    {
+        return $this->executorConfig;
+    }
+
+    public function getSecurityPolicy(): array
+    {
+        return $this->securityPolicy;
+    }
+
+    public function getHitlPolicy(): array
+    {
+        return $this->hitlPolicy;
+    }
+
+    public function getVersion(): string
+    {
+        return $this->version;
     }
 
     /**
-     * Führt das Tool aus.
-     * 
-     * @param mixed ...$arguments Argumente für das Tool
-     * @return mixed Das Ergebnis der Tool-Ausführung
+     * Gibt die vollständige Konfiguration als Array zurück
      */
-    public function __invoke(...$arguments): mixed
+    public function toArray(): array
     {
-        return $this->executor->execute($this->toolDefinition, $arguments);
+        return [
+            'name' => $this->getName(),
+            'description' => $this->getDescription(),
+            'schema' => $this->getSchema(),
+            'executorType' => $this->executorType,
+            'executorConfig' => $this->executorConfig,
+            'securityPolicy' => $this->securityPolicy,
+            'hitlPolicy' => $this->hitlPolicy,
+            'version' => $this->version,
+        ];
     }
 
     /**
-     * Gibt den Namen des Tools zurück.
+     * Prüft ob das Tool HITL erfordert
      */
-    public function getName(): string
+    public function requiresHitl(): bool
     {
-        return $this->toolDefinition->getName();
+        return ($this->hitlPolicy['requiresApproval'] ?? false) === true;
     }
 
     /**
-     * Gibt die Beschreibung des Tools zurück.
+     * Prüft ob der Executor sicher ist
      */
-    public function getDescription(): string
+    public function isSafeExecutor(): bool
     {
-        return $this->toolDefinition->getDescription();
-    }
-
-    /**
-     * Gibt das Schema des Tools zurück.
-     */
-    public function getSchema(): array
-    {
-        return $this->toolDefinition->getSchema();
-    }
-
-    /**
-     * Gibt die ToolDefinition zurück.
-     */
-    public function getToolDefinition(): ToolDefinition
-    {
-        return $this->toolDefinition;
-    }
-
-    /**
-     * Gibt die Parameter des Tools zurück.
-     */
-    public function getParameters(): array
-    {
-        return $this->toolDefinition->getParameters() ?? [];
-    }
-
-    /**
-     * Prüft, ob das Tool genehmigt ist.
-     */
-    public function isApproved(): bool
-    {
-        return $this->toolDefinition->isApproved();
-    }
-
-    /**
-     * Gibt den Status des Tools zurück.
-     */
-    public function getStatus(): string
-    {
-        return $this->toolDefinition->getStatus();
+        $allowedExecutors = ['api', 'database', 'filesystem', 'http'];
+        return in_array($this->executorType, $allowedExecutors, true);
     }
 }
