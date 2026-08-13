@@ -1,10 +1,8 @@
 services:
-    # Default configuration for services in *this* file
     _defaults:
         autowire: true
         autoconfigure: true
 
-    # makes classes in src/ available to be used as services
     App\:
         resource: '../src/'
         exclude:
@@ -13,29 +11,4 @@ services:
             - '../src/Kernel.php'
             - '../src/Tests/'
 
-    # RAG Services
     App\AI\Rag\EmbeddingServiceInterface: '@App\AI\Rag\MistralEmbeddingService'
-
-    # Security Services
-    App\Security\UserProvider:
-        arguments:
-            $userRepository: '@App\Repository\UserRepository'
-
-    App\Security\Authenticator\LoginFormAuthenticator:
-        arguments:
-            $urlGenerator: '@router'
-
-    # Controllers
-    App\Controller\SecurityController:
-        tags: ['controller.service_arguments']
-        arguments:
-            $userRepository: '@App\Repository\UserRepository'
-
-    # Event Listeners
-    App\EventListener\ApiSecurityListener:
-        tags:
-            - { name: kernel.event_listener, event: kernel.controller, priority: 10 }
-
-    App\EventListener\ToolSecurityListener:
-        tags:
-            - { name: kernel.event_listener, event: kernel.view, priority: 5 }
