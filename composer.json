@@ -5,33 +5,31 @@
   "license": "MIT",
   "require": {
     "php": "^8.2",
-    "ext-pdo_pgsql": "*",
     "ext-json": "*",
-    "symfony/symfony": "^7.0",
-    "symfony/framework-bundle": "^7.0",
-    "symfony/security-bundle": "^7.0",
-    "symfony/twig-bundle": "^7.0",
-    "symfony/webprofiler-bundle": "^7.0",
-    "symfony/debug-bundle": "^7.0",
-    "symfony/maker-bundle": "^1.50",
-    "symfony/ai": "^1.0",
-    "symfony/ai-postgres-store": "^1.0",
-    "symfony/doctrine-bundle": "^7.0",
-    "symfony/doctrine-messenger": "^7.0",
-    "symfony/orm-pack": "^7.0",
+    "ext-pdo_pgsql": "*",
+    "doctrine/dbal": "^3.7",
     "doctrine/doctrine-bundle": "^2.10",
     "doctrine/doctrine-migrations-bundle": "^3.3",
-    "doctrine/dbal": "^3.7",
+    "doctrine/persistence": "^3.1",
     "pgvector/pgvector": "^0.1",
-    "symfony/runtime": "^7.0",
-    "symfony/flex": "^2.4",
-    "symfony/console": "^7.0",
-    "symfony/http-client": "^7.0"
+    "symfony/ai-bundle": "^0.12",
+    "symfony/ai-postgres-store": "^0.12",
+    "symfony/console": "^7.4",
+    "symfony/debug-bundle": "^7.4",
+    "symfony/framework-bundle": "^7.4",
+    "symfony/http-client": "^7.4",
+    "symfony/maker-bundle": "^1.50",
+    "symfony/monolog-bundle": "*",
+    "symfony/runtime": "^7.4",
+    "symfony/security-bundle": "^7.4",
+    "symfony/symfony": "^7.4",
+    "symfony/twig-bundle": "^7.4",
+    "symfony/web-profiler-bundle": "^7.4"
   },
   "require-dev": {
     "phpunit/phpunit": "^10.5",
     "phpstan/phpstan": "^1.10",
-    "symfony/phpunit-bridge": "^7.0"
+    "symfony/phpunit-bridge": "^7.4"
   },
   "config": {
     "optimize-autoloader": true,
@@ -70,16 +68,6 @@
     "auto-scripts-config": {
       "cache:clear": ["@on-change"],
       "assets:install %PUBLIC_DIR%": ["@on-change"]
-    }
-  },
-  "conflict": {
-    "symfony/symfony": "*"
-  },
-  "extra": {
-    "symfony": {
-      "id": "01H5Z5V2K6J7Q8R9S0T1U2V3W4",
-      "allow-contrib": false,
-      "require": true
     }
   }
 }
