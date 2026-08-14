@@ -21,7 +21,7 @@ ai:
         # Reference: ROADMAP_PHASE3.md - Measure 8: LLM-Prompt-Optimierung
         tool_generator:
             platform: 'ai.platform.mistral'
-            model: 'mistral-large-latest'
+            model: 'mistral-small-latest'
             prompt:
                 file: '%kernel.project_dir%/config/prompts/tool_schema_optimizer.txt'
                 include_tools: true
@@ -47,7 +47,7 @@ ai:
         # Reference: ROADMAP_PHASE3.md - Measure 10: Onboarding-Prompt optimieren
         onboarding:
             platform: 'ai.platform.mistral'
-            model: 'mistral-large-latest'
+            model: 'mistral-small-latest'
             prompt:
                 file: '%kernel.project_dir%/config/prompts/onboarding_prompt.json'
                 include_tools: false
@@ -160,7 +160,7 @@ ai:
         # Website Research Agent
         website_researcher:
             platform: 'ai.platform.mistral'
-            model: 'mistral-large-latest'
+            model: 'mistral-small-latest'
             prompt:
                 text: |
                     Du bist ein spezialisierter Sub-Agent für Webseiten-Recherche und Inhaltszusammenfassung.
@@ -183,14 +183,14 @@ ai:
                         "zusammenfassung": "..."
                     }
             tools:
-                - 'Symfony\AI\Agent\Bridge\Firecrawl\Firecrawl'
-                - 'Symfony\AI\Agent\Bridge\Tavily\Tavily'
+                - { service: 'App\Mcp\Toolbox\McpToolExecutor' }
                 - { service: 'App\AI\Skills\Tool\FileReadTool' }
+                - { service: 'Symfony\AI\Agent\Bridge\Tavily\Tavily' }
 
         # Data Analysis Agent
         data_analyst:
             platform: 'ai.platform.mistral'
-            model: 'mistral-large-latest'
+            model: 'mistral-small-latest'
             prompt: |
                 Du bist ein spezialisierter Sub-Agent für Datenanalyse und statistische Auswertungen.
                 Analysiere Daten, erkenne Muster und liefere Erkenntnisse.
@@ -202,7 +202,7 @@ ai:
         # Code Assistant Agent
         code_assistant:
             platform: 'ai.platform.mistral'
-            model: 'mistral-large-latest'
+            model: 'mistral-small-latest'
             prompt: |
                 Du bist ein spezialisierter Sub-Agent für Code-Analyse, Generierung und Review.
                 Analysiere Code, schlage Verbesserungen vor und generiere neuen Code.
@@ -212,7 +212,7 @@ ai:
         # Document Processor Agent
         document_processor:
             platform: 'ai.platform.mistral'
-            model: 'mistral-large-latest'
+            model: 'mistral-small-latest'
             prompt: |
                 Du bist ein spezialisierter Sub-Agent für Dokumentenverarbeitung.
                 Verarbeite PDFs, Excel-Dateien und andere Dokumente.
@@ -224,7 +224,7 @@ ai:
         # Communication Manager Agent
         communication_manager:
             platform: 'ai.platform.mistral'
-            model: 'mistral-large-latest'
+            model: 'mistral-small-latest'
             prompt: |
                 Du bist der Communication Manager von EVIE.
                 Verwalte E-Mails, Nachrichten, LinkedIn und andere Kommunikation.
@@ -236,7 +236,7 @@ ai:
         # API Integration Agent
         api_integration:
             platform: 'ai.platform.mistral'
-            model: 'mistral-large-latest'
+            model: 'mistral-small-latest'
             prompt: |
                 Du bist der API Integration Agent von EVIE.
                 Binde externe APIs an, verwalte OAuth und Authentifizierung.
@@ -248,7 +248,7 @@ ai:
         # Project Manager Agent
         project_manager:
             platform: 'ai.platform.mistral'
-            model: 'mistral-large-latest'
+            model: 'mistral-small-latest'
             prompt: |
                 Du bist der Project Manager von EVIE.
                 Verwalte Aufgaben, Termine, Ressourcen und Projekte.
@@ -258,7 +258,7 @@ ai:
         # Finance Manager Agent
         finance_manager:
             platform: 'ai.platform.mistral'
-            model: 'mistral-large-latest'
+            model: 'mistral-small-latest'
             prompt: |
                 Du bist der Finance Manager von EVIE.
                 Verwalte Buchhaltung, Rechnungen, Zahlungen.
@@ -268,7 +268,7 @@ ai:
         # HR Manager Agent
         hr_manager:
             platform: 'ai.platform.mistral'
-            model: 'mistral-large-latest'
+            model: 'mistral-small-latest'
             prompt: |
                 Du bist der HR Manager von EVIE.
                 Verwalte Mitarbeiter, Gehälter, Verträge.
@@ -278,7 +278,7 @@ ai:
         # Marketing Manager Agent
         marketing_manager:
             platform: 'ai.platform.mistral'
-            model: 'mistral-large-latest'
+            model: 'mistral-small-latest'
             prompt: |
                 Du bist der Marketing Manager von EVIE.
                 Verwalte Kampagnen, Social Media, Content.
@@ -288,7 +288,7 @@ ai:
         # CEO Assistant Agent (koordiniert alle anderen)
         ceo_assistant:
             platform: 'ai.platform.mistral'
-            model: 'mistral-large-latest'
+            model: 'mistral-small-latest'
             prompt: |
                 Du bist der CEO Assistant von EVIE.
                 Entwickle Strategien, treffe Entscheidungen, priorisiere Aufgaben.

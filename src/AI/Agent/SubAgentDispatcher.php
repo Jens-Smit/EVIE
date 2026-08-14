@@ -8,6 +8,7 @@ use App\AI\Skills\ToolDefinitionGenerator;
 use App\Entity\SubAgentDefinition;
 use App\Entity\ToolDefinition;
 use App\Event\PendingToolApprovalEvent;
+use App\Mcp\Toolbox\McpToolExecutor;
 use App\Repository\SubAgentDefinitionRepository;
 use App\Repository\ToolDefinitionRepository;
 use Psr\Log\LoggerInterface;
@@ -15,8 +16,7 @@ use Symfony\AI\Agent\AgentInterface;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
 use Symfony\AI\Platform\PlatformInterface;
-use Symfony\AI\Agent\Bridge\Firecrawl\Firecrawl;
-use Symfony\AI\Agent\Bridge\Tavily\Tavily;
+
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
@@ -25,8 +25,8 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  *
  * Diese Klasse implementiert einen Sub-Agent-Dispatcher, der:
  * 1. User-Anfragen analysiert und an passende Sub-Agenten weiterleitet
- * 2. Firecrawl für Webseiten-Recherche integriert
- * 3. Tavily für Web-Suche und Informationsbeschaffung nutzt
+ * 2. MCP Playwright für Webseiten-Recherche nutzt (statt Firecrawl)
+ * 3. Tavily als Tool für Web-Suche und Informationsbeschaffung (über AI Toolbox)
  * 4. Automatische Tool-Generierung für neue Anforderungen
  * 5. Fehlertolerante Verarbeitung und Monitoring
  * 6. Dynamisches Laden von Sub-Agenten aus der Datenbank unterstützt
@@ -43,8 +43,7 @@ class SubAgentDispatcher
     private EventDispatcherInterface $dispatcher;
     private UrlGeneratorInterface $urlGenerator;
     private SubAgentFactory $subAgentFactory;
-    private Firecrawl $firecrawl;
-    private Tavily $tavily;
+    private McpToolExecutor $mcpToolExecutor;
 
     public function __construct(
         PlatformInterface $platform,
@@ -57,8 +56,7 @@ class SubAgentDispatcher
         EventDispatcherInterface $dispatcher,
         UrlGeneratorInterface $urlGenerator,
         SubAgentFactory $subAgentFactory,
-        Firecrawl $firecrawl,
-        Tavily $tavily
+        McpToolExecutor $mcpToolExecutor
     ) {
         $this->platform = $platform;
         $this->logger = $logger;
@@ -70,8 +68,7 @@ class SubAgentDispatcher
         $this->dispatcher = $dispatcher;
         $this->urlGenerator = $urlGenerator;
         $this->subAgentFactory = $subAgentFactory;
-        $this->firecrawl = $firecrawl;
-        $this->tavily = $tavily;
+        $this->mcpToolExecutor = $mcpToolExecutor;
     }
 
     /**
@@ -264,7 +261,7 @@ class SubAgentDispatcher
     }
 
     /**
-     * Behandelt Webseiten-Recherche-Anfragen mit Firecrawl-Integration
+     * Behandelt Webseiten-Recherche-Anfragen mit MCP Playwright-Integration
      */
     private function handleWebsiteResearchRequest(string $userMessage, string $userIdentifier): string
     {
@@ -279,18 +276,16 @@ class SubAgentDispatcher
         }
 
         try {
-            // Führe Firecrawl-Recherche durch
-            $this->logger->info('Starte Firecrawl-Recherche', ['url' => $url]);
+            // Führe Playwright MCP Scraping durch
+            $this->logger->info('Starte Playwright MCP Scraping', ['url' => $url]);
 
-            // Hier würde normalerweise der Firecrawl-Aufruf stattfinden
-            // Für diese Implementierung simulieren wir das Ergebnis
-            $simulatedResults = $this->simulateFirecrawlResults($url);
+            $scrapedResults = $this->scrapeWithPlaywright($url);
 
             // Erstelle eine strukturierte Antwort
-            return $this->createWebsiteResearchResponse($userMessage, $url, $simulatedResults);
+            return $this->createWebsiteResearchResponse($userMessage, $url, $scrapedResults);
 
         } catch (\Exception $e) {
-            $this->logger->error('Firecrawl-Recherche fehlgeschlagen', [
+            $this->logger->error('Playwright MCP Scraping fehlgeschlagen', [
                 'error' => $e->getMessage(),
                 'url' => $url
             ]);
@@ -300,7 +295,141 @@ class SubAgentDispatcher
     }
 
     /**
-     * Extrahiere URL aus einer User-Nachricht
+     * Scrapt eine Webseite über den MCP Playwright-Server
+     *
+     * Nutzt den konfigurierten Playwright-MCP-Server, um den Seiteninhalt
+     * als Markdown und Text zu extrahieren.
+     *
+     * @return array{
+     *     title: string|null,
+     *     description: string|null,
+     *     content: string,
+     *     source: string,
+     *     url: string
+     * }
+     */
+    private function scrapeWithPlaywright(string $url): array
+    {
+        $this->logger->info('Rufe Playwright MCP Tool auf', [
+            'url' => $url,
+            'server' => 'playwright',
+        ]);
+
+        // Nutze den MCP Playwright-Server für Web-Scraping
+        // Der 'scrap'-Tool scrapet eine URL und gibt Markdown + Text zurück
+        $rawResult = $this->mcpToolExecutor('playwright', 'scrap', ['url' => $url]);
+
+        // Normalisiere das MCP-Ergebnis zu einem lesbaren String
+        $content = $this->normalizeMcpResult($rawResult);
+
+        $results = [
+            'content' => $content,
+            'source' => 'playwright_mcp',
+            'url' => $url,
+        ];
+
+        // Versuche, Titel und Beschreibung aus dem gescrappten Inhalt zu extrahieren
+        $title = $this->extractTitleFromContent($content);
+        $description = $this->extractDescriptionFromContent($content, $url);
+
+        if ($title !== null) {
+            $results['title'] = $title;
+        }
+        if ($description !== null) {
+            $results['description'] = $description;
+        }
+
+        return $results;
+    }
+
+    /**
+     * Normalisiert das Ergebnis eines MCP Tool-Aufrufs zu einem String
+     */
+    private function normalizeMcpResult(mixed $result): string
+    {
+        if (is_string($result)) {
+            return $result;
+        }
+
+        if (is_array($result)) {
+            // MCP CallToolResult-Format: ['content' => [['type' => 'text', 'text' => '...']]]
+            if (isset($result['content']) && is_array($result['content'])) {
+                $texts = [];
+                foreach ($result['content'] as $item) {
+                    if (isset($item['text'])) {
+                        $texts[] = $item['text'];
+                    }
+                }
+                if (!empty($texts)) {
+                    return implode("\n", $texts);
+                }
+            }
+            // Fallback: JSON-kodiere das Array
+            return json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        }
+
+        if (is_object($result)) {
+            // Objekt mit content-Property
+            if (isset($result->content) && is_array($result->content)) {
+                $texts = [];
+                foreach ($result->content as $item) {
+                    if (isset($item->text)) {
+                        $texts[] = $item->text;
+                    } elseif (isset($item['text'])) {
+                        $texts[] = $item['text'];
+                    }
+                }
+                if (!empty($texts)) {
+                    return implode("\n", $texts);
+                }
+            }
+            return json_encode($result, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
+        }
+
+        return '';
+    }
+
+    /**
+     * Extrahiert den Titel aus dem gescrapten Inhalt
+     */
+    private function extractTitleFromContent(string $content): ?string
+    {
+        // Suche nach Markdown-Title (# Title)
+        if (preg_match('/^#\s+(.+)$/m', $content, $matches)) {
+            return trim($matches[1]);
+        }
+
+        // Suche nach HTML-Title
+        if (preg_match('/<title[^>]*>([^<]+)<\/title>/i', $content, $matches)) {
+            return trim($matches[1]);
+        }
+
+        return null;
+    }
+
+    /**
+     * Extrahiert eine kurze Beschreibung aus dem gescrapten Inhalt
+     */
+    private function extractDescriptionFromContent(string $content, string $url): ?string
+    {
+        // Suche nach Meta-Description
+        if (preg_match('/<meta\s+name=["\']description["\']\s+content=["\']([^"\']+)["\']/', $content, $matches)) {
+            return trim($matches[1]);
+        }
+
+        // Nimm den ersten nicht-leeren Absatz
+        if (preg_match('/^(?:#[^\n]+\n+)?\s*(.+)$/m', $content, $matches)) {
+            $line = trim($matches[1]);
+            if (strlen($line) > 10 && strlen($line) < 500) {
+                return $line;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Extrahiert URL aus einer User-Nachricht
      */
     private function extractUrlFromMessage(string $message): string
     {
@@ -324,38 +453,6 @@ class SubAgentDispatcher
     }
 
     /**
-     * Simuliert Firecrawl-Ergebnisse (für Implementierung ohne tatsächliche API-Aufrufe)
-     */
-    private function simulateFirecrawlResults(string $url): array
-    {
-        // Simuliere verschiedene Ergebnisse basierend auf der URL
-        $simulatedData = [];
-
-        if (strpos($url, 'visiongastro.de') !== false) {
-            $simulatedData = [
-                'title' => 'VisionGastro - Innovative Gastronomie-Lösungen',
-                'description' => 'VisionGastro bietet innovative Lösungen für die Gastronomie-Branche mit Fokus auf Nachhaltigkeit und Digitalisierung.',
-                'impressum' => 'VisionGastro GmbH, Musterstraße 123, 10115 Berlin, Deutschland',
-                'kontakte' => 'info@visiongastro.de, Tel: +49 30 12345678',
-                'geschäftszweck' => 'Entwicklung und Vertrieb von Gastronomie-Software und -Hardware',
-                'standort' => 'Berlin, Deutschland mit Niederlassungen in München und Hamburg',
-                'branche' => 'Gastronomie-Technologie, Digitalisierung, Software-as-a-Service'
-            ];
-        } else {
-            $simulatedData = [
-                'title' => 'Beispiel-Webseite',
-                'description' => 'Dies ist eine simulierte Webseiten-Zusammenfassung für ' . $url,
-                'content' => 'Die Webseite enthält Informationen über verschiedene Themen wie ' .
-                           'Produkte, Dienstleistungen und Kontaktmöglichkeiten. ' .
-                           'Weitere Details wären in einer echten Firecrawl-Abfrage verfügbar.',
-                'keywords' => ['Beispiel', 'Webseite', 'Informationen', 'Kontakt']
-            ];
-        }
-
-        return $simulatedData;
-    }
-
-    /**
      * Erstellt eine strukturierte Website-Recherche-Antwort
      */
     private function createWebsiteResearchResponse(string $userMessage, string $url, array $results): string
@@ -373,7 +470,7 @@ class SubAgentDispatcher
             'status' => 'success',
             'timestamp' => (new \DateTimeImmutable())->format(DATE_ATOM),
             'metadata' => [
-                'analysis_method' => 'firecrawl_simulation',
+                'analysis_method' => 'playwright_mcp',
                 'confidence' => 0.85,
                 'suggested_followup' => $this->getSuggestedFollowupActions($url)
             ]
@@ -528,7 +625,7 @@ class SubAgentDispatcher
             'supported_formats' => ['PDF', 'Excel', 'Word', 'CSV', 'JSON'],
             'suggested_tools' => ['document_parser', 'text_extractor', 'data_converter'],
             'next_steps' => [
-                'Dokumentformat identifizieren',
+                'Dokumentenformat identifizieren',
                 'Inhalte extrahieren und strukturieren',
                 'Daten validieren und bereinigen',
                 'Ergebnisse in gewünschtem Format bereitstellen'

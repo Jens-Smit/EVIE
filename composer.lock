@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "9cc6b752c1713e5840d35e28d973af16",
+    "content-hash": "287e004d9040b8092b8d071b5d474af8",
     "packages": [
         {
             "name": "doctrine/collections",
@@ -1939,6 +1939,105 @@
             "time": "2024-09-11T13:17:53+00:00"
         },
         {
+            "name": "symfony/ai-agent",
+            "version": "v0.12.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/ai-agent.git",
+                "reference": "85fbfceee8d57c80006f6524eb994a0903fb7734"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/ai-agent/zipball/85fbfceee8d57c80006f6524eb994a0903fb7734",
+                "reference": "85fbfceee8d57c80006f6524eb994a0903fb7734",
+                "shasum": ""
+            },
+            "require": {
+                "ext-fileinfo": "*",
+                "php": ">=8.2",
+                "phpdocumentor/reflection-docblock": "^5.4|^6.0",
+                "phpstan/phpdoc-parser": "^2.1",
+                "psr/log": "^3.0",
+                "symfony/ai-platform": "^0.12",
+                "symfony/clock": "^7.3|^8.0",
+                "symfony/http-client": "^7.3|^8.0",
+                "symfony/polyfill-php85": "^1.33",
+                "symfony/property-access": "^7.3|^8.0",
+                "symfony/property-info": "^7.3|^8.0",
+                "symfony/serializer": "^7.3|^8.0",
+                "symfony/type-info": "^7.3|^8.0"
+            },
+            "require-dev": {
+                "phpstan/phpstan": "^2.1",
+                "phpstan/phpstan-phpunit": "^2.0",
+                "phpstan/phpstan-strict-rules": "^2.0",
+                "phpunit/phpunit": "^11.5.53",
+                "symfony/ai-store": "^0.12",
+                "symfony/event-dispatcher": "^7.3|^8.0",
+                "symfony/translation": "^7.3|^8.0",
+                "symfony/translation-contracts": "^3.6",
+                "symfony/validator": "^7.3|^8.0"
+            },
+            "type": "library",
+            "extra": {
+                "thanks": {
+                    "url": "https://github.com/symfony/ai",
+                    "name": "symfony/ai"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Symfony\\AI\\Agent\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Christopher Hertel",
+                    "email": "mail@christopher-hertel.de"
+                },
+                {
+                    "name": "Oskar Stark",
+                    "email": "oskarstark@googlemail.com"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "PHP library for building agentic applications.",
+            "keywords": [
+                "Agent",
+                "ai",
+                "llm"
+            ],
+            "support": {
+                "source": "https://github.com/symfony/ai-agent/tree/v0.12.0"
+            },
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2026-07-21T23:38:06+00:00"
+        },
+        {
             "name": "symfony/ai-bundle",
             "version": "v0.12.0",
             "source": {
@@ -2077,6 +2176,527 @@
             "description": "Integration bundle for Symfony AI components",
             "support": {
                 "source": "https://github.com/symfony/ai-bundle/tree/v0.12.0"
+            },
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2026-07-21T23:38:06+00:00"
+        },
+        {
+            "name": "symfony/ai-cache-message-store",
+            "version": "v0.12.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/ai-cache-message-store.git",
+                "reference": "d2fff0338cbef3b484addcdc3737e8b1dbf6a6f2"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/ai-cache-message-store/zipball/d2fff0338cbef3b484addcdc3737e8b1dbf6a6f2",
+                "reference": "d2fff0338cbef3b484addcdc3737e8b1dbf6a6f2",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.2",
+                "symfony/ai-chat": "^0.12",
+                "symfony/cache": "^7.3|^8.0"
+            },
+            "require-dev": {
+                "phpstan/phpstan": "^2.1",
+                "phpstan/phpstan-phpunit": "^2.0",
+                "phpstan/phpstan-strict-rules": "^2.0",
+                "phpunit/phpunit": "^11.5.53"
+            },
+            "type": "symfony-ai-message-store",
+            "extra": {
+                "thanks": {
+                    "url": "https://github.com/symfony/ai",
+                    "name": "symfony/ai"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Symfony\\AI\\Chat\\Bridge\\Cache\\": ""
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Christopher Hertel",
+                    "email": "mail@christopher-hertel.de"
+                },
+                {
+                    "name": "Oskar Stark",
+                    "email": "oskarstark@googlemail.com"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "Cache message store bridge for Symfony AI Chat",
+            "keywords": [
+                "Bridge",
+                "ai",
+                "cache",
+                "chat",
+                "message-store"
+            ],
+            "support": {
+                "source": "https://github.com/symfony/ai-cache-message-store/tree/v0.12.0"
+            },
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2026-07-21T23:38:06+00:00"
+        },
+        {
+            "name": "symfony/ai-chat",
+            "version": "v0.12.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/ai-chat.git",
+                "reference": "e5a89f73cc7b715bab76fc5b0731da8c78ad838b"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/ai-chat/zipball/e5a89f73cc7b715bab76fc5b0731da8c78ad838b",
+                "reference": "e5a89f73cc7b715bab76fc5b0731da8c78ad838b",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.2",
+                "symfony/ai-agent": "^0.12",
+                "symfony/ai-platform": "^0.12",
+                "symfony/service-contracts": "^2.5|^3"
+            },
+            "require-dev": {
+                "phpstan/phpstan": "^2.1",
+                "phpstan/phpstan-phpunit": "^2.0",
+                "phpstan/phpstan-strict-rules": "^2.0",
+                "phpunit/phpunit": "^11.5.53",
+                "symfony/clock": "^7.3|^8.0",
+                "symfony/console": "^7.3|^8.0",
+                "symfony/dependency-injection": "^7.3|^8.0",
+                "symfony/serializer": "^7.3|^8.0"
+            },
+            "type": "library",
+            "extra": {
+                "thanks": {
+                    "url": "https://github.com/symfony/ai",
+                    "name": "symfony/ai"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Symfony\\AI\\Chat\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Christopher Hertel",
+                    "email": "mail@christopher-hertel.de"
+                },
+                {
+                    "name": "Oskar Stark",
+                    "email": "oskarstark@googlemail.com"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "PHP library for building chats with agents.",
+            "keywords": [
+                "Agent",
+                "ai",
+                "chat",
+                "llm"
+            ],
+            "support": {
+                "source": "https://github.com/symfony/ai-chat/tree/v0.12.0"
+            },
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2026-07-21T23:38:06+00:00"
+        },
+        {
+            "name": "symfony/ai-firecrawl-tool",
+            "version": "v0.12.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/ai-firecrawl-tool.git",
+                "reference": "39eb7559eea3f8ba76ef8ecb028385afcdd153fe"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/ai-firecrawl-tool/zipball/39eb7559eea3f8ba76ef8ecb028385afcdd153fe",
+                "reference": "39eb7559eea3f8ba76ef8ecb028385afcdd153fe",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.2",
+                "symfony/ai-agent": "^0.12",
+                "symfony/http-client": "^7.3|^8.0"
+            },
+            "require-dev": {
+                "phpstan/phpstan": "^2.1",
+                "phpstan/phpstan-phpunit": "^2.0",
+                "phpstan/phpstan-strict-rules": "^2.0",
+                "phpunit/phpunit": "^11.5.53",
+                "symfony/ai-platform": "^0.12"
+            },
+            "type": "symfony-ai-tool",
+            "extra": {
+                "thanks": {
+                    "url": "https://github.com/symfony/ai",
+                    "name": "symfony/ai"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Symfony\\AI\\Agent\\Bridge\\Firecrawl\\": ""
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Guillaume Loulier",
+                    "email": "personal@guillaumeloulier.fr"
+                },
+                {
+                    "name": "Oskar Stark",
+                    "email": "oskarstark@googlemail.com"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "Firecrawl AI tool bridge for Symfony applications.",
+            "keywords": [
+                "Agent",
+                "Bridge",
+                "ai",
+                "firecrawl",
+                "tool"
+            ],
+            "support": {
+                "source": "https://github.com/symfony/ai-firecrawl-tool/tree/v0.12.0"
+            },
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2026-07-21T23:38:06+00:00"
+        },
+        {
+            "name": "symfony/ai-gemini-platform",
+            "version": "v0.12.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/ai-gemini-platform.git",
+                "reference": "2b5e175c23ef569b0fe5777d83bb20fd776bafa8"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/ai-gemini-platform/zipball/2b5e175c23ef569b0fe5777d83bb20fd776bafa8",
+                "reference": "2b5e175c23ef569b0fe5777d83bb20fd776bafa8",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.2",
+                "symfony/ai-platform": "^0.12",
+                "symfony/http-client": "^7.3|^8.0"
+            },
+            "require-dev": {
+                "phpstan/phpstan": "^2.1",
+                "phpstan/phpstan-phpunit": "^2.0",
+                "phpstan/phpstan-strict-rules": "^2.0",
+                "phpunit/phpunit": "^11.5.53",
+                "symfony/ai-agent": "^0.12"
+            },
+            "type": "symfony-ai-platform",
+            "extra": {
+                "thanks": {
+                    "url": "https://github.com/symfony/ai",
+                    "name": "symfony/ai"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Symfony\\AI\\Platform\\Bridge\\Gemini\\": ""
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Christopher Hertel",
+                    "email": "mail@christopher-hertel.de"
+                },
+                {
+                    "name": "Oskar Stark",
+                    "email": "oskarstark@googlemail.com"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "Google Gemini platform bridge for Symfony AI",
+            "keywords": [
+                "Bridge",
+                "Gemini",
+                "ai",
+                "google",
+                "platform"
+            ],
+            "support": {
+                "source": "https://github.com/symfony/ai-gemini-platform/tree/v0.12.0"
+            },
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2026-07-21T23:38:06+00:00"
+        },
+        {
+            "name": "symfony/ai-generic-platform",
+            "version": "v0.12.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/ai-generic-platform.git",
+                "reference": "df2cc5cebb6d4196b67a9d73ef630b552af581c7"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/ai-generic-platform/zipball/df2cc5cebb6d4196b67a9d73ef630b552af581c7",
+                "reference": "df2cc5cebb6d4196b67a9d73ef630b552af581c7",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.2",
+                "symfony/ai-platform": "^0.12",
+                "symfony/http-client": "^7.3|^8.0"
+            },
+            "require-dev": {
+                "phpstan/phpstan": "^2.1",
+                "phpstan/phpstan-phpunit": "^2.0",
+                "phpstan/phpstan-strict-rules": "^2.0",
+                "phpunit/phpunit": "^11.5.53"
+            },
+            "type": "symfony-ai-platform",
+            "extra": {
+                "thanks": {
+                    "url": "https://github.com/symfony/ai",
+                    "name": "symfony/ai"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Symfony\\AI\\Platform\\Bridge\\Generic\\": ""
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Christopher Hertel",
+                    "email": "mail@christopher-hertel.de"
+                },
+                {
+                    "name": "Oskar Stark",
+                    "email": "oskarstark@googlemail.com"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "Generic platform bridge for Symfony AI",
+            "keywords": [
+                "Bridge",
+                "ai",
+                "generic",
+                "platform"
+            ],
+            "support": {
+                "source": "https://github.com/symfony/ai-generic-platform/tree/v0.12.0"
+            },
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2026-07-21T23:38:06+00:00"
+        },
+        {
+            "name": "symfony/ai-mistral-platform",
+            "version": "v0.12.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/ai-mistral-platform.git",
+                "reference": "6e0deecf63fd899c79f0c9d817f567028a807068"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/ai-mistral-platform/zipball/6e0deecf63fd899c79f0c9d817f567028a807068",
+                "reference": "6e0deecf63fd899c79f0c9d817f567028a807068",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.2",
+                "symfony/ai-generic-platform": "^0.12",
+                "symfony/ai-platform": "^0.12",
+                "symfony/http-client": "^7.3|^8.0"
+            },
+            "require-dev": {
+                "phpstan/phpstan": "^2.1",
+                "phpstan/phpstan-phpunit": "^2.0",
+                "phpstan/phpstan-strict-rules": "^2.0",
+                "phpunit/phpunit": "^11.5.53"
+            },
+            "type": "symfony-ai-platform",
+            "extra": {
+                "thanks": {
+                    "url": "https://github.com/symfony/ai",
+                    "name": "symfony/ai"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Symfony\\AI\\Platform\\Bridge\\Mistral\\": ""
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Christopher Hertel",
+                    "email": "mail@christopher-hertel.de"
+                },
+                {
+                    "name": "Oskar Stark",
+                    "email": "oskarstark@googlemail.com"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "Mistral platform bridge for Symfony AI",
+            "keywords": [
+                "Bridge",
+                "ai",
+                "mistral",
+                "platform"
+            ],
+            "support": {
+                "source": "https://github.com/symfony/ai-mistral-platform/tree/v0.12.0"
             },
             "funding": [
                 {
@@ -2415,6 +3035,93 @@
             ],
             "support": {
                 "source": "https://github.com/symfony/ai-store/tree/v0.12.0"
+            },
+            "funding": [
+                {
+                    "url": "https://symfony.com/sponsor",
+                    "type": "custom"
+                },
+                {
+                    "url": "https://github.com/fabpot",
+                    "type": "github"
+                },
+                {
+                    "url": "https://github.com/nicolas-grekas",
+                    "type": "github"
+                },
+                {
+                    "url": "https://tidelift.com/funding/github/packagist/symfony/symfony",
+                    "type": "tidelift"
+                }
+            ],
+            "time": "2026-07-21T23:38:06+00:00"
+        },
+        {
+            "name": "symfony/ai-tavily-tool",
+            "version": "v0.12.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/symfony/ai-tavily-tool.git",
+                "reference": "fc19f74a56b3c95a59b74665f48bc6539d574505"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/symfony/ai-tavily-tool/zipball/fc19f74a56b3c95a59b74665f48bc6539d574505",
+                "reference": "fc19f74a56b3c95a59b74665f48bc6539d574505",
+                "shasum": ""
+            },
+            "require": {
+                "php": ">=8.2",
+                "symfony/ai-agent": "^0.12",
+                "symfony/http-client": "^7.3|^8.0"
+            },
+            "require-dev": {
+                "phpstan/phpstan": "^2.1",
+                "phpstan/phpstan-phpunit": "^2.0",
+                "phpstan/phpstan-strict-rules": "^2.0",
+                "phpunit/phpunit": "^11.5.53",
+                "symfony/ai-platform": "^0.12"
+            },
+            "type": "symfony-ai-tool",
+            "extra": {
+                "thanks": {
+                    "url": "https://github.com/symfony/ai",
+                    "name": "symfony/ai"
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "Symfony\\AI\\Agent\\Bridge\\Tavily\\": ""
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Christopher Hertel",
+                    "email": "mail@christopher-hertel.de"
+                },
+                {
+                    "name": "Oskar Stark",
+                    "email": "oskarstark@googlemail.com"
+                },
+                {
+                    "name": "Symfony Community",
+                    "homepage": "https://symfony.com/contributors"
+                }
+            ],
+            "description": "Tavily AI tool bridge for Symfony applications.",
+            "keywords": [
+                "Agent",
+                "Bridge",
+                "ai",
+                "tavily",
+                "tool"
+            ],
+            "support": {
+                "source": "https://github.com/symfony/ai-tavily-tool/tree/v0.12.0"
             },
             "funding": [
                 {
@@ -9715,7 +10422,7 @@
     ],
     "aliases": [],
     "minimum-stability": "stable",
-    "stability-flags": {},
+    "stability-flags": [],
     "prefer-stable": false,
     "prefer-lowest": false,
     "platform": {
@@ -9723,6 +10430,6 @@
         "ext-json": "*",
         "ext-pdo_pgsql": "*"
     },
-    "platform-dev": {},
-    "plugin-api-version": "2.9.0"
+    "platform-dev": [],
+    "plugin-api-version": "2.6.0"
 }
