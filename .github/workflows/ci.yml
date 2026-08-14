@@ -12,7 +12,7 @@ jobs:
     
     services:
       postgres:
-        image: tanka/postgres-15-pgvector:latest
+        image: pgvector/pgvector:pg15
         env:
           POSTGRES_DB: evie_test
           POSTGRES_USER: evie
@@ -39,7 +39,10 @@ jobs:
         run: cp .env.dist .env
 
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --no-suggest
+        run: composer install --prefer-dist --no-progress
+
+      - name: Validate container compiles (cache:clear)
+        run: php bin/console cache:clear --env=test --no-warmup
 
       - name: Wait for PostgreSQL
         run: |

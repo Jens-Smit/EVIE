@@ -28,7 +28,7 @@ services:
 
     App\AI\Rag\MistralEmbeddingService:
         arguments:
-            $apiKey: '%env(MISTRAL_API_KEY)%'
+            $apiKey: '%env(default::MISTRAL_API_KEY)%'
 
     # Security Services
     App\Security\UserProvider: ~
@@ -63,7 +63,7 @@ services:
     # =====================================================================
     Symfony\AI\Agent\Bridge\Tavily\Tavily:
         arguments:
-            $apiKey: '%env(TAVILY_API_KEY)%'
+            $apiKey: '%env(default::TAVILY_API_KEY)%'
 
     # EVIE Tools mit skalaren Konstruktor-Argumenten, die Autowiring nicht
     # aufloesen kann - hier explizit per Env-Variable verdrahten.
