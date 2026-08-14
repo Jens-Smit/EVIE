@@ -48,6 +48,10 @@ class UserProfile
     #[ORM\OneToMany(targetEntity: SubAgent::class, mappedBy: 'user')]
     private Collection $subAgents;
 
+    #[ORM\OneToOne(inversedBy: 'profile', targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?User $user = null;
+
     public function __construct()
     {
         $this->agentHistories = new ArrayCollection();
@@ -109,7 +113,18 @@ class UserProfile
         return $this->userType;
     }
 
-    public function setUserType(?string $userType): static
+    public function getUser(): ?User
+    {
+        return $this->user;
+    }
+
+    public function setUser(?User $user): static
+    {
+        $this->user = $user;
+        return $this;
+    }
+
+        public function setUserType(?string $userType): static
     {
         $this->userType = $userType;
         return $this;

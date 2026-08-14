@@ -79,7 +79,7 @@ class StreamingSession
     }
 
     #[ORM\PreUpdate]
-    public function setUpdatedAt(): void
+    public function updateTimestamps(): void
     {
         $this->updatedAt = new \DateTimeImmutable();
     }

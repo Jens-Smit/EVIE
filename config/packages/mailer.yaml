@@ -6,3 +6,10 @@ framework:
 
 parameters:
     mailer_from: '%env(default::default_mailer_from:MAILER_FROM)%'
+
+when@test:
+    framework:
+        mailer:
+            dsn: 'null://null'
+    parameters:
+        mailer_from: 'no-reply@evie.test'

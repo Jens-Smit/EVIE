@@ -9,10 +9,10 @@ on:
 jobs:
   tests:
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
-        image: tanka/postgres-15-pgvector:latest
+        image: pgvector/pgvector:pg15
         env:
           POSTGRES_DB: evie_test
           POSTGRES_USER: evie
@@ -32,14 +32,14 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: pdo_pgsql
+          extensions: pdo_pgsql, pdo_sqlite, mbstring, ctype, iconv
           coverage: none
 
       - name: Copy .env.dist to .env
         run: cp .env.dist .env
 
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --no-suggest
+        run: composer install --prefer-dist --no-progress
 
       - name: Wait for PostgreSQL
         run: |
@@ -47,14 +47,18 @@ jobs:
             sleep 1
           done
 
-      - name: Create database
+      - name: Setup test environment
+        env:
+          APP_SECRET: test-secret-for-evie-1234567890abcdef
         run: |
-          PGPASSWORD=evie psql -h localhost -U evie -c "CREATE DATABASE evie_test;"
-          php bin/console doctrine:database:create --env=test || true
+          php bin/console cache:clear --env=test --no-warmup
           php bin/console doctrine:schema:create --env=test || true
 
-      - name: Run PHPUnit tests
-        run: vendor/bin/phpunit || echo "Tests completed"
+      - name: Run PHPUnit tests (unit + functional)
+        run: vendor/bin/phpunit --testsuite="Application Test Suite"
+
+      - name: Run E2E tests (auth flows)
+        run: vendor/bin/phpunit --testsuite="E2E Tests"
 
       - name: Run PHPStan
         run: vendor/bin/phpstan analyse src --level=5 || echo "PHPStan completed"

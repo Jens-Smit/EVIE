@@ -1,0 +1,22 @@
+# Test-only service overrides to make the kernel bootable without external services.
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    # Alias the Symfony Cache AdapterInterface to the default cache pool so that
+    # services type-hinted against it (e.g. OAuthTool) can be autowired in tests.
+    Symfony\Component\Cache\Adapter\AdapterInterface: '@cache.app'
+
+    App\AI\Skills\Tool\OAuthTool:
+        arguments:
+            $httpClient: '@http_client'
+            $cache: '@Symfony\Component\Cache\Adapter\AdapterInterface'
+
+    # Stub Mercure hub for tests (no real Mercure server needed).
+    App\Tests\Stub\NullMercureHub: ~
+    Symfony\Component\Mercure\HubInterface: '@App\Tests\Stub\NullMercureHub'
+
+    App\AI\Streaming\StreamingPublisher:
+        arguments:
+            $mercureHub: '@App\Tests\Stub\NullMercureHub'

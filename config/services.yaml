@@ -61,3 +61,14 @@ services:
     Symfony\AI\Agent\Bridge\Tavily\Tavily:
         arguments:
             $apiKey: '%env(TAVILY_API_KEY)%'
+
+    # Eigene Tool-Services mit string-Argumenten (müssen explizit konfiguriert werden)
+    App\AI\Skills\Tool\LinkedInTool:
+        arguments:
+            $httpClient: '@http_client'
+            $accessToken: '%env(LINKEDIN_API_TOKEN)%'
+
+    # MCP Server Manager benötigt die Server-Konfiguration als Array
+    App\Mcp\Client\McpServerManager:
+        arguments:
+            $serverConfigs: '%evie_mcp.servers%'
