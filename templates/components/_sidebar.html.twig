@@ -119,16 +119,27 @@
             <span>Einstellungen</span>
         </a>
         
-        {# User Profile (Mock-Daten) #}
-        <div class="mt-2 flex items-center gap-3 px-4 py-3
-                    border-t border-border">
-            <div class="w-8 h-8 rounded-full bg-primary-soft flex items-center justify-center shrink-0">
-                <i class="ph ph-user text-primary"></i>
-            </div>
-            <div class="flex-1 min-w-0">
-                <p class="text-sm font-medium text-content truncate">{{ app.user.name ?? 'User' }}</p>
-                <p class="text-xs text-content-muted truncate">{{ app.user.email ?? 'user@example.com' }}</p>
-            </div>
+        {# User Profile + Aktionen #}
+        {% if app.user %}
+        <div class="mt-2 border-t border-border">
+            <a href="{{ path('app_profile') }}"
+               class="nav-btn inactive border w-full flex items-center gap-3 px-4 py-3 rounded-xl
+                      transition-all active:scale-95 font-medium">
+                <i class="ph ph-user-circle text-xl"></i>
+                <div class="flex-1 min-w-0 text-left">
+                    <p class="text-sm font-medium text-content truncate">
+                        {{ app.user.fullName ?: app.user.userIdentifier }}
+                    </p>
+                    <p class="text-xs text-content-muted truncate">{{ app.user.email }}</p>
+                </div>
+            </a>
+            <a href="{{ path('app_logout') }}"
+               class="nav-btn inactive border w-full flex items-center gap-3 px-4 py-3 rounded-xl
+                      transition-all active:scale-95 font-medium text-danger hover:text-danger">
+                <i class="ph ph-sign-out text-xl"></i>
+                <span>Abmelden</span>
+            </a>
         </div>
+        {% endif %}
     </div>
 </aside>

@@ -27,10 +27,12 @@ services:
 
     # Security Services
     App\Security\UserProvider: ~
+    App\Security\ResetPasswordTokenGenerator: ~
 
     App\Security\Authenticator\LoginFormAuthenticator:
         arguments:
             $urlGenerator: '@router'
+            $entityManager: '@doctrine.orm.entity_manager'
 
     # AI Skills Services (mit expliziten Argumenten für Autowiring)
     App\AI\Skills\SubAgentPromptResolver:

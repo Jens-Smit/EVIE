@@ -1,0 +1,54 @@
+{% extends 'auth_base.html.twig' %}
+
+{% block title %}EVIE - Registrieren{% endblock %}
+
+{% block body %}
+<div class="auth-card p-8">
+    <h2 class="text-xl font-bold text-slate-900 dark:text-white mb-1">Konto erstellen</h2>
+    <p class="text-sm text-slate-500 dark:text-slate-400 mb-6">Werde Teil von EVIE - deinem AI-Agenten.</p>
+
+    {{ form_start(registrationForm, { attr: { class: 'space-y-4' } }) }}
+    <input type="hidden" name="_csrf_token" value="{{ csrf_token('registration') }}">
+
+    <div>
+        {{ form_label(registrationForm.firstName, null, { label_attr: { class: 'auth-label' } }) }}
+        {{ form_widget(registrationForm.firstName) }}
+        {{ form_errors(registrationForm.firstName) }}
+    </div>
+
+    <div>
+        {{ form_label(registrationForm.lastName, null, { label_attr: { class: 'auth-label' } }) }}
+        {{ form_widget(registrationForm.lastName) }}
+        {{ form_errors(registrationForm.lastName) }}
+    </div>
+
+    <div>
+        {{ form_label(registrationForm.email, null, { label_attr: { class: 'auth-label' } }) }}
+        {{ form_widget(registrationForm.email) }}
+        {{ form_errors(registrationForm.email) }}
+    </div>
+
+    <div>
+        {{ form_label(registrationForm.plainPassword, null, { label_attr: { class: 'auth-label' } }) }}
+        {{ form_widget(registrationForm.plainPassword) }}
+        {{ form_errors(registrationForm.plainPassword) }}
+    </div>
+
+    <div class="flex items-start">
+        {{ form_widget(registrationForm.agreeTerms, { attr: { class: 'mt-1 mr-2 rounded border-slate-300 dark:border-slate-600 text-primary focus:ring-primary' } }) }}
+        {{ form_label(registrationForm.agreeTerms, null, { label_attr: { class: 'text-sm text-slate-600 dark:text-slate-400 font-normal' } }) }}
+        {{ form_errors(registrationForm.agreeTerms) }}
+    </div>
+
+    <button type="submit" class="btn btn-primary w-full">
+        <i class="ph ph-user-plus"></i>
+        Registrieren
+    </button>
+    {{ form_end(registrationForm) }}
+
+    <div class="mt-6 text-center text-sm text-slate-600 dark:text-slate-400">
+        Bereits ein Konto?
+        <a href="{{ path('app_login') }}" class="text-primary font-medium hover:underline">Anmelden</a>
+    </div>
+</div>
+{% endblock %}

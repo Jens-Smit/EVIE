@@ -156,6 +156,37 @@
 }
 
 /* ============================================
+   Auth / Form Inputs
+   ============================================ */
+
+.auth-input {
+  width: 100%;
+  background-color: var(--color-surface-muted);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-button);
+  padding: 0.625rem 0.875rem;
+  font-size: 0.9rem;
+  color: var(--color-content);
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.auth-input:focus {
+  border-color: var(--color-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--color-primary) 20%, transparent);
+}
+.auth-input::placeholder {
+  color: var(--color-content-muted);
+}
+
+label.auth-label {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--color-content);
+  margin-bottom: 0.35rem;
+}
+
+/* ============================================
    Chat-Bubbles
    ============================================ */
 
