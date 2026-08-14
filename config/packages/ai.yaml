@@ -22,21 +22,20 @@ ai:
         tool_generator:
             platform: 'ai.platform.mistral'
             model: 'mistral-small-latest'
+            # The tool_generator agent is a pure LLM schema designer. Its optimized
+            # prompt (tool_schema_optimizer.txt) instructs the model to emit a JSON
+            # schema directly. ToolDefinitionGenerator CALLS this agent and parses
+            # the response, so the agent must NOT register ToolDefinitionGenerator /
+            # DynamicSkillRegistry as its own tools - doing so creates a circular
+            # reference: tool_generator -> Toolbox -> ToolDefinitionGenerator
+            # -> ai.agent.tool_generator. Keep tools disabled (matches test config).
             prompt:
                 file: '%kernel.project_dir%/config/prompts/tool_schema_optimizer.txt'
-                include_tools: true
+                include_tools: false
             keep_tool_messages: true
             memory:
                 service: 'App\AI\Onboarding\ContextMemoryProvider'
-            tools:
-                # Tool definition generation tools
-                - service: 'App\AI\Skills\ToolDefinitionGenerator'
-                  name: 'tool_definition_generator'
-                  description: 'Generates JSON schemas for new tools based on user requests'
-                # Dynamic tool registry for validation
-                - service: 'App\AI\Skills\DynamicSkillRegistry'
-                  name: 'dynamic_skill_registry'
-                  description: 'Registry for dynamic tool definitions'
+            tools: false
             # Security settings for tool generation
             
         # =====================================================================
