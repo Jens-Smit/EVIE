@@ -2,13 +2,21 @@
 
 namespace App\AI\Skills\Tool;
 
-use Symfony\AI\Platform\Tool\Tool;
-
 /**
- * DynamicTool - Erweitert um executorType, executorConfig, securityPolicy, hitlPolicy, version
+ * DynamicTool - eigenständiges DTO für dynamisch registrierte Tools
+ * (name, description, schema, executorType, executorConfig, securityPolicy, hitlPolicy, version)
+ *
+ * Erweitert bewusst NICHT mehr Symfony\AI\Platform\Tool\Tool: diese Klasse ist final
+ * und hat seit dem Bundle-Update eine inkompatible Konstruktor-Signatur
+ * (ExecutionReference $reference, string $name, string $description, ?array $parameters, array $metadata).
+ * DynamicTool wird im Code nirgends als Symfony\AI\Platform\Tool\Tool typisiert,
+ * daher genügt hier eine eigenständige Klasse.
  */
-class DynamicTool extends Tool
+class DynamicTool
 {
+    private string $name;
+    private ?string $description;
+    private array $schema;
     private ?string $executorType;
     private array $executorConfig;
     private array $securityPolicy;
@@ -25,13 +33,29 @@ class DynamicTool extends Tool
         array $hitlPolicy = [],
         string $version = '1.0'
     ) {
-        parent::__construct($name, $description, $schema);
-        
+        $this->name = $name;
+        $this->description = $description;
+        $this->schema = $schema;
         $this->executorType = $executorType;
         $this->executorConfig = $executorConfig;
         $this->securityPolicy = $securityPolicy;
         $this->hitlPolicy = $hitlPolicy;
         $this->version = $version;
+    }
+
+    public function getName(): string
+    {
+        return $this->name;
+    }
+
+    public function getDescription(): ?string
+    {
+        return $this->description;
+    }
+
+    public function getSchema(): array
+    {
+        return $this->schema;
     }
 
     public function getExecutorType(): ?string
