@@ -4,6 +4,7 @@ namespace App\Command;
 
 use App\Repository\ToolDefinitionRepository;
 use Symfony\Component\Cache\Adapter\FilesystemAdapter;
+use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
@@ -16,10 +17,13 @@ use Symfony\Component\Console\Output\OutputInterface;
  * 
  * @see https://symfony.com/doc/current/components/cache.html
  */
+#[AsCommand(
+    name: 'evie:tools:warmup-cache',
+    description: 'Lädt genehmigte Tools aus der DB und cached sie für den CompilerPass.'
+)]
 final class WarmupDynamicToolsCacheCommand extends Command
 {
-    protected static $defaultName = 'evie:tools:warmup-cache';
-    
+
     private const CACHE_KEY = 'evie.dynamic_tools.approved';
     private const CACHE_TTL = 3600; // 1 Stunde
 

@@ -12,6 +12,11 @@ services:
             - '../src/Entity/'
             - '../src/Kernel.php'
             - '../src/Tests/'
+            # The EvieMcpBundle manages its own services (McpServerManager,
+            # McpToolExecutor, McpToolFactory) via src/Mcp/Resources/config.
+            # Excluding it here prevents the App autowire resource from
+            # overriding the bundle's explicit array/scalar wiring.
+            - '../src/Mcp/'
 
     Symfony\AI\Platform\PlatformInterface: '@ai.platform.mistral'
 
@@ -59,3 +64,24 @@ services:
     Symfony\AI\Agent\Bridge\Tavily\Tavily:
         arguments:
             $apiKey: '%env(TAVILY_API_KEY)%'
+
+    # EVIE Tools mit skalaren Konstruktor-Argumenten, die Autowiring nicht
+    # aufloesen kann - hier explizit per Env-Variable verdrahten.
+    # env(default:) stellt sicher, dass cache:clear auch ohne gesetzte .env laeuft.
+    App\AI\Skills\Tool\LinkedInTool:
+        arguments:
+            $accessToken: '%env(default::LINKEDIN_API_TOKEN)%'
+
+    # OAuthTool fordert Symfony\Component\Cache\Adapter\AdapterInterface, das
+    # nicht als Alias im Container registriert ist. Einen konkreten
+    # FilesystemAdapter fuer die Persistenz von OAuth-Token bereitstellen.
+    App\AI\Skills\Tool\OAuthTool:
+        arguments:
+            $cache: '@App\AI\Skills\Tool\OAuthTool\CacheAdapter'
+
+    App\AI\Skills\Tool\OAuthTool\CacheAdapter:
+        class: Symfony\Component\Cache\Adapter\FilesystemAdapter
+        arguments:
+            - 'oauth'            # namespace
+            - 3600               # default lifetime
+            - '%kernel.cache_dir%/oauth'
