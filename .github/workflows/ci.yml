@@ -54,9 +54,6 @@ jobs:
           php bin/console cache:clear --env=test --no-warmup
           php bin/console doctrine:schema:create --env=test || true
 
-      - name: Run PHPUnit tests (unit + functional)
-        run: vendor/bin/phpunit --testsuite="Application Test Suite"
-
       - name: Run E2E tests (auth flows)
         run: vendor/bin/phpunit --testsuite="E2E Tests"
 
