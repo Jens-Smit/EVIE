@@ -46,3 +46,4 @@ phpunit.xml.dist
 /var/test.db
 /.phpunit.cache/
 /build/
+config/reference.php
