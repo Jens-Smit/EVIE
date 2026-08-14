@@ -6,13 +6,11 @@ use App\Entity\UserProfile;
 use App\Entity\Embedding;
 use App\AI\Rag\VectorStore;
 use App\AI\Rag\Retriever;
-use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 
 class ContextStoreManager
 {
     public function __construct(
-        private EntityManagerInterface $entityManager,
         private VectorStore $vectorStore,
         private Retriever $retriever,
         private LoggerInterface $logger

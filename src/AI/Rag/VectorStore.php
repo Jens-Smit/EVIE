@@ -5,6 +5,7 @@ namespace App\AI\Rag;
 use App\Entity\Embedding;
 use App\Repository\EmbeddingRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use App\AI\Rag\EmbeddingServiceInterface;
 
 class VectorStore
 {

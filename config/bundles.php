@@ -11,5 +11,6 @@ return [
     Doctrine\Bundle\MigrationsBundle\DoctrineMigrationsBundle::class => ['all' => true],
     Symfony\AI\AiBundle\AiBundle::class => ['all' => true],
     App\Mcp\EvieMcpBundle::class => ['all' => true],
+    Symfony\Bundle\MonologBundle\MonologBundle::class => ['all' => true],
 ];
 
