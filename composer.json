@@ -79,16 +79,7 @@
             "@auto-scripts"
         ],
         "auto-scripts": {
-            "cache:clear": "symfony-cmd",
-            "assets:install %PUBLIC_DIR%": "symfony-cmd"
-        },
-        "auto-scripts-config": {
-            "cache:clear": [
-                "@on-change"
-            ],
-            "assets:install %PUBLIC_DIR%": [
-                "@on-change"
-            ]
+            "cache:clear": "php bin/console cache:clear --no-warmup"
         }
     }
 }
