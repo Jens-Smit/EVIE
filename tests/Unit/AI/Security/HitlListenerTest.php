@@ -47,8 +47,10 @@ final class HitlListenerTest extends TestCase
         $this->dispatcher = $this->createMock(EventDispatcherInterface::class);
 
         $requestStack = new RequestStack();
-        $requestStack->push(new Request());
+        $request = new Request();
+        $requestStack->push($request);
         $userContext = new UserContext($requestStack);
+        $userContext->setUserIdentifier('test-tenant');
 
         $auditRepo = $this->createMock(AuditLogRepository::class);
         $auditRepo->method('log')->willReturn(new \App\Entity\AuditLog());
@@ -70,7 +72,7 @@ final class HitlListenerTest extends TestCase
     public function testAllowDoesNotDeny(): void
     {
         $event = $this->buildEvent('weather', ['city' => 'Berlin']);
-        $this->repo->method('findOneBy')->willReturn(null);
+        $this->repo->method('findOneByNameForUser')->willReturn(null);
 
         ($this->listener)($event);
 
@@ -80,7 +82,7 @@ final class HitlListenerTest extends TestCase
     public function testDeniesOnSsrfPrivateIp(): void
     {
         $event = $this->buildEvent('http_call', ['url' => 'http://127.0.0.1/admin']);
-        $this->repo->method('findOneBy')->willReturn(null);
+        $this->repo->method('findOneByNameForUser')->willReturn(null);
 
         ($this->listener)($event);
 
@@ -91,7 +93,7 @@ final class HitlListenerTest extends TestCase
     public function testDeniesOnBlockedPath(): void
     {
         $event = $this->buildEvent('file_read', ['path' => '/etc/passwd']);
-        $this->repo->method('findOneBy')->willReturn(null);
+        $this->repo->method('findOneByNameForUser')->willReturn(null);
 
         ($this->listener)($event);
 
@@ -105,7 +107,7 @@ final class HitlListenerTest extends TestCase
             ->setStatus('pending')
             ->setExecutorType('generic');
 
-        $this->repo->method('findOneBy')->willReturn($definition);
+        $this->repo->method('findOneByNameForUser')->willReturn($definition);
         $this->dispatcher
             ->expects(self::once())
             ->method('dispatch')
@@ -131,7 +133,7 @@ final class HitlListenerTest extends TestCase
             ->setExecutorType('api')
             ->setSecurityLevel('high');
 
-        $this->repo->method('findOneBy')->willReturn($definition);
+        $this->repo->method('findOneByNameForUser')->willReturn($definition);
         $this->dispatcher->expects(self::once())->method('dispatch');
 
         $event = $this->buildEvent('sensitive_tool', ['query' => 'x']);
@@ -149,7 +151,7 @@ final class HitlListenerTest extends TestCase
             ->setStatus('approved')
             ->setExecutorType('generic');
 
-        $this->repo->method('findOneBy')->willReturn($definition);
+        $this->repo->method('findOneByNameForUser')->willReturn($definition);
         $this->dispatcher->expects(self::never())->method('dispatch');
 
         $event = $this->buildEvent('safe_tool', ['input' => 'ok']);
@@ -166,7 +168,7 @@ final class HitlListenerTest extends TestCase
             ->setStatus('approved')
             ->setExecutorType('shell');
 
-        $this->repo->method('findOneBy')->willReturn($definition);
+        $this->repo->method('findOneByNameForUser')->willReturn($definition);
 
         $event = $this->buildEvent('bad_tool', []);
 
