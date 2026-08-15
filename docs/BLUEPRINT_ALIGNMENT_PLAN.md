@@ -181,3 +181,18 @@
 - [x] SubAgentFactory: final entfernt (mockbar)
 - [x] Nicht-CI-taugliche Integration-Tests entfernt (API-Abhängigkeit, DB-Cleanup)
 - [x] CI komplett grün: E2E (test/dev/prod) + Unit + Security + Skills + Agent + Integration
+
+## Runde 4: RAG InputProcessor + Verifizierung §4.G/§4.J
+
+- [x] ContextInjector: nativer InputProcessorInterface + #[AsInputProcessor]
+      (processInput holt Retrieval-Kontext → SystemMessage via Message::forSystem)
+- [x] ContextInjector Bugfix: str_replace korrigiert (Array+String → echter Kontext)
+- [x] ContextMemoryProvider: bereits nativ (MemoryProviderInterface) — OK
+- [x] §4.G Structured Output: ToolDefinitionGenerator nutzt native Agent::call;
+      JsonResponseEnforcer/FaultTolerantValidator bleiben als Legacy-Response-Pipeline
+      (tief in OrchestratorDialogService/SubAgentDispatcher integriert)
+- [x] §4.J Audit Log: AuditLogger (log/logToolRegistration/logHitlDecision) aktiv
+      in ApiSecurityListener/ToolSecurityListener/HitlWorkflowManager; AgentHistory/
+      DecisionLog Entities persistieren Audit-Daten
+- [x] ContextInjectorTest: Unit-Test für processInput (SystemMessage, leerer Query)
+- [x] CI grün: alle Suiten (E2E/Unit/Security/Skills/Agent/Integration)
