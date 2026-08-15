@@ -196,3 +196,32 @@
       DecisionLog Entities persistieren Audit-Daten
 - [x] ContextInjectorTest: Unit-Test für processInput (SystemMessage, leerer Query)
 - [x] CI grün: alle Suiten (E2E/Unit/Security/Skills/Agent/Integration)
+
+## Runde 5: Production Hardening (P0–P2)
+
+### P0-1: SubAgentDispatcher endgültig entfernt
+- [x] SubAgentDispatcher (760 Zeilen) gelöscht
+- [x] HTMXController migriert auf native SubAgentFactory + SubAgentDefinitionRepository
+- [x] HTMXControllerTest an neue API angepasst
+
+### P0-3: Security Production-Hardening
+- [x] SecurityHardeningTest: SSRF (127.0.0.1, localhost, 169.254.169.254, private IPv4/IPv6,
+      0.0.0.0, ::1, fe80::, fc00::), Filesystem (/etc/passwd, docker.sock, /proc, /sys, /dev),
+      Command Execution (shell/bash denied), HITL (high security → AskUser),
+      Prompt-Injection-Indikator (RAG-Kontext kann Policy nicht umgehen)
+
+### P0-4: Evolution-Flow erweitert
+- [x] EvolutionFlowIntegrationTest: Revoke, invalid Executor, SSRF, blocked Path,
+      ASK_USER (high security), Tool-Version, invalid Schema
+
+### P1-8: Production Docker
+- [x] docker/php/Dockerfile.prod: --no-dev, cache:warmup, OPcache, Healthcheck, immutable
+
+### P1-9: CI als Release-Gate
+- [x] composer validate --strict (fatal)
+- [x] composer audit (non-fatal)
+- [x] PHPStan --no-progress (non-fatal bis Legacy-Warnungen behoben)
+
+### P2-10: Observability
+- [x] ObservabilityListener: Request-ID/Trace-ID in Request+Response-Header
+      (X-Request-ID, X-Trace-ID), korreliertes Logging

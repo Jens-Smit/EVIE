@@ -1,0 +1,46 @@
+# Production Dockerfile for EVIE (P1-8)
+# Immutable image: composer install --no-dev + cache:warmup + OPcache.
+
+FROM php:8.2-fpm-alpine AS base
+
+RUN apk add --no-cache \
+        git curl zip unzip \
+        libpq-dev libzip-dev \
+        && docker-php-ext-install pdo pdo_pgsql zip opcache \
+        && docker-php-ext-enable opcache
+
+# OPcache für Production
+RUN echo "[opcache]\n\
+opcache.enable=1\n\
+opcache.memory_consumption=256\n\
+opcache.max_accelerated_files=20000\n\
+opcache.validate_timestamps=0\n\
+opcache.preload=/var/www/html/config/preload.php\n\
+opcache.preload_user=www-data" > /usr/local/etc/php/conf.d/opcache-recommended.ini
+
+COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
+
+WORKDIR /var/www/html
+
+# --- Build stage: Abhängigkeiten ohne Dev ---
+FROM base AS deps
+
+COPY composer.json composer.lock ./
+RUN composer install --no-dev --prefer-dist --no-progress --no-scripts --no-autoloader
+
+# --- App stage: Code + Autoloader ---
+FROM deps AS app
+
+COPY . .
+RUN composer dump-autoload --optimize --no-dev --classmap-authoritative \
+    && php bin/console cache:warmup --env=prod --no-debug || true
+
+# --- Runtime stage ---
+FROM app AS runtime
+
+RUN chown -R www-data:www-data /var/www/html/var
+
+HEALTHCHECK --interval=30s --timeout=5s --retries=3 --start-period=10s \
+    CMD php bin/console about --env=prod > /dev/null 2>&1 || exit 1
+
+USER www-data

@@ -148,6 +148,145 @@ final class EvolutionFlowIntegrationTest extends TestCase
         self::assertStringContainsString('blockiert', $event->getDenialReason() ?? '');
     }
 
+    public function testRevokeApprovalReblocksTool(): void
+    {
+        $definition = (new ToolDefinition())
+            ->setName('revoke_tool')
+            ->setStatus('approved')
+            ->setExecutorType('generic');
+
+        $repo = $this->createMock(ToolDefinitionRepository::class);
+        $repo->method('findOneBy')->willReturn($definition);
+        $dispatcher = $this->createMock(EventDispatcherInterface::class);
+
+        $listener = new HitlListener(new SecurityGuard(new NullLogger()), $repo, $dispatcher);
+
+        // Zuerst erlaubt (approved)
+        $event1 = $this->buildEvent('revoke_tool', []);
+        $listener($event1);
+        self::assertFalse($event1->isDenied());
+
+        // Revoke simulieren (status → pending)
+        $definition->setStatus('pending');
+        $dispatcher2 = $this->createMock(EventDispatcherInterface::class);
+        $dispatcher2->expects(self::once())->method('dispatch');
+        $listener2 = new HitlListener(new SecurityGuard(new NullLogger()), $repo, $dispatcher2);
+
+        $event2 = $this->buildEvent('revoke_tool', []);
+        $listener2($event2);
+        self::assertTrue($event2->isDenied());
+    }
+
+    public function testInvalidExecutorTypeDenied(): void
+    {
+        $definition = (new ToolDefinition())
+            ->setName('shell_tool')
+            ->setStatus('approved')
+            ->setExecutorType('shell');
+
+        $repo = $this->createMock(ToolDefinitionRepository::class);
+        $repo->method('findOneBy')->willReturn($definition);
+        $dispatcher = $this->createMock(EventDispatcherInterface::class);
+
+        $listener = new HitlListener(new SecurityGuard(new NullLogger()), $repo, $dispatcher);
+        $event = $this->buildEvent('shell_tool', []);
+
+        $listener($event);
+        self::assertTrue($event->isDenied());
+        self::assertStringContainsString('blockiert', $event->getDenialReason() ?? '');
+    }
+
+    public function testSsrfInArgumentsDenied(): void
+    {
+        $definition = (new ToolDefinition())
+            ->setName('api_tool')
+            ->setStatus('approved')
+            ->setExecutorType('http');
+
+        $repo = $this->createMock(ToolDefinitionRepository::class);
+        $repo->method('findOneBy')->willReturn($definition);
+        $dispatcher = $this->createMock(EventDispatcherInterface::class);
+
+        $listener = new HitlListener(new SecurityGuard(new NullLogger()), $repo, $dispatcher);
+        $event = $this->buildEvent('api_tool', ['url' => 'http://169.254.169.254/meta-data']);
+
+        $listener($event);
+        self::assertTrue($event->isDenied());
+    }
+
+    public function testBlockedPathInArgumentsDenied(): void
+    {
+        $definition = (new ToolDefinition())
+            ->setName('file_tool')
+            ->setStatus('approved')
+            ->setExecutorType('filesystem');
+
+        $repo = $this->createMock(ToolDefinitionRepository::class);
+        $repo->method('findOneBy')->willReturn($definition);
+        $dispatcher = $this->createMock(EventDispatcherInterface::class);
+
+        $listener = new HitlListener(new SecurityGuard(new NullLogger()), $repo, $dispatcher);
+        $event = $this->buildEvent('file_tool', ['path' => '/etc/passwd']);
+
+        $listener($event);
+        self::assertTrue($event->isDenied());
+    }
+
+    public function testAskUserForHighSecurityTool(): void
+    {
+        $definition = (new ToolDefinition())
+            ->setName('sensitive_tool')
+            ->setStatus('approved')
+            ->setExecutorType('api')
+            ->setSecurityLevel('high');
+
+        $repo = $this->createMock(ToolDefinitionRepository::class);
+        $repo->method('findOneBy')->willReturn($definition);
+        $dispatcher = $this->createMock(EventDispatcherInterface::class);
+        $dispatcher->expects(self::once())->method('dispatch');
+
+        $listener = new HitlListener(new SecurityGuard(new NullLogger()), $repo, $dispatcher);
+        $event = $this->buildEvent('sensitive_tool', []);
+
+        $listener($event);
+        self::assertTrue($event->isDenied());
+        self::assertSame('pending', $definition->getStatus());
+    }
+
+    public function testToolVersionPersistedInDefinition(): void
+    {
+        $definition = (new ToolDefinition())
+            ->setName('versioned_tool')
+            ->setStatus('approved')
+            ->setExecutorType('generic')
+            ->setVersion('2.0');
+
+        self::assertSame('2.0', $definition->getVersion());
+    }
+
+    public function testInvalidSchemaStillLoadsInToolbox(): void
+    {
+        // Auch Tools mit ungueltigem/leerem Schema werden geladen — die
+        // Schema-Validierung erfolgt durch Symfony AI zur Tool-Call-Zeit.
+        $definition = (new ToolDefinition())
+            ->setName('no_schema_tool')
+            ->setStatus('approved')
+            ->setExecutorType('generic')
+            ->setSchema([]);
+
+        $repo = $this->createMock(ToolDefinitionRepository::class);
+        $repo->method('findBy')->willReturn([$definition]);
+
+        $inner = $this->createMock(ToolboxInterface::class);
+        $inner->method('getTools')->willReturn([]);
+
+        $toolbox = new DynamicToolbox($inner, $repo);
+        $tools = $toolbox->getTools();
+
+        self::assertCount(1, $tools);
+        self::assertSame('no_schema_tool', $tools[0]->getName());
+    }
+
     private function buildEvent(string $name, array $arguments): ToolCallRequested
     {
         $toolCall = new ToolCall('call-'.uniqid('', true), $name, $arguments);

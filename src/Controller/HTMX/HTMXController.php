@@ -3,7 +3,10 @@
 
 namespace App\Controller\HTMX;
 
-use App\AI\Agent\SubAgentDispatcher;
+use App\AI\Agent\SubAgentFactory;
+use App\Repository\SubAgentDefinitionRepository;
+use Symfony\AI\Platform\Message\Message;
+use Symfony\AI\Platform\Message\MessageBag;
 use App\AI\Mcp\McpToolExecutor;
 use App\AI\Skills\Tool\DynamicToolExecutor;
 use App\AI\Streaming\StreamingSessionManager;
@@ -21,18 +24,21 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class HTMXController extends AbstractController
 {
     private DynamicToolExecutor $toolExecutor;
-    private SubAgentDispatcher $subAgentDispatcher;
+    private SubAgentFactory $subAgentFactory;
+    private SubAgentDefinitionRepository $subAgentDefinitionRepo;
     private McpToolExecutor $mcpToolExecutor;
     private StreamingSessionManager $sessionManager;
 
     public function __construct(
         DynamicToolExecutor $toolExecutor,
-        SubAgentDispatcher $subAgentDispatcher,
+        SubAgentFactory $subAgentFactory,
+        SubAgentDefinitionRepository $subAgentDefinitionRepo,
         McpToolExecutor $mcpToolExecutor,
         StreamingSessionManager $sessionManager
     ) {
         $this->toolExecutor = $toolExecutor;
-        $this->subAgentDispatcher = $subAgentDispatcher;
+        $this->subAgentFactory = $subAgentFactory;
+        $this->subAgentDefinitionRepo = $subAgentDefinitionRepo;
         $this->mcpToolExecutor = $mcpToolExecutor;
         $this->sessionManager = $sessionManager;
     }
@@ -127,10 +133,27 @@ class HTMXController extends AbstractController
         try {
             if (!empty($subAgentName)) {
                 // Delegiere an bestimmten Sub-Agenten
-                $result = $this->subAgentDispatcher->delegateTo($subAgentName, $task);
+                $subAgent = $this->subAgentFactory->createByName($subAgentName);
+                $response = $subAgent->call(new MessageBag(Message::ofUser($task)));
+                $result = [
+                    'sub_agent' => $subAgentName,
+                    'result' => $response,
+                    'status' => 'completed',
+                ];
             } else {
-                // Delegiere automatisch
-                $result = $this->subAgentDispatcher->delegate($task);
+                // Delegiere an den ersten verfuegbaren Sub-Agenten
+                $available = $this->subAgentFactory->getAvailableSubAgents();
+                if (empty($available)) {
+                    throw new \RuntimeException('Kein Sub-Agent verfuegbar.');
+                }
+                $subAgentName = array_key_first($available);
+                $subAgent = $this->subAgentFactory->createByName($subAgentName);
+                $response = $subAgent->call(new MessageBag(Message::ofUser($task)));
+                $result = [
+                    'sub_agent' => $subAgentName,
+                    'result' => $response,
+                    'status' => 'completed',
+                ];
             }
 
             return $this->render('htmx/partials/_subagent_result.html.twig', [
@@ -155,7 +178,7 @@ class HTMXController extends AbstractController
     #[IsGranted('ROLE_USER')]
     public function subAgentForm(Request $request): Response
     {
-        $availableSubAgents = $this->subAgentDispatcher->getAvailableSubAgents();
+        $availableSubAgents = $this->subAgentFactory->getAvailableSubAgents();
 
         return $this->render('htmx/forms/_subagent_form.html.twig', [
             'available_subagents' => $availableSubAgents,
@@ -170,7 +193,7 @@ class HTMXController extends AbstractController
     #[IsGranted('ROLE_USER')]
     public function subAgentList(): Response
     {
-        $subAgents = $this->subAgentDispatcher->getAvailableSubAgents();
+        $subAgents = $this->subAgentFactory->getAvailableSubAgents();
 
         return $this->render('htmx/partials/_subagent_list.html.twig', [
             'sub_agents' => $subAgents,
@@ -184,7 +207,7 @@ class HTMXController extends AbstractController
     #[IsGranted('ROLE_USER')]
     public function subAgentStatus(): Response
     {
-        $definitions = $this->subAgentDispatcher->getActiveSubAgentDefinitions();
+        $definitions = $this->subAgentDefinitionRepo->findAllActive();
 
         return $this->render('htmx/partials/_subagent_status.html.twig', [
             'definitions' => $definitions,
@@ -373,7 +396,7 @@ class HTMXController extends AbstractController
 
         // Hole Daten für das Dashboard
         $availableTools = $this->toolExecutor->getAvailableTools();
-        $availableSubAgents = $this->subAgentDispatcher->getAvailableSubAgents();
+        $availableSubAgents = $this->subAgentFactory->getAvailableSubAgents();
         $availableMcpServers = $this->mcpToolExecutor->getAvailableServers();
         $activeSessions = $this->sessionManager->getActiveSessionsByUser($userIdentifier);
 
@@ -407,7 +430,7 @@ class HTMXController extends AbstractController
     #[IsGranted('ROLE_USER')]
     public function subAgentsStats(): Response
     {
-        $availableSubAgents = $this->subAgentDispatcher->getAvailableSubAgents();
+        $availableSubAgents = $this->subAgentFactory->getAvailableSubAgents();
 
         return $this->render('htmx/dashboard/_subagents_stats.html.twig', [
             'available_subagents' => $availableSubAgents,

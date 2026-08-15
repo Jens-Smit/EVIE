@@ -3,7 +3,8 @@
 
 namespace App\Tests\Unit\Controller\HTMX;
 
-use App\AI\Agent\SubAgentDispatcher;
+use App\AI\Agent\SubAgentFactory;
+use App\Repository\SubAgentDefinitionRepository;
 use App\AI\Mcp\McpToolExecutor;
 use App\AI\Skills\Tool\DynamicToolExecutor;
 use App\AI\Streaming\StreamingSessionManager;
@@ -16,20 +17,23 @@ class HTMXControllerTest extends TestCase
 {
     private HTMXController $controller;
     private DynamicToolExecutor $toolExecutorMock;
-    private SubAgentDispatcher $subAgentDispatcherMock;
+    private SubAgentFactory $subAgentFactoryMock;
+    private SubAgentDefinitionRepository $subAgentDefinitionRepoMock;
     private McpToolExecutor $mcpToolExecutorMock;
     private StreamingSessionManager $sessionManagerMock;
 
     protected function setUp(): void
     {
         $this->toolExecutorMock = $this->createMock(DynamicToolExecutor::class);
-        $this->subAgentDispatcherMock = $this->createMock(SubAgentDispatcher::class);
+        $this->subAgentFactoryMock = $this->createMock(SubAgentFactory::class);
+        $this->subAgentDefinitionRepoMock = $this->createMock(SubAgentDefinitionRepository::class);
         $this->mcpToolExecutorMock = $this->createMock(McpToolExecutor::class);
         $this->sessionManagerMock = $this->createMock(StreamingSessionManager::class);
 
         $this->controller = new HTMXController(
             $this->toolExecutorMock,
-            $this->subAgentDispatcherMock,
+            $this->subAgentFactoryMock,
+            $this->subAgentDefinitionRepoMock,
             $this->mcpToolExecutorMock,
             $this->sessionManagerMock
         );
@@ -111,7 +115,7 @@ class HTMXControllerTest extends TestCase
             ['sub_agent_name', null, 'website_researcher'],
         ]);
 
-        $this->subAgentDispatcherMock
+        $this->subAgentFactoryMock
             ->method('delegateTo')
             ->with('website_researcher', 'Test task')
             ->willReturn([
@@ -135,7 +139,7 @@ class HTMXControllerTest extends TestCase
             ['sub_agent_name', null, ''],
         ]);
 
-        $this->subAgentDispatcherMock
+        $this->subAgentFactoryMock
             ->method('delegate')
             ->with('Test task @data_analyst')
             ->willReturn([
@@ -264,7 +268,7 @@ class HTMXControllerTest extends TestCase
             ->method('getAvailableTools')
             ->willReturn(['tool1', 'tool2']);
 
-        $this->subAgentDispatcherMock
+        $this->subAgentFactoryMock
             ->method('getAvailableSubAgents')
             ->willReturn(['agent1', 'agent2']);
 
