@@ -64,6 +64,10 @@ class SecurityGuard
         'App\AI\Mcp\Filesystem\McpClient',
         'App\AI\Mcp\Playwright\McpClient',
         'App\AI\Mcp\GitHub\McpClient',
+        'ai.mcp.server.filesystem',
+        'ai.mcp.server.playwright',
+        'ai.mcp.server.github',
+        'ai.mcp.server.custom',
     ];
 
     public function __construct(
