@@ -194,6 +194,28 @@ class EvolutionFlowTest extends WebTestCase
         return $user;
     }
 
+    private function createAdminAndLogin(string $email, string $plainPassword): User
+    {
+        $user = $this->createUserAndLogin($email, $plainPassword);
+        $user->setRoles(['ROLE_ADMIN']);
+        $this->entityManager->flush();
+
+        // Session mit aktualisierten Rollen neu aufbauen.
+        $this->client->request('GET', '/logout');
+        $crawler = $this->client->request('GET', '/login');
+        $csrfToken = $this->extractCsrfToken($crawler, 'authenticate');
+        $this->client->request('POST', '/login', [
+            'email' => $email,
+            'password' => $plainPassword,
+            '_csrf_token' => $csrfToken,
+            '_remember_me' => 1,
+            '_target_path' => '/',
+        ]);
+        $this->client->followRedirect();
+
+        return $user;
+    }
+
     private function extractCsrfToken(Crawler $crawler, string $tokenId): string
     {
         $node = $crawler->filter('input[name="_csrf_token"]')->first();
