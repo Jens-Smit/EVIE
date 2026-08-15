@@ -2,6 +2,11 @@ parameters:
     level: 5
     paths:
         - src
+    # UserProfileFixture erfordert doctrine/doctrine-fixtures-bundle, das nicht
+    # in require/dev installiert ist — PHPStan kann die Parent-Klasse nicht
+    # resolven. Aus dem Analyse-Pfad ausschliessen, bis das Bundle hinzugefuegt wird.
+    excludePaths:
+        - 'src/DataFixtures/UserProfileFixture.php'
 
     # Pre-existing PHPStan-Fehler, die vor Entfernung des `|| true`-Bypasses
     # verdeckt waren. Diese werden als known issues ignoriert, sodass nur
@@ -40,7 +45,6 @@ parameters:
         - '#Call to static method builder\(\) on an unknown class Mcp\\Client#'
         - '#Instantiated class Mcp\\Client\\Transport\\HttpTransport not found#'
         - '#Instantiated class Mcp\\Client\\Transport\\StdioTransport not found#'
-        - '#Class App\\DataFixtures\\UserProfileFixture extends unknown class#'
         - '#Property App\\Mcp\\Client\\McpServerManager::\$clients has unknown class Mcp\\Client#'
         - '#Method App\\Mcp\\Client\\McpServerManager::getClient\(\) has invalid return type Mcp\\Client#'
 
