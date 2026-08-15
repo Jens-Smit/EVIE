@@ -48,14 +48,15 @@ final class HitlListenerTest extends TestCase
 
         $requestStack = new RequestStack();
         $requestStack->push(new Request());
-        $userContext = new UserContext($requestStack);
+
+        $tokenStorage = $this->createMock(TokenStorageInterface::class);
+        $tokenStorage->method('getToken')->willReturn(null);
+
+        $userContext = new UserContext($requestStack, $tokenStorage);
 
         $auditRepo = $this->createMock(AuditLogRepository::class);
         $auditRepo->method('log')->willReturn(new \App\Entity\AuditLog());
         $auditLogger = new AuditLogger($auditRepo, $requestStack);
-
-        $tokenStorage = $this->createMock(TokenStorageInterface::class);
-        $tokenStorage->method('getToken')->willReturn(null);
 
         $this->listener = new HitlListener(
             $this->guard,

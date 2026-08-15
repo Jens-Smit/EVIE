@@ -140,15 +140,16 @@ class EvieSmokeTest extends WebTestCase
         $repo->method('findOneBy')->willReturn(null);
 
         $requestStack = new RequestStack();
-        $userContext = new UserContext($requestStack);
+
+        $tokenStorage = $this->createMock(TokenStorageInterface::class);
+        $tokenStorage->method('getToken')->willReturn(null);
+
+        $userContext = new UserContext($requestStack, $tokenStorage);
 
         $auditRepo = $this->createMock(AuditLogRepository::class);
         // Verifiziere, dass log() aufgerufen wird (Policy-Decision wird geloggt).
         $auditRepo->expects(self::atLeastOnce())->method('log');
         $auditLogger = new \App\AI\Security\AuditLogger($auditRepo, $requestStack);
-
-        $tokenStorage = $this->createMock(TokenStorageInterface::class);
-        $tokenStorage->method('getToken')->willReturn(null);
 
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
         $listener = new HitlListener(

@@ -28,6 +28,11 @@ class GenericHttpExecutor implements ExecutorInterface
         $response = $this->httpClient->request($method, $url, [
             'headers' => $headers,
             'body' => $body,
+            // SSRF-Defense: Redirects duerfen nicht automatisch gefolgt werden.
+            // Die URL wurde vorab durch SecurityGuard::isUrlSafe() geprueft;
+            // ein serverseitiger 302 auf z. B. http://169.254.169.254/ wuerde
+            // diese Pruefung umgehen, weshalb Redirects hier deaktiviert sind.
+            'max_redirects' => 0,
         ]);
 
         return [

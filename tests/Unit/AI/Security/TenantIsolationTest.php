@@ -104,19 +104,27 @@ final class TenantIsolationTest extends TestCase
 
     private function buildListener(ToolDefinitionRepository $repo, string $userIdentifier, ?EventDispatcherInterface $dispatcher = null): HitlListener
     {
+        // Realer Produktionspfad: der Tenant-Identifier stammt aus dem
+        // Security-Token (TokenStorage), NICHT aus einem manuell am Request
+        // gesetzten Attribut. So wird verifiziert, dass UserContext den
+        // eingelogten User tatsächlich erkennt (P0-5).
         $requestStack = new RequestStack();
-        $request = new Request();
-        $request->attributes->set('_evie_user_identifier', $userIdentifier);
-        $requestStack->push($request);
+        $requestStack->push(new Request());
 
-        $userContext = new UserContext($requestStack);
+        $user = $this->createMock(\Symfony\Component\Security\Core\User\UserInterface::class);
+        $user->method('getUserIdentifier')->willReturn($userIdentifier);
+
+        $token = $this->createMock(\Symfony\Component\Security\Core\Authentication\Token\TokenInterface::class);
+        $token->method('getUser')->willReturn($user);
+
+        $tokenStorage = $this->createMock(TokenStorageInterface::class);
+        $tokenStorage->method('getToken')->willReturn($token);
+
+        $userContext = new UserContext($requestStack, $tokenStorage);
 
         $auditRepo = $this->createMock(AuditLogRepository::class);
         $auditRepo->method('log')->willReturn(new AuditLog());
         $auditLogger = new \App\AI\Security\AuditLogger($auditRepo, $requestStack);
-
-        $tokenStorage = $this->createMock(TokenStorageInterface::class);
-        $tokenStorage->method('getToken')->willReturn(null);
 
         return new HitlListener(
             new SecurityGuard(new NullLogger()),
@@ -126,6 +134,52 @@ final class TenantIsolationTest extends TestCase
             $auditLogger,
             $tokenStorage,
         );
+    }
+
+    /**
+     * Negativbeweis: ist kein User eingeloggt (Token = null) und auch kein
+     * Request-Attribut gesetzt, liefert UserContext::getUserIdentifier()
+     * null — dann greift die Tenant-Filterung NICHT und es wird der
+     * ungescopte findOneBy()-Pfad genutzt. Dieser Test dokumentiert das
+     * bewusste Verhalten fuer anonyme Kontexte (z. B. CLI-Worker).
+     */
+    public function testHitlListenerFallsBackToUnscopedSearchWhenNoUser(): void
+    {
+        $repo = $this->createMock(ToolDefinitionRepository::class);
+        // Ohne eingeloggten User MUSS der ungescopte findOneBy()-Pfad genutzt
+        // werden (kein findOneByNameForUser-Aufruf).
+        $repo->expects(self::never())->method('findOneByNameForUser');
+        $repo->expects(self::once())
+            ->method('findOneBy')
+            ->with(self::callback(static fn (array $c): bool => ($c['name'] ?? null) === 'anon_tool'))
+            ->willReturn(null);
+
+        $requestStack = new RequestStack();
+        $requestStack->push(new Request());
+
+        $tokenStorage = $this->createMock(TokenStorageInterface::class);
+        $tokenStorage->method('getToken')->willReturn(null);
+
+        $userContext = new UserContext($requestStack, $tokenStorage);
+
+        $auditRepo = $this->createMock(AuditLogRepository::class);
+        $auditRepo->method('log')->willReturn(new AuditLog());
+        $auditLogger = new \App\AI\Security\AuditLogger($auditRepo, $requestStack);
+
+        $listener = new HitlListener(
+            new SecurityGuard(new NullLogger()),
+            $repo,
+            $this->createMock(EventDispatcherInterface::class),
+            $userContext,
+            $auditLogger,
+            $tokenStorage,
+        );
+
+        $event = $this->buildEvent('anon_tool', ['q' => 'x']);
+        $listener($event);
+
+        // Statisches Tool ohne Definition → Allow (nicht denied).
+        self::assertFalse($event->isDenied());
     }
 
     private function buildEvent(string $name, array $arguments): ToolCallRequested

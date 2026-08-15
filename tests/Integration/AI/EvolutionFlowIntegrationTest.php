@@ -315,7 +315,7 @@ final class EvolutionFlowIntegrationTest extends TestCase
         $requestStack = new RequestStack();
         $requestStack->push(new Request());
 
-        return new UserContext($requestStack);
+        return new UserContext($requestStack, $this->createTokenStorage());
     }
 
     private function createAuditLogger(): AuditLogger

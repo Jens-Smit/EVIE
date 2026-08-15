@@ -101,6 +101,10 @@ class OutboundRequestPolicy
      */
     private function isHostAllowed(string $host): bool
     {
+        // IPv6-Brackets entfernen ([::1] -> ::1), damit die nachfolgenden
+        // Pattern- und IP-Prüfungen zuverlässig greifen.
+        $host = trim($host, '[]');
+
         // Prüfe gegen geblockte Patterns
         foreach ($this->blockedHostPatterns as $pattern) {
             if (fnmatch($pattern, $host)) {

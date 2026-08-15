@@ -10,6 +10,7 @@ use App\Repository\ToolDefinitionRepository;
 use App\Security\UserContext;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use PHPUnit\Framework\TestCase;
 use Symfony\AI\Agent\Toolbox\ToolResult;
 use Symfony\AI\Platform\Result\ToolCall;
@@ -168,7 +169,10 @@ final class DynamicToolboxTest extends TestCase
         $requestStack = new RequestStack();
         $requestStack->push(new Request());
 
-        return new UserContext($requestStack);
+        $tokenStorage = $this->createMock(TokenStorageInterface::class);
+        $tokenStorage->method('getToken')->willReturn(null);
+
+        return new UserContext($requestStack, $tokenStorage);
     }
 
 }

@@ -75,7 +75,8 @@ class SecurityGuard
     ];
 
     public function __construct(
-        private LoggerInterface $logger
+        private LoggerInterface $logger,
+        private ?OutboundRequestPolicy $outboundRequestPolicy = null,
     ) {
     }
 
@@ -141,6 +142,15 @@ class SecurityGuard
         // Prüfe ob es eine private IP ist (nach Normalisierung)
         if ($this->isPrivateIp($host)) {
             $this->logger->warning('Private IP-Adresse geblockt', ['host' => $host]);
+            return false;
+        }
+
+        // Defense-in-Depth: ist die OutboundRequestPolicy injiziert (Produktion),
+        // läuft zusätzlich eine DNS-basierte Prüfung, die auch Domains erfasst,
+        // die auf private IPs auflösen (z. B. evil.com -> 169.254.169.254). Die
+        // String-basierte Prüfung oben sieht nur den Hostnamen, nicht die IP.
+        if (null !== $this->outboundRequestPolicy && !$this->outboundRequestPolicy->isUrlAllowed($url)) {
+            $this->logger->warning('URL durch OutboundRequestPolicy geblockt', ['url' => $url]);
             return false;
         }
 

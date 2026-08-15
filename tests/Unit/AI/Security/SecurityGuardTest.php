@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\AI\Security;
 
+use App\AI\Security\OutboundRequestPolicy;
 use App\AI\Security\SecurityGuard;
 use App\AI\Skills\Tool\DynamicTool;
 use PHPUnit\Framework\TestCase;
@@ -160,5 +161,39 @@ final class SecurityGuardTest extends TestCase
         self::assertContains('filesystem', $executors);
         self::assertContains('http', $executors);
         self::assertContains('generic', $executors);
+    }
+
+    // ========================================================================
+    // isUrlSafe() — Defense-in-Depth via OutboundRequestPolicy (P0-3)
+    // ========================================================================
+
+    /**
+     * Beweist, dass eine injizierte OutboundRequestPolicy tatsächlich
+     * konsultiert wird: eine URL, die die String-basierte Prüfung passiert
+     * (kein privater Host-String), wird geblockt, sobald die Policy die URL
+     * ablehnt (z. B. weil die Domain auf eine private IP auflöst).
+     */
+    public function testIsUrlSafeConsultsInjectedOutboundRequestPolicy(): void
+    {
+        $policy = $this->createStub(OutboundRequestPolicy::class);
+        $policy->method('isUrlAllowed')->willReturn(false);
+
+        $guard = new SecurityGuard(new NullLogger(), $policy);
+
+        // 'https://example.com/data' würde ohne Policy durchgehen; mit Policy
+        // (die hier hart verweigert) muss es geblockt werden.
+        self::assertFalse($guard->isUrlSafe('https://example.com/data'));
+    }
+
+    /**
+     * Ohne injizierte Policy bleibt das bisherige String-basierte Verhalten
+     * erhalten (Backward-Kompatibilität für Tests/CLI).
+     */
+    public function testIsUrlSafeWithoutPolicyKeepsStringBasedBehavior(): void
+    {
+        $guard = new SecurityGuard(new NullLogger(), null);
+
+        self::assertTrue($guard->isUrlSafe('https://example.com/data'));
+        self::assertFalse($guard->isUrlSafe('http://127.0.0.1/admin'));
     }
 }
