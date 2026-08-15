@@ -1,153 +1,123 @@
 <?php
-// src/AI/Agent/EvieToolboxFactory.php
+
+declare(strict_types=1);
 
 namespace App\AI\Agent;
 
-use App\AI\Skills\DynamicSkillRegistry;
-use App\AI\Skills\Tool\ToolInterface;
-use App\Mcp\Toolbox\McpToolFactoryWrapper;
+use App\Repository\ToolDefinitionRepository;
 use Symfony\AI\Agent\AgentInterface;
 use Symfony\AI\Agent\Toolbox\Toolbox;
 use Symfony\AI\Agent\Toolbox\ToolFactory\ChainFactory;
 use Symfony\AI\Agent\Toolbox\ToolFactory\ReflectionToolFactory;
 use Symfony\AI\Agent\Toolbox\Tool\Subagent;
+use Symfony\AI\Platform\Tool\ExecutionReference;
+use Symfony\AI\Platform\Tool\Tool;
 
+/**
+ * Erzeugt nativen Symfony AI Toolboxes für den Orchestrator und Sub-Agents
+ * (Blueprint §4.A, §4.C).
+ *
+ * Subagents werden als native Symfony\AI\Agent\Toolbox\Tool\Subagent-Instanzen
+ * in die Toolbox aufgenommen — KEINE anonymen Tool-Wrapper, die Fehler
+ * zurückgeben. Dynamische Tools (aus ToolDefinition-Entities) werden als
+ * native Symfony\AI\Platform\Tool\Tool-Objekte gebaut und zur Laufzeit über
+ * die DynamicToolbox ergänzt (Blueprint §4.B).
+ */
 final class EvieToolboxFactory
 {
+    private const EXECUTOR_MAP = [
+        'api' => 'App\\AI\\Skills\\Executor\\GenericApiExecutor',
+        'database' => 'App\\AI\\Skills\\Executor\\GenericDatabaseExecutor',
+        'filesystem' => 'App\\AI\\Skills\\Executor\\GenericFileExecutor',
+        'http' => 'App\\AI\\Skills\\Executor\\GenericHttpExecutor',
+        'generic' => 'App\\AI\\Skills\\Executor\\GenericExecutor',
+    ];
+
+    private const SUBAGENT_NAMES = [
+        'website_researcher', 'data_analyst', 'code_assistant', 'document_processor',
+        'communication_manager', 'api_integration', 'project_manager', 'finance_manager',
+        'hr_manager', 'marketing_manager', 'ceo_assistant',
+    ];
+
     public function __construct(
-        private readonly McpToolFactoryWrapper $mcpToolFactory,
-        private readonly iterable $nativeTools,
-        private readonly DynamicSkillRegistry $dynamicSkillRegistry,
         private readonly SubAgentFactory $subAgentFactory,
+        private readonly ToolDefinitionRepository $toolDefinitionRepository,
     ) {
     }
 
-    public function create(): Toolbox
-    {
-        $reflectionFactory = new ReflectionToolFactory();
-        $chainFactory = new ChainFactory([$this->mcpToolFactory, $reflectionFactory]);
-        $allTools = [];
-
-        foreach ($this->nativeTools as $tool) {
-            if ($tool instanceof ToolInterface) {
-                $allTools[] = $tool;
-            }
-        }
-
-        $subAgentTools = $this->subAgentFactory->createAllSubAgentTools();
-        $agentNames = [
-            'website_researcher', 'data_analyst', 'code_assistant', 'document_processor',
-            'communication_manager', 'api_integration', 'project_manager', 'finance_manager',
-            'hr_manager', 'marketing_manager', 'ceo_assistant'
-        ];
-
-        foreach ($agentNames as $agentName) {
-            if (isset($subAgentTools[$agentName]) && $subAgentTools[$agentName] instanceof Subagent) {
-                $safeSubAgentTool = $this->createSafeSubAgentToolWrapper($subAgentTools[$agentName], $agentName);
-                $allTools[] = $safeSubAgentTool;
-            }
-        }
-
-        foreach ($this->dynamicSkillRegistry->getAvailableTools() as $toolName => $metadata) {
-            $dynamicTool = new class($toolName, $metadata) implements ToolInterface {
-                private string $toolName;
-                private array $metadata;
-
-                public function __construct(string $toolName, array $metadata)
-                {
-                    $this->toolName = $toolName;
-                    $this->metadata = $metadata;
-                }
-
-                public function getName(): string { return $this->toolName; }
-                public function getDescription(): string { return $this->metadata['description'] ?? 'Dynamisch generiertes Tool'; }
-                public function __invoke(array $parameters = []): array { return ['status' => 'error', 'message' => 'Tool-Ausführung muss über DynamicToolDispatcher erfolgen']; }
-                public function __toString(): string { return $this->getName(); }
-            };
-            $allTools[] = $dynamicTool;
-        }
-
-        return new Toolbox($allTools, $chainFactory);
-    }
-
-    private function createSafeSubAgentToolWrapper(Subagent $subAgentTool, string $agentName): ToolInterface
-    {
-        return new class($subAgentTool, $agentName) implements ToolInterface {
-            private Subagent $subAgentTool;
-            private string $agentName;
-
-            public function __construct(Subagent $subAgentTool, string $agentName)
-            {
-                $this->subAgentTool = $subAgentTool;
-                $this->agentName = $agentName;
-            }
-
-            public function getName(): string { return 'subagent_' . $this->agentName; }
-            public function getDescription(): string { return 'Sub-Agent für spezifische Aufgaben'; }
-            public function __invoke(array $parameters = []): mixed
-            {
-                // Subagent::__invoke() erwartet einen String (die Nachricht an den Sub-Agenten)
-                $message = $parameters['task'] ?? $parameters['message'] ?? $parameters['query'] ?? json_encode($parameters);
-                return $this->subAgentTool->__invoke((string) $message);
-            }
-            public function __toString(): string { return $this->getName(); }
-        };
-    }
-
+    /**
+     * Baut die Orchestrator-Toolbox: native Subagent-Tools + dynamische Tools
+     * aus der Datenbank (Status "approved") als native Tool-Objekte.
+     */
     public function createOrchestratorToolbox(): Toolbox
     {
-        $reflectionFactory = new ReflectionToolFactory();
-        $chainFactory = new ChainFactory([$this->mcpToolFactory, $reflectionFactory]);
-        $orchestratorTools = [];
+        $chainFactory = new ChainFactory([new ReflectionToolFactory()]);
+        $tools = $this->buildSubagentTools();
 
-        // Sub-Agenten korrekt über Subagent-Wrapper einbinden
-        $subAgentTools = $this->subAgentFactory->createAllSubAgentTools();
-        $agentNames = [
-            'website_researcher', 'data_analyst', 'code_assistant', 'document_processor',
-            'communication_manager', 'api_integration', 'project_manager', 'finance_manager',
-            'hr_manager', 'marketing_manager', 'ceo_assistant'
-        ];
-
-        foreach ($agentNames as $agentName) {
-            if (isset($subAgentTools[$agentName]) && $subAgentTools[$agentName] instanceof Subagent) {
-                $orchestratorTools[] = $this->createSafeSubAgentToolWrapper($subAgentTools[$agentName], $agentName);
-            }
+        foreach ($this->loadApprovedDefinitions() as $definition) {
+            $tools[] = $this->buildDynamicTool($definition);
         }
 
-        foreach ($this->dynamicSkillRegistry->getAvailableTools() as $toolName => $metadata) {
-            $dynamicTool = new class($toolName, $metadata) implements ToolInterface {
-                private string $toolName;
-                private array $metadata;
-
-                public function __construct(string $toolName, array $metadata)
-                {
-                    $this->toolName = $toolName;
-                    $this->metadata = $metadata;
-                }
-
-                public function getName(): string { return $this->toolName; }
-                public function getDescription(): string { return $this->metadata['description'] ?? 'Dynamisch generiertes Tool'; }
-                public function __invoke(array $parameters = []): array { return ['status' => 'error', 'message' => 'Tool-Ausführung muss über DynamicToolDispatcher erfolgen']; }
-                public function __toString(): string { return $this->getName(); }
-            };
-            $orchestratorTools[] = $dynamicTool;
-        }
-
-        return new Toolbox($orchestratorTools, $chainFactory);
+        return new Toolbox($tools, $chainFactory);
     }
 
+    /**
+     * Alias für createOrchestratorToolbox (Blueprint §4.A).
+     */
+    public function create(): Toolbox
+    {
+        return $this->createOrchestratorToolbox();
+    }
+
+    /**
+     * Baut eine Toolbox für einen Sub-Agenten: nur statische/native Tools.
+     */
     public function createSubAgentToolbox(AgentInterface $subAgent): Toolbox
     {
-        $reflectionFactory = new ReflectionToolFactory();
-        $chainFactory = new ChainFactory([$this->mcpToolFactory, $reflectionFactory]);
-        $subAgentTools = [];
+        $chainFactory = new ChainFactory([new ReflectionToolFactory()]);
 
-        foreach ($this->nativeTools as $tool) {
-            if ($tool instanceof ToolInterface) {
-                $subAgentTools[] = $tool;
+        return new Toolbox([], $chainFactory);
+    }
+
+    /**
+     * @return Tool[]
+     */
+    private function buildSubagentTools(): array
+    {
+        $subAgentTools = $this->subAgentFactory->createAllSubAgentTools();
+        $tools = [];
+
+        foreach (self::SUBAGENT_NAMES as $agentName) {
+            if (isset($subAgentTools[$agentName]) && $subAgentTools[$agentName] instanceof Subagent) {
+                $tools[] = $subAgentTools[$agentName];
             }
         }
 
-        return new Toolbox($subAgentTools, $chainFactory);
+        return $tools;
+    }
+
+    /**
+     * @return array<int, \App\Entity\ToolDefinition>
+     */
+    private function loadApprovedDefinitions(): array
+    {
+        try {
+            return $this->toolDefinitionRepository->findBy(['status' => 'approved']);
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
+    private function buildDynamicTool(\App\Entity\ToolDefinition $definition): Tool
+    {
+        $executorClass = self::EXECUTOR_MAP[$definition->getExecutorType() ?? 'generic']
+            ?? self::EXECUTOR_MAP['generic'];
+
+        return new Tool(
+            new ExecutionReference($executorClass),
+            $definition->getName() ?? '',
+            $definition->getDescription() ?? '',
+            $definition->getSchema() ?: null,
+        );
     }
 }
