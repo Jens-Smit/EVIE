@@ -5,6 +5,9 @@ namespace App\Tests\Unit\AI\Agent;
 use App\AI\Agent\OrchestratorDialogService;
 use App\AI\Agent\SubAgentFactory;
 use App\AI\Response\JsonResponseEnforcer;
+use App\AI\Response\FaultTolerantValidator;
+use App\AI\Response\ResponseNormalizer;
+use App\Repository\ToolDefinitionRepository;
 use App\AI\Skills\ToolDefinitionGenerator;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\LoggerInterface;
@@ -26,6 +29,9 @@ class OrchestratorAgentTest extends TestCase
     private UrlGeneratorInterface $urlGenerator;
     private SubAgentFactory $subAgentFactory;
     private JsonResponseEnforcer $jsonResponseEnforcer;
+    private FaultTolerantValidator $faultTolerantValidator;
+    private ResponseNormalizer $responseNormalizer;
+    private ToolDefinitionRepository $toolDefinitionRepo;
 
     protected function setUp(): void
     {
@@ -37,6 +43,9 @@ class OrchestratorAgentTest extends TestCase
         $this->urlGenerator = $this->createMock(UrlGeneratorInterface::class);
         $this->subAgentFactory = $this->createMock(SubAgentFactory::class);
         $this->jsonResponseEnforcer = $this->createMock(JsonResponseEnforcer::class);
+        $this->faultTolerantValidator = $this->createMock(FaultTolerantValidator::class);
+        $this->responseNormalizer = $this->createMock(ResponseNormalizer::class);
+        $this->toolDefinitionRepo = $this->createMock(ToolDefinitionRepository::class);
 
         $this->orchestrator = new OrchestratorDialogService(
             $this->agent,
@@ -47,6 +56,9 @@ class OrchestratorAgentTest extends TestCase
             $this->platform,
             $this->urlGenerator,
             $this->jsonResponseEnforcer,
+            $this->faultTolerantValidator,
+            $this->responseNormalizer,
+            $this->toolDefinitionRepo,
         );
     }
 

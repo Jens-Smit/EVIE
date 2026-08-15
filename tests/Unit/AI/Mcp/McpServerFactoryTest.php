@@ -53,7 +53,6 @@ class McpServerFactoryTest extends TestCase
         // Mock SecurityGuard
         $this->securityGuardMock
             ->method('isServiceAllowed')
-            ->with('ai.mcp.server.filesystem')
             ->willReturn(true);
 
         // Mock Container

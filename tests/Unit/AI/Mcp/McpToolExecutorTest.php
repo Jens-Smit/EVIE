@@ -297,6 +297,12 @@ class McpToolExecutorTest extends TestCase
                 'filesystem' => $serverMock,
             ]);
 
+        // execute() ruft createByName auf — muss denselben Mock liefern.
+        $this->factoryMock
+            ->method('createByName')
+            ->with('filesystem')
+            ->willReturn($serverMock);
+
         $serverMock
             ->method('hasTool')
             ->with('read_file')
