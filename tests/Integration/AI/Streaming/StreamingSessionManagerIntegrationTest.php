@@ -23,6 +23,12 @@ class StreamingSessionManagerIntegrationTest extends KernelTestCase
         $this->entityManager = self::getContainer()->get('doctrine.orm.entity_manager');
         $this->sessionRepo = $this->entityManager->getRepository(StreamingSession::class);
         $this->manager = self::getContainer()->get(StreamingSessionManager::class);
+
+        $schemaTool = new \Doctrine\ORM\Tools\SchemaTool($this->entityManager);
+        try {
+            $schemaTool->createSchema($this->entityManager->getMetadataFactory()->getAllMetadata());
+        } catch (\Throwable) {
+        }
     }
 
     public function testCreateSession(): void

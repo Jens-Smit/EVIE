@@ -107,7 +107,7 @@ jobs:
         env:
           APP_SECRET: test-secret-for-evie-1234567890abcdef
           DATABASE_URL: 'sqlite:///%kernel.project_dir%/var/test.db'
-        run: vendor/bin/phpunit --testsuite="EVIE AI Integration Tests" --exclude-group=api
+        run: vendor/bin/phpunit --testsuite="EVIE AI Integration Tests"
 
       - name: Run PHPStan
         run: vendor/bin/phpstan analyse src --level=5 || echo "PHPStan completed"
