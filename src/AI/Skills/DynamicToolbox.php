@@ -10,8 +10,6 @@ use Symfony\AI\Agent\Toolbox\ToolResult;
 use Symfony\AI\Platform\Result\ToolCall;
 use Symfony\AI\Platform\Tool\ExecutionReference;
 use Symfony\AI\Platform\Tool\Tool;
-use Symfony\Component\DependencyInjection\Attribute\AsDecorator;
-use Symfony\Component\DependencyInjection\Attribute\AutowireDecorated;
 
 /**
  * Native Dynamic Toolbox für EVIE (Blueprint §4.B).
@@ -21,13 +19,16 @@ use Symfony\Component\DependencyInjection\Attribute\AutowireDecorated;
  * Datenbank geladenen, freigegebenen ToolDefinition-Entities als native
  * Symfony\AI\Platform\Tool\Tool-Objekte.
  *
- * KEINE parallele DynamicSkillRegistry, KEIN CompilerPass, KEIN Mock-Datenpfad:
- * getTools() liefert beim jedem Agent-Call die statischen Tools der inneren
- * Toolbox gemerged mit den dynamischen Tools (Status "approved").
+ * KEINE parallele DynamicSkillRegistry, KEIN Mock-Datenpfad: getTools()
+ * liefert bei jedem Agent-Call die statischen Tools der inneren Toolbox
+ * gemerged mit den dynamischen Tools (Status "approved").
+ *
+ * Die Dekoration wird über RegisterDynamicToolboxDecoratorPass registriert,
+ * damit der Decorator nur dann aktiv wird, wenn der AI Bundle die
+ * Orchestrator-Toolbox tatsächlich erzeugt hat (tools aktiviert).
  *
  * @see https://symfony.com/doc/current/ai/cookbook/dynamic-tools.html
  */
-#[AsDecorator('ai.toolbox.orchestrator')]
 final class DynamicToolbox implements ToolboxInterface
 {
     private const EXECUTOR_MAP = [
@@ -39,7 +40,7 @@ final class DynamicToolbox implements ToolboxInterface
     ];
 
     public function __construct(
-        #[AutowireDecorated] private readonly ToolboxInterface $innerToolbox,
+        private readonly ToolboxInterface $innerToolbox,
         private readonly ToolDefinitionRepository $toolDefinitionRepository,
     ) {
     }

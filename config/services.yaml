@@ -12,6 +12,7 @@ services:
             - '../src/Entity/'
             - '../src/Kernel.php'
             - '../src/Tests/'
+            - '../src/AI/Skills/DynamicToolbox.php'
 
     Symfony\AI\Platform\PlatformInterface: '@ai.platform.mistral'
 

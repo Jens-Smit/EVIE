@@ -3,6 +3,7 @@
 namespace App;
 
 use App\DependencyInjection\Compiler\E2EStubPass;
+use App\DependencyInjection\Compiler\RegisterDynamicToolboxDecoratorPass;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
 use Symfony\Component\Config\Loader\LoaderInterface;
 use Symfony\Component\DependencyInjection\Compiler\PassConfig;
@@ -54,6 +55,8 @@ class Kernel extends BaseKernel
 
         // When E2E_TESTING is active, replace external-service implementations
         // (Mercure hub) with test stubs so dev/prod containers compile headless.
+        $container->addCompilerPass(new RegisterDynamicToolboxDecoratorPass(), PassConfig::TYPE_BEFORE_REMOVING);
+
         if ($this->isE2ETesting()) {
             $container->addCompilerPass(new E2EStubPass(), PassConfig::TYPE_BEFORE_REMOVING);
         }
