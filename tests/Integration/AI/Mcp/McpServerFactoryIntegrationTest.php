@@ -281,15 +281,15 @@ class McpServerFactoryIntegrationTest extends KernelTestCase
         $this->assertEquals('fs_server', $filesystemServers[0]->getName());
     }
 
-    protected function tearDown(): void
+protected function tearDown(): void
     {
+        $conn = $this->entityManager->getConnection();
+        try {
+            $conn->executeStatement('DELETE FROM mcp_server_definitions');
+            $conn->executeStatement('DELETE FROM users');
+        } catch (\Throwable) {
+        }
+        $this->entityManager->clear();
         parent::tearDown();
-
-        // Bereinige die DB
-        $this->entityManager->createQuery('DELETE FROM App\Entity\McpServerDefinition')->execute();
-        $this->entityManager->createQuery('DELETE FROM App\Entity\User WHERE email = :email')
-            ->setParameter('email', 'test@example.com')
-            ->execute();
-        $this->entityManager->flush();
     }
 }

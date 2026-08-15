@@ -114,7 +114,7 @@ class SubAgentDispatcher
         $subAgent = $this->subAgentFactory->createByName($subAgentName);
 
         // 3. Führe die Aufgabe aus
-        $result = $subAgent->__invoke($task, $context);
+        $result = $subAgent->call(new MessageBag(Message::of($task)));
 
         $this->logger->info('Aufgabe an Sub-Agenten delegiert', [
             'sub_agent' => $subAgentName,
@@ -744,7 +744,7 @@ class SubAgentDispatcher
     public function delegateTo(string $subAgentName, string $task, array $context = []): array
     {
         $subAgent = $this->subAgentFactory->createByName($subAgentName);
-        $result = $subAgent->__invoke($task, $context);
+        $result = $subAgent->call(new MessageBag(Message::of($task)));
 
         $this->logger->info('Aufgabe an spezifischen Sub-Agenten delegiert', [
             'sub_agent' => $subAgentName,
