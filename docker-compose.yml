@@ -8,8 +8,13 @@ services:
     volumes:
       - .:/var/www/html
     environment:
+      - APP_ENV=dev
+      - APP_DEBUG=true
+      - APP_SECRET=${APP_SECRET:-dev_secret_change_me}
       - DATABASE_URL=postgresql://evie:evie_password@postgres:5432/evie?serverVersion=15&charset=utf8
       - PGVECTOR_URL=postgresql://evie:evie_password@postgres:5432/evie?serverVersion=15&charset=utf8
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
+      - MESSENGER_TRANSPORT_DSN=doctrine://default
     depends_on:
       - postgres
       - mcp-filesystem

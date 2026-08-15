@@ -1,0 +1,20 @@
+# Mercure Hub Configuration for EVIE Streaming
+# Mercure is optional (used for real-time streaming updates).
+# Reference: docs/PHASE2_MEASURE5_CHANGES.md - StreamingPublisher (Mercure Integration)
+# Parameters provide fallback values so the Hub can be constructed even when
+# the MERCURE_* env vars are not set (e.g. when no Mercure server is running).
+# Set the MERCURE_* env vars to point to a real Mercure hub when streaming is needed.
+parameters:
+    env(MERCURE_URL): 'http://localhost:3000/.well-known/mercure'
+    env(MERCURE_PUBLIC_URL): 'http://localhost:3000/.well-known/mercure'
+    env(MERCURE_JWT_SECRET): 'change_me'
+
+mercure:
+    hubs:
+        default:
+            url: '%env(MERCURE_URL)%'
+            public_url: '%env(MERCURE_PUBLIC_URL)%'
+            jwt:
+                secret: '%env(MERCURE_JWT_SECRET)%'
+                publish: ['*']
+                subscribe: ['*']

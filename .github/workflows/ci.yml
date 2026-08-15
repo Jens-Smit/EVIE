@@ -12,7 +12,7 @@ jobs:
     
     services:
       postgres:
-        image: tanka/postgres-15-pgvector:latest
+        image: pgvector/pgvector:pg15
         env:
           POSTGRES_DB: evie_test
           POSTGRES_USER: evie
@@ -38,8 +38,16 @@ jobs:
       - name: Copy .env.dist to .env
         run: cp .env.dist .env
 
+      - name: Configure test database
+        # Override DATABASE_URL for the CI service container (host: localhost,
+        # db: evie_test created by the postgres service).
+        run: echo "DATABASE_URL=postgresql://evie:evie@localhost:5432/evie_test?serverVersion=15&charset=utf8" >> .env
+
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress --no-suggest
+        run: composer install --prefer-dist --no-progress
+
+      - name: Validate container compiles (cache:clear)
+        run: php bin/console cache:clear --env=test --no-warmup
 
       - name: Wait for PostgreSQL
         run: |
@@ -47,10 +55,12 @@ jobs:
             sleep 1
           done
 
-      - name: Create database
+      - name: Create database schema
+        # The postgres service container already creates POSTGRES_DB=evie_test,
+        # so we only need to create the schema (and enable the vector extension
+        # required by the pgvector store).
         run: |
-          PGPASSWORD=evie psql -h localhost -U evie -c "CREATE DATABASE evie_test;"
-          php bin/console doctrine:database:create --env=test || true
+          PGPASSWORD=evie psql -h localhost -U evie -d evie_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
           php bin/console doctrine:schema:create --env=test || true
 
       - name: Run PHPUnit tests

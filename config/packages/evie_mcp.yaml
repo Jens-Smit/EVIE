@@ -11,4 +11,4 @@ evie_mcp:
 
         github:
             transport: 'http'
-            url: '%env(GITHUB_MCP_URL)%'
+            url: '%env(default::GITHUB_MCP_URL)%'

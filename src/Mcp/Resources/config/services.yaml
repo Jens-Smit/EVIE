@@ -1,28 +1,26 @@
 # MCP Bundle Services
+# Wiring aligned with the actual constructors of:
+#   - McpServerManager(array $serverConfigs)
+#   - McpToolExecutor(McpServerManager $serverManager, array $serverAliases = [])
+#   - McpToolFactory(McpServerManager $serverManager, CacheInterface $cache, array $serverAliases, int $cacheTtl = 300)
+# Parameters evie_mcp.* are set by EvieMcpExtension from config/packages/evie_mcp.yaml.
 services:
     # MCP Server Manager
     App\Mcp\Client\McpServerManager:
         arguments:
             $serverConfigs: '%evie_mcp.servers%'
-            $mcpLogger: '@monolog.logger.mcp'
 
-    # MCP Tool Factory
+    # MCP Tool Factory (registered as AI tool_factory so remote MCP tools are discovered)
     App\Mcp\Toolbox\McpToolFactory:
         arguments:
             $serverManager: '@App\Mcp\Client\McpServerManager'
             $cache: '@cache.app'
             $serverAliases: '%evie_mcp.server_aliases%'
             $cacheTtl: '%evie_mcp.cache_ttl%'
-            $mcpLogger: '@monolog.logger.mcp'
         tags: ['ai.tool_factory']
 
     # MCP Tool Executor
     App\Mcp\Toolbox\McpToolExecutor:
         arguments:
             $serverManager: '@App\Mcp\Client\McpServerManager'
-            $mcpLogger: '@monolog.logger.mcp'
-
-    # Monolog Logger für MCP
-    monolog.logger.mcp:
-        parent: monolog.logger
-        tags: ['name: mcp']
+            $serverAliases: '%evie_mcp.server_aliases%'
