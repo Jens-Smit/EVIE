@@ -128,7 +128,7 @@ class NavigationPagesTest extends WebTestCase
         $this->client->request('GET', '/tools/list');
 
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorTextContains('#content-area h1', 'Alle verfuegbaren Tools');
+        $this->assertSelectorTextContains('#content-area h1', 'Alle verfügbaren Tools');
         $this->assertSidebarPresent();
     }
 
@@ -171,7 +171,7 @@ class NavigationPagesTest extends WebTestCase
             ['/subagents/list', 'Sub-Agenten verwalten'],
             ['/tools/pending', 'Ausstehende Tools'],
             ['/documents', 'Dokumente'],
-            ['/tools/list', 'Alle verfuegbaren Tools'],
+            ['/tools/list', 'Alle verfügbaren Tools'],
             ['/history', 'Agenten-Verlauf'],
             ['/profile', 'Mein Profil'],
         ];
