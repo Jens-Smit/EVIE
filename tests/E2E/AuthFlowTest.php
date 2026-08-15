@@ -7,6 +7,7 @@ namespace App\Tests\E2E;
 use App\Entity\User;
 use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Tools\SchemaTool;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
 use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
 use Symfony\Component\DomCrawler\Crawler;
@@ -41,6 +42,9 @@ class AuthFlowTest extends WebTestCase
         $container = static::getContainer();
         $this->entityManager = $container->get(EntityManagerInterface::class);
         $this->passwordHasher = $container->get(UserPasswordHasherInterface::class);
+
+        // Schema pro Test sicherstellen (erlaubt In-Memory-SQLite in jedem Env).
+        $this->ensureSchema();
 
         // Datenbank für jeden Test zurücksetzen
         $this->purgeUsers();
@@ -319,6 +323,17 @@ class AuthFlowTest extends WebTestCase
     private function getRepository(): UserRepository
     {
         return $this->entityManager->getRepository(User::class);
+    }
+
+    private function ensureSchema(): void
+    {
+        $schemaTool = new SchemaTool($this->entityManager);
+        $classes = $this->entityManager->getMetadataFactory()->getAllMetadata();
+        try {
+            $schemaTool->createSchema($classes);
+        } catch (\Throwable) {
+            // Schema existiert bereits (dateibasierte DB) -> ignorieren.
+        }
     }
 
     private function purgeUsers(): void

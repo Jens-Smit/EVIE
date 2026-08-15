@@ -33,7 +33,7 @@
             <directory>tests/Integration/AI</directory>
         </testsuite>
 
-        <!-- PHASE 3: Neue Test-Suite für Evolution-Flow -->
+        <!-- PHASE 3: Neue Test-Suite fuer Evolution-Flow -->
         <testsuite name="EVIE AI Functional Tests">
             <directory>tests/Functional/AI</directory>
         </testsuite>
@@ -43,7 +43,7 @@
             <directory>tests/E2E</directory>
         </testsuite>
 
-        <!-- Spezifische Test-Suites für AI-Komponenten -->
+        <!-- Spezifische Test-Suites fuer AI-Komponenten -->
         <testsuite name="EVIE AI Security Tests">
             <directory>tests/Unit/AI/Security</directory>
         </testsuite>
@@ -56,7 +56,7 @@
             <directory>tests/Unit/AI/Agent</directory>
         </testsuite>
 
-        <!-- PHASE 3: Spezifische Test-Suite für Evolution-Flow -->
+        <!-- PHASE 3: Spezifische Test-Suite fuer Evolution-Flow -->
         <testsuite name="EVIE Phase 3 Tests">
             <file>tests/Functional/AI/ToolEvolutionTest.php</file>
             <file>tests/Unit/AI/Skills/DynamicSkillRegistryTest.php</file>
@@ -73,20 +73,21 @@
         </exclude>
     </source>
 
-    <!-- PHP Einstellungen -->
+    <!-- PHP-Einstellungen: force=false setzt Werte nur, wenn nicht bereits als Umgebungsvariable definiert.
+         So kann die E2E-Suite auch gegen dev/prod laufen (APP_ENV=dev + DATABASE_URL von aussen). -->
     <php>
         <ini name="error_reporting" value="-1" />
-        <server name="APP_ENV" value="test" />
-        <server name="APP_SECRET" value="test-secret-for-evie-1234567890abcdef" />
-        <server name="DATABASE_URL" value="sqlite:///%kernel.project_dir%/var/test.db" />
-        <server name="MAILER_DSN" value="null://null" />
-        <server name="MAILER_FROM" value="no-reply@evie.test" />
-        <server name="KERNEL_CLASS" value="App\Kernel" />
-        <server name="SYMFONY_DEPRECATIONS_HELPER" value="weak_vendors" />
+        <server name="APP_ENV" value="test" force="false" />
+        <server name="APP_SECRET" value="test-secret-for-evie-1234567890abcdef" force="false" />
+        <server name="DATABASE_URL" value="sqlite:///%kernel.project_dir%/var/test.db" force="false" />
+        <server name="MAILER_DSN" value="null://null" force="false" />
+        <server name="MAILER_FROM" value="no-reply@evie.test" force="false" />
+        <server name="KERNEL_CLASS" value="App\Kernel" force="false" />
+        <server name="SYMFONY_DEPRECATIONS_HELPER" value="weak_vendors" force="false" />
         
-        <!-- PHASE 3: Test-Konfiguration für AI Bundle -->
-        <server name="AI_TEST_MODE" value="true" />
-        <server name="AI_PLATFORM" value="mock" />
+        <!-- PHASE 3: Test-Konfiguration fuer AI Bundle -->
+        <server name="AI_TEST_MODE" value="true" force="false" />
+        <server name="AI_PLATFORM" value="mock" force="false" />
     </php>
 
 </phpunit>

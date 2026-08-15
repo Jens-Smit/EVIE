@@ -47,15 +47,38 @@ jobs:
             sleep 1
           done
 
-      - name: Setup test environment
+      # ------------------------------------------------------------------
+      # E2E auth flows against all three environments (test, dev, prod).
+      # Each run uses an isolated in-memory SQLite DB + E2E_TESTING overlay,
+      # so no real external services (Mercure, Mistral) are required, yet
+      # the full security/form/controller stack of each env is exercised.
+      # ------------------------------------------------------------------
+      - name: E2E tests (test env)
         env:
           APP_SECRET: test-secret-for-evie-1234567890abcdef
-        run: |
-          php bin/console cache:clear --env=test --no-warmup
-          php bin/console doctrine:schema:create --env=test || true
-
-      - name: Run E2E tests (auth flows)
         run: vendor/bin/phpunit --testsuite="E2E Tests"
+
+      - name: E2E tests (dev env)
+        env:
+          E2E_TESTING: '1'
+          APP_ENV: dev
+          APP_SECRET: test-secret-for-evie-1234567890abcdef
+          DATABASE_URL: 'sqlite:///:memory:'
+          MISTRAL_API_KEY: test
+          GEMINI_API_KEY: test
+        run: vendor/bin/phpunit --testsuite="E2E Tests"
+
+      - name: E2E tests (prod env)
+        env:
+          E2E_TESTING: '1'
+          APP_ENV: prod
+          APP_SECRET: test-secret-for-evie-1234567890abcdef
+          DATABASE_URL: 'sqlite:///:memory:'
+          MISTRAL_API_KEY: test
+          GEMINI_API_KEY: test
+        run: |
+          php bin/console cache:warmup --env=prod
+          vendor/bin/phpunit --testsuite="E2E Tests"
 
       - name: Run PHPStan
         run: vendor/bin/phpstan analyse src --level=5 || echo "PHPStan completed"

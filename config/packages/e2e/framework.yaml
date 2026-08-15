@@ -1,0 +1,10 @@
+# E2E test overlay — only loaded when E2E_TESTING=1 is set.
+#
+# This lets the E2E test suite run against the dev/prod container configuration
+# (real security, forms, routing, controllers) by enabling the test client and
+# the SQLite/mock-session helpers that WebTestCase relies on, without changing
+# the prod/dev defaults shipped in config/packages/framework.yaml.
+framework:
+    test: true
+    session:
+        storage_factory_id: session.storage.factory.mock_file

@@ -1,0 +1,39 @@
+# E2E test overlay — only loaded when E2E_TESTING=1 is set.
+#
+# Mirrors config/packages/test/ai.yaml: breaks the circular dependency between
+# the tool_generator agent and ToolDefinitionGenerator and disables real tool
+# wiring, so the dev/prod AI bundle config compiles headless for E2E tests.
+ai:
+    platform:
+        mistral:
+            api_key: 'test-mistral-key'
+        gemini:
+            api_key: 'test-gemini-key'
+
+    agent:
+        tool_generator:
+            platform: 'ai.platform.mistral'
+            model: 'mistral-small-latest'
+            prompt:
+                include_tools: false
+            memory: null
+            tools:
+                enabled: false
+                services: {}
+
+        onboarding:
+            platform: 'ai.platform.mistral'
+            model: 'mistral-small-latest'
+            prompt:
+                include_tools: false
+            memory: null
+            tools: false
+            max_tool_calls: 0
+
+        orchestrator:
+            platform: 'ai.platform.mistral'
+            model: 'mistral-small-latest'
+            prompt:
+                include_tools: false
+            memory: null
+            tools: false

@@ -1,0 +1,16 @@
+# E2E test overlay — only loaded when E2E_TESTING=1 is set.
+#
+# Provides the same external-service stubs as config/packages/test/services.yaml
+# so the dev/prod container compiles without a running Mercure hub or other
+# live infrastructure during E2E tests.
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    App\Tests\Stub\NullMercureHub: ~
+    Symfony\Component\Mercure\HubInterface: '@App\Tests\Stub\NullMercureHub'
+
+    App\AI\Streaming\StreamingPublisher:
+        arguments:
+            $mercureHub: '@App\Tests\Stub\NullMercureHub'
