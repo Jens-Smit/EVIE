@@ -26,6 +26,12 @@ class SubAgentDispatcherIntegrationTest extends KernelTestCase
         $this->repo = $this->entityManager->getRepository(SubAgentDefinition::class);
         $this->subAgentFactory = self::getContainer()->get(SubAgentFactory::class);
         $this->dispatcher = self::getContainer()->get(SubAgentDispatcher::class);
+
+        $schemaTool = new \Doctrine\ORM\Tools\SchemaTool($this->entityManager);
+        try {
+            $schemaTool->createSchema($this->entityManager->getMetadataFactory()->getAllMetadata());
+        } catch (\Throwable) {
+        }
     }
 
     public function testDelegateToDynamicSubAgent(): void
@@ -34,6 +40,9 @@ class SubAgentDispatcherIntegrationTest extends KernelTestCase
         $user = new User();
         $user->setEmail('test@example.com');
         $user->setRoles(['ROLE_USER']);
+        $user->setPassword('test-password-hash');
+        $user->setFirstName('Test');
+        $user->setLastName('User');
         $this->entityManager->persist($user);
 
         // 2. Erstelle eine Sub-Agenten-Definition in der DB
@@ -92,6 +101,9 @@ class SubAgentDispatcherIntegrationTest extends KernelTestCase
         $user = new User();
         $user->setEmail('test@example.com');
         $user->setRoles(['ROLE_USER']);
+        $user->setPassword('test-password-hash');
+        $user->setFirstName('Test');
+        $user->setLastName('User');
         $this->entityManager->persist($user);
 
         // 2. Erstelle Sub-Agenten-Definitionen in der DB
@@ -133,6 +145,9 @@ class SubAgentDispatcherIntegrationTest extends KernelTestCase
         $user = new User();
         $user->setEmail('test@example.com');
         $user->setRoles(['ROLE_USER']);
+        $user->setPassword('test-password-hash');
+        $user->setFirstName('Test');
+        $user->setLastName('User');
         $this->entityManager->persist($user);
 
         // 2. Erstelle aktive und inaktive Definitionen

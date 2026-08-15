@@ -38,6 +38,8 @@ class McpServerFactoryIntegrationTest extends KernelTestCase
         $user->setEmail('test@example.com');
         $user->setRoles(['ROLE_USER']);
         $user->setPassword('test-password-hash');
+        $user->setFirstName('Test');
+        $user->setLastName('User');
         $this->entityManager->persist($user);
 
         // 2. Erstelle eine MCP-Server-Definition in der DB
@@ -73,6 +75,8 @@ class McpServerFactoryIntegrationTest extends KernelTestCase
         $user->setEmail('test@example.com');
         $user->setRoles(['ROLE_USER']);
         $user->setPassword('test-password-hash');
+        $user->setFirstName('Test');
+        $user->setLastName('User');
         $this->entityManager->persist($user);
 
         // 2. Erstelle MCP-Server-Definition in der DB
@@ -113,6 +117,8 @@ class McpServerFactoryIntegrationTest extends KernelTestCase
         $user->setEmail('test@example.com');
         $user->setRoles(['ROLE_USER']);
         $user->setPassword('test-password-hash');
+        $user->setFirstName('Test');
+        $user->setLastName('User');
         $this->entityManager->persist($user);
 
         // 2. Erstelle mehrere MCP-Server-Definitionen
@@ -148,6 +154,8 @@ class McpServerFactoryIntegrationTest extends KernelTestCase
         $user->setEmail('test@example.com');
         $user->setRoles(['ROLE_USER']);
         $user->setPassword('test-password-hash');
+        $user->setFirstName('Test');
+        $user->setLastName('User');
         $this->entityManager->persist($user);
 
         // 2. Erstelle eine neue Definition
@@ -175,6 +183,8 @@ class McpServerFactoryIntegrationTest extends KernelTestCase
         $user->setEmail('test@example.com');
         $user->setRoles(['ROLE_USER']);
         $user->setPassword('test-password-hash');
+        $user->setFirstName('Test');
+        $user->setLastName('User');
         $this->entityManager->persist($user);
 
         // 2. Erstelle eine Definition in der DB
@@ -204,6 +214,8 @@ class McpServerFactoryIntegrationTest extends KernelTestCase
         $user->setEmail('test@example.com');
         $user->setRoles(['ROLE_USER']);
         $user->setPassword('test-password-hash');
+        $user->setFirstName('Test');
+        $user->setLastName('User');
         $this->entityManager->persist($user);
 
         // 2. Erstelle aktive und inaktive Definitionen
@@ -239,6 +251,8 @@ class McpServerFactoryIntegrationTest extends KernelTestCase
         $user->setEmail('test@example.com');
         $user->setRoles(['ROLE_USER']);
         $user->setPassword('test-password-hash');
+        $user->setFirstName('Test');
+        $user->setLastName('User');
         $this->entityManager->persist($user);
 
         // 2. Erstelle Definitionen verschiedener Typen
