@@ -285,4 +285,45 @@ class WorkflowOrchestrator
         $pending = $this->hitlWorkflowManager->getPendingExecutions();
         return array_map(fn($pe) => $pe->toArray(), $pending);
     }
+
+    /**
+     * Gibt aktive (ausstehende) Workflows fuer einen Benutzer zurueck,
+     * aufbereitet als Uebersicht fuer Briefings.
+     *
+     * @return list<array{
+     *     id: string,
+     *     task: string,
+     *     status: string,
+     *     progress: int,
+     *     estimated_duration: string,
+     *     risk_level: string,
+     *     created_at: string
+     * }>
+     */
+    public function getActiveWorkflows(string $userIdentifier = null): array
+    {
+        $pending = $this->hitlWorkflowManager->getPendingExecutions();
+
+        $workflows = array_map(function ($pe) use ($userIdentifier) {
+            $data = $pe->toArray();
+            // Nur Workflows des angefragten Benutzers beruecksichtigen, falls
+            // ein UserIdentifier uebergeben wurde.
+            if ($userIdentifier !== null && ($data['user_email'] ?? null) !== $userIdentifier) {
+                return null;
+            }
+
+            return [
+                'id' => $data['execution_id'] ?? '',
+                'task' => $data['original_request'] ?? $data['tool_name'] ?? '',
+                'status' => 'pending',
+                'progress' => 0,
+                'estimated_duration' => 'unbekannt',
+                'risk_level' => 'medium',
+                'created_at' => $data['created_at'] ?? '',
+            ];
+        }, $pending);
+
+        // Herausgefilterte (null) Eintraege entfernen.
+        return array_values(array_filter($workflows, fn ($w) => $w !== null));
+    }
 }

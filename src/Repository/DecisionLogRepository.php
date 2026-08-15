@@ -131,8 +131,8 @@ class DecisionLogRepository extends ServiceEntityRepository
     public function findByUser(string $userIdentifier): array
     {
         return $this->createQueryBuilder('d')
-            ->leftJoin('d.userProfile', 'up')
-            ->andWhere('up.userIdentifier = :userIdentifier')
+            ->leftJoin('d.user', 'u')
+            ->andWhere('u.userIdentifier = :userIdentifier')
             ->setParameter('userIdentifier', $userIdentifier)
             ->orderBy('d.createdAt', 'DESC')
             ->getQuery()
