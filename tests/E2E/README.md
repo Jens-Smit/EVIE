@@ -1,9 +1,10 @@
-# E2E Tests — Authentifizierungs-Flows
+# E2E Tests — Authentifizierungs- & Navigations-Flows
 
 Diese Test-Suite prüft die grundlegenden Authentifizierungs-Funktionen von EVIE
+sowie die vollständige Seiten-Abdeckung der Sidebar/Navigation
 End-to-End über den Symfony Kernel (HTTP-Client).
 
-## Abdeckung
+## Abdeckung — Authentifizierung (`AuthFlowTest`)
 
 | Test | Beschreibung |
 |------|--------------|
@@ -21,21 +22,47 @@ End-to-End über den Symfony Kernel (HTTP-Client).
 | `testResetPasswordWithValidTokenChangesPassword` | Gültiges Token setzt neues Passwort |
 | `testResetPasswordWithInvalidTokenRedirectsToForgot` | Ungültiges Token leitet zum Reset-Formular |
 
+## Abdeckung — Sidebar/Navigation (`NavigationPagesTest`)
+
+Jeder in der Sidebar (`templates/components/_sidebar.html.twig`) sichtbare
+Navigations-Eintrag wird einmal als authentifizierter Benutzer aufgerufen und
+auf erfolgreiche Auslieferung (HTTP 200) sowie den erwarteten Seiteninhalt
+geprüft. Zusätzlich wird sichergestellt, dass die Sidebar selbst fehlerfrei
+rendert (früher schlug dies fehl, weil die Sidebar die nicht existierende Route
+`app_tools` referenzierte).
+
+| Test | Seite / Route | Beschreibung |
+|------|---------------|---------------|
+| `testDashboardPageLoadsAndShowsSidebar` | `/dashboard` (`app_dashboard`) | Dashboard lädt, H1 + Sidebar vorhanden |
+| `testAgentDialogPageLoads` | `/dialog` (`frontend_agent_dialog`) | Agent-Chat lädt, H1 + Sidebar vorhanden |
+| `testSubAgentsPageLoads` | `/subagents/list` (`app_subagents_list`) | Sub-Agenten-Übersicht lädt |
+| `testToolApprovalsPageLoads` | `/tools/pending` (`app_tool_pending_list`) | Freigaben-Seite lädt |
+| `testDocumentsPageLoads` | `/documents` (`app_documents`) | Dokumente-Seite lädt |
+| `testToolsListPageLoads` | `/tools/list` (`app_tools_list`) | Fähigkeiten-Seite lädt |
+| `testHistoryPageLoads` | `/history` (`frontend_agent_history`) | Verlauf-Seite lädt |
+| `testProfilePageLoads` | `/profile` (`app_profile`) | Profilseite lädt, zeigt User-E-Mail |
+| `testEverySidebarLinkPointsToALoadablePage` | alle obigen | Jeder Sidebar-Link führt zu HTTP 200 |
+| `testAnonymousAccessToSidebarPagesRedirectsToLogin` | alle obigen | Anonymer Zugriff wird abgewiesen (302/401) |
+
 ## Warum kein Panther?
 
-Die Auth-Flows verwenden kein JavaScript, daher ist der Symfony Kernel-HTTP-Client
-(`WebTestCase`) die stabilere, schnellere und CI-freundlichere Wahl:
+Die Auth- und Navigations-Flows verwenden kein JavaScript, daher ist der Symfony
+Kernel-HTTP-Client (`WebTestCase`) die stabilere, schnellere und CI-freundlichere
+Wahl:
 
 - Kein Chrome/Chromium-Binary nötig
 - Kein separater Webserver-Prozess
 - Echte Form-Submits, CSRF-Tokens und Sessions gegen den vollen Symfony-Stack
-- Deterministisch und schnell (~10 s für alle 13 Tests)
+- Deterministisch und schnell
 
 ## Ausführung
 
 ```bash
 # Nur E2E-Tests
 APP_ENV=test php vendor/bin/phpunit --testsuite="E2E Tests"
+
+# Nur Navigations-Seiten-Tests
+APP_ENV=test php vendor/bin/phpunit --testsuite="E2E Tests" --filter NavigationPagesTest
 
 # Alle Tests
 APP_ENV=test php vendor/bin/phpunit
