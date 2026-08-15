@@ -1,12 +1,12 @@
 security:
     password_hashers:
-        AppEntityUser:
+        App\Entity\User:
             algorithm: auto
 
     providers:
         app_user_provider:
             entity:
-                class: AppEntityUser
+                class: App\Entity\User
                 property: email
 
     firewalls:
@@ -22,11 +22,16 @@ security:
 
             logout:
                 path: app_logout
-            remember_me: true
+            remember_me:
+                secret: '%kernel.secret%'
+                lifetime: 604800
+                path: /
 
     access_control:
         - { path: ^/login$, roles: PUBLIC_ACCESS }
         - { path: ^/register$, roles: PUBLIC_ACCESS }
+        - { path: ^/forgot-password, roles: PUBLIC_ACCESS }
+        - { path: ^/reset-password, roles: PUBLIC_ACCESS }
         - { path: ^/logout$, roles: PUBLIC_ACCESS }
         - { path: ^/api/tools, roles: ROLE_ADMIN }
         - { path: ^/admin, roles: ROLE_ADMIN }

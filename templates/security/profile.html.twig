@@ -1,0 +1,90 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}EVIE - Profil & Sicherheit{% endblock %}
+
+{% block body %}
+<div class="max-w-3xl mx-auto space-y-6">
+    <div class="card p-6 md:p-8">
+        <h1 class="card-title flex items-center gap-2">
+            <i class="ph ph-user-circle text-primary"></i>
+            Mein Profil
+        </h1>
+
+        <div class="flex items-center gap-4 py-4">
+            <div class="w-16 h-16 rounded-full bg-primary-soft flex items-center justify-center shrink-0">
+                <i class="ph ph-user text-primary text-2xl"></i>
+            </div>
+            <div>
+                <p class="text-lg font-semibold text-content">{{ app.user.fullName ?: app.user.email }}</p>
+                <p class="text-sm text-content-muted">{{ app.user.email }}</p>
+                <div class="flex flex-wrap gap-1 mt-1">
+                    {% for role in app.user.roles %}
+                        <span class="badge bg-surface-elevated text-content-muted">{{ role }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 text-sm mt-4 pt-4 border-t border-border">
+            <div>
+                <p class="text-content-muted">Angemeldet seit</p>
+                <p class="text-content font-medium">{{ app.user.createdAt ? app.user.createdAt|date('d.m.Y') : '-' }}</p>
+            </div>
+            <div>
+                <p class="text-content-muted">Letzte Anmeldung</p>
+                <p class="text-content font-medium">{{ app.user.lastLoginAt ? app.user.lastLoginAt|date('d.m.Y H:i') : 'Jetzt' }}</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="card p-6 md:p-8">
+        <h2 class="card-title flex items-center gap-2">
+            <i class="ph ph-key text-primary"></i>
+            Passwort ändern
+        </h2>
+
+        {% for label, messages in app.flashes %}
+            {% for message in messages %}
+                <div class="mb-4 flex items-center gap-2 px-4 py-3 rounded-xl text-sm border
+                    {% if label == 'success' %}
+                        bg-emerald-50 dark:bg-emerald-500/10 border-emerald-200 dark:border-emerald-500/20 text-emerald-700 dark:text-emerald-400
+                    {% else %}
+                        bg-red-50 dark:bg-red-500/10 border-red-200 dark:border-red-500/20 text-red-700 dark:text-red-400
+                    {% endif %}">
+                    <i class="ph {% if label == 'success' %}ph-check-circle{% else %}ph-warning-circle{% endif %} text-lg"></i>
+                    <span>{{ message }}</span>
+                </div>
+            {% endfor %}
+        {% endfor %}
+
+        {{ form_start(changePasswordForm) }}
+        <div class="space-y-4 max-w-md">
+            <div>
+                {{ form_label(changePasswordForm.currentPassword, null, { label_attr: { class: 'auth-label' } }) }}
+                {{ form_widget(changePasswordForm.currentPassword, { attr: { class: 'auth-input' } }) }}
+                {{ form_errors(changePasswordForm.currentPassword) }}
+            </div>
+            <div>
+                {{ form_label(changePasswordForm.plainPassword, null, { label_attr: { class: 'auth-label' } }) }}
+                {{ form_widget(changePasswordForm.plainPassword, { attr: { class: 'auth-input' } }) }}
+                {{ form_errors(changePasswordForm.plainPassword) }}
+            </div>
+            <div>
+                {{ form_widget(changePasswordForm.submit, { attr: { class: 'btn btn-primary' } }) }}
+            </div>
+        </div>
+        {{ form_end(changePasswordForm) }}
+    </div>
+
+    <div class="card p-6">
+        <h2 class="card-title flex items-center gap-2">
+            <i class="ph ph-sign-out text-primary"></i>
+            Sitzung
+        </h2>
+        <p class="text-sm text-content-muted mb-4">Beende deine aktuelle Sitzung.</p>
+        <a href="{{ path('app_logout') }}" class="btn btn-ghost">
+            <i class="ph ph-sign-out"></i> Abmelden
+        </a>
+    </div>
+</div>
+{% endblock %}

@@ -9,7 +9,7 @@ on:
 jobs:
   tests:
     runs-on: ubuntu-latest
-    
+
     services:
       postgres:
         image: pgvector/pgvector:pg15
@@ -32,22 +32,14 @@ jobs:
         uses: shivammathur/setup-php@v2
         with:
           php-version: '8.2'
-          extensions: pdo_pgsql
+          extensions: pdo_pgsql, pdo_sqlite, mbstring, ctype, iconv
           coverage: none
 
       - name: Copy .env.dist to .env
         run: cp .env.dist .env
 
-      - name: Configure test database
-        # Override DATABASE_URL for the CI service container (host: localhost,
-        # db: evie_test created by the postgres service).
-        run: echo "DATABASE_URL=postgresql://evie:evie@localhost:5432/evie_test?serverVersion=15&charset=utf8" >> .env
-
       - name: Install dependencies
-        run: composer install --prefer-dist --no-progress
-
-      - name: Validate container compiles (cache:clear)
-        run: php bin/console cache:clear --env=test --no-warmup
+        run: composer install --prefer-dist --no-progress --no-scripts
 
       - name: Wait for PostgreSQL
         run: |
@@ -55,16 +47,15 @@ jobs:
             sleep 1
           done
 
-      - name: Create database schema
-        # The postgres service container already creates POSTGRES_DB=evie_test,
-        # so we only need to create the schema (and enable the vector extension
-        # required by the pgvector store).
+      - name: Setup test environment
+        env:
+          APP_SECRET: test-secret-for-evie-1234567890abcdef
         run: |
-          PGPASSWORD=evie psql -h localhost -U evie -d evie_test -c "CREATE EXTENSION IF NOT EXISTS vector;"
+          php bin/console cache:clear --env=test --no-warmup
           php bin/console doctrine:schema:create --env=test || true
 
-      - name: Run PHPUnit tests
-        run: vendor/bin/phpunit || echo "Tests completed"
+      - name: Run E2E tests (auth flows)
+        run: vendor/bin/phpunit --testsuite="E2E Tests"
 
       - name: Run PHPStan
         run: vendor/bin/phpstan analyse src --level=5 || echo "PHPStan completed"

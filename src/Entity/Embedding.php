@@ -30,7 +30,7 @@ class Embedding
     #[ORM\Column(type: Types::JSON)]
     private array $metadata = [];
 
-    #[ORM\Column(type: Types::FLOAT_ARRAY, name: 'vector')]
+    #[ORM\Column(type: Types::JSON, name: 'vector')]
     private array $vector = [];
 
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]

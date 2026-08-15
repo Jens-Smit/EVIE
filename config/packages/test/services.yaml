@@ -1,0 +1,14 @@
+# Test-only service overrides to make the kernel bootable without external services.
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    # Stub Mercure hub for tests (no real Mercure server needed).
+    # In prod, config/packages/mercure.yaml provides a real Hub with fallback env vars.
+    App\Tests\Stub\NullMercureHub: ~
+    Symfony\Component\Mercure\HubInterface: '@App\Tests\Stub\NullMercureHub'
+
+    App\AI\Streaming\StreamingPublisher:
+        arguments:
+            $mercureHub: '@App\Tests\Stub\NullMercureHub'

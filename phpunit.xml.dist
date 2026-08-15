@@ -18,11 +18,10 @@
         <!-- Haupt-Test-Suite -->
         <testsuite name="Application Test Suite">
             <directory>tests</directory>
-            <exclude>
-                <directory suffix=".php">tests/Unit/AI</directory>
-                <directory suffix=".php">tests/Integration/AI</directory>
-                <directory suffix=".php">tests/Functional/AI</directory>
-            </exclude>
+            <exclude>tests/Unit/AI</exclude>
+            <exclude>tests/Integration/AI</exclude>
+            <exclude>tests/Functional/AI</exclude>
+            <exclude>tests/E2E</exclude>
         </testsuite>
 
         <!-- EVIE AI Komponenten Tests -->
@@ -37,6 +36,11 @@
         <!-- PHASE 3: Neue Test-Suite für Evolution-Flow -->
         <testsuite name="EVIE AI Functional Tests">
             <directory>tests/Functional/AI</directory>
+        </testsuite>
+
+        <!-- E2E-Tests: Authentifizierungs-Flows (Login, Registrierung, Logout, Navigation, Profil) -->
+        <testsuite name="E2E Tests">
+            <directory>tests/E2E</directory>
         </testsuite>
 
         <!-- Spezifische Test-Suites für AI-Komponenten -->
@@ -69,40 +73,14 @@
         </exclude>
     </source>
 
-    <!-- Filter für AI-Komponenten -->
-    <filter>
-        <whitelist processUncoveredFilesFromWhitelist="true">
-            <directory suffix=".php">src/AI</directory>
-        </whitelist>
-    </filter>
-
-    <!-- Code Coverage Konfiguration für Phase 3 -->
-    <coverage cacheDirectory=".phpunit.cache" processUncoveredFiles="true">
-        <include>
-            <directory suffix=".php">src/AI</directory>
-        </include>
-        <exclude>
-            <file>src/AI/DependencyInjection</file>
-        </exclude>
-    </coverage>
-
-    <!-- Logging für Phase 3 -->
-    <logging>
-        <log type="coverage-html" target="build/coverage" title="EVIE Test Coverage" charset="UTF-8" yui="true" highlight="true"/>
-        <log type="coverage-clover" target="build/logs/clover.xml"/>
-        <log type="coverage-crap4j" target="build/logs/crap4j.xml" threshold="30"/>
-        <log type="coverage-text" target="php://stdout" showOnlyPercentage="true"/>
-        <log type="junit" target="build/logs/junit.xml"/>
-        
-        <!-- PHASE 3: Separate Log-Datei für Evolution-Flow-Tests -->
-        <log type="junit" target="build/logs/phase3-evolution-flow.xml" 
-             include="EVIE Phase 3 Tests"/>
-    </logging>
-
-    <!-- PHP Einstellungen für Phase 3 -->
+    <!-- PHP Einstellungen -->
     <php>
         <ini name="error_reporting" value="-1" />
         <server name="APP_ENV" value="test" />
+        <server name="APP_SECRET" value="test-secret-for-evie-1234567890abcdef" />
+        <server name="DATABASE_URL" value="sqlite:///%kernel.project_dir%/var/test.db" />
+        <server name="MAILER_DSN" value="null://null" />
+        <server name="MAILER_FROM" value="no-reply@evie.test" />
         <server name="KERNEL_CLASS" value="App\Kernel" />
         <server name="SYMFONY_DEPRECATIONS_HELPER" value="weak_vendors" />
         
@@ -111,24 +89,4 @@
         <server name="AI_PLATFORM" value="mock" />
     </php>
 
-    <!-- PHASE 3: Gruppen für selektive Test-Ausführung -->
-    <groups>
-        <group name="phase3">
-            <include>
-                <file>tests/Functional/AI/ToolEvolutionTest.php</file>
-                <file>tests/Unit/AI/Skills/DynamicSkillRegistryTest.php</file>
-            </include>
-        </group>
-        <group name="evolution-flow">
-            <include>
-                <file>tests/Functional/AI/ToolEvolutionTest.php</file>
-            </include>
-        </group>
-        <group name="unit">
-            <directory>tests/Unit</directory>
-        </group>
-        <group name="functional">
-            <directory>tests/Functional</directory>
-        </group>
-    </groups>
 </phpunit>

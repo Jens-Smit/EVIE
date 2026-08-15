@@ -42,3 +42,8 @@ phpunit.xml.dist
 *.pem
 *.key
 *.crt
+# Test artifacts
+/var/test.db
+/.phpunit.cache/
+/build/
+config/reference.php
