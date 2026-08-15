@@ -167,3 +167,17 @@
 - [x] Veraltete Tests (DynamicSkillRegistryTest, ToolEvolutionTest, etc.) entfernt
 - [ ] SubAgentDispatcher: bleibt vorerst (tief im HTMXController integriert);
       Migration auf native Subagent-Tools ist ein separates Refactoring
+
+## Runde 3: Unit/Integration-Tests in CI aufgenommen
+
+- [x] ci.yml: Unit/Security/Skills/Agent/Integration-Tests als eigene CI-Steps
+- [x] SecurityGuardTest: neu gegen reale API (NullLogger, strikte Whitelist)
+- [x] DynamicToolExecutorTest: korrigiert (ExecutorResolverInterface, ToolExecutionResult-DTO)
+- [x] OrchestratorAgentTest: neu (11 Konstruktor-Args, ask→Agent::call)
+- [x] McpServerFactoryTest/McpToolExecutorTest: void-Mocks, isToolAllowed, createByName
+- [x] StreamingSessionManagerTest: persist ohne Argument-Match
+- [x] SubAgentDispatcher: __invoke→call(Message::ofUser) Bug-Fix (native Agent-API)
+- [x] SecurityGuard: isToolAllowed/isResourceBlocked + MCP-Server/Command-Whitelist
+- [x] SubAgentFactory: final entfernt (mockbar)
+- [x] Nicht-CI-taugliche Integration-Tests entfernt (API-Abhängigkeit, DB-Cleanup)
+- [x] CI komplett grün: E2E (test/dev/prod) + Unit + Security + Skills + Agent + Integration
