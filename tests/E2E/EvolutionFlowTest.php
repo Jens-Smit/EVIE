@@ -179,24 +179,14 @@ class EvolutionFlowTest extends WebTestCase
         $this->entityManager->persist($user);
         $this->entityManager->flush();
 
-        $crawler = $this->client->request('GET', '/login');
-        $csrfToken = $this->extractCsrfToken($crawler, 'authenticate');
-
-        $this->client->request('POST', '/login', [
-            'email' => $email,
-            'password' => $plainPassword,
-            '_csrf_token' => $csrfToken,
-            '_remember_me' => 1,
-            '_target_path' => '/',
-        ]);
-        $this->client->followRedirect();
+        // Direkter Client-Login (robuster als der Web-Login-Flow in WebTestCase).
+        $this->client->loginUser($user);
 
         return $user;
     }
 
     private function createAdminAndLogin(string $email, string $plainPassword): User
     {
-        // Admin-Rollen VOR dem Login setzen, damit die Session sie enthält.
         $user = (new User())
             ->setEmail($email)
             ->setFirstName('Admin')
@@ -207,17 +197,7 @@ class EvolutionFlowTest extends WebTestCase
         $this->entityManager->persist($user);
         $this->entityManager->flush();
 
-        $crawler = $this->client->request('GET', '/login');
-        $csrfToken = $this->extractCsrfToken($crawler, 'authenticate');
-
-        $this->client->request('POST', '/login', [
-            'email' => $email,
-            'password' => $plainPassword,
-            '_csrf_token' => $csrfToken,
-            '_remember_me' => 1,
-            '_target_path' => '/',
-        ]);
-        $this->client->followRedirect();
+        $this->client->loginUser($user);
 
         return $user;
     }
