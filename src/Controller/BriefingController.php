@@ -8,6 +8,7 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
 /**
@@ -25,7 +26,7 @@ class BriefingController extends AbstractController
      * Gibt das tägliche Briefing als JSON zurück
      */
     #[Route('/api/briefing/daily', name: 'api_briefing_daily', methods: ['GET'])]
-    public function dailyBriefing(#[CurrentUser] ?object $user = null): JsonResponse
+    public function dailyBriefing(#[CurrentUser] ?UserInterface $user = null): JsonResponse
     {
         $userIdentifier = $user?->getUserIdentifier() ?? 'default_user';
 
@@ -38,7 +39,7 @@ class BriefingController extends AbstractController
      * Gibt das wöchentliche Strategie-Briefing als JSON zurück
      */
     #[Route('/api/briefing/weekly', name: 'api_briefing_weekly', methods: ['GET'])]
-    public function weeklyBriefing(#[CurrentUser] ?object $user = null): JsonResponse
+    public function weeklyBriefing(#[CurrentUser] ?UserInterface $user = null): JsonResponse
     {
         $userIdentifier = $user?->getUserIdentifier() ?? 'default_user';
 
@@ -51,7 +52,7 @@ class BriefingController extends AbstractController
      * Zeigt das Unternehmens-Dashboard an
      */
     #[Route('/briefing', name: 'app_briefing', methods: ['GET'])]
-    public function briefingDashboard(#[CurrentUser] ?object $user = null): Response
+    public function briefingDashboard(#[CurrentUser] ?UserInterface $user = null): Response
     {
         $userIdentifier = $user?->getUserIdentifier() ?? 'default_user';
 
@@ -71,7 +72,7 @@ class BriefingController extends AbstractController
     #[Route('/api/briefing/section/{section}', name: 'api_briefing_section', methods: ['GET'])]
     public function briefingSection(
         string $section,
-        #[CurrentUser] ?object $user = null
+        #[CurrentUser] ?UserInterface $user = null
     ): JsonResponse {
         $userIdentifier = $user?->getUserIdentifier() ?? 'default_user';
 
@@ -88,7 +89,7 @@ class BriefingController extends AbstractController
      * Gibt die Statistiken als JSON zurück
      */
     #[Route('/api/briefing/statistics', name: 'api_briefing_statistics', methods: ['GET'])]
-    public function briefingStatistics(#[CurrentUser] ?object $user = null): JsonResponse
+    public function briefingStatistics(#[CurrentUser] ?UserInterface $user = null): JsonResponse
     {
         $userIdentifier = $user?->getUserIdentifier() ?? 'default_user';
 

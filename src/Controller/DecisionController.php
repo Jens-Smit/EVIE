@@ -10,6 +10,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
 /**
@@ -27,7 +28,7 @@ class DecisionController extends AbstractController
      * Listet alle ausstehenden Entscheidungen auf
      */
     #[Route('/api/decisions/pending', name: 'api_decisions_pending', methods: ['GET'])]
-    public function listPendingDecisions(#[CurrentUser] ?object $user = null): JsonResponse
+    public function listPendingDecisions(#[CurrentUser] ?UserInterface $user = null): JsonResponse
     {
         $userIdentifier = $user?->getUserIdentifier() ?? 'default_user';
 
@@ -46,7 +47,7 @@ class DecisionController extends AbstractController
     #[Route('/api/decisions/type/{type}', name: 'api_decisions_by_type', methods: ['GET'])]
     public function listDecisionsByType(
         string $type,
-        #[CurrentUser] ?object $user = null
+        #[CurrentUser] ?UserInterface $user = null
     ): JsonResponse {
         $userIdentifier = $user?->getUserIdentifier() ?? 'default_user';
 
@@ -66,7 +67,7 @@ class DecisionController extends AbstractController
     #[Route('/api/decisions/recent', name: 'api_decisions_recent', methods: ['GET'])]
     public function listRecentDecisions(
         Request $request,
-        #[CurrentUser] ?object $user = null
+        #[CurrentUser] ?UserInterface $user = null
     ): JsonResponse {
         $userIdentifier = $user?->getUserIdentifier() ?? 'default_user';
         $limit = $request->query->getInt('limit', 10);
@@ -84,7 +85,7 @@ class DecisionController extends AbstractController
      * Gibt Statistiken über Entscheidungen zurück
      */
     #[Route('/api/decisions/statistics', name: 'api_decisions_statistics', methods: ['GET'])]
-    public function decisionStatistics(#[CurrentUser] ?object $user = null): JsonResponse
+    public function decisionStatistics(#[CurrentUser] ?UserInterface $user = null): JsonResponse
     {
         $userIdentifier = $user?->getUserIdentifier() ?? 'default_user';
 
@@ -103,7 +104,7 @@ class DecisionController extends AbstractController
     public function approveDecision(
         int $id,
         Request $request,
-        #[CurrentUser] ?object $user = null
+        #[CurrentUser] ?UserInterface $user = null
     ): JsonResponse {
         $userIdentifier = $user?->getUserIdentifier() ?? 'default_user';
         $decision = $this->decisionManager->getDecision($id);
@@ -138,7 +139,7 @@ class DecisionController extends AbstractController
     public function rejectDecision(
         int $id,
         Request $request,
-        #[CurrentUser] ?object $user = null
+        #[CurrentUser] ?UserInterface $user = null
     ): JsonResponse {
         $userIdentifier = $user?->getUserIdentifier() ?? 'default_user';
         $decision = $this->decisionManager->getDecision($id);
@@ -175,7 +176,7 @@ class DecisionController extends AbstractController
      * Gibt eine bestimmte Entscheidung zurück
      */
     #[Route('/api/decisions/{id}', name: 'api_decisions_show', methods: ['GET'])]
-    public function showDecision(int $id, #[CurrentUser] ?object $user = null): JsonResponse
+    public function showDecision(int $id, #[CurrentUser] ?UserInterface $user = null): JsonResponse
     {
         $decision = $this->decisionManager->getDecision($id);
 
@@ -207,7 +208,7 @@ class DecisionController extends AbstractController
      * Prüft, ob ausstehende Entscheidungen vorhanden sind
      */
     #[Route('/api/decisions/check', name: 'api_decisions_check', methods: ['GET'])]
-    public function checkPendingDecisions(#[CurrentUser] ?object $user = null): JsonResponse
+    public function checkPendingDecisions(#[CurrentUser] ?UserInterface $user = null): JsonResponse
     {
         $userIdentifier = $user?->getUserIdentifier() ?? 'default_user';
 
@@ -225,7 +226,7 @@ class DecisionController extends AbstractController
      * Zeigt die Entscheidungs-Übersicht an
      */
     #[Route('/decisions', name: 'app_decisions', methods: ['GET'])]
-    public function decisionsDashboard(#[CurrentUser] ?object $user = null): Response
+    public function decisionsDashboard(#[CurrentUser] ?UserInterface $user = null): Response
     {
         $userIdentifier = $user?->getUserIdentifier() ?? 'default_user';
 
