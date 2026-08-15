@@ -145,9 +145,10 @@
 ## 5. Fortschritts-Tracking
 
 - [x] Phase 0: Plan erstellt (`docs/BLUEPRINT_ALIGNMENT_PLAN.md`)
-- [ ] Phase 1: DynamicToolbox + EvieToolboxFactory-Migration
-- [ ] Phase 2: HitlListener (`ToolCallRequested`) + SecurityGuard `PolicyDecision`
-- [ ] Phase 3: Subagents nativ
-- [ ] Phase 4: CompilerPass-Bereinigung
-- [ ] Phase 5: Unit/Functional/E2E-Test-Ausbau
-- [ ] CI grün auf `main`
+- [x] Phase 1: DynamicToolbox (nativer Decorator via RegisterDynamicToolboxDecoratorPass)
+- [x] Phase 2: HitlListener (`ToolCallRequested`) + SecurityGuard `PolicyDecision`
+- [x] Phase 3: EvieToolboxFactory auf native Subagent/Tool-Objekte umgestellt
+- [x] Phase 4: AiDynamicToolsCompilerPass (Mock-Daten) + DynamicAgentCompilerPass entfernt
+- [x] Phase 5: Unit-Tests (DynamicToolbox, HitlListener, SecurityGuard::decide)
+      + Integration-Test (EvolutionFlowIntegrationTest)
+- [x] CI grün auf `main` (E2E test/dev/prod + PHPStan non-fatal)
