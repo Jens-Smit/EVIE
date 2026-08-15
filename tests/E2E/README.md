@@ -44,6 +44,26 @@ rendert (früher schlug dies fehl, weil die Sidebar die nicht existierende Route
 | `testEverySidebarLinkPointsToALoadablePage` | alle obigen | Jeder Sidebar-Link führt zu HTTP 200 |
 | `testAnonymousAccessToSidebarPagesRedirectsToLogin` | alle obigen | Anonymer Zugriff wird abgewiesen (302/401) |
 
+### Erweiterte Frontend-Seiten-Abdeckung
+
+Zusätzlich zu den Sidebar-Links werden alle weiteren über das Frontend
+erreichbaren Vollseiten geprüft (Home, Briefing, Entscheidungen, ältere
+Sub-Agenten-Seite, MCP-Server-Verwaltung). Die Passwort-zurücksetzen-Anfrage
+ist bewusst ausgenommen.
+
+| Test | Seite / Route | Beschreibung |
+|------|---------------|---------------|
+| `testHomePageLoads` | `/` (`app_home`) | Startseite lädt, Willkommenstext |
+| `testBriefingPageLoads` | `/briefing` (`app_briefing`) | Unternehmens-Dashboard lädt |
+| `testDecisionsPageLoads` | `/decisions` (`app_decisions`) | Entscheidungs-Dashboard lädt |
+| `testSubAgentsIndexPageLoads` | `/subagents` (`app_subagents`) | Ältere Sub-Agenten-Seite lädt |
+| `testMcpServersListPageLoadsForAdmin` | `/mcp/servers` (`mcp_servers_list`) | MCP-Server-Seite lädt für Admin |
+| `testMcpServersPageDeniedForRegularUser` | `/mcp/servers` | Regulärer User wird abgewiesen (302/403) |
+| `testSubAgentsListShowsToolAssignmentToggleAndForm` | `/subagents/list` | Tools-Toggle-Button + Zuweisungsformular-Markup vorhanden |
+| `testSubAgentToolAssignmentEndpointAcceptsPost` | `/subagents/{name}/assign-tools` | POST-Endpunkt der Tool-Zuweisung funktioniert |
+| `testEveryFrontendPageLinkPointsToALoadablePage` | Home, Briefing, Decisions, Subagents | Alle Frontend-Seiten liefern 200 |
+| `testEveryFrontendPageLinkRedirectsAnonymousToLogin` | alle obigen + MCP | Anonymer Zugriff wird abgewiesen |
+
 ## Warum kein Panther?
 
 Die Auth- und Navigations-Flows verwenden kein JavaScript, daher ist der Symfony

@@ -156,6 +156,182 @@ class NavigationPagesTest extends WebTestCase
         $this->assertSelectorTextContains('', 'profil@beispiel.de');
     }
 
+    public function testHomePageLoads(): void
+    {
+        $this->createUserAndLogin('home@beispiel.de', 'HomePass123');
+
+        $this->client->request('GET', '/');
+
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorTextContains('#content-area h1', 'Willkommen bei EVIE');
+        $this->assertSidebarPresent();
+    }
+
+    public function testBriefingPageLoads(): void
+    {
+        $this->createUserAndLogin('briefing@beispiel.de', 'BriefingPass123');
+
+        $this->client->request('GET', '/briefing');
+
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorTextContains('#content-area h1', 'Unternehmens-Dashboard');
+        $this->assertSidebarPresent();
+    }
+
+    public function testDecisionsPageLoads(): void
+    {
+        $this->createUserAndLogin('decisions@beispiel.de', 'DecisionsPass123');
+
+        $this->client->request('GET', '/decisions');
+
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorTextContains('#content-area h1', 'Entscheidungs-Dashboard');
+        $this->assertSidebarPresent();
+    }
+
+    public function testSubAgentsIndexPageLoads(): void
+    {
+        // Die aeltere /subagents-Route (Frontend\SubAgentController), die ueber
+        // den Schnellzugriff des Dashboards verlinkt ist.
+        $this->createUserAndLogin('subindex@beispiel.de', 'SubIndexPass123');
+
+        $this->client->request('GET', '/subagents');
+
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorTextContains('#content-area h1', 'Subagenten');
+        $this->assertSidebarPresent();
+    }
+
+    public function testMcpServersListPageLoadsForAdmin(): void
+    {
+        // MCP-Server-Seiten erfordern ROLE_ADMIN.
+        $this->createAdminAndLogin('mcpadmin@beispiel.de', 'McpAdminPass123');
+
+        $this->client->request('GET', '/mcp/servers');
+
+        $this->assertResponseIsSuccessful();
+        $this->assertSidebarPresent();
+    }
+
+    public function testMcpServersPageDeniedForRegularUser(): void
+    {
+        $this->createUserAndLogin('mcpuser@beispiel.de', 'McpUserPass123');
+
+        $this->client->request('GET', '/mcp/servers');
+
+        $statusCode = $this->client->getResponse()->getStatusCode();
+        $this->assertTrue(
+            in_array($statusCode, [302, 403], true),
+            sprintf('REGULAR_USER darf /mcp/servers nicht sehen (302/403), bekam %d.', $statusCode)
+        );
+    }
+
+    public function testSubAgentsListShowsToolAssignmentToggleAndForm(): void
+    {
+        // Der "Tools"-Button auf der Sub-Agenten-Seite schaltet per JS ein
+        // verstecktes Zuweisungsformular ein/aus. Der Symfony-HTTP-Client fuehrt
+        // kein JS aus, aber das Markup (Button + verstecktes Formular) muss
+        // fuer jeden statischen Sub-Agenten vorhanden sein, damit der Toggle im
+        // Browser ueberhaupt funktionieren kann.
+        $this->createUserAndLogin('toggle@beispiel.de', 'TogglePass123');
+
+        $crawler = $this->client->request('GET', '/subagents/list');
+
+        $this->assertResponseIsSuccessful();
+        // Pro Sub-Agent gibt es einen Toggle-Button und ein Zuweisungsformular.
+        $toggleButtons = $crawler->filter('.toggle-tools-btn');
+        $this->assertGreaterThan(
+            0,
+            $toggleButtons->count(),
+            'Es sollte mindestens einen "Tools"-Toggle-Button geben.'
+        );
+        $assignmentForms = $crawler->filter('.tool-assignment-form');
+        $this->assertSame(
+            $toggleButtons->count(),
+            $assignmentForms->count(),
+            'Anzahl Toggle-Buttons und Zuweisungsformulare muss uebereinstimmen.'
+        );
+        // Jedes Zuweisungsformular enthaelt ein <form>, das an die
+        // assign-tools-Route postet.
+        $forms = $crawler->filter('.tool-assignment-form form[action]');
+        $this->assertSame(
+            $toggleButtons->count(),
+            $forms->count(),
+            'Anzahl Toggle-Buttons und <form>-Elemente muss uebereinstimmen.'
+        );
+        foreach ($forms as $formNode) {
+            $action = $formNode->getAttribute('action') ?? '';
+            $this->assertStringContainsString('/subagents/', $action);
+            $this->assertStringContainsString('/assign-tools', $action);
+        }
+    }
+
+    public function testSubAgentToolAssignmentEndpointAcceptsPost(): void
+    {
+        // Verifiziert den POST-Endpunkt, den das Zuweisungsformular ansteuert.
+        $this->createUserAndLogin('assign@beispiel.de', 'AssignPass123');
+
+        // Zunaechst die Liste laden, damit die statischen Sub-Agenten registriert werden.
+        $this->client->request('GET', '/subagents/list');
+
+        // Einen der statischen Sub-Agenten-Namen fuer die Zuweisung verwenden.
+        $this->client->request('POST', '/subagents/website_researcher/assign-tools', [
+            'tools' => [],
+        ]);
+
+        // Erfolgreiche Zuweisung leitet zur Liste zurueck.
+        $this->assertResponseRedirects('/subagents/list');
+        $this->client->followRedirect();
+        $this->assertResponseIsSuccessful();
+    }
+
+    public function testEveryFrontendPageLinkPointsToALoadablePage(): void
+    {
+        // Wie testEverySidebarLinkPointsToALoadablePage, aber fuer die
+        // zusaetzlich im Frontend verfuegbaren Seiten (Home, Briefing,
+        // Entscheidungen, aeltere Sub-Agenten-Seite). Passwort-Reset-Anfrage
+        // ist bewusst ausgenommen.
+        $this->createUserAndLogin('feall@beispiel.de', 'FeAllPass123');
+
+        $frontendPages = [
+            ['/', 'Willkommen bei EVIE'],
+            ['/briefing', 'Unternehmens-Dashboard'],
+            ['/decisions', 'Entscheidungs-Dashboard'],
+            ['/subagents', 'Subagenten'],
+        ];
+
+        foreach ($frontendPages as [$path, $expectedText]) {
+            $this->client->request('GET', $path);
+            $statusCode = $this->client->getResponse()->getStatusCode();
+            $this->assertSame(
+                200,
+                $statusCode,
+                sprintf('Frontend-Seite %s sollte 200 liefern, bekam aber %d.', $path, $statusCode)
+            );
+            $this->assertSelectorTextContains('#content-area h1', $expectedText);
+        }
+    }
+
+    public function testEveryFrontendPageLinkRedirectsAnonymousToLogin(): void
+    {
+        $protectedPaths = [
+            '/',
+            '/briefing',
+            '/decisions',
+            '/subagents',
+            '/mcp/servers',
+        ];
+
+        foreach ($protectedPaths as $path) {
+            $this->client->request('GET', $path);
+            $statusCode = $this->client->getResponse()->getStatusCode();
+            $this->assertTrue(
+                in_array($statusCode, [302, 401, 403], true),
+                sprintf('Anonymer Zugriff auf %s sollte abgewiesen werden, bekam %d.', $path, $statusCode)
+            );
+        }
+    }
+
     public function testEverySidebarLinkPointsToALoadablePage(): void
     {
         // Stellt sicher, dass jeder in der Sidebar definierte Navigations-Link
@@ -263,6 +439,27 @@ class NavigationPagesTest extends WebTestCase
     private function createUserAndLogin(string $email, string $plainPassword): User
     {
         $user = $this->createUser($email, $plainPassword);
+
+        $crawler = $this->client->request('GET', '/login');
+        $csrfToken = $this->extractCsrfToken($crawler, 'authenticate');
+
+        $this->client->request('POST', '/login', [
+            'email' => $email,
+            'password' => $plainPassword,
+            '_csrf_token' => $csrfToken,
+            '_remember_me' => 1,
+            '_target_path' => '/',
+        ]);
+        $this->client->followRedirect();
+
+        return $user;
+    }
+
+    private function createAdminAndLogin(string $email, string $plainPassword): User
+    {
+        $user = $this->createUser($email, $plainPassword);
+        $user->setRoles(['ROLE_ADMIN']);
+        $this->entityManager->flush();
 
         $crawler = $this->client->request('GET', '/login');
         $csrfToken = $this->extractCsrfToken($crawler, 'authenticate');

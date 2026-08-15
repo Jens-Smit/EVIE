@@ -210,39 +210,54 @@
 {% block javascripts %}
     {{ parent() }}
     <script>
-        document.addEventListener('DOMContentLoaded', function() {
-            // Toggle Tool-Zuweisungsformular
-            document.querySelectorAll('.toggle-tools-btn').forEach(button => {
-                button.addEventListener('click', function() {
-                    const form = this.closest('.bg-surface-muted').querySelector('.tool-assignment-form');
-                    const isHidden = form.classList.contains('hidden');
-                    
-                    // Verstecke alle anderen Formulare
-                    document.querySelectorAll('.tool-assignment-form').forEach(f => {
-                        f.classList.add('hidden');
-                    });
-                    
-                    // Zeige/Verstecke dieses Formular
-                    if (isHidden) {
-                        form.classList.remove('hidden');
-                        this.innerHTML = '<i class="ph ph-x"></i> Schließen';
-                    } else {
-                        form.classList.add('hidden');
-                        this.innerHTML = '<i class="ph ph-gear"></i> Tools';
-                    }
+        // Tool-Zuweisungsformular ein-/ausblenden.
+        // Als Delegations-Listener auf document implementiert, damit die Buttons
+        // auch dann reagieren, wenn das Markup spaeter (z. B. via HTMX) neu
+        // geladen wird oder die Skripte erst nach DOMContentLoaded greifen.
+        document.addEventListener('click', function(event) {
+            const toggleBtn = event.target.closest('.toggle-tools-btn');
+            if (toggleBtn) {
+                // Die Sub-Agent-Karte umschliesst Button und Formular.
+                const card = toggleBtn.closest('.bg-surface-muted');
+                const form = card ? card.querySelector('.tool-assignment-form') : null;
+                if (!form) {
+                    return;
+                }
+                const isHidden = form.classList.contains('hidden');
+
+                // Verstecke alle anderen Formulare und setze deren Button-Text zurueck.
+                document.querySelectorAll('.tool-assignment-form').forEach(f => {
+                    f.classList.add('hidden');
                 });
-            });
-            
-            // Abbrechen-Button
-            document.querySelectorAll('.cancel-assignment').forEach(button => {
-                button.addEventListener('click', function() {
-                    const form = this.closest('.tool-assignment-form');
-                    const toggleBtn = form.parentElement.querySelector('.toggle-tools-btn');
-                    
+                document.querySelectorAll('.toggle-tools-btn').forEach(b => {
+                    b.innerHTML = '<i class="ph ph-gear"></i> Tools';
+                });
+
+                // Zeige/Verstecke dieses Formular.
+                if (isHidden) {
+                    form.classList.remove('hidden');
+                    toggleBtn.innerHTML = '<i class="ph ph-x"></i> Schließen';
+                } else {
                     form.classList.add('hidden');
                     toggleBtn.innerHTML = '<i class="ph ph-gear"></i> Tools';
-                });
-            });
+                }
+                return;
+            }
+
+            // Abbrechen-Button innerhalb eines Zuweisungsformulars.
+            const cancelBtn = event.target.closest('.cancel-assignment');
+            if (cancelBtn) {
+                const form = cancelBtn.closest('.tool-assignment-form');
+                const card = form ? form.closest('.bg-surface-muted') : null;
+                const tBtn = card ? card.querySelector('.toggle-tools-btn') : null;
+
+                if (form) {
+                    form.classList.add('hidden');
+                }
+                if (tBtn) {
+                    tBtn.innerHTML = '<i class="ph ph-gear"></i> Tools';
+                }
+            }
         });
     </script>
 {% endblock %}
