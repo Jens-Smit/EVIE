@@ -68,9 +68,10 @@ class EvieSmokeTest extends WebTestCase
             'CONTENT_TYPE' => 'application/json',
         ], json_encode(['message' => 'Hallo'], JSON_THROW_ON_ERROR));
 
-        // Ohne Nachricht → 400; mit Nachricht, ohne Auth → Default-Tenant-Antwort.
+        // Das Endpoint erfordert Authentifizierung → 401 ist ein gueltiges
+        // Smoke-Ergebnis (Security-Layer aktiv). Mit Auth → 200/400/500.
         $status = $this->client->getResponse()->getStatusCode();
-        self::assertContains($status, [200, 400, 500]);
+        self::assertContains($status, [200, 400, 401, 500]);
     }
 
     public function testAgentDialogEndpointRejectsTenantSpoofing(): void
@@ -87,8 +88,8 @@ class EvieSmokeTest extends WebTestCase
 
         $status = $this->client->getResponse()->getStatusCode();
         // Das Endpoint muss antworten (nicht crashen), und der Body-wert
-        // "attacker-tenant-spoof" wird ignoriert.
-        self::assertContains($status, [200, 400, 500]);
+        // "attacker-tenant-spoof" wird ignoriert. 401 bei fehlender Auth.
+        self::assertContains($status, [200, 400, 401, 500]);
     }
 
     public function testHistoryEndpointDeniesForeignUser(): void
@@ -97,8 +98,8 @@ class EvieSmokeTest extends WebTestCase
         $this->client->request('GET', '/api/agent/history/some-other-user');
         $status = $this->client->getResponse()->getStatusCode();
 
-        // Ohne authentifizierten User wird der Default-Tenant zurückgegeben
-        // oder (bei strikter Auth) 403/401. Wichtig: kein 200 mit fremden Daten.
+        // Ohne authentifizierten User → 401/403 (kein 200 mit fremden Daten).
+        // Wichtig: niemals 200 mit Daten eines fremden Tenants.
         self::assertNotSame(200, $status);
     }
 

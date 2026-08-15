@@ -475,6 +475,9 @@ class SecurityGuard
 
     private function looksLikePath(string $value): bool
     {
-        return str_starts_with($value, '/') || str_starts_with($value, './');
+        return str_starts_with($value, '/')
+            || str_starts_with($value, './')
+            || str_starts_with($value, '../')
+            || str_contains($value, '/../');
     }
 }
