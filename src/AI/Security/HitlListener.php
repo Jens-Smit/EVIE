@@ -109,8 +109,12 @@ final class HitlListener
                     ->findOneByNameForUser($toolCall->getName(), $userIdentifier);
             }
 
-            return $this->toolDefinitionRepository
-                ->findOneBy(['name' => $toolCall->getName()]);
+            // Ohne authentifizierten User wird kein Tool-Definition-Fallback
+            // ueber den globalen findOneBy() gesucht (P0-5 Tenant-Isolation):
+            // sonst koennte ein anonymer Request die Freigabe/Sperrung eines
+            // fremden Tenant-Tools triggern. Die Entscheidung faellt dann an
+            // die SecurityGuard-Policy (deny-not-registered).
+            return null;
         } catch (\Throwable) {
             return null;
         }

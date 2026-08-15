@@ -71,7 +71,7 @@ final class EvolutionFlowIntegrationTest extends TestCase
             ->setExecutorType('generic');
 
         $repo = $this->createMock(ToolDefinitionRepository::class);
-        $repo->method('findOneBy')->willReturn($definition);
+        $repo->method('findOneByNameForUser')->willReturn($definition);
 
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
         $dispatcher->expects(self::once())->method('dispatch');
@@ -93,7 +93,7 @@ final class EvolutionFlowIntegrationTest extends TestCase
             ->setExecutorType('generic');
 
         $repo = $this->createMock(ToolDefinitionRepository::class);
-        $repo->method('findOneBy')->willReturn($definition);
+        $repo->method('findOneByNameForUser')->willReturn($definition);
 
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
         $dispatcher->expects(self::never())->method('dispatch');
@@ -114,7 +114,7 @@ final class EvolutionFlowIntegrationTest extends TestCase
             ->setExecutorType('filesystem');
 
         $repo = $this->createMock(ToolDefinitionRepository::class);
-        $repo->method('findOneBy')->willReturn($definition);
+        $repo->method('findOneByNameForUser')->willReturn($definition);
 
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
 
@@ -143,7 +143,7 @@ final class EvolutionFlowIntegrationTest extends TestCase
             ->setExecutorType('http');
 
         $repo = $this->createMock(ToolDefinitionRepository::class);
-        $repo->method('findOneBy')->willReturn($definition);
+        $repo->method('findOneByNameForUser')->willReturn($definition);
 
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
         $listener = new HitlListener(new SecurityGuard(new NullLogger()), $repo, $dispatcher, $this->createUserContext(), $this->createAuditLogger(), $this->createTokenStorage());
@@ -163,7 +163,7 @@ final class EvolutionFlowIntegrationTest extends TestCase
             ->setExecutorType('generic');
 
         $repo = $this->createMock(ToolDefinitionRepository::class);
-        $repo->method('findOneBy')->willReturn($definition);
+        $repo->method('findOneByNameForUser')->willReturn($definition);
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
 
         $listener = new HitlListener(new SecurityGuard(new NullLogger()), $repo, $dispatcher, $this->createUserContext(), $this->createAuditLogger(), $this->createTokenStorage());
@@ -192,7 +192,7 @@ final class EvolutionFlowIntegrationTest extends TestCase
             ->setExecutorType('shell');
 
         $repo = $this->createMock(ToolDefinitionRepository::class);
-        $repo->method('findOneBy')->willReturn($definition);
+        $repo->method('findOneByNameForUser')->willReturn($definition);
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
 
         $listener = new HitlListener(new SecurityGuard(new NullLogger()), $repo, $dispatcher, $this->createUserContext(), $this->createAuditLogger(), $this->createTokenStorage());
@@ -211,7 +211,7 @@ final class EvolutionFlowIntegrationTest extends TestCase
             ->setExecutorType('http');
 
         $repo = $this->createMock(ToolDefinitionRepository::class);
-        $repo->method('findOneBy')->willReturn($definition);
+        $repo->method('findOneByNameForUser')->willReturn($definition);
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
 
         $listener = new HitlListener(new SecurityGuard(new NullLogger()), $repo, $dispatcher, $this->createUserContext(), $this->createAuditLogger(), $this->createTokenStorage());
@@ -229,7 +229,7 @@ final class EvolutionFlowIntegrationTest extends TestCase
             ->setExecutorType('filesystem');
 
         $repo = $this->createMock(ToolDefinitionRepository::class);
-        $repo->method('findOneBy')->willReturn($definition);
+        $repo->method('findOneByNameForUser')->willReturn($definition);
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
 
         $listener = new HitlListener(new SecurityGuard(new NullLogger()), $repo, $dispatcher, $this->createUserContext(), $this->createAuditLogger(), $this->createTokenStorage());
@@ -248,7 +248,7 @@ final class EvolutionFlowIntegrationTest extends TestCase
             ->setSecurityLevel('high');
 
         $repo = $this->createMock(ToolDefinitionRepository::class);
-        $repo->method('findOneBy')->willReturn($definition);
+        $repo->method('findOneByNameForUser')->willReturn($definition);
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
         $dispatcher->expects(self::once())->method('dispatch');
 
@@ -313,9 +313,14 @@ final class EvolutionFlowIntegrationTest extends TestCase
     private function createUserContext(): UserContext
     {
         $requestStack = new RequestStack();
-        $requestStack->push(new Request());
+        $request = new Request();
+        $requestStack->push($request);
+        $context = new UserContext($requestStack);
+        // Tenant-Identifier setzen, damit HitlListener den tenant-
+        // isolierten Repository-Pfad (findOneByNameForUser) nimmt.
+        $context->setUserIdentifier('test-tenant');
 
-        return new UserContext($requestStack);
+        return $context;
     }
 
     private function createAuditLogger(): AuditLogger

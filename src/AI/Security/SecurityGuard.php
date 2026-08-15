@@ -75,7 +75,9 @@ class SecurityGuard
     ];
 
     public function __construct(
-        private LoggerInterface $logger
+        private LoggerInterface $logger,
+        private ?OutboundRequestPolicy $outboundRequestPolicy = null,
+        private ?AuditLogger $auditLogger = null,
     ) {
     }
 
@@ -142,6 +144,18 @@ class SecurityGuard
         if ($this->isPrivateIp($host)) {
             $this->logger->warning('Private IP-Adresse geblockt', ['host' => $host]);
             return false;
+        }
+
+        // DNS-Rebinding-Schutz (P0-3): ist der Host kein IP-Literal, wird er
+        // ueber die OutboundRequestPolicy aufgeloest (gethostbynamel) und
+        // gegen private Netzwerke geprueft. So kann ein Hostname, der auf eine
+        // private IP (z. B. 127.0.0.1) aufloest, nicht den String-Check umgehen.
+        // Redirect-Ziele werden nicht verfolgt (allow_redirects=false).
+        if (null !== $this->outboundRequestPolicy && !filter_var($host, FILTER_VALIDATE_IP)) {
+            if (!$this->outboundRequestPolicy->isUrlAllowed($url)) {
+                $this->logger->warning('Host loest zu privatem Netzwerk auf (DNS-Rebinding)', ['host' => $host]);
+                return false;
+            }
         }
 
         return true;
@@ -429,21 +443,27 @@ class SecurityGuard
     {
         if (null !== $definition && null !== $definition->getExecutorType()) {
             if (!in_array($definition->getExecutorType(), $this->allowedExecutors, true)) {
-                return PolicyDecision::Deny;
+                return $this->denyWithAudit('executor_not_allowed', $toolCall, $definition);
             }
 
             $executorClass = $this->resolveExecutorClass($definition->getExecutorType());
             if (null !== $executorClass && !$this->isServiceAllowed($executorClass)) {
-                return PolicyDecision::Deny;
+                return $this->denyWithAudit('service_not_allowed', $toolCall, $definition);
             }
         }
 
         foreach ($this->extractStringArguments($toolCall) as $value) {
             if ($this->looksLikeUrl($value) && !$this->isUrlSafe($value)) {
-                return PolicyDecision::Deny;
+                return $this->denyWithAudit('ssrf', $toolCall, $definition);
             }
             if ($this->looksLikePath($value) && !$this->isPathSafe($value)) {
-                return PolicyDecision::Deny;
+                return $this->denyWithAudit('path_traversal', $toolCall, $definition);
+            }
+            // Shell-Injection-/Command-Chaining-Schutz (P0-3): Argumente duerfen
+            // keine Shell-Metazeichen (&&, ;, |, $()/${}, Backticks) enthalten,
+            // die ein Executor an eine Shell weiterreichen koennte.
+            if ($this->containsShellMetacharacters($value)) {
+                return $this->denyWithAudit('shell_injection', $toolCall, $definition);
             }
         }
 
@@ -465,6 +485,55 @@ class SecurityGuard
         ];
 
         return $map[$executorType] ?? null;
+    }
+
+    /**
+     * Erkennt Shell-Metazeichen / Command-Chaining in Tool-Argumenten (P0-3).
+     *
+     * Blockt &&, ;, |, Backticks, $()/${} sowie Zeilenumbrueche, die ein
+     * Executor an eine Shell weiterreichen koennte (Shell-Injection /
+     * Command-Chaining).
+     */
+    private function containsShellMetacharacters(string $value): bool
+    {
+        // Roh-Wert und URL-decodierte Form pruefen (z. B. %26%26).
+        $candidates = [$value, rawurldecode($value)];
+        foreach ($candidates as $candidate) {
+            if (preg_match('/(?:&&|;|\|{1,2}|`|\$\(|\$\{|\$[A-Za-z_][A-Za-z0-9_]*|[\r\n])/', $candidate)) {
+                $this->logger->warning('Shell-Metazeichen in Tool-Argument erkannt', ['value' => $value]);
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * Liefert eine Deny-Entscheidung und protokolliert die Policy-Verletzung
+     * ueber den AuditLogger (P0-9), falls dieser verfuegbar ist.
+     */
+    private function denyWithAudit(string $violationType, ToolCall $toolCall, ?ToolDefinition $definition = null): PolicyDecision
+    {
+        $this->logger->warning('Tool durch SecurityGuard-Policy blockiert', [
+            'tool' => $toolCall->getName(),
+            'violation' => $violationType,
+        ]);
+
+        if (null !== $this->auditLogger) {
+            $toolId = $definition?->getId();
+            $toolName = $definition?->getName() ?? $toolCall->getName();
+            // Der User ist im SecurityGuard nicht direkt verfuegbar; der
+            // AuditLogger ermittelt IP/User-Agent selbst aus dem RequestStack.
+            $user = null;
+            $this->auditLogger->logSecurityViolation(
+                'tool_policy_deny',
+                $user,
+                sprintf('Tool "%s" durch SecurityGuard blockiert (%s).', $toolName, $violationType),
+                ['tool_id' => $toolId, 'tool_name' => $toolName, 'violation' => $violationType],
+            );
+        }
+
+        return PolicyDecision::Deny;
     }
 
     /**
