@@ -14,11 +14,13 @@ use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Core\User\UserInterface;
 use Psr\Log\LoggerInterface;
 
 #[Route('/api/agent')]
-final class AgentDialogController
+final class AgentDialogController extends AbstractController
 {
     public function __construct(
         #[Autowire(service: 'ai.agent.orchestrator')]
@@ -62,7 +64,19 @@ final class AgentDialogController
         }
 
         $userMessage = $payload['message'] ?? null;
-        $userIdentifier = $payload['user_identifier'] ?? 'default_user';
+
+        // P0-5 IDOR-Schutz: der Tenant-Identifier wird ausschliesslich aus
+        // dem authentifizierten User bezogen, niemals aus dem Request-Body.
+        // So kann ein Aufrufer nicht den Tenant eines anderen Users spoofen.
+        $authenticatedUser = $this->getUser();
+        if ($authenticatedUser instanceof UserInterface) {
+            $userIdentifier = $authenticatedUser->getUserIdentifier();
+        } else {
+            // Ohne Authentifizierung ist nur der explizite Default-Tenant
+            // erlaubt; ein ueber den Body mitgegebener Identifier wird
+            // bewusst ignoriert, um Tenant-Spoofing zu verhindern.
+            $userIdentifier = 'default_user';
+        }
 
         if (!$userMessage) {
             return new JsonResponse(
@@ -163,6 +177,16 @@ final class AgentDialogController
     #[Route('/history/{userIdentifier}', name: 'agent_history', methods: ['GET'])]
     public function history(string $userIdentifier): JsonResponse
     {
+        // P0-5 IDOR-Schutz: ein User darf nur seinen eigenen Verlauf abrufen.
+        $authenticatedUser = $this->getUser();
+        if ($authenticatedUser instanceof UserInterface
+            && $authenticatedUser->getUserIdentifier() !== $userIdentifier) {
+            return new JsonResponse(
+                ['error' => 'Zugriff verweigert: Fremde Verlaufsdaten.'],
+                Response::HTTP_FORBIDDEN
+            );
+        }
+
         $entries = $this->historyRepo->findByUserIdentifier($userIdentifier);
 
         return new JsonResponse(array_map(

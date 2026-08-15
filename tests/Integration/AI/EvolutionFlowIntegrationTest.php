@@ -4,11 +4,17 @@ declare(strict_types=1);
 
 namespace App\Tests\Integration\AI;
 
+use App\AI\Security\AuditLogger;
 use App\AI\Security\HitlListener;
 use App\AI\Security\SecurityGuard;
 use App\AI\Skills\DynamicToolbox;
+use App\Entity\AuditLog;
 use App\Entity\ToolDefinition;
+use App\Repository\AuditLogRepository;
 use App\Repository\ToolDefinitionRepository;
+use App\Security\UserContext;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\RequestStack;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use Symfony\AI\Agent\Toolbox\Event\ToolCallRequested;
@@ -16,6 +22,7 @@ use Symfony\AI\Agent\Toolbox\ToolboxInterface;
 use Symfony\AI\Platform\Result\ToolCall;
 use Symfony\AI\Platform\Tool\ExecutionReference;
 use Symfony\AI\Platform\Tool\Tool;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -47,7 +54,7 @@ final class EvolutionFlowIntegrationTest extends TestCase
         $inner = $this->createMock(ToolboxInterface::class);
         $inner->method('getTools')->willReturn([]);
 
-        $toolbox = new DynamicToolbox($inner, $repo);
+        $toolbox = new DynamicToolbox($inner, $repo, $this->createUserContext());
         $tools = $toolbox->getTools();
 
         self::assertCount(1, $tools);
@@ -69,7 +76,7 @@ final class EvolutionFlowIntegrationTest extends TestCase
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
         $dispatcher->expects(self::once())->method('dispatch');
 
-        $listener = new HitlListener(new SecurityGuard(new NullLogger()), $repo, $dispatcher);
+        $listener = new HitlListener(new SecurityGuard(new NullLogger()), $repo, $dispatcher, $this->createUserContext(), $this->createAuditLogger(), $this->createTokenStorage());
         $event = $this->buildEvent('new_tool', ['input' => 'data']);
 
         $listener($event);
@@ -91,7 +98,7 @@ final class EvolutionFlowIntegrationTest extends TestCase
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
         $dispatcher->expects(self::never())->method('dispatch');
 
-        $listener = new HitlListener(new SecurityGuard(new NullLogger()), $repo, $dispatcher);
+        $listener = new HitlListener(new SecurityGuard(new NullLogger()), $repo, $dispatcher, $this->createUserContext(), $this->createAuditLogger(), $this->createTokenStorage());
         $event = $this->buildEvent('approved_tool', ['input' => 'ok']);
 
         $listener($event);
@@ -112,7 +119,7 @@ final class EvolutionFlowIntegrationTest extends TestCase
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
 
         $guard = new SecurityGuard(new NullLogger());
-        $listener = new HitlListener($guard, $repo, $dispatcher);
+        $listener = new HitlListener($guard, $repo, $dispatcher, $this->createUserContext(), $this->createAuditLogger(), $this->createTokenStorage());
 
         // Schritt 5: pending → blockiert, Event versandt.
         $event = $this->buildEvent('excel_parser', ['path' => '/tmp/data.xlsx']);
@@ -139,7 +146,7 @@ final class EvolutionFlowIntegrationTest extends TestCase
         $repo->method('findOneBy')->willReturn($definition);
 
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
-        $listener = new HitlListener(new SecurityGuard(new NullLogger()), $repo, $dispatcher);
+        $listener = new HitlListener(new SecurityGuard(new NullLogger()), $repo, $dispatcher, $this->createUserContext(), $this->createAuditLogger(), $this->createTokenStorage());
 
         $event = $this->buildEvent('http_call', ['url' => 'http://127.0.0.1/admin']);
         $listener($event);
@@ -159,7 +166,7 @@ final class EvolutionFlowIntegrationTest extends TestCase
         $repo->method('findOneBy')->willReturn($definition);
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
 
-        $listener = new HitlListener(new SecurityGuard(new NullLogger()), $repo, $dispatcher);
+        $listener = new HitlListener(new SecurityGuard(new NullLogger()), $repo, $dispatcher, $this->createUserContext(), $this->createAuditLogger(), $this->createTokenStorage());
 
         // Zuerst erlaubt (approved)
         $event1 = $this->buildEvent('revoke_tool', []);
@@ -170,7 +177,7 @@ final class EvolutionFlowIntegrationTest extends TestCase
         $definition->setStatus('pending');
         $dispatcher2 = $this->createMock(EventDispatcherInterface::class);
         $dispatcher2->expects(self::once())->method('dispatch');
-        $listener2 = new HitlListener(new SecurityGuard(new NullLogger()), $repo, $dispatcher2);
+        $listener2 = new HitlListener(new SecurityGuard(new NullLogger()), $repo, $dispatcher2, $this->createUserContext(), $this->createAuditLogger(), $this->createTokenStorage());
 
         $event2 = $this->buildEvent('revoke_tool', []);
         $listener2($event2);
@@ -188,7 +195,7 @@ final class EvolutionFlowIntegrationTest extends TestCase
         $repo->method('findOneBy')->willReturn($definition);
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
 
-        $listener = new HitlListener(new SecurityGuard(new NullLogger()), $repo, $dispatcher);
+        $listener = new HitlListener(new SecurityGuard(new NullLogger()), $repo, $dispatcher, $this->createUserContext(), $this->createAuditLogger(), $this->createTokenStorage());
         $event = $this->buildEvent('shell_tool', []);
 
         $listener($event);
@@ -207,7 +214,7 @@ final class EvolutionFlowIntegrationTest extends TestCase
         $repo->method('findOneBy')->willReturn($definition);
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
 
-        $listener = new HitlListener(new SecurityGuard(new NullLogger()), $repo, $dispatcher);
+        $listener = new HitlListener(new SecurityGuard(new NullLogger()), $repo, $dispatcher, $this->createUserContext(), $this->createAuditLogger(), $this->createTokenStorage());
         $event = $this->buildEvent('api_tool', ['url' => 'http://169.254.169.254/meta-data']);
 
         $listener($event);
@@ -225,7 +232,7 @@ final class EvolutionFlowIntegrationTest extends TestCase
         $repo->method('findOneBy')->willReturn($definition);
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
 
-        $listener = new HitlListener(new SecurityGuard(new NullLogger()), $repo, $dispatcher);
+        $listener = new HitlListener(new SecurityGuard(new NullLogger()), $repo, $dispatcher, $this->createUserContext(), $this->createAuditLogger(), $this->createTokenStorage());
         $event = $this->buildEvent('file_tool', ['path' => '/etc/passwd']);
 
         $listener($event);
@@ -245,7 +252,7 @@ final class EvolutionFlowIntegrationTest extends TestCase
         $dispatcher = $this->createMock(EventDispatcherInterface::class);
         $dispatcher->expects(self::once())->method('dispatch');
 
-        $listener = new HitlListener(new SecurityGuard(new NullLogger()), $repo, $dispatcher);
+        $listener = new HitlListener(new SecurityGuard(new NullLogger()), $repo, $dispatcher, $this->createUserContext(), $this->createAuditLogger(), $this->createTokenStorage());
         $event = $this->buildEvent('sensitive_tool', []);
 
         $listener($event);
@@ -266,8 +273,11 @@ final class EvolutionFlowIntegrationTest extends TestCase
 
     public function testInvalidSchemaStillLoadsInToolbox(): void
     {
-        // Auch Tools mit ungueltigem/leerem Schema werden geladen — die
-        // Schema-Validierung erfolgt durch Symfony AI zur Tool-Call-Zeit.
+        // Die Toolbox laedt approved ToolDefinitions ungeachtet des Schemas.
+        // P0-2: die Schema-Validierung erfolgt zur Generierungszeit im
+        // ToolDefinitionGenerator::validateSchema(); ein Tool mit invalidem
+        // Schema wird dort abgelehnt und erreicht nie den approved-Status.
+        // Dieser Test verifiziert nur die Toolbox-Layer-Resilienz.
         $definition = (new ToolDefinition())
             ->setName('no_schema_tool')
             ->setStatus('approved')
@@ -280,7 +290,7 @@ final class EvolutionFlowIntegrationTest extends TestCase
         $inner = $this->createMock(ToolboxInterface::class);
         $inner->method('getTools')->willReturn([]);
 
-        $toolbox = new DynamicToolbox($inner, $repo);
+        $toolbox = new DynamicToolbox($inner, $repo, $this->createUserContext());
         $tools = $toolbox->getTools();
 
         self::assertCount(1, $tools);
@@ -298,5 +308,30 @@ final class EvolutionFlowIntegrationTest extends TestCase
         );
 
         return new ToolCallRequested($toolCall, $definition);
+    }
+
+    private function createUserContext(): UserContext
+    {
+        $requestStack = new RequestStack();
+        $requestStack->push(new Request());
+
+        return new UserContext($requestStack);
+    }
+
+    private function createAuditLogger(): AuditLogger
+    {
+        $auditRepo = $this->createMock(AuditLogRepository::class);
+        $auditRepo->method('log')->willReturn(new AuditLog());
+        $requestStack = new RequestStack();
+
+        return new AuditLogger($auditRepo, $requestStack);
+    }
+
+    private function createTokenStorage(): TokenStorageInterface
+    {
+        $tokenStorage = $this->createMock(TokenStorageInterface::class);
+        $tokenStorage->method('getToken')->willReturn(null);
+
+        return $tokenStorage;
     }
 }

@@ -43,6 +43,11 @@
             <directory>tests/E2E</directory>
         </testsuite>
 
+        <!-- E2E Smoke-Tests: Agent/Tool/RAG/HITL/Audit Smoke (Blueprint §17) -->
+        <testsuite name="E2E Smoke Tests">
+            <directory>tests/E2E/Smoke</directory>
+        </testsuite>
+
         <!-- Spezifische Test-Suites fuer AI-Komponenten -->
         <testsuite name="EVIE AI Security Tests">
             <directory>tests/Unit/AI/Security</directory>

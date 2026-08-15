@@ -73,10 +73,16 @@ class VectorStore
         return $embeddings;
     }
 
-    public function search(string $query, string $contentType, int $limit = 5, float $minSimilarity = 0.5): array
+    /**
+     * P0-5 Tenant-Isolation: ist ein userIdentifier gesetzt, werden nur
+     * Embeddings des jeweiligen Tenants (oder ohne Tenant-Bezug) geliefert.
+     *
+     * @return array<int, array{embedding: ?Embedding, similarity: float, distance: mixed}>
+     */
+    public function search(string $query, string $contentType, int $limit = 5, float $minSimilarity = 0.5, ?string $userIdentifier = null): array
     {
         $queryVector = $this->embeddingService->embedText($query);
-        return $this->embeddingRepository->findSimilar($contentType, $queryVector, $limit, $minSimilarity);
+        return $this->embeddingRepository->findSimilar($contentType, $queryVector, $limit, $minSimilarity, $userIdentifier);
     }
 
     public function delete(string $contentType, string $source): int

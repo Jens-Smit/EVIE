@@ -134,9 +134,61 @@ class AuditLogger
             $user,
             null,
             null,
-            ['endpoint' => $endpoint, 'parameters' => $parameters],
+            ['endpoint' => $endpoint, 'parameters' => $this->redact($parameters)],
             $success ? 'success' : 'failure',
             $error
         );
+    }
+
+    /**
+     * Logge eine Policy-Entscheidung (Allow/Deny/AskUser) fuer einen ToolCall
+     * (P0-9 Observability). Wird vom HitlListener aufgerufen.
+     *
+     * @param array<string|int, mixed> $arguments
+     */
+    public function logPolicyDecision(string $toolName, string $decision, ?UserInterface $user, array $arguments = [], ?string $reason = null): AuditLog
+    {
+        return $this->log(
+            'policy_decision',
+            $user,
+            null,
+            'ToolDefinition',
+            ['tool_name' => $toolName, 'decision' => $decision, 'arguments' => $this->redact($arguments)],
+            'success',
+            $reason
+        );
+    }
+
+    /**
+     * Redigiert sensible Werte in Tool-Parametern (P0-9).
+     *
+     * Erkennt Schluessel wie password, secret, api_key, token, authorization
+     * und ersetzt deren Werte durch '***REDACTED***'. Verschachtelte Arrays
+     * werden rekursiv durchlaufen.
+     *
+     * @param array<string|int, mixed> $data
+     *
+     * @return array<string|int, mixed>
+     */
+    public function redact(array $data): array
+    {
+        $sensitiveKeys = ['password', 'secret', 'api_key', 'apikey', 'token', 'authorization', 'auth', 'private_key', 'credentials'];
+
+        foreach ($data as $key => $value) {
+            $keyLower = is_string($key) ? strtolower($key) : (string) $key;
+            if (is_array($value)) {
+                $data[$key] = $this->redact($value);
+                continue;
+            }
+
+            foreach ($sensitiveKeys as $sensitive) {
+                if (str_contains($keyLower, $sensitive)) {
+                    $data[$key] = '***REDACTED***';
+                    continue 2;
+                }
+            }
+        }
+
+        return $data;
     }
 }

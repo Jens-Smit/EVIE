@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\AI\Skills;
 
 use App\Repository\ToolDefinitionRepository;
+use App\Security\UserContext;
 use Symfony\AI\Agent\Toolbox\ToolboxInterface;
 use Symfony\AI\Agent\Toolbox\ToolResult;
 use Symfony\AI\Platform\Result\ToolCall;
@@ -12,10 +13,10 @@ use Symfony\AI\Platform\Tool\ExecutionReference;
 use Symfony\AI\Platform\Tool\Tool;
 
 /**
- * Native Dynamic Toolbox für EVIE (Blueprint §4.B).
+ * Native Dynamic Toolbox fuer EVIE (Blueprint §4.B).
  *
  * Dekoriert die Symfony AI Toolbox des Orchestrators
- * (Service-ID "ai.toolbox.orchestrator") und ergänzt zur Laufzeit die aus der
+ * (Service-ID "ai.toolbox.orchestrator") und ergaenzt zur Laufzeit die aus der
  * Datenbank geladenen, freigegebenen ToolDefinition-Entities als native
  * Symfony\AI\Platform\Tool\Tool-Objekte.
  *
@@ -23,9 +24,13 @@ use Symfony\AI\Platform\Tool\Tool;
  * liefert bei jedem Agent-Call die statischen Tools der inneren Toolbox
  * gemerged mit den dynamischen Tools (Status "approved").
  *
- * Die Dekoration wird über RegisterDynamicToolboxDecoratorPass registriert,
+ * P0-5 Tenant-Isolation: dynamische Tools werden pro Tenant geladen, sodass
+ * Tenant A niemals Tools von Tenant B erhaelt. System-Tools
+ * (user_identifier = NULL) bleiben fuer alle sichtbar.
+ *
+ * Die Dekoration wird ueber RegisterDynamicToolboxDecoratorPass registriert,
  * damit der Decorator nur dann aktiv wird, wenn der AI Bundle die
- * Orchestrator-Toolbox tatsächlich erzeugt hat (tools aktiviert).
+ * Orchestrator-Toolbox tatsaechlich erzeugt hat (tools aktiviert).
  *
  * @see https://symfony.com/doc/current/ai/cookbook/dynamic-tools.html
  */
@@ -42,6 +47,7 @@ final class DynamicToolbox implements ToolboxInterface
     public function __construct(
         private readonly ToolboxInterface $innerToolbox,
         private readonly ToolDefinitionRepository $toolDefinitionRepository,
+        private readonly UserContext $userContext,
     ) {
     }
 
@@ -67,10 +73,17 @@ final class DynamicToolbox implements ToolboxInterface
     private function loadApprovedDefinitions(): array
     {
         try {
-            return $this->toolDefinitionRepository->findBy(['status' => 'approved']);
+            // P0-5: Tenant-Isolation. Ist ein User eingeloggt, werden nur
+            // dessen Tools (+ systemweite Tools ohne Tenant-Bezug) geladen.
+            $userIdentifier = $this->userContext->getUserIdentifier();
+            if (null !== $userIdentifier) {
+                return $this->toolDefinitionRepository->findApprovedForUser($userIdentifier);
+            }
+
+            return $this->toolDefinitionRepository->findAllApproved();
         } catch (\Throwable) {
-            // Während Tests / Cache-Warmup ohne DB-Anbindung ist die Tabelle
-            // möglicherweise nicht verfügbar. In diesem Fall liefert die
+            // Waehrend Tests / Cache-Warmup ohne DB-Anbindung ist die Tabelle
+            // moeglicherweise nicht verfuegbar. In diesem Fall liefert die
             // Dynamic Toolbox nur die statischen Tools.
             return [];
         }

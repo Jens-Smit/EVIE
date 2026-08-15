@@ -33,7 +33,7 @@ FROM deps AS app
 
 COPY . .
 RUN composer dump-autoload --optimize --no-dev --classmap-authoritative \
-    && php bin/console cache:warmup --env=prod --no-debug || true
+    && php bin/console cache:warmup --env=prod --no-debug
 
 # --- Runtime stage ---
 FROM app AS runtime

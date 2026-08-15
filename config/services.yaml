@@ -90,3 +90,22 @@ services:
     App\Mcp\Client\McpServerManager:
         arguments:
             $serverConfigs: '%evie_mcp.servers%'
+
+    # =====================================================================
+    # P0-3/P0-5 Security & RAG Services
+    # =====================================================================
+    # OutboundRequestPolicy: robuste SSRF-Abwehr (DNS-Resolution, Redirect-
+    # Kontrolle). Wird von SecurityGuard als ergaenzende Pruefung genutzt.
+    App\AI\Security\OutboundRequestPolicy:
+        arguments:
+            $logger: '@logger'
+            $options:
+                allow_private_networks: false
+                allow_redirects: false
+                max_redirects: 0
+
+    # StoreRetrieverAdapter: native Symfony AI RetrieverInterface-Bridge mit
+    # Tenant-Filterung. Wird vom ContextInjector (als InputProcessor) genutzt.
+    App\AI\Rag\StoreRetrieverAdapter:
+        arguments:
+            $evieRetriever: '@App\AI\Rag\Retriever'

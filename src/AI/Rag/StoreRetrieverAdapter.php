@@ -14,11 +14,13 @@ use Symfony\AI\Store\RetrieverInterface;
  *
  * Bridget EVIEs bestehende Retriever-Implementierung zur nativen
  * Symfony\AI\Store\RetrieverInterface, damit der ContextInjector
- * (als InputProcessor) über den nativen Store-Pfad läuft.
+ * (als InputProcessor) ueber den nativen Store-Pfad laeuft.
  *
  * Production-Feature: User/Tenant-Filtering auf Store-Ebene — jede
- * Retrieval-Anfrage kann mit einem userIdentifier gefiltert werden,
- * sodass Tenant A niemals Kontext von Tenant B erhält.
+ * Retrieval-Anfrage wird mit einem userIdentifier gefiltert, sodass
+ * Tenant A niemals Kontext von Tenant B erhaelt. Der Identifier wird
+ * an Retriever::retrieve() durchgereicht und filtert die zugrunde
+ * liegenden Embedding-Ergebnisse serverseitig (P0-5).
  */
 final class StoreRetrieverAdapter implements RetrieverInterface
 {
@@ -28,8 +30,9 @@ final class StoreRetrieverAdapter implements RetrieverInterface
     }
 
     /**
-     * @param array<string, mixed> $options Options können enthalten:
-     *   - user_identifier: Tenant/User-Filter für Isolation
+     * @param array<string, mixed> $options Options koennen enthalten:
+     *   - user_identifier: Tenant/User-Filter fuer Isolation (wird an
+     *     Retriever durchgereicht und filtert serverseitig)
      *   - content_types: zu durchsuchende Content-Typen
      *   - limit, min_similarity: Retrieval-Parameter
      *
@@ -39,6 +42,10 @@ final class StoreRetrieverAdapter implements RetrieverInterface
     {
         $userIdentifier = $options['user_identifier'] ?? null;
 
+        // P0-5: der Identifier filtert die zugrunde liegenden Ergebnisse,
+        // nicht nur die Ausgabe-Metadaten. Retriever::retrieve() reicht ihn
+        // an VectorStore::search() weiter, sodass Tenant-Isolation
+        // server-/repository-seitig erzwungen wird.
         $result = $this->evieRetriever->retrieve($query, $options);
 
         foreach ($result->getItems() as $item) {

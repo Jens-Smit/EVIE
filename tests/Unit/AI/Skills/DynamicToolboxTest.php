@@ -7,6 +7,9 @@ namespace App\Tests\Unit\AI\Skills;
 use App\AI\Skills\DynamicToolbox;
 use App\Entity\ToolDefinition;
 use App\Repository\ToolDefinitionRepository;
+use App\Security\UserContext;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\RequestStack;
 use PHPUnit\Framework\TestCase;
 use Symfony\AI\Agent\Toolbox\ToolResult;
 use Symfony\AI\Platform\Result\ToolCall;
@@ -45,7 +48,7 @@ final class DynamicToolboxTest extends TestCase
         $inner = $this->createMock(ToolboxInterface::class);
         $inner->method('getTools')->willReturn([$staticTool]);
 
-        $toolbox = new DynamicToolbox($inner, $repo);
+        $toolbox = new DynamicToolbox($inner, $repo, $this->createUserContext());
         $tools = $toolbox->getTools();
 
         self::assertCount(2, $tools);
@@ -69,7 +72,7 @@ final class DynamicToolboxTest extends TestCase
         $inner = $this->createMock(ToolboxInterface::class);
         $inner->method('getTools')->willReturn([]);
 
-        $toolbox = new DynamicToolbox($inner, $repo);
+        $toolbox = new DynamicToolbox($inner, $repo, $this->createUserContext());
         $tools = $toolbox->getTools();
 
         self::assertCount(1, $tools);
@@ -90,7 +93,7 @@ final class DynamicToolboxTest extends TestCase
         $inner = $this->createMock(ToolboxInterface::class);
         $inner->method('getTools')->willReturn([$staticTool]);
 
-        $toolbox = new DynamicToolbox($inner, $repo);
+        $toolbox = new DynamicToolbox($inner, $repo, $this->createUserContext());
         $tools = $toolbox->getTools();
 
         self::assertCount(1, $tools);
@@ -110,7 +113,7 @@ final class DynamicToolboxTest extends TestCase
 
         $repo = $this->createMock(ToolDefinitionRepository::class);
 
-        $toolbox = new DynamicToolbox($inner, $repo);
+        $toolbox = new DynamicToolbox($inner, $repo, $this->createUserContext());
         $result = $toolbox->execute($toolCall);
 
         self::assertSame($expectedResult, $result);
@@ -124,7 +127,7 @@ final class DynamicToolboxTest extends TestCase
         $inner = $this->createMock(ToolboxInterface::class);
         $inner->method('getTools')->willReturn([]);
 
-        $toolbox = new DynamicToolbox($inner, $repo);
+        $toolbox = new DynamicToolbox($inner, $repo, $this->createUserContext());
         $tools = $toolbox->getTools();
 
         self::assertSame([], $tools);
@@ -137,7 +140,7 @@ final class DynamicToolboxTest extends TestCase
         $inner = $this->createMock(ToolboxInterface::class);
         $inner->method('getTools')->willReturn([]);
 
-        $toolbox = new DynamicToolbox($inner, $repo);
+        $toolbox = new DynamicToolbox($inner, $repo, $this->createUserContext());
 
         // Zunächst kein approved Tool.
         $repo->method('findBy')->willReturn([]);
@@ -153,10 +156,19 @@ final class DynamicToolboxTest extends TestCase
 
         $repo = $this->createMock(ToolDefinitionRepository::class);
         $repo->method('findBy')->willReturn([$approved]);
-        $toolbox = new DynamicToolbox($inner, $repo);
+        $toolbox = new DynamicToolbox($inner, $repo, $this->createUserContext());
 
         $tools = $toolbox->getTools();
         self::assertCount(1, $tools);
         self::assertSame('new_tool', $tools[0]->getName());
     }
+
+    private function createUserContext(): UserContext
+    {
+        $requestStack = new RequestStack();
+        $requestStack->push(new Request());
+
+        return new UserContext($requestStack);
+    }
+
 }

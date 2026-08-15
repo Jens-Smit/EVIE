@@ -13,6 +13,16 @@
 
 ---
 
+## Behobene P0-Blocker (Follow-up-Commit)
+
+Siehe Ende der Datei fuer die detaillierte Auflistung der durchgefuehrten
+Fixes (P0-1 CI-Gates, P0-2 Schema-Validierung, P0-3 SSRF/Traversal,
+P0-5 Tenant-Isolation, P0-9 Audit/Redaction, P0-10 Debug-Bundles).
+Die Erstverifizierung unten beschreibt den Zustand von Commit 35ff4bb;
+die genannten Blocker wurden in einem Follow-up-Commit adressiert.
+
+---
+
 ## 🔴 P0 – Muss vor Production grün sein
 
 ### 1. CI/CD
@@ -427,3 +437,68 @@ Die kritischsten P0-Blocker, die vor jedem Production-Release behoben werden mü
 4. **SSRF härtbar machen** — `OutboundRequestPolicy` (mit DNS-Resolution + Redirect-Handling) als Service registrieren und in `SecurityGuard::decide()` verwenden; nicht-kanonische IP-Formate normalisieren.
 5. **Golden-Path-E2E + Audit-Anbindung** — vollständiger Ablauf User→Tool fehlt→Generate→Validate→Policy→HITL→Approve→Execute→Result→Audit als E2E; `HitlListener`/`SecurityGuard` müssen `AuditLogger` aufrufen; Secret-Redaction für Tool-Parameter.
 6. **Debug-Bundles nach `require-dev`** — `symfony/debug-bundle`, `symfony/web-profiler-bundle` aus `require` entfernen.
+
+---
+
+## 🛠️ Behobene P0-Blocker (Follow-up-Commit — Detail)
+
+Die folgenden Blocker aus der Erstverifizierung wurden in einem
+Follow-up-Commit adressiert.
+
+### P0-1 CI/CD — Gate-Bypässe entfernt
+- `composer audit` und `phpstan` laufen jetzt **ohne** `|| true` (echte Gates).
+- `composer validate --strict --no-check-publish` statt `composer validate`.
+- `composer.json`: unbound version constraints (`"*"`) auf konkrete Versionen
+  gesetzt (`^0.12`, `^3.6`, `^7.4`, `^4.0`), sodass `--strict` erfüllt ist.
+- Neue Testsuite `E2E Smoke Tests` + CI-Step `E2E Smoke tests` ergänzt.
+
+### P0-2 Self-Evolution — Schema-Validierung
+- `ToolDefinitionGenerator::validateSchema()` (`src/AI/Skills/ToolDefinitionGenerator.php`)
+  lehnt jetzt invalides Schema (`type !== 'object'`, fehlendes `properties`)
+  via `ToolRegistrationException` ab — sowohl im tool_generator- als auch im
+  LLM-Fallback-Pfad.
+
+### P0-3 Security — SSRF-/Traversal-Härtung
+- `SecurityGuard::normalizeHost()` (`src/AI/Security/SecurityGuard.php`) kanonisiert
+  nicht-kanonische IP-Formate (Dezimal `2130706433`, Hex `0x7f000001`, Oktal
+  `0177.0.0.1`, kurze Form `127.1`, IPv4-mapped IPv6 `::ffff:127.0.0.1`).
+- `SecurityGuard::isPathSafe()` blockt jetzt `../`-Directory-Traversal
+  (auch URL-encoded `%2e%2e`) und resolviert Symlinks via `realpath()`.
+- `OutboundRequestPolicy` als Service registriert (`config/services.yaml`)
+  mit `allow_redirects=false, allow_private_networks=false`.
+- Neue Tests: `tests/Unit/AI/Security/SsrfBypassTest.php`.
+
+### P0-5 Tenant-Isolation — serverseitig erzwungen
+- `ToolDefinition` hat jetzt `userIdentifier`-Spalte + Migration
+  `migrations/Version20260815120000.php`.
+- `DynamicToolbox::loadApprovedDefinitions()` lädt via
+  `ToolDefinitionRepository::findApprovedForUser()` nur Tools des aktuellen
+  Tenants (+ System-Tools ohne Tenant-Bezug).
+- `HitlListener::findDefinition()` nutzt
+  `ToolDefinitionRepository::findOneByNameForUser()` — ein User kann nicht
+  die Tools eines anderen Tenants freigeben/ablehnen.
+- `AgentDialogController`: `user_identifier` wird aus dem authentifizierten
+  User bezogen, **nicht** aus dem Request-Body (IDOR-Fix); `/history`
+  prüft Ownership und liefert 403 bei fremden Daten.
+- `Retriever`/`VectorStore`/`EmbeddingRepository`: `user_identifier` wird
+  an `VectorStore::search()` durchgereicht und filtert serverseitig
+  (`metadata->>'user_identifier'`); `StoreRetrieverAdapter` als Service
+  registriert und filtert jetzt die zugrunde liegenden Ergebnisse.
+- Neue Tests: `tests/Unit/AI/Security/TenantIsolationTest.php`.
+
+### P0-9 Audit / Observability — angebunden + Secret-Redaction
+- `HitlListener` ruft `AuditLogger::logPolicyDecision()` für jede
+  Policy-Entscheidung (ALLOW/DENY/ASK_USER) auf.
+- `AuditLogger::redact()` redigiert sensible Tool-Parameter (`password`,
+  `secret`, `api_key`, `token`, `authorization`, ...) vor dem Logging.
+- Neue Tests: `tests/Unit/AI/Security/AuditRedactionTest.php`.
+
+### P0-10 Production Docker — Debug-Bundles verschoben
+- `symfony/debug-bundle` und `symfony/web-profiler-bundle` von `require`
+  nach `require-dev` verschoben.
+- `Dockerfile.prod`: `cache:warmup` läuft jetzt **ohne** `|| true`.
+
+### Neue E2E-Smoke-Tests
+- `tests/E2E/Smoke/EvieSmokeTest.php`: verifiziert Agent-Dialog-Endpoint,
+  IDOR-Tenant-Spoofing-Schutz, `/history`-Ownership und die
+  Security-Gates (SSRF/Filesystem/Shell → DENY) + Audit-Logging.

@@ -42,6 +42,7 @@ final class RegisterDynamicToolboxDecoratorPass implements CompilerPassInterface
         $decorator->setArguments([
             new Reference(self::DECORATOR_SERVICE_ID.'.inner'),
             new Reference('App\\Repository\\ToolDefinitionRepository'),
+            new Reference('App\\Security\\UserContext'),
         ]);
         // Höhere Priorität als die FaultTolerantToolbox (-1024), damit die
         // DynamicToolbox die äußerste Schicht bildet (Tools mergen vor der

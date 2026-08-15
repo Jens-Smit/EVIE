@@ -157,10 +157,9 @@ class ToolDefinitionGenerator
             // Versuche, die Antwort als JSON zu parsen
             $schema = json_decode($responseContent, true, 512, JSON_THROW_ON_ERROR);
 
-            // Validierung des Schemas
-            if (!isset($schema['type']) || $schema['type'] !== 'object') {
-                throw new \RuntimeException('Tool Generator Agent hat kein gültiges JSON-Schema generiert');
-            }
+            // P0-2: strikte Schema-Validierung. Ein invalides Schema wird
+            // abgelehnt, statt stillschweigend geladen zu werden.
+            $this->validateSchema($schema, $toolName);
 
             // Füge Metadaten hinzu, falls nicht vorhanden
             $schema = $this->ensureSchemaMetadata($schema);
@@ -204,6 +203,31 @@ class ToolDefinitionGenerator
         }
 
         return $schema;
+    }
+
+    /**
+     * Validiert ein generiertes Tool-Schema (P0-2).
+     *
+     * Ein gueltiges Schema muss type=object und ein properties-Feld
+     * enthalten. Invalides Schema fuehrt zu einer ToolRegistrationException,
+     * sodass es nicht stillschweigend in die DynamicToolbox gelangt.
+     *
+     * @param array<string, mixed> $schema
+     */
+    private function validateSchema(array $schema, string $toolName): void
+    {
+        if (!isset($schema['type']) || $schema['type'] !== 'object') {
+            throw new ToolRegistrationException(
+                $toolName,
+                'Tool-Schema ist ungueltig: type muss "object" sein'
+            );
+        }
+
+        if (!array_key_exists('properties', $schema)) {
+            throw new ToolRegistrationException(
+                sprintf('Tool-Schema fuer "%s" ist ungueltig: properties-Feld fehlt', $toolName)
+            );
+        }
     }
 
     /**
@@ -337,10 +361,8 @@ PROMPT;
             // Versuche, die Antwort als JSON zu parsen
             $schema = json_decode($response, true, 512, JSON_THROW_ON_ERROR);
 
-            // Validierung
-            if (!isset($schema['type']) || $schema['type'] !== 'object') {
-                throw new \RuntimeException('LLM hat kein gültiges JSON-Schema generiert');
-            }
+            // P0-2: strikte Schema-Validierung im LLM-Fallback-Pfad.
+            $this->validateSchema($schema, $toolName);
 
             // Füge fehlende Metadaten hinzu
             return $this->ensureSchemaMetadata($schema);

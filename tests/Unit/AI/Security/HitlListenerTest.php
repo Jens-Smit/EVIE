@@ -4,28 +4,34 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\AI\Security;
 
+use App\AI\Security\AuditLogger;
 use App\AI\Security\HitlListener;
 use App\AI\Security\PolicyDecision;
 use App\AI\Security\SecurityGuard;
 use App\Entity\ToolDefinition;
 use App\Event\PendingToolApprovalEvent;
+use App\Repository\AuditLogRepository;
 use App\Repository\ToolDefinitionRepository;
+use App\Security\UserContext;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use Symfony\AI\Agent\Toolbox\Event\ToolCallRequested;
 use Symfony\AI\Platform\Result\ToolCall;
 use Symfony\AI\Platform\Tool\ExecutionReference;
 use Symfony\AI\Platform\Tool\Tool;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
- * Unit-Tests für den nativen HitlListener (Blueprint §4.D).
+ * Unit-Tests fuer den nativen HitlListener (Blueprint §4.D).
  *
  * Verifiziert das Verhalten auf das native ToolCallRequested-Event:
  *  - Allow: Listener greift nicht ein (Event nicht denied).
- *  - Deny: $event->deny() wird aufgerufen (SSRF, Policy-Verstoß).
+ *  - Deny: $event->deny() wird aufgerufen (SSRF, Policy-Verstoss).
  *  - AskUser: ToolDefinition auf "pending", PendingToolApprovalEvent versandt,
- *    $event->deny() blockiert die Ausführung.
+ *    $event->deny() blockiert die Ausfuehrung.
  */
 final class HitlListenerTest extends TestCase
 {
@@ -39,7 +45,26 @@ final class HitlListenerTest extends TestCase
         $this->guard = new SecurityGuard(new NullLogger());
         $this->repo = $this->createMock(ToolDefinitionRepository::class);
         $this->dispatcher = $this->createMock(EventDispatcherInterface::class);
-        $this->listener = new HitlListener($this->guard, $this->repo, $this->dispatcher);
+
+        $requestStack = new RequestStack();
+        $requestStack->push(new Request());
+        $userContext = new UserContext($requestStack);
+
+        $auditRepo = $this->createMock(AuditLogRepository::class);
+        $auditRepo->method('log')->willReturn(new \App\Entity\AuditLog());
+        $auditLogger = new AuditLogger($auditRepo, $requestStack);
+
+        $tokenStorage = $this->createMock(TokenStorageInterface::class);
+        $tokenStorage->method('getToken')->willReturn(null);
+
+        $this->listener = new HitlListener(
+            $this->guard,
+            $this->repo,
+            $this->dispatcher,
+            $userContext,
+            $auditLogger,
+            $tokenStorage,
+        );
     }
 
     public function testAllowDoesNotDeny(): void

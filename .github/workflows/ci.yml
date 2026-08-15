@@ -80,7 +80,20 @@ jobs:
           php bin/console cache:warmup --env=prod
           vendor/bin/phpunit --testsuite="E2E Tests"
 
-      # ------------------------------------------------------------------
+      # -+
+      # E2E Smoke-Tests: Agent/Tool/RAG/HITL/Audit (Blueprint §17)
+      # -+
+      - name: E2E Smoke tests
+        env:
+          E2E_TESTING: '1'
+          APP_ENV: test
+          APP_SECRET: test-secret-for-evie-1234567890abcdef
+          DATABASE_URL: 'sqlite:///:memory:'
+          MISTRAL_API_KEY: test
+          GEMINI_API_KEY: test
+        run: vendor/bin/phpunit --testsuite="E2E Smoke Tests"
+
+      # -+
       # Unit + Integration Tests (Blueprint §7.1/§7.2)
       # ------------------------------------------------------------------
       - name: Unit tests
@@ -110,10 +123,10 @@ jobs:
         run: vendor/bin/phpunit --testsuite="EVIE AI Integration Tests"
 
       - name: Composer validate
-        run: composer validate
+        run: composer validate --strict --no-check-publish
 
       - name: Composer audit
-        run: composer audit || true
+        run: composer audit
 
       - name: Run PHPStan
-        run: vendor/bin/phpstan analyse src --level=5 --no-progress || true
+        run: vendor/bin/phpstan analyse src --level=5 --no-progress

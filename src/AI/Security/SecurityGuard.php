@@ -120,8 +120,17 @@ class SecurityGuard
             }
         }
 
-        // Prüfe Host
-        $host = parse_url($url, PHP_URL_HOST) ?: $url;
+        // Host extrahieren und IPv6-Brackets entfernen ([::1] -> ::1)
+        $host = (string) (parse_url($url, PHP_URL_HOST) ?: $url);
+        $host = trim($host, '[]');
+
+        // Nicht-kanonische IP-Formate normalisieren (Dezimal, Hex, Oktal, kurze Form).
+        // Nur so lässt sich zuverlässig prüfen, ob eine private Adresse vorliegt.
+        $normalized = $this->normalizeHost($host);
+        if ($normalized !== $host) {
+            $host = $normalized;
+        }
+
         foreach ($this->blockedResources as $blocked) {
             if (str_starts_with($host, $blocked) || str_contains($host, $blocked)) {
                 $this->logger->warning('Host ist geblockt', ['host' => $host]);
@@ -129,7 +138,7 @@ class SecurityGuard
             }
         }
 
-        // Prüfe ob es eine private IP ist
+        // Prüfe ob es eine private IP ist (nach Normalisierung)
         if ($this->isPrivateIp($host)) {
             $this->logger->warning('Private IP-Adresse geblockt', ['host' => $host]);
             return false;
@@ -139,10 +148,27 @@ class SecurityGuard
     }
 
     /**
-     * Prüfe ob ein Pfad sicher ist
+     * Prüfe ob ein Pfad sicher ist (Filesystem-Sandbox).
+     *
+     * Blockt neben absoluten sensitiven Pfaden auch Directory-Traversal
+     * ("../", "..\\", URL-encoded Varianten) und resolviert Symlinks,
+     * sodass ein Escape ausserhalb der Sandbox verhindert wird.
      */
     public function isPathSafe(string $path): bool
     {
+        // Directory Traversal blocken (auch URL-encoded)
+        $decoded = rawurldecode($path);
+        if (str_contains($path, '..') || str_contains($decoded, '..')) {
+            $this->logger->warning('Directory Traversal geblockt', ['path' => $path]);
+            return false;
+        }
+
+        // Symlink/realpath-Auflösung prüfen, falls Datei existiert
+        $realPath = @realpath($path);
+        if (false !== $realPath) {
+            $path = $realPath;
+        }
+
         foreach ($this->blockedPaths as $blockedPath) {
             if (str_starts_with($path, $blockedPath)) {
                 $this->logger->warning('Pfad ist geblockt', ['path' => $path]);
@@ -163,19 +189,117 @@ class SecurityGuard
     }
 
     /**
-     * Prüfe ob eine IP privat ist
+     * Prüfe ob eine IP privat ist.
+     *
+     * Akzeptiert kanonische IPv4/IPv6 nach Normalisierung durch
+     * normalizeHost(), sodass Dezimal-/Hex-/Oktal-/Kurzformen erkannt werden.
      */
     private function isPrivateIp(string $host): bool
     {
+        // IPv6 Loopback / Link-Local / Unique Local (string-basiert, da ip2long nur IPv4)
+        $hostLower = strtolower($host);
+        if ($hostLower === '::1' || str_starts_with($hostLower, 'fe80:') || str_starts_with($hostLower, 'fc') || str_starts_with($hostLower, 'fd')) {
+            return true;
+        }
+
         if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
             $ip = ip2long($host);
-            return 
+            if (false === $ip) {
+                return false;
+            }
+
+            return
                 ($ip >= ip2long('10.0.0.0') && $ip <= ip2long('10.255.255.255')) ||
                 ($ip >= ip2long('172.16.0.0') && $ip <= ip2long('172.31.255.255')) ||
                 ($ip >= ip2long('192.168.0.0') && $ip <= ip2long('192.168.255.255')) ||
                 ($ip >= ip2long('169.254.0.0') && $ip <= ip2long('169.254.255.255')) ||
                 $ip === ip2long('127.0.0.1') ||
                 $ip === ip2long('0.0.0.0');
+        }
+
+        if (filter_var($host, FILTER_VALIDATE_IP, FILTER_FLAG_IPV6)) {
+            return $this->isPrivateIpv6($host);
+        }
+
+        return false;
+    }
+
+    /**
+     * Normalisiert nicht-kanonische IP-Host-Formate auf die kanonische
+     * dotted-quad-Form, damit isPrivateIp() zuverlässig prüfen kann.
+     *
+     * Behandelt: Dezimal (2130706433), Hex (0x7f000001), Oktal (0177.0.0.1),
+     * kurze Form (127.1) und IPv4-mapped IPv6 (::ffff:127.0.0.1).
+     */
+    private function normalizeHost(string $host): string
+    {
+        // IPv4-mapped/compatible IPv6 (::ffff:127.0.0.1)
+        if (preg_match('/^::(?:ffff:)?(\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})$/i', $host, $m)) {
+            $host = $m[1];
+        }
+
+        // Reine Dezimalzahl (z. B. 2130706433 -> 127.0.0.1)
+        if (ctype_digit($host) && $host !== '' && strlen($host) <= 10) {
+            $long = (int) $host;
+            $packed = pack('N', $long);
+            if (false !== $packed) {
+                $parts = unpack('C4', $packed);
+                if (false !== $parts) {
+                    return implode('.', $parts);
+                }
+            }
+        }
+
+        // Hexadezimal (0x7f000001)
+        if (preg_match('/^0x([0-9a-f]+)$/i', $host, $m)) {
+            $long = hexdec($m[1]);
+            if ($long <= 0xFFFFFFFF) {
+                $packed = pack('N', $long);
+                $parts = unpack('C4', $packed);
+                if (false !== $parts) {
+                    return implode('.', $parts);
+                }
+            }
+        }
+
+        // Oktal-Form (0177.0.0.1) oder kurze Form (127.1)
+        if (preg_match('/^(\d+)(\.\d+){0,3}$/', $host)) {
+            $octets = array_map(
+                static fn (string $part): int => str_starts_with($part, '0') && strlen($part) > 1
+                    ? intval($part, 8)
+                    : (int) $part,
+                explode('.', $host)
+            );
+            $octets = array_pad($octets, 4, 0);
+            // Kurze Form (z. B. 127.1) zu 4 Oktetts expandieren
+            if (count(explode('.', $host)) < 4) {
+                $last = array_pop($octets);
+                $octets = array_pad($octets, 3, 0);
+                $octets[] = ($last >> 16) & 0xFF;
+                $octets[] = ($last >> 8) & 0xFF;
+                $octets[] = $last & 0xFF;
+            }
+            // Nur zurückgeben, wenn gültige IPv4
+            $candidate = implode('.', array_slice($octets, 0, 4));
+            if (filter_var($candidate, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
+                return $candidate;
+            }
+        }
+
+        return $host;
+    }
+
+    private function isPrivateIpv6(string $ip): bool
+    {
+        $ipLower = strtolower($ip);
+        if ($ipLower === '::1') {
+            return true;
+        }
+        if (str_starts_with($ipLower, 'fc') || str_starts_with($ipLower, 'fd')) {
+            return true;
+        }
+        if (str_starts_with($ipLower, 'fe80:')) {
+            return true;
         }
 
         return false;

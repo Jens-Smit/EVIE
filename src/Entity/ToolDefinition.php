@@ -68,6 +68,16 @@ class ToolDefinition
 
     #[ORM\Column(type: Types::STRING, length: 50, nullable: true)]
     private ?string $version = '1.0';
+
+    /**
+     * Tenant-/User-Identifier fuer Isolation (P0-5).
+     *
+     * Tools sind pro Tenant isoliert: DynamicToolbox und HitlListener
+     * filtern ausschliesslich nach diesem Identifier, sodass Tenant A
+     * niemals Tools von Tenant B sieht oder freigibt.
+     */
+    #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
+    private ?string $userIdentifier = null;
     // ================================================
 
     public function __construct()
@@ -270,6 +280,17 @@ class ToolDefinition
         $this->version = $version;
         return $this;
     }
+
+    public function getUserIdentifier(): ?string
+    {
+        return $this->userIdentifier;
+    }
+
+    public function setUserIdentifier(?string $userIdentifier): static
+    {
+        $this->userIdentifier = $userIdentifier;
+        return $this;
+    }
     // ================================================
 
     public function toArray(): array
@@ -291,6 +312,7 @@ class ToolDefinition
             'securityPolicy' => $this->securityPolicy,
             'hitlPolicy' => $this->hitlPolicy,
             'version' => $this->version,
+            'userIdentifier' => $this->userIdentifier,
             'createdAt' => $this->createdAt?->format('Y-m-d H:i:s'),
             'updatedAt' => $this->updatedAt?->format('Y-m-d H:i:s'),
         ];
