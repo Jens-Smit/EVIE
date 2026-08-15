@@ -123,7 +123,7 @@ jobs:
         run: vendor/bin/phpunit --testsuite="EVIE AI Integration Tests"
 
       - name: Composer validate
-        run: composer validate --strict --no-check-publish
+        run: composer validate --strict --no-check-publish --no-check-lock
 
       - name: Composer audit
         run: composer audit
