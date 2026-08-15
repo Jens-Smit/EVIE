@@ -60,7 +60,7 @@ TXT;
         }
 
         $systemContent = str_replace('{context}', $context, $this->contextTemplate);
-        $messageBag->add(new Message(Role::System, new Text($systemContent)));
+        $messageBag->add(Message::forSystem($systemContent));
     }
 
     /**
