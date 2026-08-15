@@ -1,8 +1,15 @@
 # see https://symfony.com/doc/current/reference/configuration/framework.html
 framework:
     secret: '%env(APP_SECRET)%'
-    #csrf_protection: true
+    csrf_protection: true
     http_method_override: false
+
+    # Form support: registers form.factory, form.registry and related services.
+    # Required by AbstractController::createForm() used in SecurityController
+    # (login/registration/password-reset) and McpServerController.
+    form:
+        csrf_protection:
+            field_name: _csrf_token
 
     # Enables session support. Note that the session will ONLY be started if you read or write from it.
     # Remove or comment this section to explicitly disable session support.
