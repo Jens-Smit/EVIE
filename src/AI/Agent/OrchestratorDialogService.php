@@ -395,15 +395,6 @@ final readonly class OrchestratorDialogService
         ];
         $toolDefinition->setSchema($schema);
 
-        $parameters = $toolDefinition->getParameters() ?? [];
-        $parameters[] = [
-            'name' => 'sub_agent',
-            'type' => 'string',
-            'required' => false,
-            'description' => 'Sub-Agent für die Ausführung',
-            'value' => $subAgent->getName(),
-        ];
-        $toolDefinition->setParameters($parameters);
 
         // Speichere die Änderungen
         // Note: Dies wird automatisch durch Doctrine gespeichert, wenn die Entity geupdated wird

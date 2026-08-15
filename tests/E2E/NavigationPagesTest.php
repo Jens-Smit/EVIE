@@ -69,7 +69,7 @@ class NavigationPagesTest extends WebTestCase
         $this->client->request('GET', '/dashboard');
 
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorTextContains('h1', 'Dashboard');
+        $this->assertSelectorTextContains('#content-area h1', 'Dashboard');
         // Die Sidebar wird ueber base.html.twig eingebunden und muss rendern.
         $this->assertSidebarPresent();
         $this->assertSelectorTextContains('#nav-menu', 'Dashboard');
@@ -82,7 +82,7 @@ class NavigationPagesTest extends WebTestCase
         $this->client->request('GET', '/dialog');
 
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorTextContains('h1', 'AI Agent Dialog');
+        $this->assertSelectorTextContains('#content-area h1', 'AI Agent Dialog');
         $this->assertSidebarPresent();
     }
 
@@ -93,7 +93,7 @@ class NavigationPagesTest extends WebTestCase
         $this->client->request('GET', '/subagents/list');
 
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorTextContains('h1', 'Sub-Agenten verwalten');
+        $this->assertSelectorTextContains('#content-area h1', 'Sub-Agenten verwalten');
         $this->assertSidebarPresent();
         // Die statischen Sub-Agenten werden immer vom SubAgentFactory geliefert.
         $this->assertSelectorTextContains('', 'Sub-Agenten');
@@ -106,7 +106,7 @@ class NavigationPagesTest extends WebTestCase
         $this->client->request('GET', '/tools/pending');
 
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorTextContains('h1', 'Ausstehende Tools');
+        $this->assertSelectorTextContains('#content-area h1', 'Ausstehende Tools');
         $this->assertSidebarPresent();
     }
 
@@ -117,7 +117,7 @@ class NavigationPagesTest extends WebTestCase
         $this->client->request('GET', '/documents');
 
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorTextContains('h1', 'Dokumente');
+        $this->assertSelectorTextContains('#content-area h1', 'Dokumente');
         $this->assertSidebarPresent();
     }
 
@@ -128,7 +128,7 @@ class NavigationPagesTest extends WebTestCase
         $this->client->request('GET', '/tools/list');
 
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorTextContains('h1', 'Alle verfuegbaren Tools');
+        $this->assertSelectorTextContains('#content-area h1', 'Alle verfuegbaren Tools');
         $this->assertSidebarPresent();
     }
 
@@ -139,7 +139,7 @@ class NavigationPagesTest extends WebTestCase
         $this->client->request('GET', '/history');
 
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorTextContains('h1', 'Agenten-Verlauf');
+        $this->assertSelectorTextContains('#content-area h1', 'Agenten-Verlauf');
         $this->assertSidebarPresent();
     }
 
@@ -150,7 +150,7 @@ class NavigationPagesTest extends WebTestCase
         $this->client->request('GET', '/profile');
 
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorTextContains('h1', 'Mein Profil');
+        $this->assertSelectorTextContains('#content-area h1', 'Mein Profil');
         $this->assertSidebarPresent();
         // Profilseite zeigt die E-Mail-Adresse des angemeldeten Benutzers.
         $this->assertSelectorTextContains('', 'profil@beispiel.de');
@@ -236,8 +236,12 @@ class NavigationPagesTest extends WebTestCase
     private function purgeUsers(): void
     {
         $conn = $this->entityManager->getConnection();
-        // Reihenfolge wegen FK beachten
+        // Reihenfolge wegen FK beachten. tool_definitions/sub_agent_definitions
+        // werden ebenfalls geleert, da registerAsTool() beim Aufruf der
+        // Sub-Agenten-Seite ToolDefinition-Eintraege persistiert.
         $conn->executeStatement('DELETE FROM reset_password_request');
+        $conn->executeStatement('DELETE FROM tool_definitions');
+        $conn->executeStatement('DELETE FROM ai_sub_agent_definitions');
         $conn->executeStatement('DELETE FROM users');
         $this->entityManager->clear();
     }

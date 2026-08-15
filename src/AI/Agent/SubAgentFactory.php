@@ -186,10 +186,6 @@ final class SubAgentFactory implements SubAgentFactoryInterface
             ],
             'required' => ['task'],
         ]);
-        $toolDefinition->setParameters([
-            ['name' => 'task', 'type' => 'string', 'required' => true, 'description' => 'Aufgabe für den Sub-Agenten'],
-            ['name' => 'parameters', 'type' => 'object', 'required' => false, 'description' => 'Zusätzliche Parameter'],
-        ]);
         return $toolDefinition;
     }
 
@@ -295,10 +291,6 @@ final class SubAgentFactory implements SubAgentFactoryInterface
             ],
             'required' => ['task'],
         ]);
-        $toolDefinition->setParameters([
-            ['name' => 'task', 'type' => 'string', 'required' => true, 'description' => 'Aufgabe für den Sub-Agenten'],
-            ['name' => 'parameters', 'type' => 'object', 'required' => false, 'description' => 'Zusätzliche Parameter'],
-        ]);
         $this->toolDefinitionRepo->save($toolDefinition, true);
         if ($this->dynamicSkillRegistry !== null) {
             $this->dynamicSkillRegistry->addTool($toolDefinition);
@@ -321,10 +313,6 @@ final class SubAgentFactory implements SubAgentFactoryInterface
                 'parameters' => ['type' => 'object', 'description' => 'Zusätzliche Parameter', 'additionalProperties' => true],
             ],
             'required' => ['task'],
-        ]);
-        $toolDefinition->setParameters([
-            ['name' => 'task', 'type' => 'string', 'required' => true, 'description' => 'Aufgabe für den Sub-Agenten'],
-            ['name' => 'parameters', 'type' => 'object', 'required' => false, 'description' => 'Zusätzliche Parameter'],
         ]);
         $this->toolDefinitionRepo->save($toolDefinition, true);
         if ($this->dynamicSkillRegistry !== null) {
