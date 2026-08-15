@@ -1,399 +1,164 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Tests\Unit\AI\Security;
 
 use App\AI\Security\SecurityGuard;
+use App\AI\Skills\Tool\DynamicTool;
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\DependencyInjection\ParameterBag\ParameterBag;
+use Psr\Log\NullLogger;
 
 /**
- * Unit-Tests für SecurityGuard
- * 
- * Testet:
- * - Whitelist-Prüfung für Services
- * - Blocklist-Prüfung für Ressourcen
- * - Tool-Konfiguration-Validierung
- * - Exception-Handling
- * - Parameter-basierte Konfiguration
+ * Unit-Tests für SecurityGuard (Blueprint §4.E).
+ *
+ * Testet die reale SecurityGuard-API: Executor-Whitelist, SSRF-Schutz,
+ * Pfad-Sandbox, Service-Whitelist (strikt, keine Wildcards) sowie die
+ * dynamische Executor-/Service-Verwaltung.
  */
 final class SecurityGuardTest extends TestCase
 {
     private SecurityGuard $guard;
-    private ParameterBag $params;
 
     protected function setUp(): void
     {
-        $this->params = new ParameterBag([
-            'evie.security.allowed_services' => [
-                'GenericApiExecutor',
-                'FileSystemReadExecutor',
-                'DatabaseQueryExecutor',
-                'App\AI\Skills\Tool\*',
-            ],
-            'evie.security.blocked_patterns' => [
-                'localhost',
-                '127.0.0.1',
-                '/etc/',
-                '*.env',
-                'mysql:',
-            ],
-        ]);
-
-        $this->guard = new SecurityGuard($this->params);
+        $this->guard = new SecurityGuard(new NullLogger());
     }
 
     // ========================================================================
-    // Tests für isServiceAllowed()
+    // isServiceAllowed() — strikte Whitelist, keine Wildcards
     // ========================================================================
 
-    public function testIsServiceAllowedWithDirectMatch(): void
+    public function testIsServiceAllowedWithListedService(): void
     {
-        $this->assertTrue(
-            $this->guard->isServiceAllowed('GenericApiExecutor')
-        );
+        self::assertTrue($this->guard->isServiceAllowed('App\\AI\\Skills\\Executor\\GenericApiExecutor'));
     }
 
-    public function testIsServiceAllowedWithWildcardMatch(): void
+    public function testIsServiceAllowedRejectsUnlistedService(): void
     {
-        $this->assertTrue(
-            $this->guard->isServiceAllowed('App\AI\Skills\Tool\CustomTool')
-        );
+        self::assertFalse($this->guard->isServiceAllowed('App\\AI\\Skills\\Tool\\CustomTool'));
     }
 
-    public function testIsServiceAllowedWithNonAllowedService(): void
+    public function testIsServiceAllowedRejectsPartialMatch(): void
     {
-        $this->assertFalse(
-            $this->guard->isServiceAllowed('UnknownService')
-        );
-    }
-
-    public function testIsServiceAllowedWithPartialMatch(): void
-    {
-        // Teilweise Übereinstimmung sollte nicht ausreichen
-        $this->assertFalse(
-            $this->guard->isServiceAllowed('App\AI\Skills\DangerousExecutor')
-        );
+        // Keine Wildcards: ein Service, der nur den Prefix teilt, ist nicht erlaubt.
+        self::assertFalse($this->guard->isServiceAllowed('App\\AI\\Skills\\DangerousExecutor'));
     }
 
     // ========================================================================
-    // Tests für isResourceBlocked()
+    // isUrlSafe() — SSRF-Schutz
     // ========================================================================
 
-    public function testIsResourceBlockedWithLocalhost(): void
+    public function testIsUrlSafeBlocksLocalhost(): void
     {
-        $this->assertTrue(
-            $this->guard->isResourceBlocked('http://localhost/api')
-        );
+        self::assertFalse($this->guard->isUrlSafe('http://localhost/api'));
     }
 
-    public function testIsResourceBlockedWithIpAddress(): void
+    public function testIsUrlSafeBlocksLoopbackIp(): void
     {
-        $this->assertTrue(
-            $this->guard->isResourceBlocked('http://127.0.0.1/api')
-        );
+        self::assertFalse($this->guard->isUrlSafe('http://127.0.0.1/api'));
     }
 
-    public function testIsResourceBlockedWithEtcPath(): void
+    public function testIsUrlSafeBlocksPrivateRange(): void
     {
-        $this->assertTrue(
-            $this->guard->isResourceBlocked('/etc/passwd')
-        );
+        self::assertFalse($this->guard->isUrlSafe('http://192.168.1.1/secret'));
+        self::assertFalse($this->guard->isUrlSafe('http://10.0.0.1/internal'));
     }
 
-    public function testIsResourceBlockedWithEnvFile(): void
+    public function testIsUrlSafeAllowsPublicUrl(): void
     {
-        $this->assertTrue(
-            $this->guard->isResourceBlocked('/path/to/.env')
-        );
-    }
-
-    public function testIsResourceBlockedWithMysqlUrl(): void
-    {
-        $this->assertTrue(
-            $this->guard->isResourceBlocked('mysql://user:pass@localhost/db')
-        );
-    }
-
-    public function testIsResourceBlockedWithAllowedResource(): void
-    {
-        $this->assertFalse(
-            $this->guard->isResourceBlocked('https://api.example.com/data')
-        );
-    }
-
-    public function testIsResourceBlockedWithAllowedPath(): void
-    {
-        $this->assertFalse(
-            $this->guard->isResourceBlocked('/var/www/html/index.html')
-        );
+        self::assertTrue($this->guard->isUrlSafe('https://api.example.com/data'));
     }
 
     // ========================================================================
-    // Tests für validateToolConfiguration()
+    // isPathSafe() — Pfad-Sandbox
     // ========================================================================
 
-    public function testValidateToolConfigurationWithValidConfig(): void
+    public function testIsPathSafeBlocksEtc(): void
     {
-        $validConfig = [
-            'service' => 'GenericApiExecutor',
-            'resource' => 'https://api.example.com/data',
-        ];
-        $this->assertTrue(
-            $this->guard->validateToolConfiguration($validConfig)
-        );
+        self::assertFalse($this->guard->isPathSafe('/etc/passwd'));
     }
 
-    public function testValidateToolConfigurationWithBlockedService(): void
+    public function testIsPathSafeBlocksRootAndProc(): void
     {
-        $blockedServiceConfig = [
-            'service' => 'UnknownService',
-            'resource' => 'https://api.example.com/data',
-        ];
-        $this->assertFalse(
-            $this->guard->validateToolConfiguration($blockedServiceConfig)
-        );
+        self::assertFalse($this->guard->isPathSafe('/root/.ssh/id_rsa'));
+        self::assertFalse($this->guard->isPathSafe('/proc/1/cmdline'));
     }
 
-    public function testValidateToolConfigurationWithBlockedResource(): void
+    public function testIsPathSafeAllowsSandboxPath(): void
     {
-        $blockedResourceConfig = [
-            'service' => 'GenericApiExecutor',
-            'resource' => 'http://localhost/api',
-        ];
-        $this->assertFalse(
-            $this->guard->validateToolConfiguration($blockedResourceConfig)
-        );
-    }
-
-    public function testValidateToolConfigurationWithBlockedUrl(): void
-    {
-        $config = [
-            'service' => 'GenericApiExecutor',
-            'url' => 'http://localhost/api',
-        ];
-        $this->assertFalse(
-            $this->guard->validateToolConfiguration($config)
-        );
-    }
-
-    public function testValidateToolConfigurationWithBlockedPath(): void
-    {
-        $config = [
-            'service' => 'GenericApiExecutor',
-            'path' => '.env',
-        ];
-        $this->assertFalse(
-            $this->guard->validateToolConfiguration($config)
-        );
-    }
-
-    public function testValidateToolConfigurationWithWildcardService(): void
-    {
-        $config = [
-            'service' => 'App\AI\Skills\Tool\CustomTool',
-            'resource' => 'https://api.example.com/data',
-        ];
-        $this->assertTrue(
-            $this->guard->validateToolConfiguration($config)
-        );
+        self::assertTrue($this->guard->isPathSafe('/tmp/uploads/data.csv'));
     }
 
     // ========================================================================
-    // Tests für assertToolAllowed()
+    // isToolSafe() — Executor-Whitelist via DynamicTool
     // ========================================================================
 
-    public function testAssertToolAllowedWithValidTool(): void
+    public function testIsToolSafeAllowsGenericExecutor(): void
     {
-        $config = [
-            'service' => 'GenericApiExecutor',
-        ];
-
-        // Sollte keine Exception werfen
-        $this->guard->assertToolAllowed($config, 'test_tool');
-        $this->assertTrue(true);
+        $tool = new DynamicTool('safe_tool', 'desc', [], 'generic');
+        self::assertTrue($this->guard->isToolSafe($tool));
     }
 
-    public function testAssertToolAllowedWithBlockedService(): void
+    public function testIsToolSafeBlocksUnknownExecutor(): void
     {
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('ist nicht in der SecurityGuard-Whitelist enthalten');
-
-        $config = [
-            'service' => 'UnknownService',
-        ];
-
-        $this->guard->assertToolAllowed($config, 'dangerous_tool');
+        $tool = new DynamicTool('shell_tool', 'desc', [], 'shell');
+        self::assertFalse($this->guard->isToolSafe($tool));
     }
 
-    public function testAssertToolAllowedWithBlockedResource(): void
+    public function testIsToolSafeBlocksExplicitlyBlockedPolicy(): void
     {
-        $this->expectException(\RuntimeException::class);
-        $this->expectExceptionMessage('ist nicht in der SecurityGuard-Whitelist enthalten');
-
-        $config = [
-            'service' => 'GenericApiExecutor',
-            'resource' => '/etc/passwd',
-        ];
-
-        $this->guard->assertToolAllowed($config, 'test_tool');
+        $tool = new DynamicTool('blocked_tool', 'desc', [], 'generic', [], ['allowed' => false]);
+        self::assertFalse($this->guard->isToolSafe($tool));
     }
 
     // ========================================================================
-    // Tests für getAllowedServices()
+    // Dynamische Verwaltung
     // ========================================================================
 
-    public function testGetAllowedServices(): void
+    public function testAddAllowedExecutorAddsNewExecutor(): void
     {
-        $allowedServices = $this->guard->getAllowedServices();
+        $this->guard->addAllowedExecutor('custom');
+        $executors = $this->guard->getAllowedExecutors();
 
-        $this->assertIsArray($allowedServices);
-        $this->assertContains('GenericApiExecutor', $allowedServices);
-        $this->assertContains('App\AI\Skills\Tool\*', $allowedServices);
+        self::assertContains('custom', $executors);
+    }
+
+    public function testAddAllowedExecutorDoesNotDuplicate(): void
+    {
+        $this->guard->addAllowedExecutor('api');
+        $count = count(array_filter($this->guard->getAllowedExecutors(), static fn (string $e): bool => $e === 'api'));
+
+        self::assertSame(1, $count);
+    }
+
+    public function testAddBlockedResourceAppends(): void
+    {
+        $this->guard->addBlockedResource('evil.example.com');
+        self::assertContains('evil.example.com', $this->guard->getBlockedResources());
+    }
+
+    public function testAddAndRemoveAllowedService(): void
+    {
+        $this->guard->addAllowedService('App\\Custom\\Service');
+        self::assertTrue($this->guard->isServiceAllowed('App\\Custom\\Service'));
+
+        $this->guard->removeAllowedService('App\\Custom\\Service');
+        self::assertFalse($this->guard->isServiceAllowed('App\\Custom\\Service'));
     }
 
     // ========================================================================
-    // Tests für getBlockedPatterns()
+    // Getter
     // ========================================================================
 
-    public function testGetBlockedPatterns(): void
+    public function testGetAllowedExecutorsContainsCoreTypes(): void
     {
-        $blockedPatterns = $this->guard->getBlockedPatterns();
+        $executors = $this->guard->getAllowedExecutors();
 
-        $this->assertIsArray($blockedPatterns);
-        $this->assertContains('localhost', $blockedPatterns);
-        $this->assertContains('*.env', $blockedPatterns);
-    }
-
-    // ========================================================================
-    // Tests für allowService() und blockService()
-    // ========================================================================
-
-    public function testAllowService(): void
-    {
-        $newService = 'NewService';
-        
-        // Vorher sollte der Service nicht erlaubt sein
-        $this->assertFalse(
-            $this->guard->isServiceAllowed($newService)
-        );
-
-        // Service zur Whitelist hinzufügen
-        $this->guard->allowService($newService);
-
-        // Jetzt sollte der Service erlaubt sein
-        $this->assertTrue(
-            $this->guard->isServiceAllowed($newService)
-        );
-    }
-
-    public function testBlockService(): void
-    {
-        // Service blockieren
-        $this->guard->blockService('GenericApiExecutor');
-
-        // Jetzt sollte der Service nicht mehr erlaubt sein
-        $this->assertFalse(
-            $this->guard->isServiceAllowed('GenericApiExecutor')
-        );
-    }
-
-    // ========================================================================
-    // Tests für allowPattern() und blockPattern()
-    // ========================================================================
-
-    public function testBlockPattern(): void
-    {
-        $newPattern = '/tmp/';
-        $resource = '/tmp/test.txt';
-
-        // Vorher sollte die Ressource nicht blockiert sein
-        $this->assertFalse(
-            $this->guard->isResourceBlocked($resource)
-        );
-
-        // Pattern zur Blocklist hinzufügen
-        $this->guard->blockPattern($newPattern);
-
-        // Jetzt sollte die Ressource blockiert sein
-        $this->assertTrue(
-            $this->guard->isResourceBlocked($resource)
-        );
-    }
-
-    public function testAllowPattern(): void
-    {
-        $pattern = '/etc/';
-        $resource = '/etc/passwd';
-
-        // Vorher sollte die Ressource blockiert sein
-        $this->assertTrue(
-            $this->guard->isResourceBlocked($resource)
-        );
-
-        // Pattern aus der Blocklist entfernen
-        $this->guard->allowPattern($pattern);
-
-        // Jetzt sollte die Ressource nicht mehr blockiert sein
-        $this->assertFalse(
-            $this->guard->isResourceBlocked($resource)
-        );
-    }
-
-    // ========================================================================
-    // Tests für ParameterBag-Integration
-    // ========================================================================
-
-    public function testSecurityGuardUsesParameterBag(): void
-    {
-        // Erstelle einen neuen ParameterBag mit anderen Einstellungen
-        $customParams = new ParameterBag([
-            'evie.security.allowed_services' => [
-                'CustomService',
-            ],
-            'evie.security.blocked_patterns' => [
-                'blocked',
-            ],
-        ]);
-
-        $customGuard = new SecurityGuard($customParams);
-
-        // Prüfe, ob die custom Einstellungen verwendet werden
-        $this->assertTrue(
-            $customGuard->isServiceAllowed('CustomService')
-        );
-        $this->assertFalse(
-            $customGuard->isServiceAllowed('GenericApiExecutor')
-        );
-        $this->assertTrue(
-            $customGuard->isResourceBlocked('blocked')
-        );
-        $this->assertFalse(
-            $customGuard->isResourceBlocked('localhost')
-        );
-    }
-
-    // ========================================================================
-    // Edge Cases
-    // ========================================================================
-
-    public function testIsServiceAllowedWithEmptyString(): void
-    {
-        $this->assertFalse(
-            $this->guard->isServiceAllowed('')
-        );
-    }
-
-    public function testIsResourceBlockedWithEmptyString(): void
-    {
-        $this->assertFalse(
-            $this->guard->isResourceBlocked('')
-        );
-    }
-
-    public function testValidateToolConfigurationWithEmptyConfig(): void
-    {
-        $this->assertTrue(
-            $this->guard->validateToolConfiguration([])
-        );
+        self::assertContains('api', $executors);
+        self::assertContains('database', $executors);
+        self::assertContains('filesystem', $executors);
+        self::assertContains('http', $executors);
+        self::assertContains('generic', $executors);
     }
 }

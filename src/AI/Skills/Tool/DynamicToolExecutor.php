@@ -4,7 +4,7 @@ namespace App\AI\Skills\Tool;
 
 use App\AI\Skills\Executor\ExecutorResolverInterface;
 use Psr\Log\LoggerInterface;
-use Symfony\Component\AiMessenger\Tool\ToolExecutionResult;
+use App\AI\Skills\Tool\ToolExecutionResult;
 
 /**
  * DynamicToolExecutor - Nutzt ExecutorResolver statt hardcoded Logik
