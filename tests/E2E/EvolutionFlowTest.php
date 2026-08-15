@@ -196,14 +196,20 @@ class EvolutionFlowTest extends WebTestCase
 
     private function createAdminAndLogin(string $email, string $plainPassword): User
     {
-        $user = $this->createUserAndLogin($email, $plainPassword);
-        $user->setRoles(['ROLE_ADMIN']);
+        // Admin-Rollen VOR dem Login setzen, damit die Session sie enthält.
+        $user = (new User())
+            ->setEmail($email)
+            ->setFirstName('Admin')
+            ->setLastName('Tester')
+            ->setRoles(['ROLE_ADMIN'])
+            ->setPassword($this->passwordHasher->hashPassword(new User(), $plainPassword));
+
+        $this->entityManager->persist($user);
         $this->entityManager->flush();
 
-        // Session mit aktualisierten Rollen neu aufbauen.
-        $this->client->request('GET', '/logout');
         $crawler = $this->client->request('GET', '/login');
         $csrfToken = $this->extractCsrfToken($crawler, 'authenticate');
+
         $this->client->request('POST', '/login', [
             'email' => $email,
             'password' => $plainPassword,
