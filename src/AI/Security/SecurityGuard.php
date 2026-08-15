@@ -68,6 +68,10 @@ class SecurityGuard
         'ai.mcp.server.playwright',
         'ai.mcp.server.github',
         'ai.mcp.server.custom',
+        'npx',
+        'node',
+        'python',
+        'docker',
     ];
 
     public function __construct(

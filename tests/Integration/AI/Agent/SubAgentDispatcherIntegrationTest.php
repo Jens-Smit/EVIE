@@ -11,6 +11,9 @@ use App\Repository\SubAgentDefinitionRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
+/**
+ * @group api  Benötigt echte Mistral-API (delegate ruft Agent::call auf).
+ */
 class SubAgentDispatcherIntegrationTest extends KernelTestCase
 {
     private EntityManagerInterface $entityManager;
