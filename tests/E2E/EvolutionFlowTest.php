@@ -224,13 +224,28 @@ class EvolutionFlowTest extends WebTestCase
 
     private function extractCsrfToken(Crawler $crawler, string $tokenId): string
     {
-        $node = $crawler->filter('input[name="_csrf_token"]')->first();
-        if ($node->count() > 0) {
-            return $node->attr('value');
+        $tokenInput = $crawler->filter('input[type="hidden"][id$="_csrf_token"]')->last();
+        if ($tokenInput->count() > 0) {
+            $value = $tokenInput->attr('value');
+            if (is_string($value) && $value !== '') {
+                return $value;
+            }
         }
 
-        // Fallback: leerer Token in Umgebungen ohne CSRF (z. B. test).
-        return '';
+        foreach ($crawler->filter('input[type="hidden"]') as $node) {
+            $name = $node->getAttribute('name') ?? '';
+            if (str_ends_with($name, '[_csrf_token]') || $name === '_csrf_token') {
+                $value = $node->getAttribute('value');
+                if (is_string($value) && $value !== '') {
+                    return $value;
+                }
+            }
+        }
+
+        return static::getContainer()
+            ->get('security.csrf.token_manager')
+            ->getToken($tokenId)
+            ->getValue();
     }
 
     private function ensureSchema(): void
