@@ -84,7 +84,7 @@ final class McpServerManager
         }
 
         throw new McpServerUnavailableException(
-            sprintf('MCP-Server "%s" nach %d Versuchen nicht erreichbar: %s', $serverAlias, self::MAX_RETRIES, $lastException?->getMessage() ?? 'unbekannt'),
+            sprintf('MCP-Server "%s" nach %d Versuchen nicht erreichbar: %s', $serverAlias, self::MAX_RETRIES, $lastException instanceof \Throwable ? $lastException->getMessage() : 'unbekannt'),
             previous: $lastException,
         );
     }
