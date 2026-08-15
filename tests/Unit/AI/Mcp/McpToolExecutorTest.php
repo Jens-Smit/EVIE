@@ -20,7 +20,6 @@ class McpToolExecutorTest extends TestCase
     {
         $this->factoryMock = $this->createMock(McpServerFactory::class);
         $this->securityGuardMock = $this->createMock(SecurityGuard::class);
-        $this->securityGuardMock->method('isToolAllowed')->willReturn(true);
         $this->loggerMock = $this->createMock(LoggerInterface::class);
 
         $this->executor = new McpToolExecutor(
@@ -312,6 +311,10 @@ class McpToolExecutorTest extends TestCase
         $serverMock
             ->method('isToolAllowed')
             ->with('read_file')
+            ->willReturn(true);
+
+        $this->securityGuardMock
+            ->method('isToolAllowed')
             ->willReturn(true);
 
         $serverMock
