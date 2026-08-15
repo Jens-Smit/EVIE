@@ -23,7 +23,7 @@
     <div class="card-header bg-{{ statusBadges[session.status] ?? 'secondary' }} text-white">
         <h6 class="mb-0">
             <i class="fas {{ statusIcons[session.status] ?? 'fa-question-circle' }} me-2"></i>
-            Session: {{ session.sessionId|truncate(20) }}
+            Session: {{ (session.sessionId|slice(0, 20)) ~ (session.sessionId|length > 20 ? '...') }}
         </h6>
     </div>
     

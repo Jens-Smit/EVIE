@@ -9,7 +9,7 @@
                     {% if selected_tool == toolName %}selected{% endif %}>
                 {{ toolName }}
                 {% if toolInfo.description is defined %}
-                    - {{ toolInfo.description|truncate(30) }}
+                    - {{ (toolInfo.description|slice(0, 30)) ~ (toolInfo.description|length > 30 ? '...') }}
                 {% endif %}
             </option>
         {% else %}

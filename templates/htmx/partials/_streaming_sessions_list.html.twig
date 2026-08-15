@@ -22,7 +22,7 @@
                         <div>
                             <strong>{{ session.toolName }}</strong>
                             <div class="text-muted small">
-                                Session: {{ session.sessionId|truncate(20) }}
+                                Session: {{ (session.sessionId|slice(0, 20)) ~ (session.sessionId|length > 20 ? '...') }}
                             </div>
                         </div>
                     </div>

@@ -70,7 +70,7 @@
                                         <strong>{{ server.name }}</strong>
                                         {% if server.description %}
                                             <br>
-                                            <small class="text-muted">{{ server.description|truncate(50) }}</small>
+                                            <small class="text-muted">{{ (server.description|slice(0, 50)) ~ (server.description|length > 50 ? '...') }}</small>
                                         {% endif %}
                                     </td>
                                     <td>
@@ -78,7 +78,7 @@
                                             {{ availableTypes[server.type] ?? server.type }}
                                         </span>
                                     </td>
-                                    <td>{{ server.description|default('-')|truncate(100) }}</td>
+                                    <td>{{ ((server.description|default('-'))|slice(0, 100)) ~ ((server.description|default('-'))|length > 100 ? '...') }}</td>
                                     <td>
                                         {% if server.isActive %}
                                             <span class="badge bg-success">Aktiv</span>

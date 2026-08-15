@@ -2,20 +2,24 @@
 
 namespace App\AI\Skills\Executor;
 
+use Doctrine\DBAL\Connection;
 use Psr\Log\LoggerInterface;
+use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class ExecutorResolver implements ExecutorResolverInterface
 {
     private array $executors = [];
 
     public function __construct(
-        private LoggerInterface $logger
+        private LoggerInterface $logger,
+        Connection $connection,
+        HttpClientInterface $httpClient
     ) {
         $this->executors = [
             'api' => new GenericApiExecutor(),
-            'database' => new GenericDatabaseExecutor(),
+            'database' => new GenericDatabaseExecutor($connection),
             'filesystem' => new GenericFileExecutor(),
-            'http' => new GenericHttpExecutor(),
+            'http' => new GenericHttpExecutor($httpClient),
         ];
     }
 
