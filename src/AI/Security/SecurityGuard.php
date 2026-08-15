@@ -3,6 +3,8 @@
 namespace App\AI\Security;
 
 use App\AI\Skills\Tool\DynamicTool;
+use App\Entity\ToolDefinition;
+use Symfony\AI\Platform\Result\ToolCall;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -228,5 +230,89 @@ class SecurityGuard
     public function getBlockedResources(): array
     {
         return $this->blockedResources;
+    }
+
+    /**
+     * Native Policy-Entscheidung fuer das ToolCallRequested-Event (Blueprint 4.E).
+     *
+     * Liefert eine PolicyDecision:
+     *  - Deny:    Executor nicht gelistet, SSRF-Verstoss, Pfad ausserhalb der
+     *            Sandbox oder nicht gelisteter Service.
+     *  - AskUser: dynamisches Tool (ToolDefinition vorhanden) mit HITL-Markierung
+     *            (requiresHitl) oder hohem Security-Level.
+     *  - Allow:   statisches Tool ohne Policy-Verstoss.
+     */
+    public function decide(ToolCall $toolCall, ?ToolDefinition $definition = null): PolicyDecision
+    {
+        if (null !== $definition && null !== $definition->getExecutorType()) {
+            if (!in_array($definition->getExecutorType(), $this->allowedExecutors, true)) {
+                return PolicyDecision::Deny;
+            }
+
+            $executorClass = $this->resolveExecutorClass($definition->getExecutorType());
+            if (null !== $executorClass && !$this->isServiceAllowed($executorClass)) {
+                return PolicyDecision::Deny;
+            }
+        }
+
+        foreach ($this->extractStringArguments($toolCall) as $value) {
+            if ($this->looksLikeUrl($value) && !$this->isUrlSafe($value)) {
+                return PolicyDecision::Deny;
+            }
+            if ($this->looksLikePath($value) && !$this->isPathSafe($value)) {
+                return PolicyDecision::Deny;
+            }
+        }
+
+        if (null !== $definition && (true === $definition->getRequiresHitl() || 'high' === $definition->getSecurityLevel())) {
+            return PolicyDecision::AskUser;
+        }
+
+        return PolicyDecision::Allow;
+    }
+
+    private function resolveExecutorClass(string $executorType): ?string
+    {
+        $map = [
+            'api' => 'App\\AI\\Skills\\Executor\\GenericApiExecutor',
+            'database' => 'App\\AI\\Skills\\Executor\\GenericDatabaseExecutor',
+            'filesystem' => 'App\\AI\\Skills\\Executor\\GenericFileExecutor',
+            'http' => 'App\\AI\\Skills\\Executor\\GenericHttpExecutor',
+            'generic' => 'App\\AI\\Skills\\Executor\\GenericExecutor',
+        ];
+
+        return $map[$executorType] ?? null;
+    }
+
+    /**
+     * @return array<int, string>
+     */
+    private function extractStringArguments(ToolCall $toolCall): array
+    {
+        $arguments = $toolCall->getArguments();
+        $strings = [];
+        foreach ($arguments as $value) {
+            if (is_string($value)) {
+                $strings[] = $value;
+            } elseif (is_array($value)) {
+                array_walk_recursive($value, static function (mixed $v) use (&$strings): void {
+                    if (is_string($v)) {
+                        $strings[] = $v;
+                    }
+                });
+            }
+        }
+
+        return $strings;
+    }
+
+    private function looksLikeUrl(string $value): bool
+    {
+        return str_starts_with($value, 'http://') || str_starts_with($value, 'https://');
+    }
+
+    private function looksLikePath(string $value): bool
+    {
+        return str_starts_with($value, '/') || str_starts_with($value, './');
     }
 }
