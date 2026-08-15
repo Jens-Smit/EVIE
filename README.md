@@ -1,178 +1,322 @@
-# EVIE - AI Agent System
+# EVIE — Self-Evolving AI Agent Platform
 
-EVIE ist ein **AI-Agenten-System**, das auf Symfony und dem Symfony AI Bundle basiert. Es ermöglicht die Interaktion mit einem KI-Agenten, speichert Dialogverläufe in einer Datenbank und unterstützt Tools mit Human-in-the-Loop (HITL) Freigabe.
-
----
-
-## 🚀 Schnellstart
-
-### 1. Voraussetzungen
-- PHP 8.2+
-- Composer
-- PostgreSQL (oder eine andere von Doctrine unterstützte Datenbank)
-- Node.js (für MCP-Server)
-- Docker & Docker Compose (optional, für lokale Entwicklung)
+> **30-Sekunden-Erklärung:** EVIE ist eine AI-Agent-Plattform, die eigene Tools
+> generiert, sicherheitsgeprüft freigibt und zur Laufzeit registriert — ohne
+> eigenen PHP-Code zu schreiben. Sie baut auf **Symfony AI v0.12** und **Mistral LLM**
+> auf und sichert jeden Tool-Aufruf durch Human-in-the-Loop (HITL), eine
+> Policy-Engine (SSRF/Pfad/Command-Schutz) und Tenant-Isolation.
 
 ---
 
-### 2. Installation
+## Was ist EVIE?
 
-#### Klone das Repository:
+EVIE ist ein **selbst-evolvierender KI-Agent**: Ein Orchestrator analysiert
+User-Anfragen, wählt passende Tools aus und führt sie aus. Wenn kein passendes
+Tool existiert, generiert der `ToolDefinitionGenerator` ein JSON-Schema für ein
+neues Tool, das nach HITL-Freigabe über die native `DynamicToolbox` verfügbar
+wird.
+
+**Welches Problem löst EVIE?** Ein normaler LLM-Chatbot kann nur Text erzeugen.
+EVIE kann **Handlungen ausführen** — API-Aufrufe, Datei-Operationen,
+Datenbank-Queries — und dabei **neue Fähigkeiten erlernen**, ohne dass ein
+Entwickler Code schreiben muss.
+
+**Was unterscheidet EVIE von einem Chatbot?**
+
+| Chatbot | EVIE |
+|---------|------|
+| Text → Text | Text → Tool-Ausführung → Ergebnis |
+| Statisch (feste Fähigkeiten) | Dynamisch (generiert neue Tools) |
+| Keine Sicherheitsprüfung | Policy-Engine + HITL vor jeder Ausführung |
+| Single-Tenant | Multi-Tenant mit Isolation |
+| Kein Audit | Vollständiges Audit-Logging |
+
+**Technologien:** Symfony 7.4 · Symfony AI v0.12 · Mistral LLM · PostgreSQL/pgvector · Doctrine ORM · Messenger · MCP
+
+---
+
+## Architektur-Übersicht
+
+```text
+                         ┌───────────────┐
+                         │     User      │
+                         └───────┬───────┘
+                                 │
+                                 ▼
+                     ┌─────────────────────┐
+                     │   Agent Controller  │
+                     └──────────┬──────────┘
+                                │
+                                ▼
+                     ┌─────────────────────┐
+                     │ Agent / Orchestrator│  ← Symfony AI native Agent
+                     └──────────┬──────────┘
+                                │
+              ┌─────────────────┼─────────────────┐
+              ▼                 ▼                 ▼
+          RAG / Memory       Tools          Evolution Engine
+          (InputProcessor)   (Toolbox)      (ToolDefinitionGenerator)
+                                │                 │
+                                │                 ▼
+                                │          Schema Validation
+                                │                 │
+                                └────────────┬────┘
+                                             ▼
+                                    Security Guard
+                                             │
+                              ┌──────────────┼──────────────┐
+                              ▼              ▼              ▼
+                           ALLOW          ASK_USER         DENY
+                              │              │
+                              │              ▼
+                              │             HITL
+                              │              │
+                              └───────┬──────┘
+                                      ▼
+                                   Executor
+                                      │
+                                      ▼
+                                  Audit Log
+```
+
+→ **Vollständige Architektur-Doku:** [`docs/architecture/overview.md`](docs/architecture/overview.md)
+
+---
+
+## Self-Evolution Flow
+
+Das ist das Kern-Alleinstellungsmerkmal von EVIE:
+
+```text
+User: "Analysiere diese Excel-Datei und gib mir den Umsatz."
+  ↓
+Orchestrator: kein passendes Tool gefunden
+  ↓
+ToolDefinitionGenerator (LLM-gestützt) → JSON-Schema
+  ↓
+SecurityGuard → PolicyDecision = ASK_USER
+  ↓
+ToolDefinition (status: pending) → PendingToolApprovalEvent
+  ↓
+Frontend: "Neues Tool 'ExcelParserTool' erforderlich. Genehmigen?"
+  ↓
+User: "Ja"
+  ↓
+ToolDefinition (status: approved)
+  ↓
+DynamicToolbox → Tool verfügbar beim nächsten Agent-Call
+  ↓
+Executor → Ergebnis
+  ↓
+AuditLogger
+```
+
+**Wichtig:** „Self-Evolving" bedeutet bei EVIE **keine** autonome
+Quellcode-Modifikation. Evolution erfolgt auf der **Capability-Schicht** durch
+kontrollierte Generierung, Validierung, Freigabe und Registrierung neuer Tools.
+
+→ **Details:** [`docs/architecture/evolution.md`](docs/architecture/evolution.md)
+
+---
+
+## Capabilities
+
+| Capability | Status | Beschreibung |
+|------------|--------|--------------|
+| AI Agent (Orchestrator) | ✅ | Nativer Symfony AI Agent mit Tool-Calling |
+| Dynamic Tools | ✅ | `DynamicToolbox` (ToolboxInterface-Decorator) |
+| Tool Generation | ✅ | LLM-gestützter `ToolDefinitionGenerator` |
+| Self-Evolution | ✅ | pending → approved → verfügbar → revoked |
+| HITL (Human-in-the-Loop) | ✅ | Natives `ToolCallRequested`-Event + `deny()` |
+| Security Policy Engine | ✅ | `SecurityGuard` mit `PolicyDecision` (Allow/Deny/AskUser) |
+| SSRF Protection | ✅ | Private IPs, localhost, IPv6, link-local |
+| Filesystem Protection | ✅ | /etc, /proc, /sys, /dev, docker.sock |
+| Command Execution Protection | ✅ | Executor-Whitelist (nur api/database/filesystem/http/generic) |
+| Prompt Injection Awareness | ✅ | RAG-Kontext kann Policy-Entscheidung nicht umgehen |
+| Tenant Isolation | ✅ | `UserContext` + Store-Level-Filtering |
+| RAG | ✅ | `ContextInjector` (InputProcessor) + `StoreRetrieverAdapter` |
+| Persistent Memory | ✅ | `ContextMemoryProvider` (MemoryProviderInterface) |
+| Audit Logging | ✅ | `AuditLogger` + `AgentHistory`/`DecisionLog` |
+| Observability | ✅ | Request-ID/Trace-ID (`ObservabilityListener`) |
+| MCP | ⚠️ | Native `ChainFactory` + `McpServerManager` (Retry/Timeout), erweiterte Features offen |
+| Production Docker | ⚠️ | `Dockerfile.prod` vorhanden, GHCR/Messenger-Worker offen |
+| CI/CD | ✅ | E2E + Unit + Integration + Security + PHPStan + composer validate/audit |
+
+---
+
+## Security Model
+
+```text
+User Input
+    ↓
+Authentication (Symfony Security)
+    ↓
+Tenant Context (UserContext)
+    ↓
+Agent (Symfony AI)
+    ↓
+Tool Definition (ToolDefinition)
+    ↓
+Security Classification (securityLevel, requiresHitl)
+    ↓
+SecurityGuard → PolicyDecision
+    ↓
+┌─────────────────────────────────┐
+│  ALLOW → Ausführung             │
+│  ASK_USER → HITL-Freigabe       │
+│  DENY → Blockiert + Audit       │
+└─────────────────────────────────┘
+    ↓
+Executor (GenericApi/File/Database/Http)
+    ↓
+Audit Log (AuditLogger + AgentHistory)
+```
+
+**Getestete Angriffsvektoren:** SSRF (127.0.0.1, localhost, 169.254.169.254,
+private IPv4/IPv6, 0.0.0.0, ::1, fe80::, fc00::), Filesystem (/etc/passwd,
+docker.sock, /proc, /sys, /dev), Command Injection (shell/bash denied),
+Prompt Injection (RAG-Kontext kann Policy nicht umgehen).
+
+→ **Vollständige Security-Doku:** [`docs/security/threat-model.md`](docs/security/threat-model.md)
+
+---
+
+## Quick Start
+
 ```bash
+# 1. Klonen
 git clone https://github.com/Jens-Smit/EVIE.git
 cd EVIE
-```
 
-#### Installiere die Abhängigkeiten:
-```bash
+# 2. Abhängigkeiten
 composer install
-```
 
-#### Konfiguriere die Umgebung:
-1. Kopiere `.env.example` zu `.env`:
-   ```bash
-   cp .env.example .env
-   ```
-2. Bearbeite `.env` und setze deine **Datenbankverbindung** und **API-Schlüssel**:
-   ```ini
-   DATABASE_URL="postgresql://evie:evie_password@evie-db:5432/evie?serverVersion=15&charset=utf8"
-   MISTRAL_API_KEY="your_mistral_api_key_here"
-   ```
+# 3. Umgebung konfigurieren
+cp .env.example .env
+# .env bearbeiten: DATABASE_URL, MISTRAL_API_KEY setzen
 
-#### Starte die Docker-Container (PostgreSQL & MCP-Server):
-```bash
-docker-compose up -d
-```
+# 4. Docker (PostgreSQL + pgvector + MCP-Server)
+docker compose up -d
 
-#### Führe die Datenbank-Migrationen aus:
-```bash
-php bin/console doctrine:migrations:diff
+# 5. Datenbank-Migration
 php bin/console doctrine:migrations:migrate
-```
 
-#### Starte den Symfony-Entwicklungsserver:
-```bash
+# 6. Server starten
 symfony serve
+# → http://localhost:8000
 ```
 
-Die Anwendung ist jetzt unter **`http://localhost:8000`** erreichbar.
+### Konfiguration
+
+| Variable | Beschreibung | Beispiel |
+|----------|-------------|----------|
+| `DATABASE_URL` | PostgreSQL mit pgvector | `postgresql://evie:pw@localhost:5432/evie` |
+| `MISTRAL_API_KEY` | Mistral LLM API-Key | `your-key` |
+| `GEMINI_API_KEY` | (optional) Gemini Platform | `your-key` |
+| `MESSENGER_TRANSPORT_DSN` | Messenger-Transport | `doctrine://default` |
+
+### Verifizierung
+
+```bash
+# Alle Tests ausführen
+vendor/bin/phpunit
+
+# Nur E2E
+vendor/bin/phpunit --testsuite="E2E Tests"
+
+# Nur Security-Hardening
+vendor/bin/phpunit --testsuite="EVIE AI Security Tests"
+```
 
 ---
 
-## 📂 Projektstruktur
+## Testing
 
-| Verzeichnis | Beschreibung |
-|-------------|--------------|
-| `src/Controller/` | Controller für API- und Frontend-Routen |
-| `src/Entity/` | Doctrine-Entitäten (z. B. `AgentHistory`, `UserProfile`, `ToolDefinition`) |
-| `src/Repository/` | Doctrine-Repositories für Datenbankzugriffe |
-| `src/AI/` | KI-spezifische Logik (Agenten, Tools, Security) |
-| `templates/` | Twig-Templates für das Frontend |
-| `assets/` | JavaScript und CSS |
-| `config/` | Symfony-Konfiguration |
-| `docker-compose.yml` | Docker-Konfiguration für PostgreSQL und MCP-Server |
+| Suite | Zweck | CI-Step |
+|-------|------|---------|
+| **E2E Tests** | Vollständige App (Auth, Navigation, Evolution-Flow) | `E2E tests (test/dev/prod env)` |
+| **Unit Tests** | Einzelne Klassen (DynamicToolbox, HitlListener, SecurityGuard, …) | `Unit tests` |
+| **Security Tests** | Angriffsvektoren (SSRF, Filesystem, Command, Prompt-Injection) | `Security tests` |
+| **Skills Tests** | Tool-System (DynamicToolExecutor, ToolExecutionResult) | `Skills tests` |
+| **Agent Tests** | Agent-Verhalten (OrchestratorAgent, SubAgentFactory) | `Agent tests` |
+| **Integration Tests** | Komponenten zusammen (Evolution-Flow, Streaming) | `Integration tests` |
 
----
-
-## 🔌 API-Endpunkte
-
-| Endpunkt | Methode | Beschreibung |
-|----------|---------|--------------|
-| `/api/agent/dialog` | POST | Sendet eine Nachricht an den Agenten und speichert sie in der DB |
-| `/api/agent/history/{userIdentifier}` | GET | Gibt den Dialogverlauf für einen Benutzer zurück |
-| `/api/tools/{toolId}/approve` | POST | Genehmigt ein Tool (HITL) |
-| `/api/tools/{toolId}/reject` | POST | Lehnt ein Tool ab (HITL) |
+→ **Test-Strategie:** [`docs/testing/test-strategy.md`](docs/testing/test-strategy.md)
 
 ---
 
-## 🛠️ Wichtige Klassen
+## Dokumentation
 
-### Controller
-- **`AgentDialogController`** (`src/Controller/AgentDialogController.php`)
-  - Verarbeitet Dialoganfragen und speichert sie in `AgentHistory`.
-  - Lädt oder erstellt ein `UserProfile` für den `user_identifier`.
-
-### Entitäten
-- **`AgentHistory`** (`src/Entity/AgentHistory.php`)
-  - Speichert Dialogverläufe mit `userProfile`, `input`, `output`, `status`.
-- **`UserProfile`** (`src/Entity/UserProfile.php`)
-  - Enthält Benutzerinformationen wie `userIdentifier`, `userType`, `preferences`.
-- **`ToolDefinition`** (`src/Entity/ToolDefinition.php`)
-  - Definiert Tools mit `name`, `schema`, `status` (pending/approved/rejected).
-
-### Repositories
-- **`AgentHistoryRepository`** (`src/Repository/AgentHistoryRepository.php`)
-  - Enthält `findByUserIdentifier()` zum Laden des Verlaufs eines Benutzers.
-- **`UserProfileRepository`** (`src/Repository/UserProfileRepository.php`)
-  - Verwaltet `UserProfile`-Einträge.
+| Thema | Pfad |
+|-------|------|
+| Architektur-Übersicht | [`docs/architecture/overview.md`](docs/architecture/overview.md) |
+| Agent-Architektur | [`docs/architecture/agent-architecture.md`](docs/architecture/agent-architecture.md) |
+| Self-Evolution | [`docs/architecture/evolution.md`](docs/architecture/evolution.md) |
+| Tool-System | [`docs/architecture/tool-system.md`](docs/architecture/tool-system.md) |
+| RAG | [`docs/architecture/rag.md`](docs/architecture/rag.md) |
+| Security Model | [`docs/security/threat-model.md`](docs/security/threat-model.md) |
+| Tenant Isolation | [`docs/security/tenant-isolation.md`](docs/security/tenant-isolation.md) |
+| Setup & Testing | [`docs/development/setup.md`](docs/development/setup.md) |
+| Tool erstellen | [`docs/development/creating-tools.md`](docs/development/creating-tools.md) |
+| Production Docker | [`docs/deployment/docker.md`](docs/deployment/docker.md) |
+| Architecture Decisions | [`docs/decisions/`](docs/decisions/) |
+| API-Endpunkte | [`docs/api/overview.md`](docs/api/overview.md) |
+| Roadmap | [`docs/roadmap.md`](docs/roadmap.md) |
 
 ---
 
-## 🔄 Dialogfluss
+## Project Status
 
-1. **Frontend** (`templates/agent/dialog.html.twig` + `assets/scripts/app.js`)
-   - Sendet eine Nachricht per `fetch` an `/api/agent/dialog`.
-   - Zeigt die Antwort des Agenten an.
-
-2. **Backend** (`AgentDialogController`)
-   - Empfängt die Nachricht und `user_identifier`.
-   - Lädt oder erstellt ein `UserProfile`.
-   - Ruft den Agenten auf und speichert die Interaktion in `AgentHistory`.
-
-3. **Datenbank** (PostgreSQL)
-   - Speichert `AgentHistory` und `UserProfile`.
-
----
-
-## 🔧 Problembehebung
-
-### ❌ Problem: Keine Daten werden in der DB gespeichert
-**Ursache:**
-- Der `AgentDialogController` speicherte keine `AgentHistory`-Einträge.
-- `UserProfile` wurde nicht mit `AgentHistory` verknüpft.
-
-**Lösung:**
-- Der Controller speichert jetzt **automatisch** jeden Dialog in `AgentHistory`.
-- `UserProfile` wird geladen oder erstellt, falls nicht vorhanden.
+| Komponente | Status |
+|------------|--------|
+| Core Agent (Symfony AI) | ✅ Implementiert |
+| DynamicToolbox (native Decorator) | ✅ Implementiert |
+| ToolDefinitionGenerator | ✅ Implementiert |
+| HITL (ToolCallRequested) | ✅ Implementiert |
+| SecurityGuard (PolicyDecision) | ✅ Implementiert |
+| Tenant Isolation (UserContext) | ✅ Implementiert |
+| RAG (InputProcessor + StoreAdapter) | ✅ Implementiert |
+| Audit Logging | ✅ Implementiert |
+| CI/CD (composer validate/audit, PHPStan, alle Test-Suiten) | ✅ Implementiert |
+| Production Docker (Dockerfile.prod) | ⚠️ Grundgerüst vorhanden |
+| Advanced MCP (Discovery, Auth, Netzwerkisolation) | ⚠️ Teilweise |
+| Distributed Messenger Workers | ⏳ Geplant |
+| Advanced Scheduling | ⏳ Geplant |
+| GHCR Image Publishing | ⏳ Geplant |
 
 ---
 
-### ❌ Problem: Nachrichten werden doppelt gesendet
-**Ursache:**
-- Die `initChatForm()`-Funktion war **doppelt definiert** (in `app.js` und `dialog.html.twig`).
+## Limitations
 
-**Lösung:**
-- Die doppelte Funktion in `dialog.html.twig` wurde **entfernt**.
-- Eine **Request-ID** wurde hinzugefügt, um Duplikate zu verhindern.
-
----
-
-## 📦 Abhängigkeiten
-
-- **Symfony 7.x** (mit AI Bundle)
-- **Doctrine ORM** (für Datenbankzugriffe)
-- **PostgreSQL** (empfohlen)
-- **MCP-Server** (für Tools wie Playwright, Filesystem)
+- **Self-Evolution** betrifft Tools/Capabilities, **nicht** Core-Code — EVIE
+  schreibt keinen PHP-Code, sondern generiert JSON-Schema-basierte Tool-Definitionen.
+- **Prompt Injection** ist nicht vollständig lösbar — RAG-Kontext erhält nie die
+  gleiche Vertrauensstufe wie System-Instructions; die Policy-Engine ist unabhängig.
+- **Production Deployment** benötigt externe Infrastruktur (nginx, Redis,
+  Messenger-Worker, MCP-Services).
+- **LLM-Ausgaben** sind probabilistisch — Tool-Schema-Generierung kann fehlschlagen.
+- **MCP** benötigt laufende MCP-Server (filesystem, playwright, github).
+- **RAG-Qualität** hängt vom Embedding-/Retrieval-Modell ab.
 
 ---
 
-## 🤝 Mitwirken
+## Technology Choices
 
-1. Fork das Repository.
-2. Erstelle einen Feature-Branch (`git checkout -b feature/neue-funktion`).
-3. Commite deine Änderungen (`git commit -am 'Füge neue Funktion hinzu'`).
-4. Pushe den Branch (`git push origin feature/neue-funktion`).
-5. Erstelle einen Pull Request.
+| Technologie | Warum? |
+|-------------|--------|
+| **Symfony 7.4** | Enterprise-Framework, DI, Security, Messenger, Forms |
+| **Symfony AI v0.12** | Native Agent/Toolbox/Platform/Store-Interfaces — keine Eigenbau-Infrastruktur |
+| **PostgreSQL + pgvector** | Vektor-Ähnlichkeitssuche für RAG, ACID, Production-reif |
+| **Doctrine ORM** | Standard-PHP-ORM, Migrations, Repository-Pattern |
+| **Messenger** | Asynchrone Tool-Ausführung, Streaming, decoupled Workers |
+| **MCP** | Model Context Protocol für externe Tools (filesystem, playwright, github) |
+| **Mistral LLM** | Europäischer Anbieter, Tool-Calling, strukturierte Ausgabe |
+| **HITL** | Kontrollierte Autonomie — sicherer als autonome Tool-Ausführung |
+
+→ **Architectural Decision Records:** [`docs/decisions/`](docs/decisions/)
 
 ---
 
-## 📄 Lizenz
+## License
 
-Dieses Projekt ist **privat** und gehört zu **Vision Gastro / AiCabs**.
-
----
-
-## 📞 Kontakt
-
-- **Jens Smit** – [jens-smit.de](https://jens-smit.de)
-- **GitHub** – [github.com/Jens-Smit](https://github.com/Jens-Smit)
+Privat — Vision Gastro / AiCabs. Kontakt: [Jens Smit](https://jens-smit.de)

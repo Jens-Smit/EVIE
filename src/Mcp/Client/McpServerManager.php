@@ -1,15 +1,23 @@
 <?php
+
+declare(strict_types=1);
+
 // src/Mcp/Client/McpServerManager.php
 
 namespace App\Mcp\Client;
 
-use Mcp\Client;
-use Mcp\Client\Transport\StdioTransport;
-use Mcp\Client\Transport\HttpTransport;
 use App\Mcp\Exception\McpServerUnavailableException;
+use Mcp\Client;
+use Mcp\Client\Transport\HttpTransport;
+use Mcp\Client\Transport\StdioTransport;
+use Psr\Log\LoggerInterface;
+use Psr\Log\NullLogger;
 
 final class McpServerManager
 {
+    private const MAX_RETRIES = 2;
+    private const RETRY_DELAY_SECONDS = 1;
+
     /** @var array<string, Client> */
     private array $clients = [];
 
@@ -23,6 +31,7 @@ final class McpServerManager
      */
     public function __construct(
         private readonly array $serverConfigs,
+        private readonly LoggerInterface $logger = new NullLogger(),
     ) {
     }
 
@@ -50,16 +59,34 @@ final class McpServerManager
             'http' => new HttpTransport($config['url']),
         };
 
-        try {
-            $client->connect($transport);
-        } catch (\Throwable $e) {
-            throw new McpServerUnavailableException(
-                sprintf('MCP-Server "%s" nicht erreichbar: %s', $serverAlias, $e->getMessage()),
-                previous: $e,
-            );
+        $lastException = null;
+        for ($attempt = 1; $attempt <= self::MAX_RETRIES; ++$attempt) {
+            try {
+                $client->connect($transport);
+                $this->logger->info('MCP-Server verbunden', [
+                    'server' => $serverAlias,
+                    'attempt' => $attempt,
+                ]);
+
+                return $this->clients[$serverAlias] = $client;
+            } catch (\Throwable $e) {
+                $lastException = $e;
+                $this->logger->warning('MCP-Server Verbindungsversuch fehlgeschlagen', [
+                    'server' => $serverAlias,
+                    'attempt' => $attempt,
+                    'error' => $e->getMessage(),
+                ]);
+
+                if ($attempt < self::MAX_RETRIES) {
+                    usleep(self::RETRY_DELAY_SECONDS * 1_000_000);
+                }
+            }
         }
 
-        return $this->clients[$serverAlias] = $client;
+        throw new McpServerUnavailableException(
+            sprintf('MCP-Server "%s" nach %d Versuchen nicht erreichbar: %s', $serverAlias, self::MAX_RETRIES, $lastException?->getMessage() ?? 'unbekannt'),
+            previous: $lastException,
+        );
     }
 
     /**
@@ -87,8 +114,20 @@ final class McpServerManager
         $client = $this->getClient($serverAlias);
 
         try {
-            return $client->callTool($toolName, $arguments);
+            $result = $client->callTool($toolName, $arguments);
+            $this->logger->info('MCP-Tool ausgefuehrt', [
+                'server' => $serverAlias,
+                'tool' => $toolName,
+            ]);
+
+            return $result;
         } catch (\Throwable $e) {
+            $this->logger->error('MCP-Tool-Aufruf fehlgeschlagen', [
+                'server' => $serverAlias,
+                'tool' => $toolName,
+                'error' => $e->getMessage(),
+            ]);
+
             throw new McpServerUnavailableException(
                 sprintf('Fehler beim Aufruf von Tool "%s" auf Server "%s": %s', $toolName, $serverAlias, $e->getMessage()),
                 previous: $e,
@@ -98,9 +137,32 @@ final class McpServerManager
 
     public function disconnectAll(): void
     {
-        foreach ($this->clients as $client) {
-            $client->disconnect();
+        foreach ($this->clients as $alias => $client) {
+            try {
+                $client->disconnect();
+            } catch (\Throwable $e) {
+                $this->logger->warning('Fehler beim Trennen der MCP-Server-Verbindung', [
+                    'server' => $alias,
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
         $this->clients = [];
+    }
+
+    /**
+     * Prueft, ob ein Server-Alias in der Konfiguration existiert (Whitelist).
+     */
+    public function hasServer(string $serverAlias): bool
+    {
+        return isset($this->serverConfigs[$serverAlias]);
+    }
+
+    /**
+     * @return list<string>
+     */
+    public function getAvailableServerAliases(): array
+    {
+        return array_keys($this->serverConfigs);
     }
 }
