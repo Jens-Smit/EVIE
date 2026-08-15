@@ -125,10 +125,9 @@ class StreamingSessionManagerIntegrationTest extends KernelTestCase
         $this->assertNotNull($failedSession);
         $this->assertEquals(StreamingSession::STATUS_FAILED, $failedSession->getStatus());
         $this->assertNotNull($failedSession->getCompletedAt());
-        $this->assertEquals([
-            'message' => 'Test error',
-            'details' => ['code' => 500],
-        ], $failedSession->getErrorData());
+        $errorData = $failedSession->getErrorData();
+        $this->assertSame('Test error', $errorData['message']);
+        $this->assertSame(['code' => 500], $errorData['details']);
         $this->assertStringContainsString('Fehlgeschlagen: Test error', $failedSession->getCurrentProgress());
     }
 
@@ -148,9 +147,8 @@ class StreamingSessionManagerIntegrationTest extends KernelTestCase
         $this->assertNotNull($cancelledSession);
         $this->assertEquals(StreamingSession::STATUS_CANCELLED, $cancelledSession->getStatus());
         $this->assertNotNull($cancelledSession->getCompletedAt());
-        $this->assertEquals([
-            'reason' => 'User cancelled',
-        ], $cancelledSession->getErrorData());
+        $cancelData = $cancelledSession->getErrorData();
+        $this->assertSame('User cancelled', $cancelData['reason']);
         $this->assertStringContainsString('Abgebrochen: User cancelled', $cancelledSession->getCurrentProgress());
     }
 

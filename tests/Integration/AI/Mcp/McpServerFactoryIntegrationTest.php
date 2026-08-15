@@ -23,6 +23,12 @@ class McpServerFactoryIntegrationTest extends KernelTestCase
         $this->entityManager = self::getContainer()->get('doctrine.orm.entity_manager');
         $this->repo = $this->entityManager->getRepository(McpServerDefinition::class);
         $this->factory = self::getContainer()->get(McpServerFactory::class);
+
+        $schemaTool = new \Doctrine\ORM\Tools\SchemaTool($this->entityManager);
+        try {
+            $schemaTool->createSchema($this->entityManager->getMetadataFactory()->getAllMetadata());
+        } catch (\Throwable) {
+        }
     }
 
     public function testCreateFromDefinitionWithFilesystem(): void
@@ -31,6 +37,7 @@ class McpServerFactoryIntegrationTest extends KernelTestCase
         $user = new User();
         $user->setEmail('test@example.com');
         $user->setRoles(['ROLE_USER']);
+        $user->setPassword('test-password-hash');
         $this->entityManager->persist($user);
 
         // 2. Erstelle eine MCP-Server-Definition in der DB
@@ -65,6 +72,7 @@ class McpServerFactoryIntegrationTest extends KernelTestCase
         $user = new User();
         $user->setEmail('test@example.com');
         $user->setRoles(['ROLE_USER']);
+        $user->setPassword('test-password-hash');
         $this->entityManager->persist($user);
 
         // 2. Erstelle MCP-Server-Definition in der DB
@@ -104,6 +112,7 @@ class McpServerFactoryIntegrationTest extends KernelTestCase
         $user = new User();
         $user->setEmail('test@example.com');
         $user->setRoles(['ROLE_USER']);
+        $user->setPassword('test-password-hash');
         $this->entityManager->persist($user);
 
         // 2. Erstelle mehrere MCP-Server-Definitionen
@@ -138,6 +147,7 @@ class McpServerFactoryIntegrationTest extends KernelTestCase
         $user = new User();
         $user->setEmail('test@example.com');
         $user->setRoles(['ROLE_USER']);
+        $user->setPassword('test-password-hash');
         $this->entityManager->persist($user);
 
         // 2. Erstelle eine neue Definition
@@ -164,6 +174,7 @@ class McpServerFactoryIntegrationTest extends KernelTestCase
         $user = new User();
         $user->setEmail('test@example.com');
         $user->setRoles(['ROLE_USER']);
+        $user->setPassword('test-password-hash');
         $this->entityManager->persist($user);
 
         // 2. Erstelle eine Definition in der DB
@@ -192,6 +203,7 @@ class McpServerFactoryIntegrationTest extends KernelTestCase
         $user = new User();
         $user->setEmail('test@example.com');
         $user->setRoles(['ROLE_USER']);
+        $user->setPassword('test-password-hash');
         $this->entityManager->persist($user);
 
         // 2. Erstelle aktive und inaktive Definitionen
@@ -226,6 +238,7 @@ class McpServerFactoryIntegrationTest extends KernelTestCase
         $user = new User();
         $user->setEmail('test@example.com');
         $user->setRoles(['ROLE_USER']);
+        $user->setPassword('test-password-hash');
         $this->entityManager->persist($user);
 
         // 2. Erstelle Definitionen verschiedener Typen

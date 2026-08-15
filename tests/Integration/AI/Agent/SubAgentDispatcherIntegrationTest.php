@@ -25,12 +25,7 @@ class SubAgentDispatcherIntegrationTest extends KernelTestCase
         $this->entityManager = self::getContainer()->get('doctrine.orm.entity_manager');
         $this->repo = $this->entityManager->getRepository(SubAgentDefinition::class);
         $this->subAgentFactory = self::getContainer()->get(SubAgentFactory::class);
-
-        $this->dispatcher = new SubAgentDispatcher(
-            $this->subAgentFactory,
-            $this->repo,
-            self::getContainer()->get('logger')
-        );
+        $this->dispatcher = self::getContainer()->get(SubAgentDispatcher::class);
     }
 
     public function testDelegateToDynamicSubAgent(): void
