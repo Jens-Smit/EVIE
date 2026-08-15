@@ -80,7 +80,7 @@ final class EvieToolboxFactory
     }
 
     /**
-     * @return Tool[]
+     * @return list<Subagent>
      */
     private function buildSubagentTools(): array
     {
