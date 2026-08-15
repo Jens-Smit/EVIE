@@ -80,8 +80,9 @@ final class HitlListener
         // AskUser: dynamisches Tool ohne persistierte Definition oder explizit
         // als HITL markiert. Freigabe via Frontend + PendingToolApprovalEvent.
         if (null === $definition) {
-            // Ohne persistierte ToolDefinition kann keine Freigabe erfolgen;
-            // der Guard hat AskUser nur fuer bekannte dynamische Tools zurueckgegeben.
+            // Statische/MCP-Tools ohne persistierte Definition: die Guard hat
+            // AskUser nur zurueckgegeben, wenn ein Security-Level HITL fordert.
+            // Ohne Definition kann keine Freigabe erfolgen -> DENY.
             $event->deny('Tool erfordert Freigabe, ist aber nicht registriert.');
             $this->audit('DENY', $toolCall, 'Tool erfordert Freigabe, ist aber nicht registriert.');
 

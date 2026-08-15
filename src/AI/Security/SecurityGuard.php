@@ -163,16 +163,26 @@ class SecurityGuard
             return false;
         }
 
-        // Symlink/realpath-Auflösung prüfen, falls Datei existiert
-        $realPath = @realpath($path);
-        if (false !== $realPath) {
-            $path = $realPath;
-        }
-
+        // Original-Pfad gegen Blocklist pruefen (vor realpath, da realpath
+        // Symlinks wie /var/run -> /run aufloesen kann und so einen geblockten
+        // Pfad verschleiern wuerde).
         foreach ($this->blockedPaths as $blockedPath) {
             if (str_starts_with($path, $blockedPath)) {
                 $this->logger->warning('Pfad ist geblockt', ['path' => $path]);
                 return false;
+            }
+        }
+
+        // Zusaetzlich: realpath pruefen, falls die Datei existiert, um
+        // Symlink-Escape ausserhalb der Sandbox zu erkennen. realpath
+        // darf den Original-Check aber nicht aufheben.
+        $realPath = @realpath($path);
+        if (false !== $realPath && $realPath !== $path) {
+            foreach ($this->blockedPaths as $blockedPath) {
+                if (str_starts_with($realPath, $blockedPath)) {
+                    $this->logger->warning('Pfad (realpath) ist geblockt', ['path' => $realPath]);
+                    return false;
+                }
             }
         }
 
@@ -262,24 +272,35 @@ class SecurityGuard
             }
         }
 
-        // Oktal-Form (0177.0.0.1) oder kurze Form (127.1)
-        if (preg_match('/^(\d+)(\.\d+){0,3}$/', $host)) {
+        // Oktal-Form (0177.0.0.1) oder kurze Form (127.1, 127.0.1)
+        // PHP filter_var erkennt kurze Formen nicht als IPv4, daher manuell
+        // expandieren: 127.1 -> 127.0.0.1, 192.168.1 -> 192.168.0.1
+        if (preg_match('/^(\d+)(\.\d+)*$/', $host)) {
+            $parts = explode('.', $host);
+            // Oktal-Erkennung: ein Teil mit fuehrender 0 und Laenge > 1
             $octets = array_map(
-                static fn (string $part): int => str_starts_with($part, '0') && strlen($part) > 1
+                static fn (string $part): int => str_starts_with($part, '0') && strlen($part) > 1 && ctype_digit($part)
                     ? intval($part, 8)
                     : (int) $part,
-                explode('.', $host)
+                $parts
             );
-            $octets = array_pad($octets, 4, 0);
-            // Kurze Form (z. B. 127.1) zu 4 Oktetts expandieren
-            if (count(explode('.', $host)) < 4) {
+
+            // Kurze Form expandieren (weniger als 4 Oktetts)
+            // inet_pton-kompatible Logik: das letzte Oktett wird aufgespalten
+            if (count($octets) < 4) {
                 $last = array_pop($octets);
                 $octets = array_pad($octets, 3, 0);
-                $octets[] = ($last >> 16) & 0xFF;
-                $octets[] = ($last >> 8) & 0xFF;
-                $octets[] = $last & 0xFF;
+                while ($last > 255) {
+                    array_unshift($octets, $last & 0xFF);
+                    $last >>= 8;
+                    if (count($octets) >= 4) {
+                        break;
+                    }
+                }
+                $octets = array_pad($octets, 4, 0);
+                $octets[3] = $last & 0xFF;
             }
-            // Nur zurückgeben, wenn gültige IPv4
+
             $candidate = implode('.', array_slice($octets, 0, 4));
             if (filter_var($candidate, FILTER_VALIDATE_IP, FILTER_FLAG_IPV4)) {
                 return $candidate;
@@ -475,9 +496,16 @@ class SecurityGuard
 
     private function looksLikePath(string $value): bool
     {
+        // Auch URL-encoded Pfade erkennen (%2e%2e = ..)
+        $decoded = rawurldecode($value);
+
         return str_starts_with($value, '/')
             || str_starts_with($value, './')
             || str_starts_with($value, '../')
-            || str_contains($value, '/../');
+            || str_contains($value, '/../')
+            || str_starts_with($decoded, '/')
+            || str_starts_with($decoded, './')
+            || str_starts_with($decoded, '../')
+            || str_contains($decoded, '/../');
     }
 }

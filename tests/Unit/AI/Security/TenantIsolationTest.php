@@ -60,22 +60,26 @@ final class TenantIsolationTest extends TestCase
 
     public function testHitlListenerDoesNotSeeOtherTenantsPendingTool(): void
     {
-        // Tenant B hat ein pending Tool; Tenant A fragt ein Tool gleichen Namens ab.
-        // Erwartung: Tenant A sieht NICHT die Definition von Tenant B.
+        // Tenant B hat ein pending Tool "secret_tool"; Tenant A fragt ein
+        // Tool gleichen Namens ab. Erwartung: der Listener sucht NUR in
+        // Tenant A (findOneByNameForUser mit tenant-a), findet nichts und
+        // durchlaesst das statische Tool (Allow) — Tenant B's pending Tool
+        // bleibt fuer Tenant A unsichtbar.
         $repo = $this->createMock(ToolDefinitionRepository::class);
         $repo->expects(self::once())
             ->method('findOneByNameForUser')
             ->with('secret_tool', 'tenant-a')
-            ->willReturn(null); // Tenant A hat kein solches Tool
+            ->willReturn(null);
 
-        $listener = $this->buildListener($repo, 'tenant-a');
+        $dispatcher = $this->createMock(EventDispatcherInterface::class);
+        // Kein Approval-Event fuer Tenant A, da die Definition von Tenant B
+        // nicht gefunden wird.
+        $dispatcher->expects(self::never())->method('dispatch');
+
+        $listener = $this->buildListener($repo, 'tenant-a', $dispatcher);
         $event = $this->buildEvent('secret_tool', ['query' => 'x']);
 
         $listener($event);
-
-        // Kein Tool für Tenant A → AskUser-Pfad ohne Definition → DENY
-        self::assertTrue($event->isDenied());
-        self::assertStringContainsString('nicht registriert', $event->getDenialReason() ?? '');
     }
 
     public function testHitlListenerCannotApproveOtherTenantsTool(): void

@@ -49,7 +49,7 @@ final class EvolutionFlowIntegrationTest extends TestCase
             ->setExecutorType('filesystem');
 
         $repo = $this->createMock(ToolDefinitionRepository::class);
-        $repo->method('findBy')->with(['status' => 'approved'])->willReturn([$definition]);
+        $repo->method('findAllApproved')->willReturn([$definition]);
 
         $inner = $this->createMock(ToolboxInterface::class);
         $inner->method('getTools')->willReturn([]);
@@ -285,7 +285,7 @@ final class EvolutionFlowIntegrationTest extends TestCase
             ->setSchema([]);
 
         $repo = $this->createMock(ToolDefinitionRepository::class);
-        $repo->method('findBy')->willReturn([$definition]);
+        $repo->method('findAllApproved')->willReturn([$definition]);
 
         $inner = $this->createMock(ToolboxInterface::class);
         $inner->method('getTools')->willReturn([]);

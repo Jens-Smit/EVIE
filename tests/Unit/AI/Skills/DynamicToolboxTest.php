@@ -43,7 +43,7 @@ final class DynamicToolboxTest extends TestCase
             ->setExecutorType('filesystem');
 
         $repo = $this->createMock(ToolDefinitionRepository::class);
-        $repo->method('findBy')->with(['status' => 'approved'])->willReturn([$dynamicDefinition]);
+        $repo->method('findAllApproved')->willReturn([$dynamicDefinition]);
 
         $inner = $this->createMock(ToolboxInterface::class);
         $inner->method('getTools')->willReturn([$staticTool]);
@@ -67,7 +67,7 @@ final class DynamicToolboxTest extends TestCase
             ->setExecutorType('api');
 
         $repo = $this->createMock(ToolDefinitionRepository::class);
-        $repo->method('findBy')->willReturn([$dynamicDefinition]);
+        $repo->method('findAllApproved')->willReturn([$dynamicDefinition]);
 
         $inner = $this->createMock(ToolboxInterface::class);
         $inner->method('getTools')->willReturn([]);
@@ -88,7 +88,7 @@ final class DynamicToolboxTest extends TestCase
         $staticTool = new Tool(new ExecutionReference('App\\AI\\Skills\\Tool\\FileReadTool'), 'file_read', 'Liest Dateien');
 
         $repo = $this->createMock(ToolDefinitionRepository::class);
-        $repo->method('findBy')->willReturn([]);
+        $repo->method('findAllApproved')->willReturn([]);
 
         $inner = $this->createMock(ToolboxInterface::class);
         $inner->method('getTools')->willReturn([$staticTool]);
@@ -122,7 +122,7 @@ final class DynamicToolboxTest extends TestCase
     public function testGetToolsSurvivesRepositoryFailure(): void
     {
         $repo = $this->createMock(ToolDefinitionRepository::class);
-        $repo->method('findBy')->willThrowException(new \RuntimeException('DB offline'));
+        $repo->method('findAllApproved')->willThrowException(new \RuntimeException('DB offline'));
 
         $inner = $this->createMock(ToolboxInterface::class);
         $inner->method('getTools')->willReturn([]);
@@ -143,7 +143,7 @@ final class DynamicToolboxTest extends TestCase
         $toolbox = new DynamicToolbox($inner, $repo, $this->createUserContext());
 
         // Zunächst kein approved Tool.
-        $repo->method('findBy')->willReturn([]);
+        $repo->method('findAllApproved')->willReturn([]);
         self::assertCount(0, $toolbox->getTools());
 
         // Nach Freigabe liefert das Repository das Tool — getTools() reflektiert
@@ -155,7 +155,7 @@ final class DynamicToolboxTest extends TestCase
             ->setExecutorType('generic');
 
         $repo = $this->createMock(ToolDefinitionRepository::class);
-        $repo->method('findBy')->willReturn([$approved]);
+        $repo->method('findAllApproved')->willReturn([$approved]);
         $toolbox = new DynamicToolbox($inner, $repo, $this->createUserContext());
 
         $tools = $toolbox->getTools();
