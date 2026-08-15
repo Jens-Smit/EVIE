@@ -4,7 +4,7 @@
 namespace App\EventListener;
 
 use App\Event\PendingToolApprovalEvent;
-use App\AI\Skills\DynamicSkillRegistry;
+use App\Entity\ToolDefinition;
 use Symfony\Component\Notifier\NotifierInterface;
 use Symfony\Component\Notifier\Message\ChatMessage;
 use Symfony\Component\Notifier\Recipient\Recipient;
@@ -21,7 +21,6 @@ final readonly class PendingToolApprovalListener
         private NotifierInterface $notifier,
         private UrlGeneratorInterface $urlGenerator,
         private LoggerInterface $logger,
-        private DynamicSkillRegistry $dynamicSkillRegistry,
     ) {
     }
 
@@ -102,14 +101,10 @@ final readonly class PendingToolApprovalListener
     {
         $toolDefinition = $event->getToolDefinition();
 
-        if ($toolDefinition->isApproved()) {
-            // Tool im Registry registrieren
-            $this->dynamicSkillRegistry->addTool($toolDefinition);
-
-            // Registry neu laden, um sicherzustellen, dass alles synchron ist
-            $this->dynamicSkillRegistry->reload();
-
-            $this->logger->info('Tool nach Genehmigung im Registry registriert', [
+        // Die native DynamicToolbox liest approved Tools live aus der Datenbank
+        // (Blueprint §4.B) — ein Registry-Update ist nicht erforderlich.
+        if ('approved' === $toolDefinition->getStatus()) {
+            $this->logger->info('Tool genehmigt und über DynamicToolbox verfügbar', [
                 'tool_id' => $toolDefinition->getId(),
                 'tool_name' => $toolDefinition->getName(),
             ]);

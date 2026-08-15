@@ -5,7 +5,6 @@ namespace App\Controller;
 
 use App\Entity\ToolDefinition;
 use App\Repository\ToolDefinitionRepository;
-use App\AI\Skills\DynamicSkillRegistry;
 use App\Event\PendingToolApprovalEvent;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -26,7 +25,6 @@ final class ToolApprovalController extends AbstractController
 {
     public function __construct(
         private ToolDefinitionRepository $toolDefinitionRepo,
-        private DynamicSkillRegistry $dynamicSkillRegistry,
         private EventDispatcherInterface $dispatcher,
         private UrlGeneratorInterface $urlGenerator,
         private LoggerInterface $logger,
@@ -96,10 +94,9 @@ final class ToolApprovalController extends AbstractController
             $toolDefinition->setStatus('approved');
             $toolDefinition->setUpdatedAt(new \DateTimeImmutable());
             
-            // Füge das Tool zum DynamicSkillRegistry hinzu
-            $this->dynamicSkillRegistry->addTool($toolDefinition);
-            
-            $this->logger->info('Tool freigegeben und im Registry registriert', [
+            // DynamicToolbox liest approved Tools live aus der Datenbank (Blueprint §4.B);
+            // ein explizites Registry-Update ist nicht erforderlich.
+            $this->logger->info('Tool freigegeben', [
                 'tool_id' => $toolDefinition->getId(),
                 'tool_name' => $toolDefinition->getName(),
             ]);
@@ -238,9 +235,7 @@ final class ToolApprovalController extends AbstractController
             $tool->setUpdatedAt(new \DateTimeImmutable());
             $this->toolDefinitionRepo->save($tool, true);
 
-            // Aus dem Registry entfernen
-            $this->dynamicSkillRegistry->removeTool($tool->getName());
-
+            // DynamicToolbox reflektiert den geänderten Status beim nächsten Aufruf.
             $this->logger->info('Tool-Status zurückgesetzt', [
                 'tool_id' => $id,
                 'tool_name' => $tool->getName(),

@@ -150,11 +150,10 @@ ai:
                 - { service: 'App\AI\Skills\Tool\LinkedInTool' }
                 - { service: 'App\AI\Skills\Tool\OAuthTool' }
                 - { service: 'App\AI\Skills\Tool\RestApiTool' }
-                
-                # Dynamische Tools aus der Datenbank
-                - service: 'App\AI\Skills\Tool\DynamicToolDispatcher'
-                  name: 'dynamic_tool_executor'
-                  description: 'Führt dynamisch generierte Tools aus der Datenbank aus.'
+
+                # Dynamische Tools aus der Datenbank werden zur Laufzeit über die
+                # native DynamicToolbox (ToolboxInterface-Decorator) ergänzt —
+                # kein handgeschriebener Dispatcher nötig (Blueprint §4.B).
 
         # Website Research Agent
         website_researcher:

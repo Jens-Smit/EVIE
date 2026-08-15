@@ -152,3 +152,18 @@
 - [x] Phase 5: Unit-Tests (DynamicToolbox, HitlListener, SecurityGuard::decide)
       + Integration-Test (EvolutionFlowIntegrationTest)
 - [x] CI grün auf `main` (E2E test/dev/prod + PHPStan non-fatal)
+
+## Folgebereinigung (Runde 2)
+
+- [x] DynamicSkillRegistry + DynamicSkillRegistryInterface entfernt
+      (parallele Tool-Infrastruktur abgebaut, Blueprint §2/§4.B)
+- [x] HitlInterceptor (handgeschriebener Tool-Decorator) + HitlToolCallListener
+      (falsches Event) entfernt — ersetzt durch nativen HitlListener
+- [x] DynamicToolDispatcher (#[AsTool] mit halluzinierten Methoden) entfernt;
+      dynamische Tools laufen über native DynamicToolbox
+- [x] ToolApprovalController / ToolListController / PendingToolApprovalListener /
+      HitlWorkflowManager / WorkflowOrchestrator / SubAgentFactory von
+      DynamicSkillRegistry-Abhängigkeit befreit
+- [x] Veraltete Tests (DynamicSkillRegistryTest, ToolEvolutionTest, etc.) entfernt
+- [ ] SubAgentDispatcher: bleibt vorerst (tief im HTMXController integriert);
+      Migration auf native Subagent-Tools ist ein separates Refactoring

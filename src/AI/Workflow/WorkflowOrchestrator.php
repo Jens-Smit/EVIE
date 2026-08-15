@@ -9,7 +9,6 @@ use App\AI\Skills\Tool\DynamicTool;
 use App\AI\Skills\Tool\DynamicToolFactory;
 use App\AI\Skills\Tool\DynamicToolExecutor;
 use App\AI\Skills\ToolDefinitionGenerator;
-use App\AI\Skills\DynamicSkillRegistry;
 use App\AI\Workflow\HitlWorkflowManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -28,7 +27,6 @@ class WorkflowOrchestrator
         private DynamicToolFactory $toolFactory,
         private DynamicToolExecutor $toolExecutor,
         private ToolDefinitionGenerator $toolDefinitionGenerator,
-        private DynamicSkillRegistry $skillRegistry,
         private HitlWorkflowManager $hitlWorkflowManager,
         private ContextInjector $contextInjector,
         private EntityManagerInterface $entityManager,

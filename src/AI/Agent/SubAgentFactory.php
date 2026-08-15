@@ -14,7 +14,6 @@ use Symfony\AI\Agent\AgentInterface;
 use Symfony\AI\Agent\InputProcessor\SystemPromptInputProcessor;
 use Symfony\AI\Platform\PlatformInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
-use App\AI\Skills\DynamicSkillRegistryInterface; 
 /**
  * Factory für die dynamische und statische Erstellung von Sub-Agenten.
  * Unterstützt:
@@ -31,8 +30,6 @@ final class SubAgentFactory implements SubAgentFactoryInterface
     private PlatformInterface $platform;
     private ToolDefinitionRepository $toolDefinitionRepo;
     
-    /** @var \App\AI\Skills\DynamicSkillRegistryInterface|null */
-    private $dynamicSkillRegistry = null;
     
     private LoggerInterface $logger;
     private ContainerInterface $container;
@@ -53,14 +50,6 @@ final class SubAgentFactory implements SubAgentFactoryInterface
         $this->container = $container;
         $this->subAgentDefinitionRepo = $subAgentDefinitionRepo;
         $this->params = $params;
-    }
-
-    /**
-     * Setzt das DynamicSkillRegistry (für Setter Injection zur Vermeidung zirkulärer Abhängigkeiten).
-     */
-    public function setDynamicSkillRegistry(\App\AI\Skills\DynamicSkillRegistryInterface $dynamicSkillRegistry): void
-    {
-        $this->dynamicSkillRegistry = $dynamicSkillRegistry;
     }
 
     /**
@@ -146,9 +135,6 @@ final class SubAgentFactory implements SubAgentFactoryInterface
                 
                 $toolDefinition = $this->createToolDefinitionForSubAgent($definition, $subAgent);
                 
-                if ($this->dynamicSkillRegistry !== null) {
-                    $this->dynamicSkillRegistry->addTool($toolDefinition);
-                }
 
                 $this->logger->info('Sub-Agent aus Datenbank registriert', [
                     'name' => $definition->getName(),
@@ -293,9 +279,6 @@ final class SubAgentFactory implements SubAgentFactoryInterface
             'required' => ['task'],
         ]);
         $this->toolDefinitionRepo->save($toolDefinition, true);
-        if ($this->dynamicSkillRegistry !== null) {
-            $this->dynamicSkillRegistry->addTool($toolDefinition);
-        }
     }
 
     /**
@@ -317,9 +300,6 @@ final class SubAgentFactory implements SubAgentFactoryInterface
             'required' => ['task'],
         ]);
         $this->toolDefinitionRepo->save($toolDefinition, true);
-        if ($this->dynamicSkillRegistry !== null) {
-            $this->dynamicSkillRegistry->addTool($toolDefinition);
-        }
     }
 
     /**

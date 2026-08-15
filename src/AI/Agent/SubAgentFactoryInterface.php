@@ -2,7 +2,7 @@
 
 namespace App\AI\Agent;
 
-use App\AI\Skills\DynamicSkillRegistryInterface; 
+
 use Symfony\AI\Agent\AgentInterface;
 use App\Entity\SubAgentDefinition;
 use Symfony\AI\Agent\Toolbox\Tool\Subagent;
@@ -132,9 +132,4 @@ interface SubAgentFactoryInterface
      * Erstellt den CEO Assistant Agent.
      */
     public function createCeoAssistantAgent(): AgentInterface;
-
-    /**
-     * Setzt das DynamicSkillRegistry (für Setter Injection zur Vermeidung zirkulärer Abhängigkeiten).
-     */
-    public function setDynamicSkillRegistry(DynamicSkillRegistryInterface $dynamicSkillRegistry): void;
 }

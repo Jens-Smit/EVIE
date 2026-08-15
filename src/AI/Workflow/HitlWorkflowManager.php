@@ -5,7 +5,6 @@ namespace App\AI\Workflow;
 use App\Entity\ToolDefinition;
 use App\Entity\User;
 use App\AI\Skills\Tool\DynamicTool;
-use App\AI\Skills\DynamicSkillRegistry;
 use App\AI\Security\AuditLogger;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
@@ -20,7 +19,6 @@ class HitlWorkflowManager
 
     public function __construct(
         private EntityManagerInterface $entityManager,
-        private DynamicSkillRegistry $skillRegistry,
         private AuditLogger $auditLogger,
         private LoggerInterface $logger
     ) {
@@ -86,9 +84,8 @@ class HitlWorkflowManager
         if ($definition && $definition->getStatus() === 'pending') {
             $definition->setStatus('approved');
             $this->entityManager->flush();
-            
-            // Registriere das Tool
-            $this->skillRegistry->registerTool($pendingExecution->getTool(), $definition);
+
+            // DynamicToolbox übernimmt das Tool beim nächsten Aufruf live aus der DB (Blueprint §4.B).
         }
 
         // Führe die Execution aus

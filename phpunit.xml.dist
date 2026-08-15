@@ -56,11 +56,6 @@
             <directory>tests/Unit/AI/Agent</directory>
         </testsuite>
 
-        <!-- PHASE 3: Spezifische Test-Suite fuer Evolution-Flow -->
-        <testsuite name="EVIE Phase 3 Tests">
-            <file>tests/Functional/AI/ToolEvolutionTest.php</file>
-            <file>tests/Unit/AI/Skills/DynamicSkillRegistryTest.php</file>
-        </testsuite>
     </testsuites>
 
     <!-- Source Configuration -->
