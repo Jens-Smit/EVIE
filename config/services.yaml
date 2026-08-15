@@ -28,6 +28,7 @@ services:
 
     # Security Services
     App\Security\UserProvider: ~
+    App\Security\UserContext: ~
     App\Security\ResetPasswordTokenGenerator: ~
 
     App\Security\Authenticator\LoginFormAuthenticator:

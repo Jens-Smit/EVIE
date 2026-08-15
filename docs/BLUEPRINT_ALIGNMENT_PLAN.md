@@ -225,3 +225,12 @@
 ### P2-10: Observability
 - [x] ObservabilityListener: Request-ID/Trace-ID in Request+Response-Header
       (X-Request-ID, X-Trace-ID), korreliertes Logging
+
+### P0-2: RAG — nativer Store-Adapter + User-Filtering
+- [x] StoreRetrieverAdapter: implementiert Symfony\AI\Store\RetrieverInterface
+      (bridgt EVIE-Retriever zu nativen VectorDocument mit NullVector + Metadata)
+- [x] User/Tenant-Filtering: user_identifier in Retrieval-Options für Store-Isolation
+
+### P1-7: Tenant/User-Isolation
+- [x] UserContext-Service: hält User-Identifier für ToolDefinitions/RAG/Memory/Audit
+      (RequestStack-basiert, als Service in services.yaml registriert)
