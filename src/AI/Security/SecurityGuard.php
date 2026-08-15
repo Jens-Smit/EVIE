@@ -250,6 +250,21 @@ class SecurityGuard
      * Blockade laeuft ueber den nativen HitlListener (ToolCallRequested).
      * Diese Methode wird nur vom Legacy-McpToolExecutor genutzt.
      */
+    /**
+     * Prueft, ob eine Ressource (URL oder Pfad) blockiert ist (Blueprint §4.E).
+     *
+     * Legacy-Methode fuer den McpServerFactory/McpToolExecutor; die harte
+     * Policy-Entscheidung erfolgt im HitlListener (ToolCallRequested).
+     */
+    public function isResourceBlocked(string $resource): bool
+    {
+        if ($this->looksLikeUrl($resource)) {
+            return !$this->isUrlSafe($resource);
+        }
+
+        return !$this->isPathSafe($resource);
+    }
+
     public function isToolAllowed(string $toolName): bool
     {
         // Statische und MCP-Tools sind per Default zugelassen; die
