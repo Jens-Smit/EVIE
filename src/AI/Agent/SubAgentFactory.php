@@ -178,6 +178,7 @@ final class SubAgentFactory implements SubAgentFactoryInterface
         $toolDefinition->setName('sub_agent_' . $definition->getName());
         $toolDefinition->setDescription($definition->getDescription());
         $toolDefinition->setStatus('approved');
+        $toolDefinition->setCategory('sub_agent');
         $toolDefinition->setSchema([
             'type' => 'object',
             'properties' => [
@@ -306,6 +307,7 @@ final class SubAgentFactory implements SubAgentFactoryInterface
         $toolDefinition->setName('sub_agent_' . $name);
         $toolDefinition->setDescription($description);
         $toolDefinition->setStatus('approved');
+        $toolDefinition->setCategory('sub_agent');
         $toolDefinition->setSchema([
             'type' => 'object',
             'properties' => [
