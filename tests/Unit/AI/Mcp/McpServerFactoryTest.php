@@ -67,18 +67,6 @@ class McpServerFactoryTest extends TestCase
             ->with('ai.mcp.server.filesystem')
             ->willReturn($serverMock);
 
-        $serverMock
-            ->method('setConfiguration')
-            ->willReturn(null);
-
-        $serverMock
-            ->method('setAllowedTools')
-            ->willReturn(null);
-
-        $serverMock
-            ->method('setBlockedResources')
-            ->willReturn(null);
-
         $result = $this->factory->createFromDefinition($definition);
 
         $this->assertSame($serverMock, $result);
@@ -127,18 +115,6 @@ class McpServerFactoryTest extends TestCase
         $this->containerMock
             ->method('get')
             ->willReturn($serverMock);
-
-        $serverMock
-            ->method('setConfiguration')
-            ->willReturn(null);
-
-        $serverMock
-            ->method('setAllowedTools')
-            ->willReturn(null);
-
-        $serverMock
-            ->method('setBlockedResources')
-            ->willReturn(null);
 
         $result = $this->factory->createByName('test_filesystem');
 
@@ -216,26 +192,6 @@ class McpServerFactoryTest extends TestCase
             ->method('get')
             ->willReturnOnConsecutiveCalls($server1Mock, $server2Mock);
 
-        $server1Mock
-            ->method('setConfiguration')
-            ->willReturn(null);
-        $server1Mock
-            ->method('setAllowedTools')
-            ->willReturn(null);
-        $server1Mock
-            ->method('setBlockedResources')
-            ->willReturn(null);
-
-        $server2Mock
-            ->method('setConfiguration')
-            ->willReturn(null);
-        $server2Mock
-            ->method('setAllowedTools')
-            ->willReturn(null);
-        $server2Mock
-            ->method('setBlockedResources')
-            ->willReturn(null);
-
         $result = $this->factory->createAllFromDatabase();
 
         $this->assertCount(2, $result);
@@ -257,13 +213,13 @@ class McpServerFactoryTest extends TestCase
             ->willReturn($entityManagerMock);
 
         $entityManagerMock
+            ->expects(self::once())
             ->method('persist')
-            ->with($definition)
-            ->willReturn(null);
+            ->with($definition);
 
         $entityManagerMock
-            ->method('flush')
-            ->willReturn(null);
+            ->expects(self::once())
+            ->method('flush');
 
         $this->securityGuardMock
             ->method('isServiceAllowed')
@@ -271,9 +227,7 @@ class McpServerFactoryTest extends TestCase
 
         $this->factory->registerMcpServer($definition);
 
-        // Verify persist and flush were called
-        $entityManagerMock->method('persist')->willReturn(null);
-        $entityManagerMock->method('flush')->willReturn(null);
+        self::assertSame('new_server', $definition->getName());
     }
 
     public function testGetAvailableServers(): void

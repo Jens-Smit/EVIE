@@ -242,6 +242,21 @@ class SecurityGuard
      *            (requiresHitl) oder hohem Security-Level.
      *  - Allow:   statisches Tool ohne Policy-Verstoss.
      */
+    /**
+     * Prueft, ob ein Tool-Name zur Ausfuehrung zugelassen ist (Blueprint §4.E).
+     *
+     * Fuer statische Tools und MCP-Tools ohne persistierte ToolDefinition
+     * ist kein dynamischer Policy-Verstoss feststellbar — die harte HITL-
+     * Blockade laeuft ueber den nativen HitlListener (ToolCallRequested).
+     * Diese Methode wird nur vom Legacy-McpToolExecutor genutzt.
+     */
+    public function isToolAllowed(string $toolName): bool
+    {
+        // Statische und MCP-Tools sind per Default zugelassen; die
+        // Policy-Entscheidung (Allow/Deny/AskUser) erfolgt im HitlListener.
+        return true;
+    }
+
     public function decide(ToolCall $toolCall, ?ToolDefinition $definition = null): PolicyDecision
     {
         if (null !== $definition && null !== $definition->getExecutorType()) {

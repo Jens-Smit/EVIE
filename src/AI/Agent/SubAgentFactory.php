@@ -25,7 +25,7 @@ use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
  * 
  * @implements SubAgentFactoryInterface
  */
-final class SubAgentFactory implements SubAgentFactoryInterface
+class SubAgentFactory implements SubAgentFactoryInterface
 {
     private PlatformInterface $platform;
     private ToolDefinitionRepository $toolDefinitionRepo;

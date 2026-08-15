@@ -33,21 +33,15 @@ class StreamingSessionManagerTest extends TestCase
 
     public function testCreateSession(): void
     {
-        $sessionMock = $this->createMock(StreamingSession::class);
-        $sessionMock->method('getSessionId')->willReturn('session_123');
+        // createSession erzeugt intern eine echte StreamingSession, daher
+        // darf persist nicht auf ein bestimmtes Mock-Objekt gematcht werden.
+        $this->entityManagerMock
+            ->expects(self::once())
+            ->method('persist');
 
         $this->entityManagerMock
-            ->method('persist')
-            ->with($sessionMock)
-            ->willReturn(null);
-
-        $this->entityManagerMock
-            ->method('flush')
-            ->willReturn(null);
-
-        $this->entityManagerMock
-            ->method('getRepository')
-            ->willReturn($this->createMock(\Doctrine\ORM\EntityRepository::class));
+            ->expects(self::once())
+            ->method('flush');
 
         $result = $this->manager->createSession(
             'test_tool',
@@ -55,8 +49,9 @@ class StreamingSessionManagerTest extends TestCase
             'user_123'
         );
 
-        $this->assertNotNull($result);
-        $this->assertEquals('test_tool', $result->getToolName());
+        self::assertNotNull($result);
+        self::assertSame('test_tool', $result->getToolName());
+        self::assertNotEmpty($result->getSessionId());
     }
 
     public function testStartSession(): void
