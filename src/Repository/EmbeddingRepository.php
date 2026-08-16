@@ -35,28 +35,14 @@ class EmbeddingRepository extends ServiceEntityRepository
      */
     public function findSimilar(string $contentType, array $queryVector, int $limit = 5, float $minSimilarity = 0.5, ?string $userIdentifier = null): array
     {
-        $candidates = $this->findBy(['contentType' => $contentType]);
-
-        // P0-1: Tenant-Filter auf Ergebnis-Ebene. Doctrine/SQLite kennt
-        // keinen JSON-Pfad-Zugriff in findBy(), deshalb wird hier gefiltert.
-        // In Postgres wuerde die Query `metadata->>'user_identifier'`
-        // verwenden; die logische Semantik (gleicher Tenant ODER System-
-        // Wissen ohne Identifier) bleibt identisch.
-        if (null !== $userIdentifier) {
-            $candidates = array_filter(
-                $candidates,
-                static function (Embedding $embedding) use ($userIdentifier): bool {
-                    $meta = $embedding->getMetadata();
-                    $tenant = $meta['user_identifier'] ?? null;
-
-                    // null-Tenant = systemweites Wissen (z. B. globale
-                    // Tool-Beschreibungen); weiterhin fuer alle sichtbar.
-                    return null === $tenant || $tenant === $userIdentifier;
-                },
-            );
-            // array_filter erhaelt die Schluessel; neu indizieren.
-            $candidates = array_values($candidates);
-        }
+        // Performance (Audit #1 N+1 / #3 Vektor-Suche): die Kandidatenmenge
+        // wird per WHERE contentType = ? eingeschraenkt, statt alle Embeddings
+        // ueber findBy() in den Speicher zu laden. Bei Postgres zusaetzlich
+        // mit nativem JSON-Filter auf den Tenant (metadata->>'user_identifier'),
+        // sodass nur relevante Zeilen geladen werden. Bei SQLite (Tests) bleibt
+        // die Tenant-Filterung auf PHP-Ebene als Fallback, da SQLite keinen
+        // JSON-Pfad-Zugriff in DQL unterstuetzt.
+        $candidates = $this->loadCandidates($contentType, $userIdentifier);
 
         $queryEmbedding = new Embedding();
         $queryEmbedding->setVector($queryVector);
@@ -76,6 +62,60 @@ class EmbeddingRepository extends ServiceEntityRepository
         usort($scored, fn($a, $b) => $b['similarity'] <=> $a['similarity']);
 
         return array_slice($scored, 0, $limit);
+    }
+
+    /**
+     * Laedt die Embedding-Kandidaten fuer findSimilar() mit Content-Typ- und
+     * (bei Postgres) Tenant-Filterung auf SQL-Ebene, um die in den Speicher
+     * geladene Datenmenge zu minimieren (Audit #1 N+1 / #3 Vektor-Suche).
+     *
+     * @return list<Embedding>
+     */
+    private function loadCandidates(string $contentType, ?string $userIdentifier): array
+    {
+        $conn = $this->getEntityManager()->getConnection();
+        $platform = $conn->getDatabasePlatform();
+
+        // Postgres: nativer JSON-Pfad-Zugriff fuer den Tenant-Filter, sodass
+        // nur Zeilen mit passendem user_identifier (oder ohne Tenant-Bezug)
+        // geladen werden. Reduziert die Kandidatenmenge bereits serverseitig.
+        if (null !== $userIdentifier && method_exists($platform, 'getName') && $platform->getName() === 'postgresql') {
+            $sql = "SELECT id FROM embeddings "
+                . "WHERE content_type = :contentType "
+                . "AND (metadata->>'user_identifier' = :userIdentifier OR metadata->>'user_identifier' IS NULL)";
+            $rows = $conn->executeQuery($sql, [
+                'contentType' => $contentType,
+                'userIdentifier' => $userIdentifier,
+            ])->fetchAllAssociative();
+
+            if ([] === $rows) {
+                return [];
+            }
+
+            $ids = array_column($rows, 'id');
+
+            return $this->findBy(['id' => $ids]);
+        }
+
+        // SQLite (Tests) oder ohne Tenant-Filter: Doctrine-Query mit Content-Typ-
+        // Filter. Die Tenant-Filterung muss hier auf PHP-Ebene erfolgen, da SQLite
+        // keinen JSON-Pfad-Zugriff in DQL unterstuetzt.
+        $candidates = $this->findBy(['contentType' => $contentType]);
+
+        if (null === $userIdentifier) {
+            return $candidates;
+        }
+
+        return array_values(array_filter(
+            $candidates,
+            static function (Embedding $embedding) use ($userIdentifier): bool {
+                $meta = $embedding->getMetadata();
+                $tenant = $meta['user_identifier'] ?? null;
+
+                // null-Tenant = systemweites Wissen; weiterhin fuer alle sichtbar.
+                return null === $tenant || $tenant === $userIdentifier;
+            },
+        ));
     }
 
     public function findByContentHash(string $hash): ?Embedding
