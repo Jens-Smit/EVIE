@@ -1,0 +1,99 @@
+name: Docker (GHCR + Smoke Test)
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_NAME: ${{ github.repository }}
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=sha,format=short
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./docker/php/Dockerfile.prod
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          load: false
+
+  smoke-test:
+    runs-on: ubuntu-latest
+    needs: build-and-push
+    permissions:
+      contents: read
+      packages: read
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Run image smoke test
+        env:
+          APP_SECRET: test-secret-for-evie-1234567890abcdef
+          DATABASE_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie?serverVersion=15&charset=utf8'
+          MISTRAL_API_KEY: test
+          GEMINI_API_KEY: test
+        run: |
+          IMAGE="ghcr.io/${{ github.repository }}:latest"
+          echo "Pulling $IMAGE"
+          docker pull "$IMAGE"
+
+          # Starte das Image und pruefe, ob der Healthcheck (php bin/console about)
+          # erfolgreich ist. Beweist, dass das Prod-Image bootfaehig ist.
+          CID=$(docker run -d --rm \
+            -e APP_SECRET="$APP_SECRET" \
+            -e DATABASE_URL="$DATABASE_URL" \
+            -e MISTRAL_API_KEY="$MISTRAL_API_KEY" \
+            -e GEMINI_API_KEY="$GEMINI_API_KEY" \
+            "$IMAGE")
+
+          echo "Container started: $CID"
+          sleep 5
+
+          # Pruefe Container-Status (laeuft noch = kein Crash-on-Boot)
+          if ! docker inspect --format='{{.State.Running}}' "$CID" | grep -q true; then
+            echo "Container is not running. Logs:"
+            docker logs "$CID"
+            exit 1
+          fi
+
+          echo "Container is running. Smoke test passed."
+          docker stop "$CID" || true

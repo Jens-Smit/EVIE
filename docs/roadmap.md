@@ -112,7 +112,8 @@
       `HTMXController` nutzt jetzt `DynamicToolFactory` (injiziert) für
       Tool-Liste (`getAllTools`) und Tool-Lookup (`getTool`) + `DynamicToolExecutor`
       für Ausführung mit Tool-Objekt (statt nicht-existierendem
-      `execute(string)`/`getAvailableTools()`). Behebt echten HTTP-Laufzeitfehler. (`.github/workflows/ci.yml`):
+      `execute(string)`/`getAvailableTools()`). Behebt echten HTTP-Laufzeitfehler.
+- [x] **P1-D — GHCR-Publishing + Docker-Smoke-Test** (`.github/workflows/docker.yml`): neuer Workflow baut das Prod-Image (`docker/php/Dockerfile.prod`), pusht es zu GHCR (`ghcr.io/jens-smit/evie:latest` + SHA-Tag) bei main-Pushes, und führt danach einen Smoke-Test aus (Image starten, Boot-Status prüfen). Läuft nur bei main-Pushes und `workflow_dispatch`. (`.github/workflows/ci.yml`):
       der `migrations`-Job führt nun `doctrine:migrations:migrate` (statt
       bisher `doctrine:schema:create`) gegen eine frische leere
       PostgreSQL-15+pgvector-Instanz aus. `doctrine:schema:validate` bleibt als
@@ -122,12 +123,6 @@
 ---
 
 ## ⬜ Offen — P1 (vor Production adressieren)
-
-### P1-D — Production Docker (GHCR, nginx, Messenger-Worker) 🟡
-**Befund:** `docker-compose.prod.yml` existiert mit Messenger-Worker-Container
-und Redis (verifiziert), aber GHCR-Publishing fehlt noch.
-**Offen:** GHCR-Image-Publishing CI-Step, Docker-Smoke-Test in CI.
-**Aufwand:** ~0,5 Tag.
 
 ---
 
