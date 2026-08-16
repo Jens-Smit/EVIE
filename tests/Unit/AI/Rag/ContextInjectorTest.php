@@ -9,10 +9,14 @@ use App\AI\Rag\RetrievalResult;
 use App\AI\Rag\Retriever;
 use App\AI\Rag\RetrievedItem;
 use App\Entity\Embedding;
+use App\Security\UserContext;
 use PHPUnit\Framework\TestCase;
 use Symfony\AI\Agent\Input;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\RequestStack;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 
 /**
  * Unit-Tests für den nativen ContextInjector InputProcessor (Blueprint §4.H).
@@ -30,7 +34,7 @@ final class ContextInjectorTest extends TestCase
                 $this->createItem('Relevant context about CSV parsing', 0.95, 'knowledge'),
             ]));
 
-        $injector = new ContextInjector($retriever);
+        $injector = new ContextInjector($retriever, $this->createUserContext());
         $messageBag = new MessageBag(Message::ofUser('Analysiere diese CSV-Datei'));
         $input = new Input('mistral-small-latest', $messageBag);
 
@@ -46,7 +50,7 @@ final class ContextInjectorTest extends TestCase
         $retriever->method('retrieve')
             ->willReturn(new RetrievalResult('query', []));
 
-        $injector = new ContextInjector($retriever);
+        $injector = new ContextInjector($retriever, $this->createUserContext());
         $messageBag = new MessageBag(Message::ofUser('Frage ohne Kontext'));
         $input = new Input('mistral-small-latest', $messageBag);
 
@@ -58,7 +62,7 @@ final class ContextInjectorTest extends TestCase
     public function testProcessInputDoesNothingWithEmptyQuery(): void
     {
         $retriever = $this->createMock(Retriever::class);
-        $injector = new ContextInjector($retriever);
+        $injector = new ContextInjector($retriever, $this->createUserContext());
 
         $messageBag = new MessageBag();
         $input = new Input('mistral-small-latest', $messageBag);
@@ -76,11 +80,29 @@ final class ContextInjectorTest extends TestCase
                 $this->createItem('Wichtige Infos', 0.9, 'knowledge'),
             ]));
 
-        $injector = new ContextInjector($retriever);
+        $injector = new ContextInjector($retriever, $this->createUserContext());
         $result = $injector->inject('Prompt mit {context}', 'query');
 
         self::assertStringContainsString('Wichtige Infos', $result);
         self::assertStringNotContainsString('{context}', $result);
+    }
+
+
+    private function createUserContext(?string $identifier = null): UserContext
+    {
+        // UserContext is final and cannot be mocked. We build a real instance
+        // with a RequestStack carrying the tenant identifier (the fallback
+        // path UserContext uses when no Security-Token is present).
+        $request = new Request();
+        if (null !== $identifier) {
+            $request->attributes->set('_evie_user_identifier', $identifier);
+        }
+        $requestStack = new RequestStack();
+        $requestStack->push($request);
+        $tokenStorage = $this->createMock(TokenStorageInterface::class);
+        $tokenStorage->method('getToken')->willReturn(null);
+
+        return new UserContext($requestStack, $tokenStorage);
     }
 
     private function createItem(string $content, float $similarity, string $contentType): RetrievedItem

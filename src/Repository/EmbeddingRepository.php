@@ -13,9 +13,50 @@ class EmbeddingRepository extends ServiceEntityRepository
         parent::__construct($registry, Embedding::class);
     }
 
-    public function findSimilar(string $contentType, array $queryVector, int $limit = 5, float $minSimilarity = 0.5): array
+    /**
+     * Aehnliche Embeddings fuer einen Query-Vektor suchen.
+     *
+     * P0-1 Tenant-Isolation: ist $userIdentifier gesetzt, werden nur
+     * Embeddings beruecksichtigt, deren Metadata entweder denselben
+     * user_identifier tragen oder gar keinen Tenant-Bezug haben (System-
+     * Wissen). So kann Tenant B niemals Kontext von Tenant A empfangen.
+     *
+     * Die Filterung erfolgt serverseitig auf Repository-Ebene (nicht nur
+     * im Aufrufer), sodass jeder Konsument von findSimilar() isoliert
+     * ist, auch wenn er den Identifier nur weiterreicht.
+     *
+     * @param string          $contentType     Zu durchsuchender Content-Typ
+     * @param list<int|float> $queryVector     Query-Einbettung
+     * @param int             $limit           Max. Anzahl Ergebnisse
+     * @param float           $minSimilarity   Mindest-Aehnlichkeit
+     * @param string|null     $userIdentifier  Tenant-Filter (P0-1)
+     *
+     * @return array<int, array{embedding: Embedding, similarity: float, distance: float}>
+     */
+    public function findSimilar(string $contentType, array $queryVector, int $limit = 5, float $minSimilarity = 0.5, ?string $userIdentifier = null): array
     {
         $candidates = $this->findBy(['contentType' => $contentType]);
+
+        // P0-1: Tenant-Filter auf Ergebnis-Ebene. Doctrine/SQLite kennt
+        // keinen JSON-Pfad-Zugriff in findBy(), deshalb wird hier gefiltert.
+        // In Postgres wuerde die Query `metadata->>'user_identifier'`
+        // verwenden; die logische Semantik (gleicher Tenant ODER System-
+        // Wissen ohne Identifier) bleibt identisch.
+        if (null !== $userIdentifier) {
+            $candidates = array_filter(
+                $candidates,
+                static function (Embedding $embedding) use ($userIdentifier): bool {
+                    $meta = $embedding->getMetadata();
+                    $tenant = $meta['user_identifier'] ?? null;
+
+                    // null-Tenant = systemweites Wissen (z. B. globale
+                    // Tool-Beschreibungen); weiterhin fuer alle sichtbar.
+                    return null === $tenant || $tenant === $userIdentifier;
+                },
+            );
+            // array_filter erhaelt die Schluessel; neu indizieren.
+            $candidates = array_values($candidates);
+        }
 
         $queryEmbedding = new Embedding();
         $queryEmbedding->setVector($queryVector);

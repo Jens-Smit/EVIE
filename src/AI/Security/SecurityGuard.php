@@ -455,6 +455,13 @@ class SecurityGuard
             if ($this->looksLikePath($value) && !$this->isPathSafe($value)) {
                 return PolicyDecision::Deny;
             }
+            // P1-3: Shell-Metazeichen in String-Argumenten blockieren, die
+            // an Executoren mit Prozess-/Subprozess-Charakter gehen
+            // (Command-Chaining, Command-Substitution). Verhindert
+            // Injection-Payloads wie "; rm -rf /", "`whoami`", "$(cat ...)".
+            if ($this->containsShellMetacharacters($value)) {
+                return PolicyDecision::Deny;
+            }
         }
 
         if (null !== $definition && (true === $definition->getRequiresHitl() || 'high' === $definition->getSecurityLevel())) {
@@ -497,6 +504,41 @@ class SecurityGuard
         }
 
         return $strings;
+    }
+
+    /**
+     * Erkennt Shell-Metazeichen / Command-Injection-Pattern in einem
+     * String-Argument (P1-3).
+     *
+     * Geprueft werden Command-Chaining-Operatoren (;, &&, ||, |) und
+     * Command-Substitution-Syntax (`backticks`, $(...), ${...}). Diese
+     * Zeichen in Tool-Argumenten sind ein starkes Indiz fuer Injection-
+     * Versuche, da legitime Argumente (URLs, Pfade, Suchbegriffe) diese
+     * nicht enthalten.
+     *
+     * Die Pruefung ist bewusst konservativ: sie blockiert potenziell
+     * gefaehrliche Pattern, ohne false positives bei normalen
+     * Benutzer-Eingaben zu erzeugen (z. B. URLs mit Query-Parametern).
+     */
+    public function containsShellMetacharacters(string $value): bool
+    {
+        // Command-Substitution: $(...) und ${...} (gekapselt, damit
+        // Template-Strings wie "Hallo {name}" nicht matchen).
+        if (preg_match('/\$\(.*\)|\$\{.*\}/', $value)) {
+            return true;
+        }
+        // Backtick-Command-Substitution.
+        if (str_contains($value, '`')) {
+            return true;
+        }
+        // Command-Chaining: ;, &&, ||, gefolgt von einem Shell-Command.
+        // Ein einzelnes "|" in einer URL ist erlaubt (looksLikeUrl prueft
+        // die URL separat), aber "| <cmd>" oder "&& <cmd>" ist Injection.
+        if (preg_match('/(?:&&|\|\||;|\|\s)\s*\S/', $value)) {
+            return true;
+        }
+
+        return false;
     }
 
     private function looksLikeUrl(string $value): bool

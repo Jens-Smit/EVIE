@@ -1,0 +1,24 @@
+# Test-env overrides, loaded AFTER services.yaml (MicroKernelTrait order).
+# These take precedence over config/packages/test/services.yaml for the
+# same service IDs, because services.yaml is imported after packages.
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    # P0-1: deterministischer Embedding-Service fuer Integrationstests.
+    # Ersetzt den HTTP-basierten MistralEmbeddingService, damit RAG-Tests
+    # ohne externe API-Calls reproduzierbar laufen.
+    App\Tests\Stub\DeterministicEmbeddingService: ~
+    App\AI\Rag\EmbeddingServiceInterface: '@App\Tests\Stub\DeterministicEmbeddingService'
+
+    # P0-1: RAG- und Security-Services fuer Integrationstests public machen,
+    # damit KernelTestCase::getContainer()->get() sie abrufen kann.
+    App\AI\Rag\ContextInjector:
+        public: true
+    App\AI\Rag\VectorStore:
+        public: true
+    App\Repository\EmbeddingRepository:
+        public: true
+    App\Security\UserContext:
+        public: true

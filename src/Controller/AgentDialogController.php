@@ -57,7 +57,6 @@ final class AgentDialogController extends AbstractController
             else {
                 $payload = [
                     'message' => $request->request->get('prompt'),
-                    'user_identifier' => $request->request->get('user_identifier', 'default_user'),
                 ];
                 $this->logger->debug('AgentDialogController::dialog - FormData erkannt:', $payload);
             }

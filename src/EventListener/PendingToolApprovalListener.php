@@ -13,7 +13,9 @@ use Psr\Log\LoggerInterface;
 
 /**
  * Listener für PendingToolApprovalEvent - sendet Benachrichtigungen an den User
- * und aktualisiert das DynamicSkillRegistry nach Genehmigung.
+ * und aktualisiert den Tool-Status nach Genehmigung. Die native DynamicToolbox
+ * liest approved Tools live aus der Datenbank (Blueprint §4.B), sodass keine
+ * separate Registry mehr gepflegt wird.
  */
 final readonly class PendingToolApprovalListener
 {
@@ -41,9 +43,8 @@ final readonly class PendingToolApprovalListener
         // 1. Benachrichtigung per Chat/Notifier senden
         $this->sendNotification($toolDefinition, $userIdentifier);
 
-        // 2. DynamicSkillRegistry aktualisieren, falls Tool genehmigt wird
-        // Dies wird jetzt direkt im ToolApprovalController erledigt
-        // Aber wir können hier zusätzliche Logik hinzufügen, falls benötigt
+        // Die native DynamicToolbox liest approved Tools live aus der Datenbank
+        // (Blueprint §4.B) — ein Registry-Update ist nicht erforderlich.
     }
 
     /**
@@ -95,7 +96,7 @@ final readonly class PendingToolApprovalListener
 
     /**
      * Wird ausgelöst, wenn ein Tool genehmigt wird.
-     * Aktualisiert das DynamicSkillRegistry.
+     * Die native DynamicToolbox uebernimmt das Tool automatisch.
      */
     public function onToolApproved(PendingToolApprovalEvent $event): void
     {

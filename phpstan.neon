@@ -1,3 +1,6 @@
+includes:
+    - phpstan-baseline.neon
+
 parameters:
     level: 5
     paths:
@@ -8,25 +11,15 @@ parameters:
     excludePaths:
         - 'src/DataFixtures/UserProfileFixture.php'
 
-    # Pre-existing PHPStan-Fehler, die vor Entfernung des `|| true`-Bypasses
-    # verdeckt waren. Diese werden als known issues ignoriert, sodass nur
-    # NEUE Fehler (durch kuenftige Aenderungen) das Gate blockieren.
-    #
-    # TODO: Ein echtes PHPStan-Baseline-File sollte generiert werden mit:
-    #   vendor/bin/phpstan analyse src --level=5 --generate-baseline=phpstan-baseline.neon
-    # Danach diese ignoreErrors durch `includes: [phpstan-baseline.neon]` ersetzen.
+    # P1-1: klassenweite `undefined method`-Ignores wurden entfernt und durch
+    # ein generiertes, zeilengenaues Baseline-File (phpstan-baseline.neon)
+    # ersetzt. So werden nur noch die tatsaechlich bekannten Stellen
+    # unterdrueckt, nicht mehr jegliche undefined-method-Meldung einer ganzen
+    # Klasse (insb. SecurityGuard, ContextInjector, ToolDefinitionGenerator).
     reportUnmatchedIgnoredErrors: false
 
     ignoreErrors:
         # --- Undefined method calls (Entities mit fehlenden Methoden) ---
-        - '#Call to an undefined method App\\AI\\Onboarding\\ContextStoreManager::#'
-        - '#Call to an undefined method App\\AI\\Rag\\ContextInjector::#'
-        - '#Call to an undefined method App\\AI\\Security\\SecurityGuard::#'
-        - '#Call to an undefined method App\\AI\\Skills\\ToolDefinitionGenerator::#'
-        - '#Call to an undefined method App\\AI\\Skills\\Tool\\DynamicToolExecutor::#'
-        - '#Call to an undefined method App\\AI\\Skills\\Tool\\DynamicToolFactory::#'
-        - '#Call to an undefined method App\\AI\\Skills\\Tool\\DynamicTool::#'
-        - '#Call to an undefined method App\\AI\\Skills\\Tool\\ToolExecutionResult::#'
         - '#Call to an undefined method App\\DataFixtures\\UserProfileFixture::#'
         - '#Call to an undefined method App\\Entity\\ToolCategory::#'
         - '#Call to an undefined method App\\Entity\\ToolDefinition::#'
@@ -99,9 +92,6 @@ parameters:
         - '#Cannot call method getUserIdentifier\(\) on string#'
         - '#Cannot call method removeElement\(\) on iterable#'
         - '#Class Symfony\\AI\\Platform\\Tool\\ExecutionReference constructor invoked with#'
-        # Pre-existing: EmbeddingRepository::findSimilar() wird mit 5 Parametern
-        # aufgerufen, erwartet 2-4 (VectorStore.php).
-        - '#Method App\\Repository\\EmbeddingRepository::findSimilar\(\) invoked with 5 parameters#'
         - '#Class Symfony\\Component\\Notifier\\Recipient\\Recipient constructor invoked with#'
         - '#Comparison operation "<" between#'
         - '#Constant self not found#'

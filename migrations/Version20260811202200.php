@@ -21,13 +21,14 @@ final class Version20260811202200 extends AbstractMigration
     public function up(Schema $schema): void
     {
         // Bestehende name-Spalte nullable machen
-        $this->addSql('ALTER TABLE user_profile CHANGE name name VARCHAR(255) DEFAULT NULL');
+        // Postgres: ALTER COLUMN ... DROP NOT NULL statt MySQL CHANGE.
+        $this->addSql('ALTER TABLE user_profile ALTER COLUMN name DROP NOT NULL');
 
         // Neue Felder ergänzen
         $this->addSql('ALTER TABLE user_profile ADD user_type VARCHAR(255) DEFAULT NULL');
         $this->addSql('ALTER TABLE user_profile ADD context_embedding TEXT DEFAULT NULL');
         $this->addSql('ALTER TABLE user_profile ADD onboarding_data JSON DEFAULT NULL');
-        $this->addSql('ALTER TABLE user_profile ADD updated_at DATETIME DEFAULT NULL');
+        $this->addSql('ALTER TABLE user_profile ADD updated_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL');
 
         // Bestehende Zeilen auf sinnvolle Defaults setzen
         $this->addSql("UPDATE user_profile SET user_type = 'unknown' WHERE user_type IS NULL");
@@ -39,6 +40,6 @@ final class Version20260811202200 extends AbstractMigration
         $this->addSql('ALTER TABLE user_profile DROP COLUMN onboarding_data');
         $this->addSql('ALTER TABLE user_profile DROP COLUMN context_embedding');
         $this->addSql('ALTER TABLE user_profile DROP COLUMN user_type');
-        $this->addSql('ALTER TABLE user_profile CHANGE name name VARCHAR(255) NOT NULL');
+        $this->addSql('ALTER TABLE user_profile ALTER COLUMN name SET NOT NULL');
     }
 }

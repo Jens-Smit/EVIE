@@ -1,0 +1,139 @@
+# Production docker-compose for EVIE (P1-6).
+#
+# Nutzt Dockerfile.prod (immutable Image, --no-dev, OPcache, cache:warmup).
+# Im Gegensatz zur dev docker-compose.yml gibt es keinen Volume-Mount des
+# Source-Codes, keinen Dev-Debug, einen separaten Messenger-Worker-Container,
+# Redis (Cache/Rate-Limiter/Mercure) und eine Prod-taugliche Nginx-Config mit
+# Resource-Limits.
+#
+# Usage:
+#   APP_SECRET=... MISTRAL_API_KEY=... docker compose -f docker-compose.prod.yml up -d
+services:
+  app:
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile.prod
+      target: runtime
+    container_name: evie_app_prod
+    restart: unless-stopped
+    environment:
+      - APP_ENV=prod
+      - APP_DEBUG=0
+      - APP_SECRET=${APP_SECRET:?APP_SECRET is required}
+      - DATABASE_URL=postgresql://evie:${POSTGRES_PASSWORD:-evie_password}@postgres:5432/evie?serverVersion=15&charset=utf8
+      - PGVECTOR_URL=postgresql://evie:${POSTGRES_PASSWORD:-evie_password}@postgres:5432/evie?serverVersion=15&charset=utf8
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - TAVILY_API_KEY=${TAVILY_API_KEY:-}
+      - FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY:-}
+      - MESSENGER_TRANSPORT_DSN=redis://redis:6379/messages
+      - MAILER_DSN=${MAILER_DSN:-smtp://localhost}
+      - MAILER_FROM=${MAILER_FROM:-no-reply@evie.local}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks: [evie_prod]
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+
+  worker:
+    # Separater Messenger-Worker-Container (P1-6): entkoppelt asynchrone
+    # Verarbeitung (Streaming-Sessions, Tool-Responses, E-Mails) vom
+    # Web-Request-Pfad. Nutzt dasselbe Image wie die App.
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile.prod
+      target: runtime
+    container_name: evie_worker_prod
+    restart: unless-stopped
+    command: ["php", "bin/console", "messenger:consume", "async", "--limit=100", "--memory-limit=128M", "--time-limit=3600"]
+    environment:
+      - APP_ENV=prod
+      - APP_DEBUG=0
+      - APP_SECRET=${APP_SECRET:?APP_SECRET is required}
+      - DATABASE_URL=postgresql://evie:${POSTGRES_PASSWORD:-evie_password}@postgres:5432/evie?serverVersion=15&charset=utf8
+      - PGVECTOR_URL=postgresql://evie:${POSTGRES_PASSWORD:-evie_password}@postgres:5432/evie?serverVersion=15&charset=utf8
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - MESSENGER_TRANSPORT_DSN=redis://redis:6379/messages
+      - MAILER_DSN=${MAILER_DSN:-smtp://localhost}
+      - MAILER_FROM=${MAILER_FROM:-no-reply@evie.local}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    networks: [evie_prod]
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+  nginx:
+    # Prod-Nginx mit eigener Config (kein Dev-default.conf-Mount).
+    image: nginx:alpine
+    container_name: evie_nginx_prod
+    restart: unless-stopped
+    ports:
+      - "${NGINX_PORT:-80}:80"
+    volumes:
+      - ./docker/nginx/prod.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+    networks: [evie_prod]
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 128M
+
+  postgres:
+    image: pgvector/pgvector:pg15
+    container_name: evie_postgres_prod
+    restart: unless-stopped
+    environment:
+      - POSTGRES_DB=evie
+      - POSTGRES_USER=evie
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:-evie_password}
+    volumes:
+      - postgres_prod_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U evie"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks: [evie_prod]
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 1G
+
+  redis:
+    # Redis fuer Cache, Rate-Limiter-State und Messenger-Transport.
+    image: redis:7-alpine
+    container_name: evie_redis_prod
+    restart: unless-stopped
+    command: ["redis-server", "--maxmemory", "256mb", "--maxmemory-policy", "allkeys-lru"]
+    volumes:
+      - redis_prod_data:/data
+    networks: [evie_prod]
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+networks:
+  evie_prod:
+    driver: bridge
+
+volumes:
+  postgres_prod_data:
+  redis_prod_data:

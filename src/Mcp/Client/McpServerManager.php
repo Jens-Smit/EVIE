@@ -45,10 +45,18 @@ final class McpServerManager
             sprintf('Unbekannter MCP-Server "%s".', $serverAlias)
         );
 
+        // P1-4: Timeout/Retry/Auth sind pro Server konfigurierbar (mit
+        // sinnvollen Defaults). So lassen sich langsame externe Server
+        // oder Server mit Auth-Requirement gezielt behandeln.
+        $initTimeout = $config['init_timeout'] ?? 30;
+        $requestTimeout = $config['request_timeout'] ?? 120;
+        $maxRetries = $config['max_retries'] ?? self::MAX_RETRIES;
+        $retryDelay = $config['retry_delay_seconds'] ?? self::RETRY_DELAY_SECONDS;
+
         $client = Client::builder()
             ->setClientInfo('evie', '1.0.0')
-            ->setInitTimeout(30)
-            ->setRequestTimeout(120)
+            ->setInitTimeout($initTimeout)
+            ->setRequestTimeout($requestTimeout)
             ->build();
 
         $transport = match ($config['transport']) {
@@ -56,11 +64,14 @@ final class McpServerManager
                 command: $config['command'],
                 args: $config['arguments'] ?? [],
             ),
-            'http' => new HttpTransport($config['url']),
+            // P1-4: fuer MCP-Server mit Auth (z. B. GitHub MCP) wird
+            // ein Bearer-Token als Authorization-Header gesetzt, statt
+            // eine offene Verbindung ohne Authentifizierung zuzulassen.
+            'http' => $this->buildHttpTransport($config),
         };
 
         $lastException = null;
-        for ($attempt = 1; $attempt <= self::MAX_RETRIES; ++$attempt) {
+        for ($attempt = 1; $attempt <= $maxRetries; ++$attempt) {
             try {
                 $client->connect($transport);
                 $this->logger->info('MCP-Server verbunden', [
@@ -77,14 +88,14 @@ final class McpServerManager
                     'error' => $e->getMessage(),
                 ]);
 
-                if ($attempt < self::MAX_RETRIES) {
-                    usleep(self::RETRY_DELAY_SECONDS * 1_000_000);
+                if ($attempt < $maxRetries) {
+                    usleep($retryDelay * 1_000_000);
                 }
             }
         }
 
         throw new McpServerUnavailableException(
-            sprintf('MCP-Server "%s" nach %d Versuchen nicht erreichbar: %s', $serverAlias, self::MAX_RETRIES, $lastException instanceof \Throwable ? $lastException->getMessage() : 'unbekannt'),
+            sprintf('MCP-Server "%s" nach %d Versuchen nicht erreichbar: %s', $serverAlias, $maxRetries, $lastException instanceof \Throwable ? $lastException->getMessage() : 'unbekannt'),
             previous: $lastException,
         );
     }
@@ -133,6 +144,25 @@ final class McpServerManager
                 previous: $e,
             );
         }
+    }
+
+    /**
+     * Baut den HTTP-Transport fuer einen MCP-Server, optional mit
+     * Bearer-Token-Authentifizierung (P1-4).
+     *
+     * Ist ein auth_token konfiguriert, wird der Authorization-Header
+     * gesetzt. Server ohne Token laufen offen (z. B. interne
+     * Services), Server mit Token erfordern Auth (z. B. GitHub MCP).
+     */
+    private function buildHttpTransport(array $config)
+    {
+        // P1-4: HttpTransport akzeptiert optionale Header fuer Auth.
+        $headers = [];
+        if (isset($config['auth_token']) && '' !== $config['auth_token']) {
+            $headers['Authorization'] = 'Bearer ' . $config['auth_token'];
+        }
+
+        return new HttpTransport($config['url'], $headers);
     }
 
     public function disconnectAll(): void

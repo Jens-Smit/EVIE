@@ -276,9 +276,24 @@ class McpServerFactory
 
         if (isset($configuration['arguments'])) {
             foreach ($configuration['arguments'] as $arg) {
-                if (is_string($arg) && $this->securityGuard->isResourceBlocked($arg)) {
+                if (!is_string($arg)) {
+                    continue;
+                }
+                // P1-2: jedes Start-Argument gegen die Ressourcen-Blocklist
+                // prüfen (Pfad-/URL-Sandbox).
+                if ($this->securityGuard->isResourceBlocked($arg)) {
                     throw new \RuntimeException(sprintf(
                         'Argument "%s" für MCP-Server "%s" ist in der SecurityGuard-Blocklist.',
+                        $arg,
+                        $serverName
+                    ));
+                }
+                // P1-2: Shell-Metazeichen in Start-Argumenten verbieten
+                // (Command-Chaining / -Substitution), da npx/node/python/docker
+                // Argumente ungefiltert an Subprozesse weiterreichen.
+                if ($this->securityGuard->containsShellMetacharacters($arg)) {
+                    throw new \RuntimeException(sprintf(
+                        'Argument "%s" für MCP-Server "%s" enthält Shell-Metazeichen (mögliche Command-Injection).',
                         $arg,
                         $serverName
                     ));

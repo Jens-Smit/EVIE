@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\AI\Rag;
 
+use App\Security\UserContext;
 use Symfony\AI\Agent\Attribute\AsInputProcessor;
 use Symfony\AI\Agent\Input;
 use Symfony\AI\Agent\InputProcessorInterface;
@@ -26,6 +27,7 @@ TXT;
 
     public function __construct(
         private readonly Retriever $retriever,
+        private readonly UserContext $userContext,
     ) {
     }
 
@@ -48,7 +50,13 @@ TXT;
             return;
         }
 
-        $result = $this->retriever->retrieve($query);
+        // P0-1: Tenant-Isolation. Der ContextInjector laeuft im nativen
+        // Agent-Loop und muss den aktuellen Tenant kennen, damit RAG-Kontext
+        // pro User isoliert abgerufen wird (Blueprint Tenant-Isolation).
+        // Zuvor wurde retrieve() ohne user_identifier aufgerufen -> die
+        // Isolation im VectorStore war wirkungslos.
+        $userIdentifier = $this->userContext->getUserIdentifier();
+        $result = $this->retriever->retrieve($query, ['user_identifier' => $userIdentifier]);
 
         if (!$result->hasResults()) {
             return;

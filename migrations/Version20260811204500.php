@@ -23,9 +23,10 @@ final class Version20260811204500 extends AbstractMigration
         $this->addSql('ALTER TABLE tool_definition ADD complexity VARCHAR(50) DEFAULT NULL');
         $this->addSql('ALTER TABLE tool_definition ADD dependencies JSON DEFAULT NULL');
         $this->addSql('ALTER TABLE tool_definition ADD metadata JSON DEFAULT NULL');
-        $this->addSql('ALTER TABLE tool_definition ADD approved_at DATETIME DEFAULT NULL');
-        $this->addSql('ALTER TABLE tool_definition ADD rejected_at DATETIME DEFAULT NULL');
-        $this->addSql('ALTER TABLE tool_definition CHANGE category_id category_id INT DEFAULT NULL');
+        $this->addSql('ALTER TABLE tool_definition ADD approved_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL');
+        $this->addSql('ALTER TABLE tool_definition ADD rejected_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL');
+        // Postgres: ALTER COLUMN ... DROP NOT NULL statt MySQL CHANGE.
+        $this->addSql('ALTER TABLE tool_definition ALTER COLUMN category_id DROP NOT NULL');
     }
 
     public function down(Schema $schema): void
@@ -35,6 +36,6 @@ final class Version20260811204500 extends AbstractMigration
         $this->addSql('ALTER TABLE tool_definition DROP COLUMN metadata');
         $this->addSql('ALTER TABLE tool_definition DROP COLUMN dependencies');
         $this->addSql('ALTER TABLE tool_definition DROP COLUMN complexity');
-        $this->addSql('ALTER TABLE tool_definition CHANGE category_id category_id INT NOT NULL');
+        $this->addSql('ALTER TABLE tool_definition ALTER COLUMN category_id SET NOT NULL');
     }
 }
