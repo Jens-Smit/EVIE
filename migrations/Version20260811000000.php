@@ -84,6 +84,9 @@ final class Version20260811000000 extends AbstractMigration
 
         // --- audit_logs --------------------------------------------------
         $this->addSql('CREATE TABLE audit_logs (id SERIAL NOT NULL, action VARCHAR(100) NOT NULL, entity_type VARCHAR(255) DEFAULT NULL, entity_id INT DEFAULT NULL, user_id INT DEFAULT NULL, details TEXT DEFAULT NULL, context JSON DEFAULT NULL, ip_address VARCHAR(50) DEFAULT NULL, user_agent VARCHAR(500) DEFAULT NULL, status VARCHAR(50) DEFAULT NULL, created_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, PRIMARY KEY(id))');
+        $this->addSql('CREATE INDEX idx_audit_user ON audit_logs (user_id)');
+        $this->addSql('CREATE INDEX idx_audit_action ON audit_logs (action)');
+        $this->addSql('CREATE INDEX idx_audit_created ON audit_logs (created_at)');
 
         // --- embeddings (RAG) -------------------------------------------
         // vector-Spalte als JSON (entspricht Entity-Mapping Types::JSON).
@@ -106,13 +109,13 @@ final class Version20260811000000 extends AbstractMigration
         $this->addSql('CREATE TABLE ai_mcp_server_definitions (id UUID NOT NULL, name VARCHAR(255) NOT NULL, type VARCHAR(255) NOT NULL, description TEXT NOT NULL, configuration JSON NOT NULL, is_active BOOLEAN NOT NULL, allowed_tools JSON NOT NULL, blocked_resources JSON NOT NULL, created_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, updated_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL, created_by_id INT DEFAULT NULL, PRIMARY KEY(id))');
         $this->addSql('CREATE UNIQUE INDEX UNIQ_78F351885E237E06 ON ai_mcp_server_definitions (name)');
         $this->addSql('CREATE INDEX IDX_78F35188B03A8386 ON ai_mcp_server_definitions (created_by_id)');
-        $this->addSql('ALTER TABLE ai_mcp_server_definitions ADD CONSTRAINT FK_78F35188B03A8386 FOREIGN KEY (created_by_id) REFERENCES users (id) ON DELETE SET NULL NOT DEFERRABLE INITIALLY IMMEDIATE');
+        $this->addSql('ALTER TABLE ai_mcp_server_definitions ADD CONSTRAINT FK_78F35188B03A8386 FOREIGN KEY (created_by_id) REFERENCES users (id) NOT DEFERRABLE INITIALLY IMMEDIATE');
 
         // --- ai_streaming_sessions (UUID-PK) --------------------------
-        $this->addSql('CREATE TABLE ai_streaming_sessions (id UUID NOT NULL, session_id VARCHAR(255) NOT NULL, tool_name VARCHAR(255) NOT NULL, initial_arguments JSON NOT NULL, user_identifier VARCHAR(255) NOT NULL, status VARCHAR(50) DEFAULT \'pending\' NOT NULL, current_progress TEXT DEFAULT NULL, progress_percentage DOUBLE PRECISION DEFAULT NULL, partial_results JSON DEFAULT NULL, final_result JSON DEFAULT NULL, error_data JSON DEFAULT NULL, created_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, started_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL, completed_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL, updated_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL, correlation_id VARCHAR(255) DEFAULT NULL, user_id INT DEFAULT NULL, PRIMARY KEY(id))');
+        $this->addSql('CREATE TABLE ai_streaming_sessions (id UUID NOT NULL, session_id VARCHAR(255) NOT NULL, tool_name VARCHAR(255) NOT NULL, initial_arguments JSON NOT NULL, user_identifier VARCHAR(255) NOT NULL, status VARCHAR(50) NOT NULL, current_progress TEXT DEFAULT NULL, progress_percentage DOUBLE PRECISION DEFAULT NULL, partial_results JSON DEFAULT NULL, final_result JSON DEFAULT NULL, error_data JSON DEFAULT NULL, created_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, started_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL, completed_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL, updated_at TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT NULL, correlation_id VARCHAR(255) DEFAULT NULL, user_id INT DEFAULT NULL, PRIMARY KEY(id))');
         $this->addSql('CREATE UNIQUE INDEX UNIQ_E47153B1613FECDF ON ai_streaming_sessions (session_id)');
         $this->addSql('CREATE INDEX IDX_E47153B1A76ED395 ON ai_streaming_sessions (user_id)');
-        $this->addSql('ALTER TABLE ai_streaming_sessions ADD CONSTRAINT FK_E47153B1A76ED395 FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE SET NULL NOT DEFERRABLE INITIALLY IMMEDIATE');
+        $this->addSql('ALTER TABLE ai_streaming_sessions ADD CONSTRAINT FK_E47153B1A76ED395 FOREIGN KEY (user_id) REFERENCES users (id) NOT DEFERRABLE INITIALLY IMMEDIATE');
 
         // ------------------------------------------------------------------
         // Doctrine-Schema-Konventionen: SERIAL id DROP DEFAULT, UUID-Typen
