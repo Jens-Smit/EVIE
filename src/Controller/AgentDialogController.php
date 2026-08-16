@@ -51,14 +51,18 @@ final class AgentDialogController extends AbstractController
             // JSON-Payload
             if (str_contains($contentType, 'application/json')) {
                 $payload = $request->toArray();
-                $this->logger->debug('AgentDialogController::dialog - JSON-Payload erkannt:', $payload);
+                // Audit-Finding #6 (Sensitive Data in Logs): der gesamte User-
+                // Payload kann sensible Inhalte (API-Keys, PII) enthalten und
+                // wird daher nicht mehr ungefiltert geloggt. Nur Content-Type
+                // und Laenge sind fuer Debugging relevant.
+                $this->logger->debug('AgentDialogController::dialog - JSON-Payload erkannt', ['content_type' => $contentType]);
             }
             // FormData oder URL-encoded (Content-Type: application/x-www-form-urlencoded oder multipart/form-data)
             else {
                 $payload = [
                     'message' => $request->request->get('prompt'),
                 ];
-                $this->logger->debug('AgentDialogController::dialog - FormData erkannt:', $payload);
+                $this->logger->debug('AgentDialogController::dialog - FormData erkannt', ['content_type' => $contentType]);
             }
         }
 
