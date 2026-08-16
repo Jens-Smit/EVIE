@@ -32,7 +32,7 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
  */
 final class OrchestratorAgentLlmTest extends TestCase
 {
-    private StubAgent $agent;
+    private \Symfony\AI\Agent\AgentInterface $agent;
     private ToolDefinitionGenerator&MockObject $toolGenerator;
     private SubAgentFactory&MockObject $subAgentFactory;
     private JsonResponseEnforcer $jsonResponseEnforcer;

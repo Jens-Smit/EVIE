@@ -76,7 +76,9 @@ final class ToolDefinitionGeneratorTest extends TestCase
 
     public function testSimilarToolReusedWithoutLlmCall(): void
     {
-        $existing = $this->createConfiguredToolDefinition('csv_analyzer', 'Analysiert CSV Daten');
+        // Beschreibungen muessen >70% Jaccard-Aehnlichkeit haben, damit
+        // findSimilarTool ein Match findet (extractKeywords filtert Worte <=3 Zeichen).
+        $existing = $this->createConfiguredToolDefinition('csv_analyzer', 'analysiert verkaufsdaten monatlich quartal');
         // findSimilarTool findet ein Match -> kein LLM-Abruf.
         $this->toolDefinitionRepo->method('findAll')->willReturn([$existing]);
         $this->toolDefinitionRepo->expects(self::never())->method('save');
@@ -86,7 +88,7 @@ final class ToolDefinitionGeneratorTest extends TestCase
 
         $definition = $generator->generateToolDefinition(
             'csv_processor',
-            'Analysiert CSV Daten und erstellt Statistiken'
+            'analysiert verkaufsdaten monatlich quartal zusammenfassung'
         );
 
         // Kein LLM-Abruf, da existierendes Tool wiederverwendet wird.

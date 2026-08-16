@@ -334,34 +334,42 @@ class OnboardingFlowManager
             $userProfile->setUserType($onboardingData['user_type']);
         }
         
-        // Setze User Type Detail
+        // User Type Detail (UserProfile hat keinen dedizierten Setter;
+        // in preferences speichern - Blueprint-konform, keine Schema-Aenderung).
         if (isset($onboardingData['user_type_detail'])) {
-            $userProfile->setUserTypeDetail($onboardingData['user_type_detail']);
+            $preferences = $userProfile->getPreferences() ?? [];
+            $preferences['user_type_detail'] = $onboardingData['user_type_detail'];
+            $userProfile->setPreferences($preferences);
         }
         
-        // Setze technische Fähigkeiten
         if (isset($onboardingData['technical_skills'])) {
-            $userProfile->setTechnicalSkills($onboardingData['technical_skills']);
+            $preferences = $userProfile->getPreferences() ?? [];
+            $preferences['technical_skills'] = $onboardingData['technical_skills'];
+            $userProfile->setPreferences($preferences);
         }
         
-        // Setze Erfahrungsebene
         if (isset($onboardingData['experience_level'])) {
-            $userProfile->setExperienceLevel($onboardingData['experience_level']);
+            $preferences = $userProfile->getPreferences() ?? [];
+            $preferences['experience_level'] = $onboardingData['experience_level'];
+            $userProfile->setPreferences($preferences);
         }
         
-        // Setze Anwendungsfälle
         if (isset($onboardingData['use_cases'])) {
-            $userProfile->setUseCases($onboardingData['use_cases']);
+            $preferences = $userProfile->getPreferences() ?? [];
+            $preferences['use_cases'] = $onboardingData['use_cases'];
+            $userProfile->setPreferences($preferences);
         }
         
-        // Setze Branche
         if (isset($onboardingData['industry'])) {
-            $userProfile->setIndustry($onboardingData['industry']);
+            $preferences = $userProfile->getPreferences() ?? [];
+            $preferences['industry'] = $onboardingData['industry'];
+            $userProfile->setPreferences($preferences);
         }
         
-        // Setze Branchen-Details
         if (isset($onboardingData['industry_detail'])) {
-            $userProfile->setIndustryDetail($onboardingData['industry_detail']);
+            $preferences = $userProfile->getPreferences() ?? [];
+            $preferences['industry_detail'] = $onboardingData['industry_detail'];
+            $userProfile->setPreferences($preferences);
         }
         
         // Setze Präferenzen
@@ -401,13 +409,15 @@ class OnboardingFlowManager
             $userProfile->setPreferences($preferences);
         }
         
-        // Setze Metadaten
-        $metadata = [
+        // Metadaten (UserProfile hat keinen setMetadata-Setter; in preferences
+        // speichern - Blueprint-konform, keine Schema-Aenderung).
+        $preferences = $userProfile->getPreferences() ?? [];
+        $preferences['_onboarding_metadata'] = [
             'onboarding_phase_3' => true,
             'onboarding_version' => '1.0',
             'onboarding_timestamp' => (new \DateTimeImmutable())->format(DATE_ATOM),
         ];
-        $userProfile->setMetadata($metadata);
+        $userProfile->setPreferences($preferences);
     }
 
     /**
@@ -442,17 +452,21 @@ class OnboardingFlowManager
      */
     private function getUserProfileData(UserProfile $userProfile): array
     {
+        // UserProfile hat nur getUserIdentifier/getUserType/getPreferences;
+        // die restlichen Werte werden in preferences gespeichert (siehe
+        // updateUserProfileFromContext) und hier daraus extrahiert.
+        $preferences = $userProfile->getPreferences() ?? [];
         return [
             'user_identifier' => $userProfile->getUserIdentifier(),
             'user_type' => $userProfile->getUserType(),
-            'user_type_detail' => $userProfile->getUserTypeDetail(),
-            'technical_skills' => $userProfile->getTechnicalSkills(),
-            'experience_level' => $userProfile->getExperienceLevel(),
-            'use_cases' => $userProfile->getUseCases(),
-            'industry' => $userProfile->getIndustry(),
-            'industry_detail' => $userProfile->getIndustryDetail(),
-            'preferences' => $userProfile->getPreferences(),
-            'metadata' => $userProfile->getMetadata(),
+            'user_type_detail' => $preferences['user_type_detail'] ?? null,
+            'technical_skills' => $preferences['technical_skills'] ?? null,
+            'experience_level' => $preferences['experience_level'] ?? null,
+            'use_cases' => $preferences['use_cases'] ?? null,
+            'industry' => $preferences['industry'] ?? null,
+            'industry_detail' => $preferences['industry_detail'] ?? null,
+            'preferences' => $preferences,
+            'metadata' => $preferences['_onboarding_metadata'] ?? [],
         ];
     }
 
