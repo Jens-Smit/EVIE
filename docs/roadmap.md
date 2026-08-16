@@ -129,16 +129,11 @@
 
 ## ⬜ Offen — P2 (mittelfristig)
 
-### P2-F — Structured Output: Legacy-Pipeline noch aktiv 🟡
+### P2-F — Structured Output: Legacy-Pipeline noch aktiv 🟡 ( offen)
 **Befund:** Migration auf native `outputStructure` noch nicht abgeschlossen
 (legacy Pipeline aktiv).
 **Fix:** Legacy-Pipeline entfernen, native `outputStructure` nutzen.
 **Aufwand:** ~1 Tag.
-
-### P2-G — MCP-Executor-Whitelist permissiv ⬜
-**Befund:** Whitelist noch permissiv für `npx`/`docker`.
-**Fix:** Restriktivere Executor-Whitelist.
-**Aufwand:** ~2 h.
 
 ---
 

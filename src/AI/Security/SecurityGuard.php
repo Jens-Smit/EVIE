@@ -68,10 +68,13 @@ class SecurityGuard
         'ai.mcp.server.playwright',
         'ai.mcp.server.github',
         'ai.mcp.server.custom',
+        // P2-G: restriktive Executor-Whitelist. 'docker' entfernt
+        // (Container-Escape, Image-Pull, Privilegieneskalation).
+        // npx/node/python bleiben fuer MCP-Server-Start erforderlich,
+        // sind aber durch Argument-Validierung (P1-2) abgesichert.
         'npx',
         'node',
         'python',
-        'docker',
     ];
 
     public function __construct(
