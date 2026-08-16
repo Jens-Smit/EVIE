@@ -294,8 +294,12 @@ class OnboardingFlowManager
         
         // Speichere das Profil
         $userProfile->setUpdatedAt(new \DateTimeImmutable());
-        $userProfile->setOnboardingCompleted(true);
-        $userProfile->setOnboardingCompletedAt(new \DateTimeImmutable());
+        // Onboarding-Completed-Status im onboardingData-Feld speichern
+        // (UserProfile hat keine dedizierten completed-Setter/Properties).
+        $onbData = $userProfile->getOnboardingData() ?? [];
+        $onbData['completed'] = true;
+        $onbData['completed_at'] = (new \DateTimeImmutable())->format(DATE_ATOM);
+        $userProfile->setOnboardingData($onbData);
         $this->userProfileRepo->save($userProfile, true);
         
         // Setze den Abschluss im Kontext
@@ -600,11 +604,12 @@ class OnboardingFlowManager
             return ['status' => 'not_started'];
         }
 
-        // Prüfe, ob das Onboarding abgeschlossen ist
-        if ($userProfile->isOnboardingCompleted()) {
+        // Prüfe, ob das Onboarding abgeschlossen ist (onboardingData-based).
+        $onbData = $userProfile->getOnboardingData() ?? [];
+        if (($onbData['completed'] ?? false) === true) {
             return [
                 'status' => 'completed',
-                'completed_at' => $userProfile->getOnboardingCompletedAt()?->format(DATE_ATOM),
+                'completed_at' => $onbData['completed_at'] ?? null,
             ];
         }
 
@@ -644,8 +649,10 @@ class OnboardingFlowManager
 
         $userProfile = $this->userProfileRepo->findOneBy(['userIdentifier' => $userIdentifier]);
         if ($userProfile) {
-            $userProfile->setOnboardingCompleted(false);
-            $userProfile->setOnboardingCompletedAt(null);
+            $onbData = $userProfile->getOnboardingData() ?? [];
+            $onbData['completed'] = false;
+            $onbData['completed_at'] = null;
+            $userProfile->setOnboardingData($onbData);
             $this->userProfileRepo->save($userProfile, true);
         }
     }

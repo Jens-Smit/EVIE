@@ -116,7 +116,8 @@ final class OnboardingFlowManagerTest extends TestCase
         $this->userProfileRepo->expects(self::once())->method('save')
             ->with(self::callback(function (UserProfile $p): bool {
                 // Onboarding-Flags werden beim Abschluss gesetzt.
-                return $p->isOnboardingCompleted() === true;
+                $onb = $p->getOnboardingData() ?? [];
+                return ($onb['completed'] ?? false) === true;
             }), true);
 
         $result = $this->manager->completeOnboarding('user-123');
