@@ -14,12 +14,16 @@ services:
 
     # Kritische EVIE-Services fuer Functional- und E2E-LLM-Tests public machen,
     # damit sie via static::getContainer()->get() abrufbar sind (KernelTestCase
-    # erlaubt sonst den Abruf nur von public-Services).
+    # erlaubt sonst den Abruf nur von public-Services). Die Argumente werden aus
+    # der Haupt-services.yaml (config/services.yaml) geerbt; hier wird lediglich
+    # public gesetzt, ohne die Definition zurueckzusetzen.
     App\AI\Agent\OrchestratorDialogService:
         public: true
     App\AI\Skills\ToolDefinitionGenerator:
         public: true
     App\AI\Onboarding\OnboardingFlowManager:
         public: true
+        arguments:
+            $onboardingAgent: '@ai.agent.onboarding'
     App\AI\Skills\DynamicToolbox:
         public: true
