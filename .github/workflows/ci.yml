@@ -33,7 +33,7 @@ jobs:
         with:
           php-version: '8.2'
           extensions: pdo_pgsql, pdo_sqlite, mbstring, ctype, iconv
-          coverage: none
+          coverage: pcov
 
       - name: Copy .env.dist to .env
         run: cp .env.dist .env
@@ -96,10 +96,20 @@ jobs:
       # -+
       # Unit + Integration Tests (Blueprint §7.1/§7.2)
       # ------------------------------------------------------------------
-      - name: Unit tests
+      - name: Unit tests (with coverage)
         env:
           APP_SECRET: test-secret-for-evie-1234567890abcdef
-        run: vendor/bin/phpunit --testsuite="EVIE AI Unit Tests"
+        run: vendor/bin/phpunit --testsuite="EVIE AI Unit Tests" --coverage-clover=coverage-unit.xml
+      # ------------------------------------------------------------------
+      # Coverage-Reporting (Phase 3 / Audit CI/CD): generiert Clover-Reports
+      # und laedt sie als Artefakt hoch.
+      # ------------------------------------------------------------------
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage-*.xml
+          retention-days: 14
 
       - name: Security tests
         env:
@@ -139,6 +149,14 @@ jobs:
 
       - name: Composer audit
         run: composer audit
+      # ------------------------------------------------------------------
+      # Security Scans (Phase 3 / Audit CI/CD): composer audit prueft auf
+      # bekannte CVEs in Abhaengigkeiten. Zusaetzlich wird hier ein
+      # no-dev-Audit ausgefuehrt, um auch produktionsrelevante Abhaengigkeiten
+      # ohne Dev-Pakete zu scannen.
+      # ------------------------------------------------------------------
+      - name: Security scan (prod deps)
+        run: composer audit --no-dev --format=plain
 
       - name: Run PHPStan
         run: vendor/bin/phpstan analyse src --level=5 --no-progress
@@ -177,7 +195,7 @@ jobs:
         with:
           php-version: '8.2'
           extensions: pdo_pgsql, pdo_sqlite, mbstring, ctype, iconv
-          coverage: none
+          coverage: pcov
 
       - name: Copy .env.dist to .env
         run: cp .env.dist .env
@@ -247,7 +265,7 @@ jobs:
         with:
           php-version: '8.2'
           extensions: pdo_pgsql, pdo_sqlite, mbstring, ctype, iconv
-          coverage: none
+          coverage: pcov
       - name: Copy .env.dist to .env
         run: cp .env.dist .env
       - name: Install dependencies
