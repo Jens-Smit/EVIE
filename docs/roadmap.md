@@ -129,13 +129,6 @@
 
 ## ⬜ Offen — P2 (mittelfristig)
 
-### P2-C — Prompt-Injection: keine Trust-Level-Markierung ⬜
-**Befund:** `ContextInjector` markiert injizierte RAG-Kontexte nicht als
-"untrusted" (kein Trust-Level-Konzept). Risiko der Prompt-Injection über
-RAG-Inhalte.
-**Fix:** Trust-Level-Markierung für externen Kontext einführen.
-**Aufwand:** ~0,5 Tag.
-
 ### P2-D — DSGVO: kein Lösch-/Export-Mechanismus ⬜
 **Befund:** Kein `gdpr`/`dsgvo`/`export`-Mechanismus für Nutzerdaten
 (`grep` über `src/` ohne Treffer).
