@@ -94,9 +94,9 @@ final class Version20260811000000 extends AbstractMigration
         $this->addSql('CREATE INDEX IDX_AUDIT_CREATED ON audit_logs (created_at)');
 
         // --- embeddings (RAG) -------------------------------------------
-        // vector-Spalte als FLOAT[] (entspricht aktuellem Entity-Mapping);
-        // P1-A wird dies auf echten pgvector-Typ umstellen.
-        $this->addSql('CREATE TABLE embeddings (id SERIAL NOT NULL, content_hash VARCHAR(255) NOT NULL, content TEXT NOT NULL, content_type VARCHAR(100) NOT NULL, source VARCHAR(255) DEFAULT NULL, metadata JSON NOT NULL, vector FLOAT[] NOT NULL, created_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, PRIMARY KEY(id))');
+        // vector-Spalte als JSON (entspricht Entity-Mapping Types::JSON).
+        // P1-A wird dies auf echten pgvector-Typ migrieren.
+        $this->addSql('CREATE TABLE embeddings (id SERIAL NOT NULL, content_hash VARCHAR(255) NOT NULL, content TEXT NOT NULL, content_type VARCHAR(100) NOT NULL, source VARCHAR(255) DEFAULT NULL, metadata JSON NOT NULL, vector JSON NOT NULL, created_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, PRIMARY KEY(id))');
         $this->addSql('CREATE INDEX idx_embedding_content_hash ON embeddings (content_hash)');
         $this->addSql('CREATE INDEX idx_embedding_content_type ON embeddings (content_type)');
         $this->addSql('CREATE INDEX idx_embedding_source ON embeddings (source)');
