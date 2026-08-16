@@ -270,3 +270,63 @@ Kernel korrekt bootet.
 **Entfernt:**
 - `check_classes.php` (P3)
 - `check_db.php` (P3)
+
+
+---
+
+## 5-Phasen-Roadmap (Audit-Follow-up, August 2026)
+
+Nach der P0/P1/P3-Implementierung wurden die verbleibenden Audit-Findings
+aus `docs/temp/audit.md` in 5 Phasen umgesetzt. Alle Phasen sind abgeschlossen
+und CI-gruen pro Punkt.
+
+### Phase 1: Kritische Sicherheitsluecken (Security) — ✅ Erledigt
+
+| Punkt | Finding | Umsetzung | Commit |
+|-------|---------|-----------|--------|
+| 1.1 | SSRF-Bypass DNS-Rebinding + IPv6-Normalisierung | `OutboundRequestPolicy::isPrivateIpv6()` via inet_pton, `resolveAllowedIp()` fuer TOCTOU-Pinning | 15089a9 |
+| 1.2 | Security Headers + Stack-Traces | `SecurityHeadersListener` (nosniff/DENY/no-referrer/Permissions-Policy/HSTS); APP_DEBUG=0 bestaetigt | 7c49072 |
+| 1.3 | Session-Fixation | Symfony MIGRATE-Default (Session-ID-Regeneration) + `cookie_httponly: true` | 1d79c8a |
+| 1.4 | Sensitive Data in Logs | `AgentDialogController` loggt nur Content-Type, nicht Payload; `AuditLogger::redact()` redigiert Secrets | 1d79c8a |
+
+### Phase 2: Code-Qualitaet & Performance — ✅ Erledigt
+
+| Punkt | Finding | Umsetzung | Commit |
+|-------|---------|-----------|--------|
+| 2.1 | N+1/Vektor-Suche | `EmbeddingRepository::loadCandidates()` filtert per SQL (Postgres: JSON-Tenant-Filter) | c94bb34 |
+| 2.2 | Embedding-Cache | `VectorStore::findCachedByContentHash()` mit cache.app + Invalidation | 0ed48b4 |
+| 2.3 | Connection Pooling/HTTP/2/Compression | Nginx-Upstream keepalive, http2 on, erweitertes Gzip, Doctrine persistent | 2b0d3da |
+
+### Phase 3: CI/CD & Testverbesserungen — ✅ Erledigt
+
+| Punkt | Umsetzung | Commit |
+|-------|-----------|--------|
+| Security Scans | `composer audit --no-dev` als zusaetzlicher Step | 1ab68e1 |
+| Coverage-Reporting | pcov + Clover-Report + Artefakt-Upload | 1ab68e1 |
+
+### Phase 4: Dokumentation & Deployment — ✅ Erledigt
+
+| Punkt | Umsetzung | Commit |
+|-------|-----------|--------|
+| API-Doku | `docs/api/overview.md` (bestehend, Frontend-/Tool-/Agent-Routen) | — |
+| Architektur-Doku | `docs/architecture/*` (bestehend) | — |
+| Deployment-Anleitung | `docs/deployment/production.md` vollstaendig aktualisiert | 63c0a94 |
+| Prod-Ready-Nachweis | `docs/security/production-hardening.md` (neu, alle Findings+Behebung) | 63c0a94 |
+
+### Phase 5: Erweiterte Features — ⏳ Nicht Prod-blockierend
+
+Folgende Punkte sind dokumentiert, aber nicht Prod-blockierend und
+ausserhalb des aktuellen Scopes (siehe `docs/security/production-hardening.md`
+Abschnitt "Verbleibende offene Punkte"):
+
+- Monitoring & Observability (LLM-Latency/Token-Metriken, ELK/Loki)
+- Skalierbarkeit (PgBouncer-Sidecar, Container-Skalierung)
+- Erweiterte Sicherheit (CSP mit HTMX-Frontend, pgvector-Typ-Migration)
+- AI-Features (Orchestrierungs-Konsolidierung)
+
+---
+
+## CI-Status (Final)
+
+Alle CI-Suiten gruen nach jeder Phase. Siehe `docs/security/production-
+hardening.md` fuer die vollstaendige Findings-Behebung-Matrix.

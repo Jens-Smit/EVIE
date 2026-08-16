@@ -119,7 +119,6 @@ class VectorStore
 
         $key = 'embedding_hash_' . $hash;
 
-        /** @var Embedding|null $result */
         return $this->cache->get($key, function () use ($hash): ?Embedding {
             return $this->embeddingRepository->findByContentHash($hash);
         });
