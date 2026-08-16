@@ -13,58 +13,28 @@ class EmbeddingRepository extends ServiceEntityRepository
         parent::__construct($registry, Embedding::class);
     }
 
-    /**
-     * @param array<int, float> $queryVector
-     *
-     * @return array<int, array{embedding: ?Embedding, similarity: float, distance: mixed}>
-     */
-    public function findSimilar(string $contentType, array $queryVector, int $limit = 5, float $minSimilarity = 0.5, ?string $userIdentifier = null): array
+    public function findSimilar(string $contentType, array $queryVector, int $limit = 5, float $minSimilarity = 0.5): array
     {
-        $conn = $this->getEntityManager()->getConnection();
+        $candidates = $this->findBy(['contentType' => $contentType]);
 
-        // P0-5 Tenant-Isolation: ist ein userIdentifier gesetzt, wird das
-        // Ergebnis auf Embeddings beschraenkt, deren metadata->>'user_identifier'
-        // mit dem Tenant uebereinstimmt (oder keinen Tenant-Bezug hat).
-        $tenantClause = '';
-        $params = [
-            'query_vector' => json_encode($queryVector),
-            'content_type' => $contentType,
-            'limit' => $limit,
-        ];
+        $queryEmbedding = new Embedding();
+        $queryEmbedding->setVector($queryVector);
 
-        if (null !== $userIdentifier && '' !== $userIdentifier) {
-            $tenantClause = " AND (e.metadata->>'user_identifier' = :user_identifier OR e.metadata->>'user_identifier' IS NULL)";
-            $params['user_identifier'] = $userIdentifier;
-        }
-
-        $sql = '
-            SELECT e.*,
-                   (e.vector <=> :query_vector) as distance
-            FROM embeddings e
-            WHERE e.content_type = :content_type
-            ' . $tenantClause . '
-            ORDER BY distance ASC
-            LIMIT :limit
-        ';
-
-        $stmt = $conn->prepare($sql);
-        $result = $stmt->executeQuery($params);
-
-        $results = $result->fetchAllAssociative();
-
-        $filtered = [];
-        foreach ($results as $row) {
-            $similarity = 1 - $row['distance'];
+        $scored = [];
+        foreach ($candidates as $embedding) {
+            $similarity = $embedding->cosineSimilarity($queryEmbedding);
             if ($similarity >= $minSimilarity) {
-                $filtered[] = [
-                    'embedding' => $this->find($row['id']),
+                $scored[] = [
+                    'embedding' => $embedding,
                     'similarity' => $similarity,
-                    'distance' => $row['distance'],
+                    'distance' => 1 - $similarity,
                 ];
             }
         }
 
-        return $filtered;
+        usort($scored, fn($a, $b) => $b['similarity'] <=> $a['similarity']);
+
+        return array_slice($scored, 0, $limit);
     }
 
     public function findByContentHash(string $hash): ?Embedding
@@ -75,16 +45,16 @@ class EmbeddingRepository extends ServiceEntityRepository
     public function saveOrUpdate(Embedding $embedding): Embedding
     {
         $existing = $this->findByContentHash($embedding->getContentHash());
-
+        
         if ($existing) {
             $existing->setVector($embedding->getVector());
             $existing->setMetadata(array_merge($existing->getMetadata(), $embedding->getMetadata()));
             return $existing;
         }
-
+        
         $this->getEntityManager()->persist($embedding);
         $this->getEntityManager()->flush();
-
+        
         return $embedding;
     }
 
