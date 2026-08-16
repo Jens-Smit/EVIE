@@ -478,10 +478,6 @@ PROMPT;
         return array_unique($dependencies);
     }
 
-    /**
-     * Extrahiere Parameter aus dem Schema für die ToolDefinition
-     */
-    private function extractParametersFromSchema(array $schema): array
     {
         $parameters = [];
         $properties = $schema['properties'] ?? [];

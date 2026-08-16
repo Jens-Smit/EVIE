@@ -99,6 +99,9 @@ parameters:
         - '#Cannot call method getUserIdentifier\(\) on string#'
         - '#Cannot call method removeElement\(\) on iterable#'
         - '#Class Symfony\\AI\\Platform\\Tool\\ExecutionReference constructor invoked with#'
+        # Pre-existing: EmbeddingRepository::findSimilar() wird mit 5 Parametern
+        # aufgerufen, erwartet 2-4 (VectorStore.php).
+        - '#Method App\\Repository\\EmbeddingRepository::findSimilar\(\) invoked with 5 parameters#'
         - '#Class Symfony\\Component\\Notifier\\Recipient\\Recipient constructor invoked with#'
         - '#Comparison operation "<" between#'
         - '#Constant self not found#'
