@@ -100,7 +100,10 @@ final class Version20260811000000 extends AbstractMigration
         $this->addSql('CREATE INDEX idx_embedding_content_hash ON embeddings (content_hash)');
         $this->addSql('CREATE INDEX idx_embedding_content_type ON embeddings (content_type)');
         $this->addSql('CREATE INDEX idx_embedding_source ON embeddings (source)');
-        $this->addSql('CREATE INDEX idx_embedding_vector ON embeddings USING GIN (vector vector_l2_ops)');
+        // Hinweis: ein GIN-Index mit pgvector-Operator-Klasse (vector_l2_ops)
+        // ist nur fuer echte pgvector vector-Spalten gueltig, nicht fuer
+        // FLOAT[]. Die vector-Spalte wird in P1-A auf den pgvector-Typ
+        // migriert; dann wird hier ein echter Aehnlichkeits-Index angelegt.
 
         // --- reset_password_request -------------------------------------
         // Nach users anlegen, da FK auf users gesetzt wird.
