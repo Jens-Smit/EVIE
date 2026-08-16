@@ -6,7 +6,7 @@ namespace App\AI\Agent;
 
 use Psr\Log\LoggerInterface;
 use Symfony\AI\Agent\AgentInterface;
-use Symfony\AI\Platform\Message\MessageBagInterface;
+use Symfony\AI\Platform\Message\MessageBag;
 use Symfony\AI\Platform\Result\ResultInterface;
 use Symfony\AI\Platform\Result\TextResult;
 use Throwable;
@@ -36,9 +36,9 @@ final class LlmRetryExecutor
     /**
      * Fuehrt einen LLM-Call mit Retry/Backoff aus.
      *
-     * @param callable(MessageBagInterface): ResultInterface $llmCall
+     * @param callable(MessageBag): ResultInterface $llmCall
      */
-    public function executeWithRetry(MessageBagInterface $messages, callable $llmCall): ResultInterface
+    public function executeWithRetry(MessageBag $messages, callable $llmCall): ResultInterface
     {
         $attempt = 0;
         $delay = $this->initialDelayMs;
@@ -73,8 +73,8 @@ final class LlmRetryExecutor
     /**
      * Convenience: Agent-Call mit Retry.
      */
-    public function callAgentWithRetry(AgentInterface $agent, MessageBagInterface $messages): ResultInterface
+    public function callAgentWithRetry(AgentInterface $agent, MessageBag $messages): ResultInterface
     {
-        return $this->executeWithRetry($messages, static fn (MessageBagInterface $m) => $agent->call($m));
+        return $this->executeWithRetry($messages, static fn (MessageBag $m) => $agent->call($m));
     }
 }
