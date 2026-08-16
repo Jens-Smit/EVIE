@@ -129,12 +129,6 @@
 
 ## ⬜ Offen — P2 (mittelfristig)
 
-### P2-D — DSGVO: kein Lösch-/Export-Mechanismus ⬜
-**Befund:** Kein `gdpr`/`dsgvo`/`export`-Mechanismus für Nutzerdaten
-(`grep` über `src/` ohne Treffer).
-**Fix:** Endpunkte für Datenexport und -löschung pro Tenant.
-**Aufwand:** ~1–2 Tage.
-
 ### P2-E — LLM-Ausfallsicherheit: kein Retry/Backoff ⬜
 **Befund:** Kein Retry/Backoff für Mistral/Gemini-LLM-Calls (Retry-Logik
 existiert nur in `Response/FaultTolerantValidator` / `ResponseNormalizer`,
