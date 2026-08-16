@@ -25,6 +25,13 @@ when@test:
 
 when@prod:
     doctrine:
+        dbal:
+            # Connection Pooling (Audit-Finding #4): persistente DB-Verbindungen
+            # reduzieren den TCP-Handshake-Overhead pro Request. Fuer echtes
+            # Connection Pooling mit Multi-Process-Worker empfiehlt sich
+            # zusaetzlich PgBouncer als Sidecar (siehe docs/deployment/).
+            options:
+                persistent: true
         orm:
             auto_generate_proxy_classes: false
             proxy_dir: '%kernel.build_dir%/doctrine/orm/Proxies'
