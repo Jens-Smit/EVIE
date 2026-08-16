@@ -14,6 +14,7 @@ use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Security\Http\Authenticator\AbstractAuthenticator;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\CsrfTokenBadge;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\RememberMeBadge;
+use Symfony\Component\Security\Http\Authenticator\Passport\Badge\MigrateSessionData;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
 use Symfony\Component\Security\Http\Authenticator\Passport\Credentials\PasswordCredentials;
 use Symfony\Component\Security\Http\Authenticator\Passport\Passport;
@@ -43,6 +44,11 @@ class LoginFormAuthenticator extends AbstractAuthenticator
             [
                 new CsrfTokenBadge('authenticate', $csrfToken),
                 new RememberMeBadge(),
+                // Session-Fixation-Schutz (Audit-Finding #8): regeneriert die
+                // Session-ID nach erfolgreicher Authentifizierung und migriert
+                // die Daten auf die neue Session, sodass eine vorab gesetzte
+                // Session-ID nicht uebernommen wird.
+                new MigrateSessionData(),
             ]
         );
     }
