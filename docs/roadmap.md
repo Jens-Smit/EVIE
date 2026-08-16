@@ -129,13 +129,6 @@
 
 ## ⬜ Offen — P2 (mittelfristig)
 
-### P2-E — LLM-Ausfallsicherheit: kein Retry/Backoff ⬜
-**Befund:** Kein Retry/Backoff für Mistral/Gemini-LLM-Calls (Retry-Logik
-existiert nur in `Response/FaultTolerantValidator` / `ResponseNormalizer`,
-nicht im LLM-Transport).
-**Fix:** Retry-Strategie für LLM-Provider-Calls.
-**Aufwand:** ~0,5 Tag.
-
 ### P2-F — Structured Output: Legacy-Pipeline noch aktiv 🟡
 **Befund:** Migration auf native `outputStructure` noch nicht abgeschlossen
 (legacy Pipeline aktiv).
