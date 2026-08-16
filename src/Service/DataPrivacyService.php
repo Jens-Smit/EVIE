@@ -12,7 +12,6 @@ use App\Repository\DocumentRepository;
 use App\Repository\EmbeddingRepository;
 use App\Repository\SubAgentRepository;
 use App\Repository\UserProfileRepository;
-use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 
 /**
@@ -28,7 +27,6 @@ final class DataPrivacyService
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
-        private readonly UserRepository $userRepository,
         private readonly UserProfileRepository $userProfileRepository,
         private readonly AgentHistoryRepository $agentHistoryRepository,
         private readonly DocumentRepository $documentRepository,
