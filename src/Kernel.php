@@ -4,6 +4,7 @@ namespace App;
 
 use App\DependencyInjection\Compiler\E2EStubPass;
 use App\DependencyInjection\Compiler\RegisterDynamicToolboxDecoratorPass;
+use App\DependencyInjection\Compiler\TestStubPass;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
 use Symfony\Component\Config\Loader\LoaderInterface;
 use Symfony\Component\DependencyInjection\Compiler\PassConfig;
@@ -31,7 +32,6 @@ class Kernel extends BaseKernel
     public function isE2ETesting(): bool
     {
         $value = $_ENV['E2E_TESTING'] ?? (getenv('E2E_TESTING') ?: '');
-
         return \in_array((string) $value, ['1', 'true', 'yes'], true);
     }
 
@@ -59,6 +59,14 @@ class Kernel extends BaseKernel
 
         if ($this->isE2ETesting()) {
             $container->addCompilerPass(new E2EStubPass(), PassConfig::TYPE_BEFORE_REMOVING);
+        }
+
+        // Im Test-Env: Agent-Services durch deterministische StubAgent-Instanzen
+        // ersetzen, sodass Functional-/E2E-Tests den LLM-Abruf-Pfad vollstaendig
+        // durchlaufen, ohne echte Mistral-API-Aufrufe (Blueprint-konform, nativ
+        // Symfony AI). In dev/prod ist der Pass ein No-op.
+        if ($this->environment === 'test') {
+            $container->addCompilerPass(new TestStubPass(), PassConfig::TYPE_BEFORE_REMOVING);
         }
     }
 }

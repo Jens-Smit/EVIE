@@ -48,6 +48,11 @@
             <directory>tests/E2E/Smoke</directory>
         </testsuite>
 
+        <!-- E2E LLM-Tests: kritische Aktionen mit echten Mistral/Tavily-Calls (minimiert) -->
+        <testsuite name="E2E LLM Tests">
+            <directory>tests/E2E/LLM</directory>
+        </testsuite>
+
         <!-- Spezifische Test-Suites fuer AI-Komponenten -->
         <testsuite name="EVIE AI Security Tests">
             <directory>tests/Unit/AI/Security</directory>

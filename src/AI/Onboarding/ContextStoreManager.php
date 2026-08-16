@@ -4,17 +4,76 @@ namespace App\AI\Onboarding;
 
 use App\Entity\UserProfile;
 use App\Entity\Embedding;
+use App\Repository\UserProfileRepository;
 use App\AI\Rag\VectorStore;
 use App\AI\Rag\Retriever;
 use Psr\Log\LoggerInterface;
 
+/**
+ * ContextStoreManager - Verwaltet den Benutzerkontext fuer Onboarding und Memory.
+ *
+ * Der Onboarding-Kontext (status 'in_progress', onboarding_data-Array) wird
+ * pro User im UserProfile-Entity (onboardingData-Feld) persistiert, sodass
+ * der Container kompiliert und der onboarding-Agent den Kontext Abrufen kann.
+ * Der VectorStore dient zusaetzlich fuer semantische Memory-Abfragen (RAG).
+ */
 class ContextStoreManager
 {
     public function __construct(
         private VectorStore $vectorStore,
         private Retriever $retriever,
-        private LoggerInterface $logger
+        private LoggerInterface $logger,
+        private ?UserProfileRepository $userProfileRepository = null
     ) {
+    }
+
+    /**
+     * Laedt den onboarding-Kontext fuer einen Benutzer.
+     *
+     * Der Kontext wird aus dem UserProfile.onboardingData-Feld geladen. Ist
+     * kein Profil vorhanden (z.B. noch nicht gestartet), wird ein leerer
+     * Kontext zurueckgegeben, damit der Onboarding-Flow starten kann.
+     *
+     * @return array<string, mixed>
+     */
+    public function loadContext(string $userIdentifier): array
+    {
+        if ($this->userProfileRepository === null) {
+            return [];
+        }
+
+        $userProfile = $this->userProfileRepository->findOneBy(['userIdentifier' => $userIdentifier]);
+        if ($userProfile === null) {
+            return [];
+        }
+
+        $data = $userProfile->getOnboardingData();
+        return is_array($data) ? $data : [];
+    }
+
+    /**
+     * Speichert den onboarding-Kontext fuer einen Benutzer.
+     *
+     * Der Kontext wird im UserProfile.onboardingData-Feld persistiert. Wird
+     * kein Profil gefunden (neuer User), wird eines angelegt, damit der
+     * Onboarding-Kontext nicht verloren geht.
+     *
+     * @param array<string, mixed> $context
+     */
+    public function saveContext(string $userIdentifier, array $context): void
+    {
+        if ($this->userProfileRepository === null) {
+            return;
+        }
+
+        $userProfile = $this->userProfileRepository->findOneBy(['userIdentifier' => $userIdentifier]);
+        if ($userProfile === null) {
+            $userProfile = new UserProfile();
+            $userProfile->setUserIdentifier($userIdentifier);
+        }
+
+        $userProfile->setOnboardingData($context);
+        $this->userProfileRepository->save($userProfile, true);
     }
 
     public function storeUserContext(UserProfile $userProfile, string $context, array $metadata = []): Embedding
@@ -93,15 +152,15 @@ class ContextStoreManager
     public function createSystemPromptWithContext(UserProfile $userProfile, string $query, array $options = []): string
     {
         $basePrompt = 'Du bist ein hilfreicher AI-Assistent.';
-        
+
         $userContext = $this->getRelevantUserContext($userProfile, $query);
         $knowledgeContext = $this->getRelevantKnowledge($query);
-        
+
         $contexts = [];
         foreach ($userContext as $item) {
             $contexts[] = sprintf("[User Context - %s]\n%s", $item->getSource(), $item->getContent());
         }
-        
+
         foreach ($knowledgeContext as $item) {
             $contexts[] = sprintf("[Knowledge - %s]\n%s", $item->getSource(), $item->getContent());
         }

@@ -116,6 +116,18 @@ jobs:
           APP_SECRET: test-secret-for-evie-1234567890abcdef
         run: vendor/bin/phpunit --testsuite="EVIE AI Agent Tests"
 
+      # -+
+      # Functional Tests: kritische Aktionen mit echtem Kernel + LLM-Stub (Blueprint §4.A/§5)
+      # ------------------------------------------------------------------
+      - name: Functional tests
+        env:
+          APP_SECRET: test-secret-for-evie-1234567890abcdef
+          DATABASE_URL: 'sqlite:///%kernel.project_dir%/var/test.db'
+          MISTRAL_API_KEY: test
+          GEMINI_API_KEY: test
+          TAVILY_API_KEY: test
+        run: vendor/bin/phpunit --testsuite="EVIE AI Functional Tests"
+
       - name: Integration tests
         env:
           APP_SECRET: test-secret-for-evie-1234567890abcdef
@@ -130,3 +142,58 @@ jobs:
 
       - name: Run PHPStan
         run: vendor/bin/phpstan analyse src --level=5 --no-progress
+
+  # ===================================================================
+  # E2E-LLM-Job: kritische Aktionen mit echtem Mistral-API-Abruf.
+  # Laeuft nur mit gesetzten Secrets (MISTRAL_API_KEY, TAVILY_API_KEY).
+  # LLM-Aufrufe sind minimiert: jeder Test macht genau 1 Abruf.
+  # Dieser Job ist mit continue-on-error abgesichert, damit Secrets-
+  # Abwesenheit den Default-CI-Workflow nicht blockiert; mit Secrets
+  # muss er gruen sein.
+  # ===================================================================
+  e2e-llm:
+    runs-on: ubuntu-latest
+    continue-on-error: true
+    services:
+      postgres:
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_DB: evie_test
+          POSTGRES_USER: evie
+          POSTGRES_PASSWORD: evie
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_pgsql, pdo_sqlite, mbstring, ctype, iconv
+          coverage: none
+      - name: Copy .env.dist to .env
+        run: cp .env.dist .env
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-scripts
+      - name: Wait for PostgreSQL
+        run: |
+          while ! pg_isready -h localhost -p 5432 -U evie; do
+            sleep 1
+          done
+      - name: E2E-LLM tests (echte Mistral-Aufrufe, minimiert)
+        env:
+          EVIE_LLM_E2E: '1'
+          APP_ENV: test
+          APP_SECRET: test-secret-for-evie-1234567890abcdef
+          DATABASE_URL: 'sqlite:///%kernel.project_dir%/var/test.db'
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          GEMINI_API_KEY: test
+          TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
+          FIRECRAWL_API_KEY: test
+          LINKEDIN_API_TOKEN: test
+        run: vendor/bin/phpunit --testsuite="E2E LLM Tests"

@@ -1,172 +1,48 @@
-# Symfony AI Bundle Test Configuration for EVIE
-# This configuration is used for testing purposes only
-# Reference: https://symfony.com/doc/current/ai/bundles/ai-bundle.html
-# Phase 3: E2E-Test Implementation
-# Date: 13.08.2026
-
+# Symfony AI Test Configuration for EVIE
+#
+# Diese Konfiguration ueberschreibt die Production-Agent-Konfiguration fuer
+# den Test-Env. Sie importiert die Basis-ai.yaml und behaelt die echten
+# Platform-Definitionen (Mistral via env-keys) bei, sodass der Container
+# kompiliert. Die LLM-Aufrufe werden im Test deterministisch durch den
+# TestStubPass ersetzt, der die Agent-Services durch StubAgent-Instanzen
+# austauscht (Blueprint-konform: nativ Symfony AI, keine parallele
+# Tool-Infrastruktur, keine Mockdaten im Production-Code).
 imports:
     - { resource: '../packages/ai.yaml' }
 
 ai:
-    # Test Platforms - Mock implementations for testing
-    platform:
-        # Mock platform for testing tool generation
-        mock:
-            class: 'Symfony\AI\Platform\Bridge\Test\TestPlatform'
-        
-        # Test platform for tool_generator agent
-        test_mistral:
-            class: 'Symfony\AI\Platform\Bridge\Test\TestPlatform'
-            # Mock responses for tool schema generation
-            responses:
-                tool_schema:
-                    content: |
-                        {
-                          "name": "test_tool",
-                          "description": "A test tool for validation",
-                          "security_level": "medium",
-                          "hitl_required": true,
-                          "schema": {
-                            "type": "object",
-                            "properties": {
-                              "input": {
-                                "type": "string",
-                                "description": "Test input parameter"
-                              }
-                            },
-                            "required": ["input"]
-                          },
-                          "parameters": [
-                            {
-                              "name": "input",
-                              "type": "string",
-                              "description": "Test input parameter",
-                              "required": true
-                            }
-                          ]
-                        }
-        
-        # Test platform for onboarding agent
-        test_mistral_onboarding:
-            class: 'Symfony\AI\Platform\Bridge\Test\TestPlatform'
-            responses:
-                onboarding_step_1:
-                    content: |
-                        {
-                          "status": "in_progress",
-                          "step_id": "welcome",
-                          "question": "Welcome to EVIE! What is your primary role?",
-                          "type": "multiple_choice",
-                          "options": ["Developer", "Business User", "Administrator"],
-                          "context_updates": {
-                            "current_step": 1
-                          }
-                        }
-                onboarding_step_2:
-                    content: |
-                        {
-                          "status": "in_progress",
-                          "step_id": "technical_skills",
-                          "question": "What are your technical skills?",
-                          "type": "multiple_choice",
-                          "options": ["PHP", "Symfony", "JavaScript"],
-                          "context_updates": {
-                            "user_profile": {
-                              "user_type": "Developer",
-                              "current_step": 2
-                            }
-                          }
-                        }
-                onboarding_complete:
-                    content: |
-                        {
-                          "status": "completed",
-                          "message": "Onboarding completed successfully",
-                          "user_profile": {
-                            "user_type": "Developer",
-                            "technical_skills": ["PHP", "Symfony"],
-                            "experience_level": "advanced"
-                          }
-                        }
-    
-    # Test Agents - Override production agents for testing
+    # Die echten Platform-Definitionen werden aus der Basis-ai.yaml uebernommen
+    # (Mistral/Gemini via env(default::...)). Die LLM-Stubbing-Logik liegt im
+    # TestStubPass, der die Agent-Services im Test-Env ersetzt.
+
+    # Test-Override der Agent-Prompts (kurze, deterministische Prompts).
+    # Die tatsaechliche LLM-Antwort liefert der TestStubPass via StubAgent.
     agent:
-        # Test version of tool_generator agent
         tool_generator:
-            platform: 'ai.platform.test_mistral'
-            model: 'test'
+            platform: 'ai.platform.mistral'
+            model: 'mistral-small-latest'
             prompt:
-                text: 'Test prompt for tool generation'
+                text: 'Test tool generator prompt. Returns a JSON tool schema.'
                 include_tools: false
-            memory: null
+            keep_tool_messages: true
             tools: false
-            security_level: 'low'
-            hitl_required: false
-        
-        # Test version of onboarding agent
+
         onboarding:
-            platform: 'ai.platform.test_mistral_onboarding'
-            model: 'test'
+            platform: 'ai.platform.mistral'
+            model: 'mistral-small-latest'
             prompt:
-                text: 'Test prompt for onboarding'
+                text: 'Test onboarding prompt. Returns JSON onboarding steps.'
                 include_tools: false
-            memory: null
-            tools: false
             max_tool_calls: 0
-        
-        # Test version of orchestrator agent
+            keep_tool_messages: true
+            tools: false
+
         orchestrator:
-            platform: 'ai.platform.mock'
-            model: 'test'
+            platform: 'ai.platform.mistral'
+            model: 'mistral-small-latest'
             prompt:
                 text: |
-                    Test orchestrator for EVIE Phase 3 testing.
-                    Always return test responses for evolution flow validation.
-                include_tools: false
-            memory: null
-            tools: false
-    
-    # Test Multi-Agent Orchestration
-    multi_agent:
-        evie_test:
-            orchestrator: 'orchestrator'
-            handoffs:
-                tool_generator: ['test_tool', 'tool_test']
-                onboarding: ['test_onboarding']
-            fallback: 'fallback'
-    
-    # Test Message Store
-    message_store:
-        cache:
-            test_dialog:
-                service: 'cache.app'
-                key: 'test_dialog'
-    
-    # Test Chat Configuration
-    chat:
-        test:
-            agent: 'ai.agent.orchestrator'
-            message_store: 'ai.message_store.cache.test_dialog'
-    
-    # Test Vectorizer
-    vectorizer:
-        test_embeddings:
-            platform: 'ai.platform.mock'
-            model: 'test'
-    
-    # Test Store for tool definitions
-    store:
-        memory:
-            test_tool_definitions:
-                strategy: 'cosine'
-        
-        # Test store for onboarding
-        test_onboarding:
-            type: 'memory'
-            strategy: 'cosine'
-    
-    # Test Indexer
-    indexer:
-        test_onboarding:
-            vectorizer: 'ai.vectorizer.test_embeddings'
-            store: 'ai.store.memory.test_onboarding'
+                    Test orchestrator for EVIE. Returns structured JSON responses
+                    for evolution-flow validation.
+                include_tools: true
+            keep_tool_messages: true

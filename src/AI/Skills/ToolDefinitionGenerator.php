@@ -85,7 +85,7 @@ class ToolDefinitionGenerator
         $toolDefinition->setComplexity($complexity);
         $toolDefinition->setDependencies($dependencies);
         $toolDefinition->setSecurityLevel($securityLevel);
-        $toolDefinition->setHitlRequired($hitlRequired);
+        $toolDefinition->setRequiresHitl($hitlRequired);
         $toolDefinition->setStatus('pending');
 
         // 8. Metadaten für Wiederverwendung und Phase 3-Optimierung
@@ -218,14 +218,17 @@ class ToolDefinitionGenerator
     {
         if (!isset($schema['type']) || $schema['type'] !== 'object') {
             throw new ToolRegistrationException(
-                $toolName,
-                'Tool-Schema ist ungueltig: type muss "object" sein'
+                sprintf('Tool-Schema fuer "%s" ist ungueltig: type muss "object" sein', $toolName),
+                null,
+                ['tool_name' => $toolName, 'reason' => 'invalid_type']
             );
         }
 
         if (!array_key_exists('properties', $schema)) {
             throw new ToolRegistrationException(
-                sprintf('Tool-Schema fuer "%s" ist ungueltig: properties-Feld fehlt', $toolName)
+                sprintf('Tool-Schema fuer "%s" ist ungueltig: properties-Feld fehlt', $toolName),
+                null,
+                ['tool_name' => $toolName, 'reason' => 'missing_properties']
             );
         }
     }
@@ -428,18 +431,18 @@ PROMPT;
     /**
      * Bestimmt die Komplexität des Tools
      */
-    private function determineComplexity(array $schema): string
+    private function determineComplexity(array $schema): int
     {
         $propertyCount = count($schema['properties'] ?? []);
         $requiredCount = count($schema['required'] ?? []);
 
         if ($propertyCount >= 5 || $requiredCount >= 3) {
-            return 'high';
+            return 2; // high
         }
         if ($propertyCount >= 3 || $requiredCount >= 2) {
-            return 'medium';
+            return 1; // medium
         }
-        return 'low';
+        return 0; // low
     }
 
     /**
@@ -551,7 +554,7 @@ PROMPT;
     public function approveTool(ToolDefinition $toolDefinition): void
     {
         $toolDefinition->setStatus('approved');
-        $toolDefinition->setApprovedAt(new \DateTimeImmutable());
+        $toolDefinition->setUpdatedAt(new \DateTimeImmutable());
         $this->toolDefinitionRepo->save($toolDefinition, true);
 
         $this->logger->info('Tool genehmigt', [
@@ -566,7 +569,7 @@ PROMPT;
     public function rejectTool(ToolDefinition $toolDefinition, string $reason = null): void
     {
         $toolDefinition->setStatus('rejected');
-        $toolDefinition->setRejectedAt(new \DateTimeImmutable());
+        $toolDefinition->setUpdatedAt(new \DateTimeImmutable());
         
         $metadata = $toolDefinition->getMetadata() ?? [];
         $metadata['rejection_reason'] = $reason;
