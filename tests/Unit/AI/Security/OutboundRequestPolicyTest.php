@@ -86,4 +86,64 @@ final class OutboundRequestPolicyTest extends TestCase
     {
         self::assertFalse($this->policy->isUrlAllowed(':::not-a-url'));
     }
+
+    /**
+     * Komprimierte und nicht-kanonische IPv6-Formen muessen als privat
+     * erkannt werden (Audit: "IPv6-Normalisierung unvollstaendig").
+     */
+    public function testBlocksCompressedIpv6Loopback(): void
+    {
+        self::assertFalse($this->policy->isUrlAllowed('http://[::1]/admin'));
+    }
+
+    public function testBlocksUnspecifiedIpv6(): void
+    {
+        // :: = unspecified address (0.0.0.0 equivalent).
+        self::assertFalse($this->policy->isUrlAllowed('http://[::]/admin'));
+    }
+
+    public function testBlocksCompressedUniqueLocalIpv6(): void
+    {
+        // fd00::1 = Unique Local Address (ULA), komprimierte Form.
+        self::assertFalse($this->policy->isUrlAllowed('http://[fd00::1]/admin'));
+        // fc00::1 = ULA, andere Haelfte.
+        self::assertFalse($this->policy->isUrlAllowed('http://[fc00::1]/admin'));
+    }
+
+    public function testBlocksCompressedLinkLocalIpv6(): void
+    {
+        // fe80::1 = Link-Local, komprimierte Form.
+        self::assertFalse($this->policy->isUrlAllowed('http://[fe80::1]/admin'));
+    }
+
+    public function testBlocksIpv4MappedIpv6PointingToPrivate(): void
+    {
+        // ::ffff:127.0.0.1 = IPv4-mapped IPv6, die auf Loopback zeigt.
+        self::assertFalse($this->policy->isUrlAllowed('http://[::ffff:127.0.0.1]/admin'));
+        // ::ffff:169.254.169.254 = AWS-Metadaten-Endpunkt als IPv4-mapped IPv6.
+        self::assertFalse($this->policy->isUrlAllowed('http://[::ffff:169.254.169.254]/latest/meta-data/'));
+    }
+
+    public function testAllowsPublicIpv6(): void
+    {
+        // 2606:4700::1 = Cloudflare public DNS, keine private Range.
+        self::assertTrue($this->policy->isUrlAllowed('http://[2606:4700::1]/data'));
+    }
+
+    public function testResolveAllowedIpReturnsNullForLoopback(): void
+    {
+        self::assertNull($this->policy->resolveAllowedIp('http://127.0.0.1/admin'));
+        self::assertNull($this->policy->resolveAllowedIp('http://[::1]/admin'));
+    }
+
+    public function testResolveAllowedIpReturnsIpForDirectIp(): void
+    {
+        // Eine zulaessige (public) IP wird als Pinning-Target zurueckgegeben.
+        self::assertSame('8.8.8.8', $this->policy->resolveAllowedIp('http://8.8.8.8/dns'));
+    }
+
+    public function testResolveAllowedIpReturnsNullForMalformedUrl(): void
+    {
+        self::assertNull($this->policy->resolveAllowedIp(':::not-a-url'));
+    }
 }

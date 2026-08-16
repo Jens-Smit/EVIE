@@ -176,24 +176,104 @@ class OutboundRequestPolicy
      */
     private function isPrivateIpv6(string $ip): bool
     {
-        // Vereinfachte Prüfung für IPv6
-        // Loopback: ::1
-        // Unique Local Addresses: fc00::/7
-        // Link-Local: fe80::/10
-        
-        if ($ip === '::1') {
+        $packed = @inet_pton($ip);
+        if (false === $packed) {
+            // Fallback: String-Praefix fuer nicht-kanonische Eingaben.
+            $ipLower = strtolower($ip);
+            return $ipLower === '::1'
+                || str_starts_with($ipLower, 'fc')
+                || str_starts_with($ipLower, 'fd')
+                || str_starts_with($ipLower, 'fe80:')
+                || $ipLower === '::';
+        }
+
+        // 16-Byte kanonische Form (inet_pton-Ausgabe) auswerten.
+        // :: (unspecified) = 16 Null-Bytes.
+        if ($packed === "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0") {
+            return true;
+        }
+        // ::1 (loopback) = 15 Null-Bytes + 0x01.
+        if ($packed === "\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\1") {
             return true;
         }
 
-        if (str_starts_with($ip, 'fc00:')) {
+        $b0 = ord($packed[0]);
+        $b1 = ord($packed[1]);
+
+        // fc00::/7: erstes Bit gesetzt in erstem Byte (0xfc..0xfd).
+        if (($b0 & 0xFE) === 0xFC) {
+            return true;
+        }
+        // fe80::/10: 0xfe und oberste 2 Bits des zweiten Bytes gesetzt.
+        if ($b0 === 0xFE && ($b1 & 0xC0) === 0x80) {
             return true;
         }
 
-        if (str_starts_with($ip, 'fe80:')) {
-            return true;
+        // IPv4-mapped (::ffff:a.b.c.d) oder IPv4-compatible (::a.b.c.d):
+        // Bytes 0..9 null, Byte 10/11 = 0xff/0xff (mapped) oder beide 0 (compat).
+        if ($b0 === 0
+            && substr($packed, 0, 10) === "\0\0\0\0\0\0\0\0\0\0"
+            && ((ord($packed[10]) === 0xFF && ord($packed[11]) === 0xFF)
+                || (ord($packed[10]) === 0 && ord($packed[11]) === 0))) {
+            // Eingebettete IPv4 extrahieren und gegen private IPv4-Ranges pruefen.
+            $v4 = @inet_ntop(substr($packed, 12, 4));
+            if (false !== $v4 && $this->isPrivateIpv4($v4)) {
+                return true;
+            }
         }
 
         return false;
+    }
+
+    /**
+     * Loest den Host auf und gibt die erste zulaessige IP zurueck, die fuer
+     * das Connection-Pinning verwendet werden kann.
+     *
+     * TOCTOU-Schutz gegen DNS-Rebinding: wenn der HTTP-Client die URL mit dem
+     * urspruenglichen Hostnamen abruft, kann das DNS zwischen der Policy-
+     * Pruefung und dem Verbindungsaufbau erneut aufgeloest werden (z. B.
+     * evil.com -> 93.184.216.34 bei der Pruefung, dann evil.com -> 127.0.0.1
+     * beim Abruf). Indem die gepruefte IP zurueckgegeben und vom Client als
+     * Connection-Target verwendet wird, entfaellt das Zeitfenster.
+     *
+     * @return string|null Gepruefte IP-Adresse oder null, wenn der Host
+     *                     keine zulaessige IP hat oder ungueltig ist.
+     */
+    public function resolveAllowedIp(string $url): ?string
+    {
+        $parsed = @parse_url($url);
+        if (!is_array($parsed)) {
+            return null;
+        }
+        $host = trim((string) ($parsed['host'] ?? ''), '[]');
+        if ($host === '') {
+            return null;
+        }
+
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
+            return $this->isIpAllowed($host) ? $host : null;
+        }
+
+        $ips = @gethostbynamel($host);
+        if (is_array($ips)) {
+            foreach ($ips as $ip) {
+                if ($this->isIpAllowed($ip)) {
+                    return $ip;
+                }
+            }
+        }
+
+        $recordsV6 = @dns_get_record($host, DNS_AAAA);
+        if (is_array($recordsV6)) {
+            foreach ($recordsV6 as $record) {
+                $ipv6 = $record['ipv6'] ?? null;
+                if (null !== $ipv6 && $this->isIpAllowed($ipv6)) {
+                    return $ipv6;
+                }
+            }
+        }
+
+        return null;
     }
 
     /**
