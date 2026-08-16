@@ -301,15 +301,12 @@
             {% endif %}
             
             // HTMX Global Settings
-            htmx.defaults.timeout = 10000;
-            htmx.defaults.indicator = '.htmx-indicator';
-            htmx.defaults.swap = 'innerHTML transition:true';
-            htmx.defaults.scroll = 'body';
-            htmx.defaults.scrollBehavior = 'smooth';
+            htmx.config.timeout = 10000;
+            htmx.config.indicatorClass = 'htmx-indicator';
+            htmx.config.defaultSwapStyle = 'innerHTML';
+            htmx.config.scrollBehavior = 'smooth';
             
-            // HTMX Extensions
-            htmx.use(jsonEnc);
-            
+          
             // HTMX Event Listeners
             htmx.onLoad(function(content) {
                 // Auto-refresh für bestimmte Elemente

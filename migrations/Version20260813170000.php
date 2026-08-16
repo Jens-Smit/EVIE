@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace DoctrineMigrations;
 
-use DoctrineDBALSchemaSchema;
-use DoctrineMigrationsAbstractMigration;
+use Doctrine\DBAL\Schema\Schema;
+use Doctrine\Migrations\AbstractMigration;
 
 /**
  * Adds new fields to tool_definitions table for Phase 2: Evolution Engine
@@ -23,7 +23,7 @@ final class Version20260813170000 extends AbstractMigration
         $this->addSql('ALTER TABLE tool_definitions ADD executor_config JSON DEFAULT NULL');
         $this->addSql('ALTER TABLE tool_definitions ADD security_policy JSON DEFAULT NULL');
         $this->addSql('ALTER TABLE tool_definitions ADD hitl_policy JSON DEFAULT NULL');
-        $this->addSql('ALTER TABLE tool_definitions ADD version VARCHAR(50) DEFAULT '1.0'');
+        $this->addSql('ALTER TABLE tool_definitions ADD version VARCHAR(50) DEFAULT \'1.0\'');
     }
 
     public function down(Schema $schema): void

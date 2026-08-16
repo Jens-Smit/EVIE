@@ -25,8 +25,9 @@ class ToolDefinition
     #[ORM\Column(type: Types::JSON)]
     private array $schema = [];
 
-    #[ORM\Column(type: Types::STRING, length: 255)]
-    private ?string $category = null;
+    #[ORM\ManyToOne(targetEntity: ToolCategory::class, inversedBy: 'tools')]
+    #[ORM\JoinColumn(name: 'category_id', nullable: true, onDelete: 'SET NULL')]
+    private ?ToolCategory $category = null;
 
     #[ORM\Column(type: Types::INTEGER, options: ['default' => 1])]
     private ?int $complexity = 1;
@@ -125,12 +126,12 @@ class ToolDefinition
         return $this;
     }
 
-    public function getCategory(): ?string
+    public function getCategory(): ?ToolCategory
     {
         return $this->category;
     }
 
-    public function setCategory(?string $category): static
+    public function setCategory(?ToolCategory $category): static
     {
         $this->category = $category;
         return $this;
@@ -300,7 +301,7 @@ class ToolDefinition
             'name' => $this->name,
             'description' => $this->description,
             'schema' => $this->schema,
-            'category' => $this->category,
+            'category' => $this->category?->getName(),
             'complexity' => $this->complexity,
             'dependencies' => $this->dependencies,
             'securityLevel' => $this->securityLevel,

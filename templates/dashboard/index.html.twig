@@ -7,7 +7,7 @@
     <h1 class="text-3xl font-bold mb-6">Dashboard</h1>
     
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div class="bg-white shadow-md rounded-lg p-6">
+        <div class="bg-white dark:bg-slate-800 shadow-md rounded-lg p-6">
             <h2 class="text-xl font-semibold mb-4">Letzte Aktionen</h2>
             {% if recentActions|length > 0 %}
             <ul class="space-y-2">
@@ -23,7 +23,7 @@
             {% endif %}
         </div>
 
-        <div class="bg-white shadow-md rounded-lg p-6">
+        <div class="bg-white dark:bg-slate-800 shadow-md rounded-lg p-6">
             <h2 class="text-xl font-semibold mb-4">Ausstehende Tools</h2>
             {% if pendingTools|length > 0 %}
             <ul class="space-y-2">
@@ -38,7 +38,7 @@
             {% endif %}
         </div>
 
-        <div class="bg-white shadow-md rounded-lg p-6">
+        <div class="bg-white dark:bg-slate-800 shadow-md rounded-lg p-6">
             <h2 class="text-xl font-semibold mb-4">Letzte Dokumente</h2>
             {% if recentDocuments|length > 0 %}
             <ul class="space-y-2">
@@ -55,7 +55,7 @@
             {% endif %}
         </div>
 
-        <div class="bg-white shadow-md rounded-lg p-6">
+        <div class="bg-white dark:bg-slate-800 shadow-md rounded-lg p-6">
             <h2 class="text-xl font-semibold mb-4">Subagenten</h2>
             {% if subAgents|length > 0 %}
             <ul class="space-y-2">
@@ -74,14 +74,14 @@
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="lg:col-span-2 bg-white shadow-md rounded-lg p-6">
+        <div class="lg:col-span-2 bg-white dark:bg-slate-800 shadow-md rounded-lg p-6">
             <h2 class="text-xl font-semibold mb-4">Aktivitäts-Übersicht</h2>
             <div class="h-64 bg-gray-50 rounded-lg flex items-center justify-center">
                 <p class="text-gray-500">Hier könnte ein Diagramm mit der Aktivität angezeigt werden</p>
             </div>
         </div>
 
-        <div class="bg-white shadow-md rounded-lg p-6">
+        <div class="bg-white dark:bg-slate-800 shadow-md rounded-lg p-6">
             <h2 class="text-xl font-semibold mb-4">Schnellzugriff</h2>
             <div class="space-y-3">
                 <a href="{{ path('frontend_agent_dialog') }}" class="flex items-center space-x-2 text-blue-600 hover:text-blue-800">

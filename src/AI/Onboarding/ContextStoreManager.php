@@ -92,37 +92,26 @@ class ContextStoreManager
 
     public function createSystemPromptWithContext(UserProfile $userProfile, string $query, array $options = []): string
     {
-        $basePrompt = $userProfile->getSystemPrompt() ?? 'Du bist ein hilfreicher AI-Assistent.';
+        $basePrompt = 'Du bist ein hilfreicher AI-Assistent.';
         
         $userContext = $this->getRelevantUserContext($userProfile, $query);
         $knowledgeContext = $this->getRelevantKnowledge($query);
         
         $contexts = [];
         foreach ($userContext as $item) {
-            $contexts[] = sprintf("[User Context - %s]
-%s", $item->getSource(), $item->getContent());
+            $contexts[] = sprintf("[User Context - %s]\n%s", $item->getSource(), $item->getContent());
         }
         
         foreach ($knowledgeContext as $item) {
-            $contexts[] = sprintf("[Knowledge - %s]
-%s", $item->getSource(), $item->getContent());
+            $contexts[] = sprintf("[Knowledge - %s]\n%s", $item->getSource(), $item->getContent());
         }
 
         if (empty($contexts)) {
             return $basePrompt;
         }
 
-        $contextString = implode("
-
----
-
-", $contexts);
-        return $basePrompt . "
-
-## Relevanter Kontext:
-" . $contextString . "
-
-";
+        $contextString = implode("\n\n---\n\n", $contexts);
+        return $basePrompt . "\n\n## Relevanter Kontext:\n" . $contextString . "\n\n";
     }
 
     public function deleteUserContext(UserProfile $userProfile): int

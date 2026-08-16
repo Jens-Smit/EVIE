@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace DoctrineMigrations;
 
-use DoctrineDBALSchemaSchema;
-use DoctrineMigrationsAbstractMigration;
+use Doctrine\DBAL\Schema\Schema;
+use Doctrine\Migrations\AbstractMigration;
 
 /**
  * Creates audit_logs table for Phase 3: Security & Audit Trail

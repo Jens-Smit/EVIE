@@ -94,7 +94,7 @@ final class AgentDialogController extends AbstractController
             $this->userProfileRepo->save($userProfile, true); // Sofort speichern
         }
 
-        $systemPrompt = $this->contextStore->getSystemPrompt($userIdentifier);
+        $systemPrompt = $this->contextStore->createSystemPromptWithContext($userProfile, $userMessage);
         $this->logger->debug('AgentDialogController::dialog - System-Prompt:', ['prompt' => $systemPrompt]);
 
         try {
