@@ -54,7 +54,7 @@ class HitlWorkflowManager
         $this->auditLogger->log(
             'hitl_execution_blocked',
             $user,
-            null  // P1-B: DynamicTool hat keine Definition-Referenz (getDefinition existiert nicht),
+            null, // P1-B: DynamicTool hat keine Definition-Referenz (getDefinition existiert nicht)
             'ToolDefinition',
             [
                 'execution_id' => $executionId,
@@ -160,7 +160,7 @@ class HitlWorkflowManager
         ]);
 
         $this->auditLogger->logHitlDecision(
-            0  // P1-B: DynamicTool hat keine Definition-Referenz,
+            0, // P1-B: DynamicTool hat keine Definition-Referenz
             $pendingExecution->getTool()->getName(),
             $rejecter,
             'rejected',
