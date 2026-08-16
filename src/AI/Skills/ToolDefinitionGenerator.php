@@ -80,7 +80,8 @@ class ToolDefinitionGenerator
         $toolDefinition->setName($this->sanitizeToolName($toolName));
         $toolDefinition->setDescription($description);
         $toolDefinition->setSchema($schema);
-        $toolDefinition->setParameters($this->extractParametersFromSchema($schema));
+        // Parameter sind im Schema enthalten; ToolDefinition hat kein separates
+        // parameters-Feld (setParameters existiert nicht auf der Entity).
         $toolDefinition->setCategory($category);
         $toolDefinition->setComplexity($complexity);
         $toolDefinition->setDependencies($dependencies);

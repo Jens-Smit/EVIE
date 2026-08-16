@@ -41,6 +41,8 @@
         <!-- E2E-Tests: Authentifizierungs-Flows (Login, Registrierung, Logout, Navigation, Profil) -->
         <testsuite name="E2E Tests">
             <directory>tests/E2E</directory>
+            <exclude>tests/E2E/Smoke</exclude>
+            <exclude>tests/E2E/LLM</exclude>
         </testsuite>
 
         <!-- E2E Smoke-Tests: Agent/Tool/RAG/HITL/Audit Smoke (Blueprint §17) -->

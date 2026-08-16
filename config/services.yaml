@@ -51,6 +51,12 @@ services:
         arguments:
             $toolGeneratorAgent: '@ai.agent.tool_generator'
 
+    # OnboardingFlowManager benoetigt den expliziten onboarding-Agent, da
+    # autowiring bei mehreren AgentInterface-Services nicht aufloesen kann.
+    App\AI\Onboarding\OnboardingFlowManager:
+        arguments:
+            $onboardingAgent: '@ai.agent.onboarding'
+
     # Event Listeners
     App\EventListener\ApiSecurityListener:
         tags:
