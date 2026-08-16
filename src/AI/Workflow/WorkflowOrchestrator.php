@@ -164,13 +164,9 @@ class WorkflowOrchestrator
             $request,
             ['source' => 'workflow_orchestrator']
         );
-        
-        if (!$definition) {
-            return [
-                'status' => 'no_tool_found',
-                'message' => 'Kein passendes Tool gefunden und Generierung fehlgeschlagen'
-            ];
-        }
+
+        // P1-B: generateToolDefinition() ist non-nullable (gibt immer
+        // ToolDefinition zurueck); ein null-Check ist nicht noetig.
 
         // Speichere als pending
         $definition->setStatus('pending');
@@ -284,9 +280,9 @@ class WorkflowOrchestrator
         return [
             'status' => $result->isSuccess() ? 'success' : 'error',
             'result' => $result->getResult(),
-            // P1-B: getError() existiert nicht; getErrorMessage() ist die
-            // tatsaechliche Methode auf ToolExecutionResult.
-            'error' => $result->getErrorMessage(),
+            // P1-B: ExecutionResult (Workflow) hat getError(), nicht
+            // getErrorMessage() (das ist ToolExecutionResult).
+            'error' => $result->getError(),
             'original_request' => $result->getOriginalRequest()
         ];
     }

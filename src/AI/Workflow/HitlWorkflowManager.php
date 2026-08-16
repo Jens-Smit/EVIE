@@ -2,11 +2,9 @@
 
 namespace App\AI\Workflow;
 
-use App\Entity\ToolDefinition;
 use App\Entity\User;
 use App\AI\Skills\Tool\DynamicTool;
 use App\AI\Security\AuditLogger;
-use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -18,7 +16,6 @@ class HitlWorkflowManager
     private array $pendingExecutions = [];
 
     public function __construct(
-        private EntityManagerInterface $entityManager,
         private AuditLogger $auditLogger,
         private LoggerInterface $logger
     ) {
