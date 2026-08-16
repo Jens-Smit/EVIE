@@ -89,6 +89,7 @@
       "cache:clear": "symfony-cmd",
       "assets:install %PUBLIC_DIR%": "symfony-cmd"
     },
+<<<<<<< Updated upstream
     "auto-scripts-config": {
       "cache:clear": [
         "@on-change"
@@ -98,4 +99,64 @@
       ]
     }
   }
+=======
+    "require": {
+        "php": ">=8.2",
+        "doctrine/doctrine-bundle": "^2.10",
+        "doctrine/doctrine-migrations-bundle": "^3.3",
+        "nelmio/api-doc-bundle": "5.0",
+        "symfony/ai-agent": "^0.11",
+        "symfony/ai-bundle": "^0.11.1",
+        "symfony/ai-cache-message-store": "^0.11.0",
+        "symfony/ai-chat": "^0.11.0",
+        "symfony/ai-firecrawl-tool": "^0.11.0",
+        "symfony/ai-mistral-platform": "^0.11",
+        "symfony/ai-postgres-store": "^0.11.0",
+        "symfony/ai-store": "^0.11",
+        "symfony/ai-tavily-tool": "^0.11.0",
+        "symfony/asset": "^7.4",
+        "symfony/asset-mapper": "^7.4",
+        "symfony/dotenv": "^7.4",
+        "symfony/framework-bundle": "^7.4",
+        "symfony/mailer": "^7.4",
+        "symfony/maker-bundle": "^1.50",
+        "symfony/messenger": "^7.4",
+        "symfony/monolog-bundle": "^4.0",
+        "symfony/notifier": "^7.4",
+        "symfony/orm-pack": "^2.0",
+        "symfony/rate-limiter": "^7.4",
+        "symfony/runtime": "^7.4",
+        "symfony/security-bundle": "^7.4",
+        "symfony/translation": "^7.4",
+        "symfony/twig-bundle": "^7.4",
+        "symfony/validator": "^7.4",
+        "symfony/yaml": "^7.4",
+        "webklex/php-imap": "^6.2"
+    },
+    "require-dev": {
+        "phpstan/phpstan": "^1.10",
+        "phpunit/phpunit": "^10.0",
+        "symfony/debug-bundle": "^7.4",
+        "symfony/phpunit-bridge": "^7.0",
+        "symfony/web-profiler-bundle": "^7.4"
+    },
+    "scripts": {
+        "post-install-cmd": [
+            "@php -r \"file_exists('.env') || copy('.env.dist', '.env');\""
+        ],
+        "post-update-cmd": [
+            "@php -r \"file_exists('.env') || copy('.env.dist', '.env');\""
+        ]
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true,
+        "allow-plugins": {
+            "symfony/runtime": true,
+            "php-http/discovery": true
+        }
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+>>>>>>> Stashed changes
 }
