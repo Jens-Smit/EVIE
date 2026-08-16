@@ -6,6 +6,9 @@ namespace App\Tests\E2E\LLM;
 
 use App\AI\Onboarding\OnboardingFlowManager;
 use App\AI\Skills\ToolDefinitionGenerator;
+use App\Entity\ToolDefinition;
+use Doctrine\ORM\EntityManagerInterface;
+use Doctrine\ORM\Tools\SchemaTool;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
 
 /**
@@ -22,6 +25,8 @@ use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
  */
 final class RealLlmFlowTest extends KernelTestCase
 {
+    private EntityManagerInterface $entityManager;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -29,6 +34,21 @@ final class RealLlmFlowTest extends KernelTestCase
             self::markTestSkipped('MISTRAL_API_KEY nicht gesetzt - E2E-LLM-Tests werden skipped.');
         }
         self::bootKernel();
+        $this->entityManager = static::getContainer()->get(EntityManagerInterface::class);
+        $this->ensureSchema();
+    }
+
+    protected function tearDown(): void
+    {
+        try {
+            $this->entityManager->createQueryBuilder()
+                ->delete(ToolDefinition::class, 't')
+                ->getQuery()->execute();
+            $this->entityManager->clear();
+        } catch (\Throwable) {
+            // Tabelle existiert moeglicherweise nicht.
+        }
+        parent::tearDown();
     }
 
     public function testRealOrchestratorLlmCallReturnsString(): void
@@ -39,7 +59,7 @@ final class RealLlmFlowTest extends KernelTestCase
         $result = $orchestrator->ask('Hallo, wer bist du?', 'e2e-llm-user');
 
         self::assertIsString($result);
-        // Minimiert: 1 Abruf pro ask()-Aufruf (kein Loop, da tools via Dialog-Antwort).
+        // Minimiert: 1 Abruf pro ask()-Aufruf.
         self::assertNotEmpty($result);
     }
 
@@ -77,5 +97,16 @@ final class RealLlmFlowTest extends KernelTestCase
     {
         $key = $_ENV['MISTRAL_API_KEY'] ?? (getenv('MISTRAL_API_KEY') ?: '');
         return is_string($key) && $key !== '' && $key !== 'test_mistral_api_key' && $key !== 'test';
+    }
+
+    private function ensureSchema(): void
+    {
+        $schemaTool = new SchemaTool($this->entityManager);
+        $classes = $this->entityManager->getMetadataFactory()->getAllMetadata();
+        try {
+            $schemaTool->createSchema($classes);
+        } catch (\Throwable) {
+            // Schema existiert bereits.
+        }
     }
 }

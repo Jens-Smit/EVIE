@@ -8,7 +8,18 @@ services:
     # In prod, config/packages/mercure.yaml provides a real Hub with fallback env vars.
     App\Tests\Stub\NullMercureHub: ~
     Symfony\Component\Mercure\HubInterface: '@App\Tests\Stub\NullMercureHub'
-
     App\AI\Streaming\StreamingPublisher:
         arguments:
             $mercureHub: '@App\Tests\Stub\NullMercureHub'
+
+    # Kritische EVIE-Services fuer Functional- und E2E-LLM-Tests public machen,
+    # damit sie via static::getContainer()->get() abrufbar sind (KernelTestCase
+    # erlaubt sonst den Abruf nur von public-Services).
+    App\AI\Agent\OrchestratorDialogService:
+        public: true
+    App\AI\Skills\ToolDefinitionGenerator:
+        public: true
+    App\AI\Onboarding\OnboardingFlowManager:
+        public: true
+    App\AI\Skills\DynamicToolbox:
+        public: true
