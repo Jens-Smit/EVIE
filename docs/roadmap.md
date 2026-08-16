@@ -1,7 +1,7 @@
 # Roadmap
 
 **Stand:** Überarbeitet auf Basis von Code-Verifikation gegen `main`
-(ausgehend von Commit `a3abb07`).
+(ausgehend von Commit `a3abb07`, fortlaufend aktualisiert).
 **Quellen:** `docs/audit-2026-08-16.md` (Ausführungs-Audit), `docs/temp/audit.md`
 (34 Findings), `docs/temp/roadmap-progress.md` (P0/P1/P3 + 5-Phasen).
 
@@ -20,7 +20,7 @@
 
 ## Legende
 
-- ✅ Erledigt — Code verifiziert vorhanden/funktionierend
+- ✅ Erledigt — Code verifiziert vorhanden/funktionierend, CI grün
 - 🟡 Teilweise — implementiert, aber mit Einschränkung/ offener Teilaufgabe
 - ⬜ Offen — noch nicht umgesetzt
 
@@ -78,39 +78,24 @@
 - [x] MCP-Server dynamisch konfigurierbar (DB + SecurityGuard)
 - [x] Frontend HTMX/Alpine.js (Endpoints + Templates)
 
----
-
-## ⬜ Offen — P0 (Production-Blocker)
-
-> Quelle: `docs/audit-2026-08-16.md` §2.1. Die `roadmap-progress.md`-Aussage
-> "P0-2 erledigt" ist hier **korrigiert**: zwar wurden alle MySQL-DDL-Konstrukte
-> auf Postgres-Syntax umgeschrieben (verifiziert), aber die Migrationskette
-> selbst bleibt nicht von leerer DB lauffähig.
-
-### P0-A — Migrationskette bootstrapt keine leere Datenbank ⬜
-**Befund:** Die erste Migration (`Version20260811190100`) ist eine
-*Konsolidierungs*-Migration. Ihr `up()` führt `INSERT INTO user_profile ...`
-aus, referenziert `agent_history`, `decision_log`, `document`, `sub_agent`,
-`tool_definition` — **keine** dieser Tabellen wird durch eine Migration
-angelegt (`CREATE TABLE` existiert nur für `user_profiles` (Plural, im
-`down()`), `embeddings`, `audit_logs`, `ai_mcp_server_definitions`,
-`ai_streaming_sessions`, `ai_sub_agent_definitions`, `users`,
-`reset_password_request`). Auf leerer DB bricht die erste Migration mit
-`relation "user_profile" does not exist`.
-**Fix:** Initiale Baseline-Migration mit `CREATE TABLE` für alle Tabellen aus
-dem Entity-Schema (`UserProfile`, `AgentHistory`, `DecisionLog`, `Document`,
-`SubAgent`, `ToolDefinition`, `ToolCategory`, ...) erstellen und voranstellen.
-**Aufwand:** ~3–4 h (inkl. `doctrine:schema:validate`-Abgleich).
-
-### P0-B — CI testet `schema:create`, nicht `migrations:migrate` ⬜
-**Befund:** `.github/workflows/ci.yml` (Zeile 225) führt
-`doctrine:schema:create --env=prod` aus, **nicht** `doctrine:migrations:migrate`.
-Dadurch wird P0-A durch CI nicht erkannt — das Audit bestätigt: "CI testet das
-Falsche".
-**Fix:** CI-Migrations-Job auf `doctrine:migrations:migrate` gegen eine
-frische PostgreSQL-16+pgvector-Instanz umstellen (vorhandener `migrations`-Job
-erweitern).
-**Aufwand:** ~1 h.
+### P0 — Migrations-Bootstrap & CI (Audits §2.1)
+- [x] **P0-A — Baseline-Migration** erstellt (`migrations/Version20260811000000.php`):
+      legt das vollständige finale Schema (alle Tabellen aus den Entities:
+      `users`, `user_profile`, `sub_agent`, `agent_history`, `document`,
+      `decision_log`, `tool_category`, `tool_definitions`, `audit_logs`,
+      `embeddings`, `reset_password_request`, `ai_sub_agent_definitions`,
+      `ai_mcp_server_definitions`, `ai_streaming_sessions`) inkl. FK-Constraints
+      in korrekter Reihenfolge und pgvector-Erweiterung an. Alte inkrementelle
+      Migrationskette (14 Dateien, historisch inkonsistent: MySQL-ismen,
+      `REFERENCES user` statt `users`, `tool_definition` vs. `tool_definitions`)
+      nach `migrations_archived/` verschoben — Doctrine lädt nur `migrations/`.
+      **Verifikation:** CI `migrations`-Job spielt die Kette gegen leere PG-DB ab.
+- [x] **P0-B — CI auf `migrations:migrate` umgestellt** (`.github/workflows/ci.yml`):
+      der `migrations`-Job führt nun `doctrine:migrations:migrate` (statt
+      bisher `doctrine:schema:create`) gegen eine frische leere
+      PostgreSQL-15+pgvector-Instanz aus. `doctrine:schema:validate` bleibt als
+      In-Sync-Check erhalten. Beweist, dass das Repo von Grund auf
+      bootstrappbar ist (Quick-Start aus README).
 
 ---
 
@@ -255,13 +240,12 @@ sichtbar.
 | Integration / E2E / E2E Smoke / Golden Path | ✅ laut `roadmap-progress.md` grün |
 | PHPStan | ⚠️ grün, **aber** via Baseline, die 7 undefinierte Methodenaufrufe verdeckt (→ P1-B, P1-C) |
 | Composer validate / audit | ✅ |
-| **Migrations-Job** | ⚠️ testet `schema:create`, **nicht** `migrations:migrate` (→ P0-B) |
+| **Migrations-Job** | ✅ `doctrine:migrations:migrate` gegen leere PG-DB (P0-B umgesetzt) |
 
-> **Netto-Bewertung:** Die CI ist grün, aber zwei der kritischsten realen
-> Probleme (P0-A Migrations-Bootstrap, P1-A/B/C verdeckte Methodenfehler) werden
-> durch die CI-Konfiguration bzw. die PHPStan-Baseline **nicht** erfasst.
-> `docs/audit-2026-08-16.md` kommt zum Schluss: Quick-Start aus README ist
-> aktuell **nicht** lauffähig, Production-ready = **Nein**.
+> **Netto-Bewertung:** P0 (Migrations-Bootstrap + CI) ist behoben und wird
+> jetzt durch CI verifiziert. Verbleibend: P1-A/B/C (verdeckte Methodenfehler
+> via Baseline + RAG ohne pgvector) werden durch die CI **nicht** erfasst und
+> sind die nächsten Prioritäten.
 
 ---
 

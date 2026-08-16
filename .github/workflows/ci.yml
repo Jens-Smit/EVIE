@@ -162,13 +162,16 @@ jobs:
         run: vendor/bin/phpstan analyse src --level=5 --no-progress
 
   # ===================================================================
-  # Schema-Job (P0-2): erstellt das Doctrine-Schema aus den Entities gegen
-  # eine echte, leere PostgreSQL-15-Instanz mit pgvector und validiert es.
-  # Dieser Schritt ist blockierend und ersetzt das bisher implizite SQLite,
-  # das PG-spezifische Syntaxfehler grundsaetzlich nicht erkennen konnte.
-  # Die inkrementellen Migrations sind nicht auf einer leeren DB replaybar
-  # (sie setzen ein vorgegebenes Schema voraus), deshalb wird das finale
-  # Schema direkt aus den Entities erzeugt und gegen PG geprueft.
+  # Migrations-Job (P0-A/P0-B): spielt die Doctrine-Migrationskette gegen
+  # eine echte, LEERE PostgreSQL-15-Instanz mit pgvector ab und validiert
+  # danach, dass das per Migration angelegte Schema mit den Entities
+  # uebereinstimmt. Dieser Schritt ist blockierend.
+  #
+  # Hintergrund: Bisher wurde doctrine:schema:create (aus Entities)
+  # ausgefuehrt, das Migrationsfehler auf leerer DB verdeckte. Die alte
+  # inkrementelle Kette war nicht von leerer DB replaybar. Mit der neuen
+  # Baseline-Migration (Version20260811000000) ist die Kette wieder von
+  # Grund auf lauffaehig; dieser Job beweist das.
   # ===================================================================
   migrations:
     runs-on: ubuntu-latest
@@ -209,7 +212,7 @@ jobs:
             sleep 1
           done
 
-      - name: Create schema from entities against PostgreSQL
+      - name: Run migrations against empty PostgreSQL
         env:
           APP_SECRET: test-secret-for-evie-1234567890abcdef
           DATABASE_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_migrate?serverVersion=15&charset=utf8'
@@ -218,11 +221,12 @@ jobs:
           GEMINI_API_KEY: test
         run: |
           php bin/console cache:warmup --env=prod --no-interaction
-          # Erstellt das komplette Schema aus den Doctrine-Entities gegen eine
-          # echte, leere PostgreSQL-15-Instanz mit pgvector. Beweist, dass die
-          # Entity-Mappings (inkl. pgvector, JSON, FK-Constraints) Postgres-
-          # kompatibel sind — das, was das bisherige implizite SQLite verdeckte.
-          php bin/console doctrine:schema:create --env=prod --no-interaction
+          # P0-A/P0-B: Spielt die komplette Migrationskette gegen eine
+          # ECHTE, LEERE PostgreSQL-15-Instanz mit pgvector ab. Dies beweist,
+          # dass das Repo von Grund auf bootstrappbar ist (Quick-Start aus
+          # README). Bisher wurde nur schema:create getestet, das
+          # Migrationsfehler auf leerer DB verdeckte.
+          php bin/console doctrine:migrations:migrate --env=prod --no-interaction --allow-no-migration
 
       - name: Validate schema against entities
         env:
@@ -231,6 +235,8 @@ jobs:
           PGVECTOR_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_migrate?serverVersion=15&charset=utf8'
           MISTRAL_API_KEY: test
           GEMINI_API_KEY: test
+        # Stellt sicher, dass das per Migration angelegte Schema exakt mit
+        # den aktuellen Doctrine-Entities uebereinstimmt (In-Sync).
         run: php bin/console doctrine:schema:validate --env=prod
 
   # ===================================================================
