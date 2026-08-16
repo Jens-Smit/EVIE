@@ -228,6 +228,15 @@ jobs:
           # Migrationsfehler auf leerer DB verdeckte.
           php bin/console doctrine:migrations:migrate --env=prod --no-interaction --allow-no-migration
 
+      - name: Dump schema diff (diagnostic)
+        env:
+          APP_SECRET: test-secret-for-evie-1234567890abcdef
+          DATABASE_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_migrate?serverVersion=15&charset=utf8'
+          PGVECTOR_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_migrate?serverVersion=15&charset=utf8'
+          MISTRAL_API_KEY: test
+          GEMINI_API_KEY: test
+        run: php bin/console doctrine:schema:update --dump-sql --env=prod || true
+
       - name: Validate schema against entities
         env:
           APP_SECRET: test-secret-for-evie-1234567890abcdef
