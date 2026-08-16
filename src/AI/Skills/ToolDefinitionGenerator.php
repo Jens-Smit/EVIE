@@ -478,52 +478,6 @@ PROMPT;
         return array_unique($dependencies);
     }
 
-    {
-        $parameters = [];
-        $properties = $schema['properties'] ?? [];
-
-        foreach ($properties as $name => $property) {
-            $parameter = [
-                'name' => $name,
-                'type' => $property['type'] ?? 'string',
-                'required' => in_array($name, $schema['required'] ?? []),
-                'description' => $property['description'] ?? '',
-            ];
-
-            if (isset($property['default'])) {
-                $parameter['default'] = $property['default'];
-            }
-
-            if (isset($property['enum'])) {
-                $parameter['enum'] = $property['enum'];
-            }
-
-            if (isset($property['pattern'])) {
-                $parameter['pattern'] = $property['pattern'];
-            }
-
-            if (isset($property['minLength'])) {
-                $parameter['minLength'] = $property['minLength'];
-            }
-
-            if (isset($property['maxLength'])) {
-                $parameter['maxLength'] = $property['maxLength'];
-            }
-
-            if (isset($property['minimum'])) {
-                $parameter['minimum'] = $property['minimum'];
-            }
-
-            if (isset($property['maximum'])) {
-                $parameter['maximum'] = $property['maximum'];
-            }
-
-            $parameters[] = $parameter;
-        }
-
-        return $parameters;
-    }
-
     /**
      * Bereinigt den Tool-Namen
      */
