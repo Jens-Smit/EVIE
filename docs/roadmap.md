@@ -145,17 +145,6 @@ und testet keine Tool-Ausführung.
 **Fix:** Auf `WebTestCase` umstellen + Tool-Ausführung testen.
 **Aufwand:** ~0,5 Tag.
 
-### P3-B — docker-compose.prod.yml: unsicheres Default-Passwort ⬜
-**Befund:** `${POSTGRES_PASSWORD:-evie_password}` (4×) — Default im Repo
-sichtbar.
-**Fix:** Auf `${POSTGRES_PASSWORD:?POSTGRES_PASSWORD muss gesetzt sein}`
-ändern (harter Fehlschlag wenn nicht gesetzt).
-**Aufwand:** ~15 min.
-
-### P3-C — `composer.json` Version-Constraints unbound (`*`) ⬜
-**Fix:** Konkrete Versions-Constraints setzen.
-**Aufwand:** ~1 h.
-
 ### P3-D — Parallele Orchestrierungs-Schichten konsolidieren ⬜
 **Befund:** `OrchestratorDialogService`, `WorkflowOrchestrator`,
 `BriefingManager`, `DecisionManager`, `StrategyManager` bestehen parallel.
