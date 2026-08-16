@@ -201,16 +201,26 @@ class OutboundRequestPolicy
      */
     private function isPrivateNetwork(string $host): bool
     {
-        // Versuche, den Host aufzulösen
-        $ips = gethostbynamel($host);
-        if ($ips === false) {
-            // Konnte nicht auflösen, also nicht privat
-            return false;
+        // IPv4-Auflösung (A-Records).
+        $ips = @gethostbynamel($host);
+        if (false !== $ips) {
+            foreach ($ips as $ip) {
+                if ($this->isPrivateIpv4($ip)) {
+                    return true;
+                }
+            }
         }
 
-        foreach ($ips as $ip) {
-            if ($this->isPrivateIpv4($ip)) {
-                return true;
+        // IPv6-Auflösung (AAAA-Records). gethostbynamel() liefert nur
+        // IPv4-Adressen, sodass eine Domain, die ausschliesslich auf eine
+        // private/link-lokale IPv6-Adresse auflöst, sonst durchrutschen wuerde.
+        $recordsV6 = @dns_get_record($host, DNS_AAAA);
+        if (false !== $recordsV6) {
+            foreach ($recordsV6 as $record) {
+                $ipv6 = $record['ipv6'] ?? null;
+                if (null !== $ipv6 && $this->isPrivateIpv6($ipv6)) {
+                    return true;
+                }
             }
         }
 

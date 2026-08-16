@@ -2,6 +2,7 @@
 
 namespace App\AI\Skills\Executor;
 
+use App\AI\Security\SecurityGuard;
 use Doctrine\DBAL\Connection;
 use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -13,13 +14,14 @@ class ExecutorResolver implements ExecutorResolverInterface
     public function __construct(
         private LoggerInterface $logger,
         Connection $connection,
-        HttpClientInterface $httpClient
+        HttpClientInterface $httpClient,
+        SecurityGuard $securityGuard,
     ) {
         $this->executors = [
             'api' => new GenericApiExecutor(),
             'database' => new GenericDatabaseExecutor($connection),
             'filesystem' => new GenericFileExecutor(),
-            'http' => new GenericHttpExecutor($httpClient),
+            'http' => new GenericHttpExecutor($httpClient, $securityGuard),
         ];
     }
 
