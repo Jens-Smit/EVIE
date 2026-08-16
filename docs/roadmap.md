@@ -113,7 +113,8 @@
       Tool-Liste (`getAllTools`) und Tool-Lookup (`getTool`) + `DynamicToolExecutor`
       für Ausführung mit Tool-Objekt (statt nicht-existierendem
       `execute(string)`/`getAvailableTools()`). Behebt echten HTTP-Laufzeitfehler.
-- [x] **P1-D — GHCR-Publishing + Docker-Smoke-Test** (`.github/workflows/docker.yml`): neuer Workflow baut das Prod-Image (`docker/php/Dockerfile.prod`), pusht es zu GHCR (`ghcr.io/jens-smit/evie:latest` + SHA-Tag) bei main-Pushes, und führt danach einen Smoke-Test aus (Image starten, Boot-Status prüfen). Läuft nur bei main-Pushes und `workflow_dispatch`. (`.github/workflows/ci.yml`):
+- [x] **P1-D — GHCR-Publishing + Docker-Smoke-Test** (`.github/workflows/docker.yml`): neuer Workflow baut das Prod-Image (`docker/php/Dockerfile.prod`), pusht es zu GHCR (`ghcr.io/jens-smit/evie:latest` + SHA-Tag) bei main-Pushes, und führt danach einen Smoke-Test aus (Image starten, Boot-Status prüfen). Läuft nur bei main-Pushes und `workflow_dispatch`.
+- [x] **P2-A — PgVectorStore toter Code entfernt** (`src/Infrastructure/VectorStore/PgVectorStore.php` + `VectorStoreInterface.php` gelöscht): Die Klasse war nicht konsumiert, nutzte MySQL-Syntax (`ORDER BY RAND()`), eine nicht-existente Tabelle (`vector_embeddings`) und einen "simplified version"-Platzhalter. P1-A hat den echten pgvector-Pfad in `EmbeddingRepository` implementiert, damit ist diese Klasse obsolet. `VectorStoreInterface` wurde von niemandem injiziert. (`.github/workflows/ci.yml`):
       der `migrations`-Job führt nun `doctrine:migrations:migrate` (statt
       bisher `doctrine:schema:create`) gegen eine frische leere
       PostgreSQL-15+pgvector-Instanz aus. `doctrine:schema:validate` bleibt als
@@ -127,13 +128,6 @@
 ---
 
 ## ⬜ Offen — P2 (mittelfristig)
-
-### P2-A — PgVectorStore: toter Code mit MySQL-Syntax ⬜
-**Befund:** `src/Infrastructure/VectorStore/PgVectorStore.php:78` nutzt
-`ORDER BY RAND()` (MySQL) statt `RANDOM()` (Postgres). Wird von keiner Klasse
-konsumiert.
-**Fix:** Korrigieren + anbinden **oder** löschen (entspricht P1-A-Entscheidung).
-**Aufwand:** ~1 h.
 
 ### P2-B — StoreRetrieverAdapter: nicht verdrahtet 🟡
 **Befund:** In `config/services.yaml:122` als Service registriert (Kommentar
