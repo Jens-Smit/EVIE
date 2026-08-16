@@ -226,9 +226,9 @@ sichtbar.
 |-------|--------|
 | Unit / Security / Skills / Agent / Functional | ✅ laut `roadmap-progress.md` grün |
 | Integration / E2E / E2E Smoke / Golden Path | ✅ laut `roadmap-progress.md` grün |
-| PHPStan | ⚠️ grün, **aber** via Baseline, die 7 undefinierte Methodenaufrufe verdeckt (→ P1-B, P1-C) |
+| PHPStan | ✅ grün, **keine** Baseline mehr (7 Methodenfehler in P1-B/C behoben) |
 | Composer validate / audit | ✅ |
-| **Migrations-Job** | ✅ `doctrine:migrations:migrate` gegen leere PG-DB (P0-B umgesetzt) |
+| **Migrations-Job** | ✅ `doctrine:migrations:migrate` gegen leere PG-DB (P0-B) |
 
 > **Netto-Bewertung:** P0 (Migrations-Bootstrap + CI) ist behoben und wird
 > jetzt durch CI verifiziert. Verbleibend: P1-A/B/C (verdeckte Methodenfehler
