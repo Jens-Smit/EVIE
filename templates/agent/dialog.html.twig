@@ -69,7 +69,7 @@
         </div>
 
         {# Chat Form #}
-        <form id="chat-form" class="space-y-4">
+        <form id="chat-form" class="space-y-4" hx-boost="false">
             <div>
                 <label for="prompt" class="block text-sm font-medium text-content mb-2">
                     Deine Nachricht:
@@ -82,7 +82,7 @@
                           rows="3" required></textarea>
             </div>
             <input type="hidden" name="user_identifier" value="default_user">
-            {% if conversation_id is defined %}
+            {% if conversation_id is defined and conversation_id is not empty %}
                 <input type="hidden" name="conversation_id" value="{{ conversation_id }}">
             {% endif %}
             <div class="flex justify-end">

@@ -6,16 +6,8 @@ controllers:
     resource: ../src/Controller/
     type: attribute
 
-# Agent Dialog
-agent_dialog:
-    path: /api/agent/dialog
-    controller: App\Controller\AgentDialogController::dialog
-    methods: [POST]
-
-agent_history:
-    path: /api/agent/history/{userIdentifier}
-    controller: App\Controller\AgentDialogController::history
-    methods: GET
+# Agent Dialog (routes are defined as PHP attributes on App\Controller\AgentDialogController,
+# loaded via the `controllers:` resource above - no duplicate YAML definition needed)
 
 # Documents
 api_documents_list:
