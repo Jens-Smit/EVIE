@@ -21,9 +21,13 @@ class EmbeddingRepository extends ServiceEntityRepository
      * user_identifier tragen oder gar keinen Tenant-Bezug haben (System-
      * Wissen). So kann Tenant B niemals Kontext von Tenant A empfangen.
      *
-     * Die Filterung erfolgt serverseitig auf Repository-Ebene (nicht nur
-     * im Aufrufer), sodass jeder Konsument von findSimilar() isoliert
-     * ist, auch wenn er den Identifier nur weiterreicht.
+     * P1-A pgvector: auf PostgreSQL wird die Aehnlichkeitsberechnung
+     * serverseitig ueber den nativen pgvector-Operator <=> (Cosine-
+     * Distanz) ausgefuehrt, anstatt alle Vektoren nach PHP zu laden und
+     * dort zu sortieren. Die JSON-gespeicherten Vektoren werden dazu per
+     * ::text::vector in den pgvector-Typ gecastet. Auf SQLite (Tests)
+     * bleibt die PHP-basierte cosineSimilarity()-Berechnung als Fallback,
+     * da SQLite keinen pgvector-Typ kennt.
      *
      * @param string          $contentType     Zu durchsuchender Content-Typ
      * @param list<int|float> $queryVector     Query-Einbettung
@@ -35,13 +39,93 @@ class EmbeddingRepository extends ServiceEntityRepository
      */
     public function findSimilar(string $contentType, array $queryVector, int $limit = 5, float $minSimilarity = 0.5, ?string $userIdentifier = null): array
     {
-        // Performance (Audit #1 N+1 / #3 Vektor-Suche): die Kandidatenmenge
-        // wird per WHERE contentType = ? eingeschraenkt, statt alle Embeddings
-        // ueber findBy() in den Speicher zu laden. Bei Postgres zusaetzlich
-        // mit nativem JSON-Filter auf den Tenant (metadata->>'user_identifier'),
-        // sodass nur relevante Zeilen geladen werden. Bei SQLite (Tests) bleibt
-        // die Tenant-Filterung auf PHP-Ebene als Fallback, da SQLite keinen
-        // JSON-Pfad-Zugriff in DQL unterstuetzt.
+        $conn = $this->getEntityManager()->getConnection();
+        $platform = $conn->getDatabasePlatform();
+
+        // P1-A: Auf PostgreSQL den nativen pgvector-Pfad nutzen (Performance).
+        if (method_exists($platform, 'getName') && $platform->getName() === 'postgresql') {
+            return $this->findSimilarPgVector($contentType, $queryVector, $limit, $minSimilarity, $userIdentifier);
+        }
+
+        // SQLite (Tests): PHP-basierte Berechnung (Fallback, kein pgvector).
+        return $this->findSimilarInMemory($contentType, $queryVector, $limit, $minSimilarity, $userIdentifier);
+    }
+
+    /**
+     * P1-A: PostgreSQL-nativer pgvector-Aehnlichkeits-Pfad.
+     *
+     * Berechnet die Cosine-Distanz (1 - Cosine-Similarity) serverseitig via
+     * pgvector-Operator <=>. Die JSON-gespeicherten Vektoren werden per
+     * ::text::vector gecastet. Der Tenant-Filter wird serverseitig per
+     * JSON-Pfad-Zugriff (metadata->>'user_identifier') angewendet.
+     *
+     * @param list<int|float> $queryVector
+     *
+     * @return array<int, array{embedding: Embedding, similarity: float, distance: float}>
+     */
+    private function findSimilarPgVector(string $contentType, array $queryVector, int $limit, float $minSimilarity, ?string $userIdentifier): array
+    {
+        $conn = $this->getEntityManager()->getConnection();
+
+        // Query-Vektor als pgvector-Text-Literal: [0.1,0.2,...]
+        $queryLiteral = '[' . implode(',', array_map('floatval', $queryVector)) . ']';
+
+        $sql = "SELECT id, 1 - (vector::text::vector <=> :query::vector) AS similarity "
+            . "FROM embeddings "
+            . "WHERE content_type = :contentType ";
+
+        $params = [
+            'query' => $queryLiteral,
+            'contentType' => $contentType,
+        ];
+
+        if (null !== $userIdentifier) {
+            $sql .= "AND (metadata->>'user_identifier' = :userIdentifier OR metadata->>'user_identifier' IS NULL) ";
+            $params['userIdentifier'] = $userIdentifier;
+        }
+
+        // pgvector liefert Distanz; Min-Similarity-Filter + Sortierung nach
+        // Aehnlichkeit absteigend + Limit, alles serverseitig.
+        $sql .= "AND 1 - (vector::text::vector <=> :query::vector) >= :minSimilarity "
+            . "ORDER BY vector::text::vector <=> :query::vector ASC "
+            . "LIMIT :limit";
+        $params['minSimilarity'] = $minSimilarity;
+        $params['limit'] = $limit;
+
+        $rows = $conn->executeQuery($sql, $params)->fetchAllAssociative();
+
+        if ([] === $rows) {
+            return [];
+        }
+
+        $result = [];
+        foreach ($rows as $row) {
+            $embedding = $this->find($row['id']);
+            if (null === $embedding) {
+                continue;
+            }
+            $similarity = (float) $row['similarity'];
+            $result[] = [
+                'embedding' => $embedding,
+                'similarity' => $similarity,
+                'distance' => 1 - $similarity,
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * PHP-basierter Fallback fuer SQLite (Tests): laedt Kandidaten und
+     * berechnet die Cosine-Similarity in PHP, da SQLite keinen pgvector-
+     * Typ unterstuetzt.
+     *
+     * @param list<int|float> $queryVector
+     *
+     * @return array<int, array{embedding: Embedding, similarity: float, distance: float}>
+     */
+    private function findSimilarInMemory(string $contentType, array $queryVector, int $limit, float $minSimilarity, ?string $userIdentifier): array
+    {
         $candidates = $this->loadCandidates($contentType, $userIdentifier);
 
         $queryEmbedding = new Embedding();
@@ -65,9 +149,10 @@ class EmbeddingRepository extends ServiceEntityRepository
     }
 
     /**
-     * Laedt die Embedding-Kandidaten fuer findSimilar() mit Content-Typ- und
-     * (bei Postgres) Tenant-Filterung auf SQL-Ebene, um die in den Speicher
-     * geladene Datenmenge zu minimieren (Audit #1 N+1 / #3 Vektor-Suche).
+     * Laedt die Embedding-Kandidaten fuer den PHP-Fallback-Pfad mit Content-Typ-
+     * und (bei Postgres) Tenant-Filterung auf SQL-Ebene. Wird nur noch vom
+     * SQLite-Fallback (findSimilarInMemory) genutzt; der pgvector-Pfad filtert
+     * selbst.
      *
      * @return list<Embedding>
      */

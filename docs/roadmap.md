@@ -90,7 +90,15 @@
       `REFERENCES user` statt `users`, `tool_definition` vs. `tool_definitions`)
       nach `migrations_archived/` verschoben — Doctrine lädt nur `migrations/`.
       **Verifikation:** CI `migrations`-Job spielt die Kette gegen leere PG-DB ab.
-- [x] **P0-B — CI auf `migrations:migrate` umgestellt** (`.github/workflows/ci.yml`):
+- [x] **P0-B — CI auf `migrations:migrate` umgestellt**
+- [x] **P1-A — RAG nutzt nativen pgvector** (`src/Repository/EmbeddingRepository.php`):
+      `findSimilar()` hat jetzt einen PostgreSQL-nativen pgvector-Pfad, der die
+      Cosine-Distanz serverseitig via `<=>`-Operator berechnet (`ORDER BY
+      vector::text::vector <=> :query::vector ASC`) — statt alle Vektoren nach
+      PHP zu laden. JSON-gespeicherte Vektoren werden per `::text::vector`-
+      Cast in den pgvector-Typ gewandelt. Tenant-Filter bleibt serverseitig.
+      Der SQLite-Fallback (Tests) nutzt weiterhin die PHP-basierte
+      `cosineSimilarity()`-Berechnung, da SQLite keinen pgvector-Typ kennt. (`.github/workflows/ci.yml`):
       der `migrations`-Job führt nun `doctrine:migrations:migrate` (statt
       bisher `doctrine:schema:create`) gegen eine frische leere
       PostgreSQL-15+pgvector-Instanz aus. `doctrine:schema:validate` bleibt als
@@ -100,16 +108,6 @@
 ---
 
 ## ⬜ Offen — P1 (vor Production adressieren)
-
-### P1-A — RAG nutzt kein pgvector ⬜
-**Befund:** `EmbeddingRepository::findSimilar()` lädt über
-`loadCandidates()` und berechnet die Vektor-Ähnlichkeit in PHP (`usort`).
-Kein echter pgvector-Operator (`<->`/`<=>`) im SQL; `PgVectorStore.php:71`
-enthält nur einen "simplified version"-Platzhalter. Skalierungs-Blocker bei
-wachsender Embedding-Menge.
-**Fix:** `findSimilar()` auf natives pgvector-SQL (`ORDER BY vector <=> :q`) um
-stellen; `vector`-Spalte als `vector`-Typ migrieren (aktuell `FLOAT[]`).
-**Aufwand:** ~1 Tag (inkl. Typ-Migration + Tests).
 
 ### P1-B — WorkflowOrchestrator: undefinierte Methodenaufrufe ⬜
 **Befund:** `src/AI/Workflow/WorkflowOrchestrator.php` ruft Methoden auf, die
