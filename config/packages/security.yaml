@@ -17,11 +17,6 @@ security:
         main:
             lazy: true
             provider: app_user_provider
-            # Session-Fixation-Schutz (Audit-Finding #8): Symfony regeneriert
-            # die Session-ID nach erfolgreicher Authentifizierung und migriert
-            # die Daten auf die neue ID, sodass eine vorab gesetzte Session-ID
-            # nicht in den authentifizierten Kontext uebernommen wird.
-            session_fixation_strategy: migrate
             custom_authenticators:
                 - App\Security\Authenticator\LoginFormAuthenticator
 
