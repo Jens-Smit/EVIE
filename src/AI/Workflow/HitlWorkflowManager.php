@@ -97,7 +97,7 @@ class HitlWorkflowManager
             ]);
 
             $this->auditLogger->logHitlDecision(
-                $definition?->getId() ?? 0,
+                0,
                 $pendingExecution->getTool()->getName(),
                 $approver,
                 'approved',
@@ -121,7 +121,7 @@ class HitlWorkflowManager
             ]);
 
             $this->auditLogger->logHitlDecision(
-                $definition?->getId() ?? 0,
+                0,
                 $pendingExecution->getTool()->getName(),
                 $approver,
                 'rejected',
