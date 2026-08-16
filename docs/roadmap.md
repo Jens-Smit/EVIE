@@ -129,14 +129,6 @@
 
 ## ⬜ Offen — P2 (mittelfristig)
 
-### P2-B — StoreRetrieverAdapter: nicht verdrahtet 🟡
-**Befund:** In `config/services.yaml:122` als Service registriert (Kommentar
-"native RetrieverInterface-Bridge"), aber `RetrieverInterface` wird von **keiner**
-Klasse in `src/` injiziert/konsumiert. Wirkt deaktiviert/tot.
-**Fix:** Korrekt an den nativen Symfony AI Retriever-Pfad anbinden oder
-entfernen.
-**Aufwand:** ~2 h (Anbindung) bzw. ~15 min (Löschung).
-
 ### P2-C — Prompt-Injection: keine Trust-Level-Markierung ⬜
 **Befund:** `ContextInjector` markiert injizierte RAG-Kontexte nicht als
 "untrusted" (kein Trust-Level-Konzept). Risiko der Prompt-Injection über
