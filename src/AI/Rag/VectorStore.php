@@ -6,21 +6,23 @@ use App\Entity\Embedding;
 use App\Repository\EmbeddingRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use App\AI\Rag\EmbeddingServiceInterface;
+use Symfony\Contracts\Cache\CacheInterface;
 
 class VectorStore
 {
     public function __construct(
         private EmbeddingRepository $embeddingRepository,
         private EntityManagerInterface $entityManager,
-        private EmbeddingServiceInterface $embeddingService
+        private EmbeddingServiceInterface $embeddingService,
+        private ?CacheInterface $cache = null,
     ) {
     }
 
     public function store(string $content, string $contentType, string $source, array $metadata = []): Embedding
     {
         $hash = hash('sha256', $content);
-        $existing = $this->embeddingRepository->findByContentHash($hash);
-        
+        $existing = $this->findCachedByContentHash($hash);
+
         if ($existing) {
             $existing->setMetadata(array_merge($existing->getMetadata(), $metadata));
             $this->entityManager->flush();
@@ -38,6 +40,7 @@ class VectorStore
 
         $this->entityManager->persist($embedding);
         $this->entityManager->flush();
+        $this->invalidateContentHashCache($hash);
 
         return $embedding;
     }
@@ -50,7 +53,7 @@ class VectorStore
         $embeddings = [];
         foreach ($contents as $i => $contentData) {
             $hash = hash('sha256', $contentData['content']);
-            $existing = $this->embeddingRepository->findByContentHash($hash);
+            $existing = $this->findCachedByContentHash($hash);
             
             if ($existing) {
                 $existing->setMetadata(array_merge($existing->getMetadata(), $contentData['metadata'] ?? []));
@@ -96,6 +99,43 @@ class VectorStore
             ->delete()
             ->getQuery()
             ->execute();
+    }
+
+    /**
+     * Cached-Lookup eines Embeddings anhand seines Content-Hash
+     * (Audit-Finding #2: Kein Embedding-Cache).
+     *
+     * Cacht den DB-Lookup in cache.app, sodass wiederholte Suchen nach
+     * demselben Content (z. B. bei wiederholten User-Anfragen) nicht jedes
+     * Mal die DB bemuehen. Negative Lookups (Hash nicht in DB) werden
+     * ebenfalls gecacht, um wiederholte Store-Versuche von bereits als
+     * nicht-vorhanden erkannten Inhalten zu beschleunigen.
+     */
+    private function findCachedByContentHash(string $hash): ?Embedding
+    {
+        if (null === $this->cache) {
+            return $this->embeddingRepository->findByContentHash($hash);
+        }
+
+        $key = 'embedding_hash_' . $hash;
+
+        /** @var Embedding|null $result */
+        return $this->cache->get($key, function () use ($hash): ?Embedding {
+            return $this->embeddingRepository->findByContentHash($hash);
+        });
+    }
+
+    /**
+     * Invalidiert den Cache-Eintrag fuer einen Content-Hash, nachdem ein
+     * neues Embedding gespeichert wurde.
+     */
+    private function invalidateContentHashCache(string $hash): void
+    {
+        if (null === $this->cache) {
+            return;
+        }
+
+        $this->cache->delete('embedding_hash_' . $hash);
     }
 
     public function getStats(): array
