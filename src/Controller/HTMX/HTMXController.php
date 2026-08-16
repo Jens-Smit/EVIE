@@ -9,6 +9,7 @@ use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
 use App\AI\Mcp\McpToolExecutor;
 use App\AI\Skills\Tool\DynamicToolExecutor;
+use App\AI\Skills\Tool\DynamicToolFactory;
 use App\AI\Streaming\StreamingSessionManager;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -24,6 +25,7 @@ use Symfony\Component\Security\Http\Attribute\IsGranted;
 class HTMXController extends AbstractController
 {
     private DynamicToolExecutor $toolExecutor;
+    private DynamicToolFactory $toolFactory;
     private SubAgentFactory $subAgentFactory;
     private SubAgentDefinitionRepository $subAgentDefinitionRepo;
     private McpToolExecutor $mcpToolExecutor;
@@ -31,12 +33,14 @@ class HTMXController extends AbstractController
 
     public function __construct(
         DynamicToolExecutor $toolExecutor,
+        DynamicToolFactory $toolFactory,
         SubAgentFactory $subAgentFactory,
         SubAgentDefinitionRepository $subAgentDefinitionRepo,
         McpToolExecutor $mcpToolExecutor,
         StreamingSessionManager $sessionManager
     ) {
         $this->toolExecutor = $toolExecutor;
+        $this->toolFactory = $toolFactory;
         $this->subAgentFactory = $subAgentFactory;
         $this->subAgentDefinitionRepo = $subAgentDefinitionRepo;
         $this->mcpToolExecutor = $mcpToolExecutor;
@@ -64,7 +68,13 @@ class HTMXController extends AbstractController
         }
 
         try {
-            $result = $this->toolExecutor->execute($toolName, $arguments);
+            // P1-C: DynamicToolExecutor.execute() erwartet ein DynamicTool-Objekt,
+            // keinen String-Namen. Tool wird ueber die Factory aufgeloest.
+            $tool = $this->toolFactory->getTool($toolName);
+            if ($tool === null) {
+                throw new \RuntimeException(sprintf('Tool "%s" nicht gefunden.', $toolName));
+            }
+            $result = $this->toolExecutor->execute($tool, $arguments);
 
             return $this->render('htmx/partials/_tool_result.html.twig', [
                 'tool_name' => $toolName,
@@ -87,7 +97,7 @@ class HTMXController extends AbstractController
     #[IsGranted('ROLE_USER')]
     public function toolForm(Request $request): Response
     {
-        $availableTools = $this->toolExecutor->getAvailableTools();
+        $availableTools = $this->toolFactory->getAllTools();
 
         return $this->render('htmx/forms/_tool_form.html.twig', [
             'available_tools' => $availableTools,
@@ -395,7 +405,7 @@ class HTMXController extends AbstractController
         $userIdentifier = $this->getUser()?->getUserIdentifier() ?? 'anonymous';
 
         // Hole Daten für das Dashboard
-        $availableTools = $this->toolExecutor->getAvailableTools();
+        $availableTools = $this->toolFactory->getAllTools();
         $availableSubAgents = $this->subAgentFactory->getAvailableSubAgents();
         $availableMcpServers = $this->mcpToolExecutor->getAvailableServers();
         $activeSessions = $this->sessionManager->getActiveSessionsByUser($userIdentifier);
@@ -415,7 +425,7 @@ class HTMXController extends AbstractController
     #[IsGranted('ROLE_USER')]
     public function toolsStats(): Response
     {
-        $availableTools = $this->toolExecutor->getAvailableTools();
+        $availableTools = $this->toolFactory->getAllTools();
 
         return $this->render('htmx/dashboard/_tools_stats.html.twig', [
             'available_tools' => $availableTools,

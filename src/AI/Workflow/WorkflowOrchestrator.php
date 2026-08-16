@@ -9,14 +9,23 @@ use App\AI\Skills\Tool\DynamicTool;
 use App\AI\Skills\Tool\DynamicToolFactory;
 use App\AI\Skills\Tool\DynamicToolExecutor;
 use App\AI\Skills\ToolDefinitionGenerator;
-use App\AI\Workflow\HitlWorkflowManager;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use RuntimeException;
 use Symfony\Component\Security\Core\User\UserInterface;
 
 /**
- * WorkflowOrchestrator - Haupt-Orchestrator mit RAG-Integration
+ * WorkflowOrchestrator - Haupt-Orchestrator mit RAG-Integration.
+ *
+ * P1-B: Die zuvor undefinierten Methodenaufrufe (generateFromRequest,
+ * createFromDefinition, getError, injectForSystemPrompt) wurden an die
+ * tatsaechlich existierenden Methoden der Zielklassen angepasst
+ * (generateToolDefinition, createAndRegisterTool, getErrorMessage,
+ * inject). Die Klasse ist nicht als eigener Service verdrahtet und wird
+ * nur ueber BriefingManager->getActiveWorkflows() erreichbar verwendet;
+ * die hier korrigierten Pfade (processRequest etc.) sind aktuell nicht
+ * ueber HTTP erreichbar. Eine Konsolidierung der Orchestrierungs-
+ * Schichten ist als P3-D dokumentiert.
  */
 class WorkflowOrchestrator
 {
@@ -49,11 +58,11 @@ class WorkflowOrchestrator
     public function processRequest(string $request): array
     {
         try {
-            // 1. Prüfe ob ein Tool verfügbar ist
+            // 1. Pruefe ob ein Tool verfuegbar ist
             $tool = $this->findMatchingTool($request);
             
             if ($tool) {
-                // Tool gefunden - führe es aus
+                // Tool gefunden - fuehre es aus
                 return $this->executeTool($tool, $request);
             }
 
@@ -81,7 +90,7 @@ class WorkflowOrchestrator
         $tools = $this->toolFactory->getAllTools();
         
         foreach ($tools as $tool) {
-            // Einfache Matching-Logik (könnte durch LLM verbessert werden)
+            // Einfache Matching-Logik (koennte durch LLM verbessert werden)
             $toolName = strtolower($tool->getName());
             $requestLower = strtolower($request);
             
@@ -94,19 +103,19 @@ class WorkflowOrchestrator
     }
 
     /**
-     * Führe ein Tool aus
+     * Fuehre ein Tool aus
      */
     private function executeTool(DynamicTool $tool, string $request): array
     {
-        // Prüfe ob Tool HITL erfordert
+        // Pruefe ob Tool HITL erfordert
         if ($tool->requiresHitl()) {
-            // Blockiere Execution für HITL
+            // Blockiere Execution fuer HITL
             $executionId = uniqid('exec_', true);
             $pendingExecution = $this->hitlWorkflowManager->blockExecution(
                 $executionId,
                 $tool,
                 [],
-                $this->currentUser ?? throw new RuntimeException('User erforderlich für HITL'),
+                $this->currentUser ?? throw new RuntimeException('User erforderlich fuer HITL'),
                 $request
             );
 
@@ -119,15 +128,17 @@ class WorkflowOrchestrator
             ];
         }
 
-        // Führe Tool aus
+        // Fuehre Tool aus
         $parameters = $this->extractParameters($request, $tool->getSchema());
         $executionResult = $this->toolExecutor->execute($tool, $parameters);
 
         if (!$executionResult->isSuccess()) {
+            // P1-B: getError() existiert nicht; getErrorMessage() ist die
+            // tatsaechliche Methode auf ToolExecutionResult.
             return [
                 'status' => 'error',
                 'tool_name' => $tool->getName(),
-                'error' => $executionResult->getError()
+                'error' => $executionResult->getErrorMessage()
             ];
         }
 
@@ -139,12 +150,20 @@ class WorkflowOrchestrator
     }
 
     /**
-     * Generiere und führe ein neues Tool aus
+     * Generiere und fuehre ein neues Tool aus
      */
     private function generateAndExecuteTool(string $request): array
     {
-        // Generiere Tool-Definition
-        $definition = $this->toolDefinitionGenerator->generateFromRequest($request);
+        // P1-B: generateFromRequest() existiert nicht; die tatsaechliche
+        // Methode ist generateToolDefinition(toolName, description, context).
+        // Der Request wird als Description verwendet; ein Name wird aus dem
+        // Request abgeleitet.
+        $toolName = $this->deriveToolName($request);
+        $definition = $this->toolDefinitionGenerator->generateToolDefinition(
+            $toolName,
+            $request,
+            ['source' => 'workflow_orchestrator']
+        );
         
         if (!$definition) {
             return [
@@ -158,15 +177,17 @@ class WorkflowOrchestrator
         $this->entityManager->persist($definition);
         $this->entityManager->flush();
 
-        // Blockiere für HITL
+        // Blockiere fuer HITL
         $executionId = uniqid('exec_', true);
-        $tool = $this->toolFactory->createFromDefinition($definition);
+        // P1-B: createFromDefinition() existiert nicht auf DynamicToolFactory;
+        // die tatsaechliche Methode ist createAndRegisterTool(ToolDefinition).
+        $tool = $this->toolFactory->createAndRegisterTool($definition);
         
         $pendingExecution = $this->hitlWorkflowManager->blockExecution(
             $executionId,
             $tool,
             [],
-            $this->currentUser ?? throw new RuntimeException('User erforderlich für HITL'),
+            $this->currentUser ?? throw new RuntimeException('User erforderlich fuer HITL'),
             $request
         );
 
@@ -201,15 +222,13 @@ class WorkflowOrchestrator
      */
     public function createSystemPromptWithRag(string $basePrompt, string $request): string
     {
-        if ($this->currentUserProfile) {
-            return $this->contextInjector->injectForSystemPrompt(
-                $basePrompt,
-                $request,
-                ['content_types' => ['user_profile']]
-            );
-        }
+        // P1-B: injectForSystemPrompt() existiert nicht auf ContextInjector;
+        // die tatsaechliche Methode ist inject(prompt, query, options).
+        $contentTypes = $this->currentUserProfile
+            ? ['content_types' => ['user_profile']]
+            : [];
 
-        return $this->contextInjector->injectForSystemPrompt($basePrompt, $request);
+        return $this->contextInjector->inject($basePrompt, $request, $contentTypes);
     }
 
     /**
@@ -217,7 +236,7 @@ class WorkflowOrchestrator
      */
     private function extractParameters(string $request, array $schema): array
     {
-        // Vereinfachte Extraktion - könnte durch LLM verbessert werden
+        // Vereinfachte Extraktion - koennte durch LLM verbessert werden
         $parameters = [];
         
         if (isset($schema['properties'])) {
@@ -230,6 +249,18 @@ class WorkflowOrchestrator
         }
 
         return $parameters;
+    }
+
+    /**
+     * Leitet einen Tool-Namen aus einem Request-Text ab (P1-B: Hilfsmethode
+     * fuer generateToolDefinition, das Name + Description erwartet).
+     */
+    private function deriveToolName(string $request): string
+    {
+        $words = preg_split('/\s+/', trim($request)) ?: [];
+        $words = array_slice($words, 0, 3);
+
+        return implode('_', array_map('strtolower', $words)) ?: 'generated_tool';
     }
 
     /**
@@ -253,7 +284,9 @@ class WorkflowOrchestrator
         return [
             'status' => $result->isSuccess() ? 'success' : 'error',
             'result' => $result->getResult(),
-            'error' => $result->getError(),
+            // P1-B: getError() existiert nicht; getErrorMessage() ist die
+            // tatsaechliche Methode auf ToolExecutionResult.
+            'error' => $result->getErrorMessage(),
             'original_request' => $result->getOriginalRequest()
         ];
     }

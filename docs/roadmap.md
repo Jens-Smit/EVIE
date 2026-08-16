@@ -98,7 +98,21 @@
       PHP zu laden. JSON-gespeicherte Vektoren werden per `::text::vector`-
       Cast in den pgvector-Typ gewandelt. Tenant-Filter bleibt serverseitig.
       Der SQLite-Fallback (Tests) nutzt weiterhin die PHP-basierte
-      `cosineSimilarity()`-Berechnung, da SQLite keinen pgvector-Typ kennt. (`.github/workflows/ci.yml`):
+      `cosineSimilarity()`-Berechnung, da SQLite keinen pgvector-Typ kennt.
+- [x] **P1-B — WorkflowOrchestrator undefinierte Methoden** (`src/AI/Workflow/WorkflowOrchestrator.php`,
+      `HitlWorkflowManager.php`): API-Drift korrigiert — Aufrufe an die
+      tatsächlich existierenden Methoden angepasst: `generateFromRequest` →
+      `generateToolDefinition`, `createFromDefinition` → `createAndRegisterTool`,
+      `getError` → `getErrorMessage`, `injectForSystemPrompt` → `inject`.
+      `DynamicTool::getDefinition()` (existiert nicht) durch null/Tool-Namen
+      ersetzt (DynamicTool ist ein DTO ohne Entity-Referenz).
+- [x] **P1-C — Weitere Baseline-Methodenfehler** (`GenericToolExecutor.php`,
+      `HTMXController.php`): `SecurityGuard::validateToolConfiguration()` durch
+      `containsShellMetacharacters()`-Parameter-Check ersetzt.
+      `HTMXController` nutzt jetzt `DynamicToolFactory` (injiziert) für
+      Tool-Liste (`getAllTools`) und Tool-Lookup (`getTool`) + `DynamicToolExecutor`
+      für Ausführung mit Tool-Objekt (statt nicht-existierendem
+      `execute(string)`/`getAvailableTools()`). Behebt echten HTTP-Laufzeitfehler. (`.github/workflows/ci.yml`):
       der `migrations`-Job führt nun `doctrine:migrations:migrate` (statt
       bisher `doctrine:schema:create`) gegen eine frische leere
       PostgreSQL-15+pgvector-Instanz aus. `doctrine:schema:validate` bleibt als
@@ -108,30 +122,6 @@
 ---
 
 ## ⬜ Offen — P1 (vor Production adressieren)
-
-### P1-B — WorkflowOrchestrator: undefinierte Methodenaufrufe ⬜
-**Befund:** `src/AI/Workflow/WorkflowOrchestrator.php` ruft Methoden auf, die
-nicht existieren (durch `phpstan-baseline.neon` verdeckt, daher kein CI-Fail):
-`ContextInjector::injectForSystemPrompt()`,
-`ToolDefinitionGenerator::generateFromRequest()`,
-`DynamicToolFactory::createFromDefinition()`,
-`ToolExecutionResult::getError()`,
-`DynamicTool::getDefinition()`. Kein Test deckt die Klasse ab.
-**Korrektur zum Audit:** HTTP-Erreichbarkeit über `BriefingController` konnte
-*nicht* bestätigt werden (keine Referenz in Controller/`services.yaml`); die
-Klasse ist vermutlich kein registrierter Service. Dennoch ein Code-Quality- und
-potenzieller Laufzeitfehler, sobald die Klasse instanziiert wird.
-**Fix:** Methoden implementieren oder Aufrufe entfernen; danach Baseline-Einträge
-löschen und Testabdeckung nachrüsten.
-**Aufwand:** ~3–4 h.
-
-### P1-C — Weitere undefinierte Methodenaufrufe (Baseline) ⬜
-**Befund:** `phpstan-baseline.neon` verdeckt zusätzlich:
-`SecurityGuard::validateToolConfiguration()` (in `GenericToolExecutor`) und
-`DynamicToolExecutor::getAvailableTools()` (3× in `HTMXController`). Auch hier
-potenzielle Laufzeitfehler, durch Baseline verschleiert.
-**Fix:** Implementieren oder Aufrufe entfernen; Baseline abbauen.
-**Aufwand:** ~2–3 h.
 
 ### P1-D — Production Docker (GHCR, nginx, Messenger-Worker) 🟡
 **Befund:** `docker-compose.prod.yml` existiert mit Messenger-Worker-Container

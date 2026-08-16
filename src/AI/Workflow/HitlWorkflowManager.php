@@ -54,7 +54,7 @@ class HitlWorkflowManager
         $this->auditLogger->log(
             'hitl_execution_blocked',
             $user,
-            $tool->getDefinition()?->getId(),
+            null  // P1-B: DynamicTool hat keine Definition-Referenz (getDefinition existiert nicht),
             'ToolDefinition',
             [
                 'execution_id' => $executionId,
@@ -79,14 +79,12 @@ class HitlWorkflowManager
 
         $pendingExecution = $this->pendingExecutions[$executionId];
         
-        // Approve das Tool (falls noch pending)
-        $definition = $pendingExecution->getTool()->getDefinition();
-        if ($definition && $definition->getStatus() === 'pending') {
-            $definition->setStatus('approved');
-            $this->entityManager->flush();
+        // P1-B: DynamicTool speichert keine ToolDefinition-Referenz, daher
+        // kann hier kein Status-Update auf einer Definition erfolgen. Die
+        // Approval wird ueber den Audit-Log + PendingExecution-Status
+        // nachverfolgt. Eine Definition-Anbindung ist als P3-D dokumentiert.
+        // (Frueher: $pendingExecution->getTool()->getDefinition())
 
-            // DynamicToolbox übernimmt das Tool beim nächsten Aufruf live aus der DB (Blueprint §4.B).
-        }
 
         // Führe die Execution aus
         try {
@@ -162,7 +160,7 @@ class HitlWorkflowManager
         ]);
 
         $this->auditLogger->logHitlDecision(
-            $pendingExecution->getTool()->getDefinition()?->getId() ?? 0,
+            0  // P1-B: DynamicTool hat keine Definition-Referenz,
             $pendingExecution->getTool()->getName(),
             $rejecter,
             'rejected',

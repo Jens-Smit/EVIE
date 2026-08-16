@@ -28,9 +28,14 @@ final class GenericToolExecutor implements ToolInterface
             throw new \InvalidArgumentException('Parameter "tool_name" ist erforderlich.');
         }
 
-        // Validate the tool configuration
-        if (!$this->securityGuard->validateToolConfiguration($parameters)) {
-            throw new \RuntimeException('Tool configuration failed security validation.');
+        // P1-C: SecurityGuard hat keine validateToolConfiguration()-Methode.
+        // Stattdessen werden String-Parameter auf Shell-Metazeichen geprueft
+        // (Command-Injection-Schutz), die eigentliche Tool-Sicherheit wird
+        // ueber SecurityGuard::decide() im Tool-Call-Pfad sichergestellt.
+        foreach ($parameters as $value) {
+            if (is_string($value) && $this->securityGuard->containsShellMetacharacters($value)) {
+                throw new \RuntimeException('Tool-Parameter enthalten verbotene Shell-Metazeichen.');
+            }
         }
 
         $tool = $this->toolRegistry->get($toolName);
