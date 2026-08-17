@@ -24,6 +24,7 @@
     "symfony/ai-mistral-platform": "^0.12",
     "symfony/ai-postgres-store": "^0.12",
     "symfony/ai-tavily-tool": "^0.12",
+    "symfony/asset": "*",
     "symfony/console": "^7.4",
     "symfony/dotenv": "^7.4",
     "symfony/form": "^7.4",

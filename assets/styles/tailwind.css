@@ -193,3 +193,97 @@ body {
 /* No Scrollbar */
 .no-scrollbar::-webkit-scrollbar { display: none; }
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+/* ============================================
+   Komponenten-Klassen (Design-System)
+   ============================================ */
+
+/* Card */
+.card {
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-card);
+  box-shadow: var(--shadow-card);
+  padding: 1.5rem;
+}
+.card-title {
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: var(--color-content);
+}
+
+/* Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  border-radius: var(--radius-button);
+  font-weight: 500;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  border: 1px solid transparent;
+  cursor: pointer;
+  text-decoration: none;
+}
+.btn-primary {
+  background-color: var(--color-primary);
+  color: #fff;
+}
+.btn-primary:hover {
+  background-color: var(--color-primary-hover);
+  transform: translateY(-1px);
+}
+.btn-secondary {
+  background-color: var(--color-secondary);
+  color: #fff;
+}
+.btn-secondary:hover {
+  background-color: var(--color-secondary-hover);
+}
+.btn-ghost {
+  background-color: transparent;
+  color: var(--color-content-muted);
+  border-color: var(--color-border);
+}
+.btn-ghost:hover {
+  background-color: var(--color-surface-elevated);
+  color: var(--color-content);
+}
+
+/* Badges */
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 0.125rem 0.5rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+.badge-approved {
+  background-color: var(--color-success-soft);
+  color: var(--color-success);
+}
+.badge-pending {
+  background-color: var(--color-warning-soft);
+  color: var(--color-warning);
+}
+.badge-rejected {
+  background-color: var(--color-danger-soft);
+  color: var(--color-danger);
+}
+
+/* Chat-Bubbles */
+.chat-bubble-system {
+  background-color: var(--color-surface-elevated);
+  color: var(--color-content-muted);
+}
+.chat-bubble-user {
+  background-color: var(--color-primary);
+  color: #fff;
+}
+.chat-bubble-agent {
+  background-color: var(--color-surface);
+  color: var(--color-content);
+  border: 1px solid var(--color-border);
+}

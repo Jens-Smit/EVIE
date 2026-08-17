@@ -3,166 +3,133 @@
 
 {% block title %}Neuer MCP-Server - EVIE{% endblock %}
 
-{% block breadcrumb %}
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ path('app_dashboard') }}">Dashboard</a></li>
-            <li class="breadcrumb-item"><a href="{{ path('mcp_servers_list') }}">MCP-Server</a></li>
-            <li class="breadcrumb-item active" aria-current="page">Neuer MCP-Server</li>
-        </ol>
-    </nav>
-{% endblock %}
-
-{% block content %}
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3">
-            <i class="fas fa-plus me-2"></i>
+{% block body %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl md:text-3xl font-bold text-content flex items-center gap-3">
+            <i class="ph ph-plus text-primary"></i>
             Neuer MCP-Server
         </h1>
-        <a href="{{ path('mcp_servers_list') }}" class="btn btn-outline-secondary">
-            <i class="fas fa-list me-1"></i> Zurück zur Liste
+        <a href="{{ path('mcp_servers_list') }}" class="btn btn-ghost">
+            <i class="ph ph-list"></i>
+            Zurück zur Liste
         </a>
     </div>
 
-    <div class="card shadow-sm">
-        <div class="card-header">
-            <h5 class="mb-0">
-                <i class="fas fa-cog me-2"></i>
-                MCP-Server-Konfiguration
-            </h5>
+    <div class="card">
+        <div class="flex items-center gap-2 mb-4">
+            <i class="ph ph-gear text-primary text-xl"></i>
+            <h2 class="card-title">MCP-Server-Konfiguration</h2>
         </div>
-        <div class="card-body">
-            <div class="alert alert-info mb-4">
-                <i class="fas fa-info-circle me-2"></i>
-                <strong>Hinweis:</strong> MCP-Server ermöglichen die Integration externer Tools und Dienste.
-                Konfigurieren Sie den Server mit den gewünschten Einstellungen.
+
+        <div class="bg-info-soft border border-info/20 text-info px-4 py-3 rounded-xl flex items-center gap-2 mb-6">
+            <i class="ph ph-info text-lg"></i>
+            <div>
+                <strong>Hinweis:</strong>
+                <span class="text-content-muted"> MCP-Server ermöglichen die Integration externer Tools und Dienste.</span>
+            </div>
+        </div>
+
+        {{ form_start(form, {'attr': {'novalidate': 'novalidate', 'class': 'space-y-6'}}) }}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    {{ form_label(form.name, null, {'label_attr': {'class': 'block text-sm font-medium text-content mb-1'}}) }}
+                    {{ form_widget(form.name, {'attr': {'class': 'w-full px-3 py-2 bg-surface-muted border border-border rounded-xl text-content focus:ring-2 focus:ring-primary focus:border-transparent'}}) }}
+                    {{ form_errors(form.name) }}
+                </div>
+                <div>
+                    {{ form_label(form.type, null, {'label_attr': {'class': 'block text-sm font-medium text-content mb-1'}}) }}
+                    {{ form_widget(form.type, {'attr': {'class': 'w-full px-3 py-2 bg-surface-muted border border-border rounded-xl text-content focus:ring-2 focus:ring-primary focus:border-transparent'}}) }}
+                    {{ form_errors(form.type) }}
+                </div>
             </div>
 
-            {{ form_start(form, {'attr': {'novalidate': 'novalidate', 'class': 'row g-3'}}) }}
-                <div class="col-md-6">
-                    {{ form_row(form.name, {'attr': {'class': 'form-control'}}) }}
-                </div>
-                <div class="col-md-6">
-                    {{ form_row(form.type, {'attr': {'class': 'form-select'}}) }}
-                </div>
-                <div class="col-12">
-                    {{ form_row(form.description, {'attr': {'class': 'form-control', 'rows': 3}}) }}
-                </div>
+            <div>
+                {{ form_label(form.description, null, {'label_attr': {'class': 'block text-sm font-medium text-content mb-1'}}) }}
+                {{ form_widget(form.description, {'attr': {'class': 'w-full px-3 py-2 bg-surface-muted border border-border rounded-xl text-content focus:ring-2 focus:ring-primary focus:border-transparent', 'rows': 3}}) }}
+                {{ form_errors(form.description) }}
+            </div>
 
-                <div class="col-12">
-                    <div class="card mb-3">
-                        <div class="card-header">
-                            <h6 class="mb-0">
-                                <i class="fas fa-cogs me-2"></i>
-                                Server-Konfiguration (JSON)
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            {{ form_row(form.configuration, {'attr': {'class': 'form-control font-mono', 'rows': 5}}) }}
-                            <div class="mt-2">
-                                <small class="text-muted">
-                                    Beispiel für <code>filesystem</code>:
-                                    <pre class="mb-0">{ "transport": "stdio", "command": "npx", "arguments": ["-y", "@modelcontextprotocol/server-filesystem", "%kernel.project_dir%/var/mcp-sandbox"] }</pre>
-                                </small>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+            <div class="bg-surface-muted rounded-xl p-4 border border-border">
+                <h3 class="font-semibold text-content mb-3 flex items-center gap-2">
+                    <i class="ph ph-code text-primary"></i>
+                    Server-Konfiguration (JSON)
+                </h3>
+                {{ form_widget(form.configuration, {'attr': {'class': 'w-full px-3 py-2 bg-surface border border-border rounded-xl text-content font-mono text-sm focus:ring-2 focus:ring-primary focus:border-transparent', 'rows': 5}}) }}
+                {{ form_errors(form.configuration) }}
+                <p class="text-xs text-content-muted mt-2">
+                    Beispiel für <code class="bg-surface-elevated px-1 rounded">filesystem</code>:
+                    <code class="block bg-surface-elevated p-2 rounded mt-1 text-xs">{ "transport": "stdio", "command": "npx", "arguments": ["-y", "@modelcontextprotocol/server-filesystem", "/var/mcp-sandbox"] }</code>
+                </p>
+            </div>
 
-                <div class="col-md-6">
-                    <div class="card mb-3">
-                        <div class="card-header">
-                            <h6 class="mb-0">
-                                <i class="fas fa-check-circle me-2"></i>
-                                Erlaubte Tools (Whitelist)
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            {{ form_row(form.allowedTools, {'attr': {'class': 'form-control font-mono', 'rows': 3, 'placeholder': '["read_file", "list_files"]'}}) }}
-                            <small class="text-muted">
-                                Leer lassen, um alle Tools zu erlauben. Beispiel: <code>["read_file", "list_files"]</code>
-                            </small>
-                        </div>
-                    </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div class="bg-surface-muted rounded-xl p-4 border border-border">
+                    <h3 class="font-semibold text-content mb-3 flex items-center gap-2">
+                        <i class="ph ph-check-circle text-success"></i>
+                        Erlaubte Tools (Whitelist)
+                    </h3>
+                    {{ form_widget(form.allowedTools, {'attr': {'class': 'w-full px-3 py-2 bg-surface border border-border rounded-xl text-content font-mono text-sm focus:ring-2 focus:ring-primary focus:border-transparent', 'rows': 3, 'placeholder': '["read_file", "list_files"]'}}) }}
+                    <p class="text-xs text-content-muted mt-2">Leer lassen, um alle Tools zu erlauben.</p>
                 </div>
+                <div class="bg-surface-muted rounded-xl p-4 border border-border">
+                    <h3 class="font-semibold text-content mb-3 flex items-center gap-2">
+                        <i class="ph ph-prohibit text-danger"></i>
+                        Blockierte Ressourcen (Blacklist)
+                    </h3>
+                    {{ form_widget(form.blockedResources, {'attr': {'class': 'w-full px-3 py-2 bg-surface border border-border rounded-xl text-content font-mono text-sm focus:ring-2 focus:ring-primary focus:border-transparent', 'rows': 3, 'placeholder': '["/etc/*", "*.env"]'}}) }}
+                    <p class="text-xs text-content-muted mt-2">Unterstützt Wildcards (*).</p>
+                </div>
+            </div>
 
-                <div class="col-md-6">
-                    <div class="card mb-3">
-                        <div class="card-header">
-                            <h6 class="mb-0">
-                                <i class="fas fa-ban me-2"></i>
-                                Blockierte Ressourcen (Blacklist)
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            {{ form_row(form.blockedResources, {'attr': {'class': 'form-control font-mono', 'rows': 3, 'placeholder': '["/etc/*", "*.env"]'}}) }}
-                            <small class="text-muted">
-                                Beispiel: <code>["/etc/*", "*.env", "*.key"]</code>. Unterstützt Wildcards (*).
-                            </small>
-                        </div>
-                    </div>
-                </div>
+            <div class="bg-surface-muted rounded-xl p-4 border border-border">
+                <h3 class="font-semibold text-content mb-3 flex items-center gap-2">
+                    <i class="ph ph-power text-warning"></i>
+                    Status
+                </h3>
+                <label class="flex items-center gap-2 cursor-pointer">
+                    {{ form_widget(form.isActive, {'attr': {'class': 'w-4 h-4'}}) }}
+                    <span class="text-sm text-content">Server aktivieren</span>
+                </label>
+                <p class="text-xs text-content-muted mt-2">Deaktivierte Server werden nicht geladen.</p>
+            </div>
 
-                <div class="col-12">
-                    <div class="card mb-3">
-                        <div class="card-header">
-                            <h6 class="mb-0">
-                                <i class="fas fa-toggle-on me-2"></i>
-                                Status
-                            </h6>
-                        </div>
-                        <div class="card-body">
-                            <div class="form-check form-switch">
-                                {{ form_widget(form.isActive, {'attr': {'class': 'form-check-input'}}) }}
-                                {{ form_label(form.isActive, null, {'label_attr': {'class': 'form-check-label'}}) }}
-                            </div>
-                            <small class="text-muted">
-                                Deaktivierte Server werden nicht geladen und können nicht verwendet werden.
-                            </small>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="col-12">
-                    <div class="d-flex justify-content-end gap-2">
-                        <a href="{{ path('mcp_servers_list') }}" class="btn btn-outline-secondary">
-                            <i class="fas fa-times me-1"></i> Abbrechen
-                        </a>
-                        <button type="submit" class="btn btn-primary">
-                            <i class="fas fa-save me-1"></i> Speichern
-                        </button>
-                    </div>
-                </div>
-            {{ form_end(form) }}
-        </div>
+            <div class="flex justify-end gap-2">
+                <a href="{{ path('mcp_servers_list') }}" class="btn btn-ghost">
+                    <i class="ph ph-x"></i>
+                    Abbrechen
+                </a>
+                <button type="submit" class="btn btn-primary">
+                    <i class="ph ph-floppy-disk"></i>
+                    Speichern
+                </button>
+            </div>
+        {{ form_end(form) }}
     </div>
 
-    <div class="card shadow-sm mt-4">
-        <div class="card-header">
-            <h5 class="mb-0">
-                <i class="fas fa-question-circle me-2"></i>
-                Hilfe zur Konfiguration
-            </h5>
+    <div class="card">
+        <div class="flex items-center gap-2 mb-4">
+            <i class="ph ph-question text-primary text-xl"></i>
+            <h2 class="card-title">Hilfe zur Konfiguration</h2>
         </div>
-        <div class="card-body">
-            <h6>Server-Typen:</h6>
-            <ul>
-                <li><strong>filesystem:</strong> Zugriff auf das Dateisystem. Benötigt Node.js und npx.</li>
-                <li><strong>playwright:</strong> Browser-Automatisierung. Benötigt Node.js und npx.</li>
-                <li><strong>github:</strong> Zugriff auf GitHub-Repositories. Benötigt eine URL.</li>
-                <li><strong>custom:</strong> Benutzerdefinierter Server. Benötigt eine Klasse.</li>
-            </ul>
-            
-            <h6 class="mt-3">Beispiel-Konfigurationen:</h6>
-            <div class="row">
-                <div class="col-md-6">
-                    <h6>Filesystem:</h6>
-                    <pre class="bg-light p-3 rounded">{ "transport": "stdio", "command": "npx", "arguments": ["-y", "@modelcontextprotocol/server-filesystem", "/var/mcp-sandbox"] }</pre>
+        <div class="space-y-4">
+            <div>
+                <h3 class="font-semibold text-content mb-2">Server-Typen:</h3>
+                <ul class="space-y-1 text-sm text-content-muted">
+                    <li><strong class="text-content">filesystem:</strong> Zugriff auf das Dateisystem. Benötigt Node.js und npx.</li>
+                    <li><strong class="text-content">playwright:</strong> Browser-Automatisierung. Benötigt Node.js und npx.</li>
+                    <li><strong class="text-content">github:</strong> Zugriff auf GitHub-Repositories. Benötigt eine URL.</li>
+                    <li><strong class="text-content">custom:</strong> Benutzerdefinierter Server. Benötigt eine Klasse.</li>
+                </ul>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <h3 class="font-semibold text-content mb-2">Filesystem:</h3>
+                    <pre class="bg-surface-muted p-3 rounded-xl text-xs text-content overflow-x-auto">{ "transport": "stdio", "command": "npx", "arguments": ["-y", "@modelcontextprotocol/server-filesystem", "/var/mcp-sandbox"] }</pre>
                 </div>
-                <div class="col-md-6">
-                    <h6>GitHub:</h6>
-                    <pre class="bg-light p-3 rounded">{ "transport": "http", "url": "https://api.github.com" }</pre>
+                <div>
+                    <h3 class="font-semibold text-content mb-2">GitHub:</h3>
+                    <pre class="bg-surface-muted p-3 rounded-xl text-xs text-content overflow-x-auto">{ "transport": "http", "url": "https://api.github.com" }</pre>
                 </div>
             </div>
         </div>

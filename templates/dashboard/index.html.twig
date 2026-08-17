@@ -3,101 +3,133 @@
 {% block title %}Dashboard - EVIE{% endblock %}
 
 {% block body %}
-<div class="container mx-auto px-4 py-8">
-    <h1 class="text-3xl font-bold mb-6">Dashboard</h1>
-    
-    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div class="bg-white dark:bg-slate-800 shadow-md rounded-lg p-6">
-            <h2 class="text-xl font-semibold mb-4">Letzte Aktionen</h2>
+<div class="max-w-6xl mx-auto space-y-6">
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl md:text-3xl font-bold text-content">Dashboard</h1>
+        <div class="flex items-center gap-2 text-sm text-content-muted">
+            <i class="ph ph-pulse text-success"></i>
+            <span>System operativ</span>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="card">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-primary-soft flex items-center justify-center shrink-0">
+                    <i class="ph ph-clock text-primary text-xl"></i>
+                </div>
+                <h2 class="font-semibold text-content">Letzte Aktionen</h2>
+            </div>
             {% if recentActions|length > 0 %}
             <ul class="space-y-2">
                 {% for action in recentActions %}
-                <li class="flex items-start space-x-2">
-                    <span class="text-gray-500 text-sm">{{ action.createdAt|date('H:i') }}</span>
-                    <span class="text-sm">{{ action.action }}</span>
+                <li class="flex items-start gap-2">
+                    <span class="text-content-muted text-sm">{{ action.createdAt|date('H:i') }}</span>
+                    <span class="text-sm text-content">{{ action.action }}</span>
                 </li>
                 {% endfor %}
             </ul>
             {% else %}
-            <p class="text-gray-500 text-sm">Keine aktuellen Aktionen</p>
+            <p class="text-content-muted text-sm">Keine aktuellen Aktionen</p>
             {% endif %}
         </div>
 
-        <div class="bg-white dark:bg-slate-800 shadow-md rounded-lg p-6">
-            <h2 class="text-xl font-semibold mb-4">Ausstehende Tools</h2>
+        <div class="card">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-warning-soft flex items-center justify-center shrink-0">
+                    <i class="ph ph-hourglass text-warning text-xl"></i>
+                </div>
+                <h2 class="font-semibold text-content">Ausstehende Tools</h2>
+            </div>
             {% if pendingTools|length > 0 %}
             <ul class="space-y-2">
                 {% for tool in pendingTools %}
-                <li class="text-sm">
+                <li class="text-sm text-content">
                     <strong>{{ tool.name }}</strong>: {{ tool.description|slice(0, 30) }}...
                 </li>
                 {% endfor %}
             </ul>
             {% else %}
-            <p class="text-gray-500 text-sm">Keine ausstehenden Tools</p>
+            <p class="text-content-muted text-sm">Keine ausstehenden Tools</p>
             {% endif %}
         </div>
 
-        <div class="bg-white dark:bg-slate-800 shadow-md rounded-lg p-6">
-            <h2 class="text-xl font-semibold mb-4">Letzte Dokumente</h2>
+        <div class="card">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-info-soft flex items-center justify-center shrink-0">
+                    <i class="ph ph-folders text-info text-xl"></i>
+                </div>
+                <h2 class="font-semibold text-content">Letzte Dokumente</h2>
+            </div>
             {% if recentDocuments|length > 0 %}
             <ul class="space-y-2">
                 {% for document in recentDocuments %}
                 <li class="text-sm">
-                    <a href="{{ path('api_documents_get', {'id': document.id}) }}" class="text-blue-600 hover:underline">
+                    <a href="{{ path('api_documents_get', {'id': document.id}) }}" class="text-primary hover:underline">
                         {{ document.name }}
                     </a>
                 </li>
                 {% endfor %}
             </ul>
             {% else %}
-            <p class="text-gray-500 text-sm">Keine aktuellen Dokumente</p>
+            <p class="text-content-muted text-sm">Keine aktuellen Dokumente</p>
             {% endif %}
         </div>
 
-        <div class="bg-white dark:bg-slate-800 shadow-md rounded-lg p-6">
-            <h2 class="text-xl font-semibold mb-4">Subagenten</h2>
+        <div class="card">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-secondary-soft flex items-center justify-center shrink-0">
+                    <i class="ph ph-users-three text-secondary text-xl"></i>
+                </div>
+                <h2 class="font-semibold text-content">Subagenten</h2>
+            </div>
             {% if subAgents|length > 0 %}
             <ul class="space-y-2">
                 {% for subAgent in subAgents %}
                 <li class="text-sm">
-                    <a href="{{ path('api_subagents_get', {'id': subAgent.id}) }}" class="text-blue-600 hover:underline">
+                    <a href="{{ path('api_subagents_get', {'id': subAgent.id}) }}" class="text-primary hover:underline">
                         {{ subAgent.name }}
                     </a>
                 </li>
                 {% endfor %}
             </ul>
             {% else %}
-            <p class="text-gray-500 text-sm">Keine Subagenten</p>
+            <p class="text-content-muted text-sm">Keine Subagenten</p>
             {% endif %}
         </div>
     </div>
 
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        <div class="lg:col-span-2 bg-white dark:bg-slate-800 shadow-md rounded-lg p-6">
-            <h2 class="text-xl font-semibold mb-4">Aktivitäts-Übersicht</h2>
-            <div class="h-64 bg-gray-50 rounded-lg flex items-center justify-center">
-                <p class="text-gray-500">Hier könnte ein Diagramm mit der Aktivität angezeigt werden</p>
+        <div class="lg:col-span-2 card">
+            <h2 class="card-title flex items-center gap-2 mb-4">
+                <i class="ph ph-chart-line text-primary"></i>
+                Aktivitäts-Übersicht
+            </h2>
+            <div class="h-64 bg-surface-muted rounded-xl flex items-center justify-center border border-border">
+                <p class="text-content-muted">Hier könnte ein Diagramm mit der Aktivität angezeigt werden</p>
             </div>
         </div>
 
-        <div class="bg-white dark:bg-slate-800 shadow-md rounded-lg p-6">
-            <h2 class="text-xl font-semibold mb-4">Schnellzugriff</h2>
+        <div class="card">
+            <h2 class="card-title flex items-center gap-2 mb-4">
+                <i class="ph ph-lightning text-warning"></i>
+                Schnellzugriff
+            </h2>
             <div class="space-y-3">
-                <a href="{{ path('frontend_agent_dialog') }}" class="flex items-center space-x-2 text-blue-600 hover:text-blue-800">
-                    <span>💬</span>
+                <a href="{{ path('frontend_agent_dialog') }}" class="flex items-center gap-2 text-primary hover:text-primary-hover">
+                    <i class="ph ph-chats-teardrop"></i>
                     <span>Agenten-Dialog</span>
                 </a>
-                <a href="{{ path('app_documents') }}" class="flex items-center space-x-2 text-blue-600 hover:text-blue-800">
-                    <span>📄</span>
+                <a href="{{ path('app_documents') }}" class="flex items-center gap-2 text-primary hover:text-primary-hover">
+                    <i class="ph ph-folders"></i>
                     <span>Dokumente</span>
                 </a>
-                <a href="{{ path('app_subagents') }}" class="flex items-center space-x-2 text-blue-600 hover:text-blue-800">
-                    <span>🤖</span>
+                <a href="{{ path('app_subagents') }}" class="flex items-center gap-2 text-primary hover:text-primary-hover">
+                    <i class="ph ph-users-three"></i>
                     <span>Subagenten</span>
                 </a>
-                <a href="{{ path('app_tool_pending_list') }}" class="flex items-center space-x-2 text-blue-600 hover:text-blue-800">
-                    <span>🛠️</span>
+                <a href="{{ path('app_tool_pending_list') }}" class="flex items-center gap-2 text-primary hover:text-primary-hover">
+                    <i class="ph ph-wrench"></i>
                     <span>Tools</span>
                 </a>
             </div>
