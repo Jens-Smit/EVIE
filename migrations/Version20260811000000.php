@@ -89,8 +89,8 @@ final class Version20260811000000 extends AbstractMigration
         $this->addSql('CREATE INDEX idx_audit_created ON audit_logs (created_at)');
 
         // --- embeddings (RAG) -------------------------------------------
-        // P2-3: vector-Spalte als echter pgvector vector(1024)-Typ.
-        $this->addSql('CREATE TABLE embeddings (id SERIAL NOT NULL, content_hash VARCHAR(255) NOT NULL, content TEXT NOT NULL, content_type VARCHAR(100) NOT NULL, source VARCHAR(255) DEFAULT NULL, metadata JSON NOT NULL, vector vector(1024) NOT NULL, created_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, PRIMARY KEY(id))');
+        // vector-Spalte als JSON (P1-A: pgvector-Cast zur Laufzeit im SQL).
+        $this->addSql('CREATE TABLE embeddings (id SERIAL NOT NULL, content_hash VARCHAR(255) NOT NULL, content TEXT NOT NULL, content_type VARCHAR(100) NOT NULL, source VARCHAR(255) DEFAULT NULL, metadata JSON NOT NULL, vector JSON NOT NULL, created_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, PRIMARY KEY(id))');
 
         // --- reset_password_request -------------------------------------
         $this->addSql('CREATE TABLE reset_password_request (id SERIAL NOT NULL, user_id INT NOT NULL, selector VARCHAR(100) NOT NULL, hashed_token VARCHAR(100) NOT NULL, requested_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, expires_at TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL, PRIMARY KEY(id))');

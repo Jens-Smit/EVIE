@@ -8,30 +8,26 @@ use Doctrine\DBAL\Schema\Schema;
 use Doctrine\Migrations\AbstractMigration;
 
 /**
- * P2-3: Ergaenzt einen HNSW-Index fuer approximative Naechste-Nachbar-Suche
- * auf der embeddings.vector-Spalte (die bereits als vector(1024) in der
- * Baseline-Migration angelegt wird).
- *
- * Die Dimension 1024 entspricht dem Mistral-Embedding-Modell.
+ * P2-3: Placeholder-Migration. Ein echter HNSW-Index auf einem
+ * pgvector vector(N)-Typ erfordert einen Custom-DBAL-Platform-Support,
+ * der Doctrine DBAL die vector-Spalte als bekannten Typ bekannt macht.
+ * Bis dieser implementiert ist, nutzt P1-A den JSON+Cast-Pfad.
+ * Diese Migration ist ein No-Op (beweist, dass die Kette laeuft).
  */
 final class Version20260817000001 extends AbstractMigration
 {
     public function getDescription(): string
     {
-        return 'P2-3: HNSW-Index fuer pgvector Cosine-Similarity auf embeddings.vector';
+        return 'P2-3: HNSW-Index Placeholder (erfordert Custom-DBAL-Platform-Support)';
     }
 
     public function up(Schema $schema): void
     {
-        // pgvector-Erweiterung sicherstellen
-        $this->addSql('CREATE EXTENSION IF NOT EXISTS vector');
-
-        // HNSW-Index fuer Cosine-Similarity (vector_cosine_ops)
-        $this->addSql('CREATE INDEX IF NOT EXISTS idx_embedding_vector_hnsw ON embeddings USING hnsw (vector vector_cosine_ops)');
+        // No-Op: HNSW-Index erfordert vector(N)-Spalte + Custom-DBAL-Platform.
+        // P1-A nutzt JSON+Cast-Pfad. Follow-up: Custom-Platform fuer vector-Typ.
     }
 
     public function down(Schema $schema): void
     {
-        $this->addSql('DROP INDEX IF EXISTS idx_embedding_vector_hnsw');
     }
 }
