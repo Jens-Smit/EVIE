@@ -742,3 +742,25 @@ wird erst nach grünen E2E-Tests als abgeschlossen markiert.
 **Verifikation F10:** `/datenschutz` ist öffentlich zugänglich (PUBLIC_ACCESS), enthält DSGVO-Artikel und Mistral-AVV-Hinweis.
 **Verifikation F11:** `/impressum` ist öffentlich zugänglich, enthält §5 TMG / §18 MStV.
 
+
+### Phase 5 – Qualität (P2) ✅ ABGESCHLOSSEN
+
+**Befunde:** F13 (Controller-Konsolidierung), F15 (error_log in prod), F16 (Responsiv-Tests fehlen)
+
+**Durchgeführte Änderungen:**
+
+| Datei | Änderung | Befund |
+|-------|----------|--------|
+| `src/Controller/Frontend/ToolApprovalController.php` | 3 `error_log()`-Aufrufe entfernt und durch `LoggerInterface` (`$this->logger->debug()`) ersetzt; Konstruktor um `LoggerInterface` erweitert | F15 |
+| `src/Controller/ToolListController.php` | Verifiziert: keine Duplikation mit `ToolApprovalController` (unterschiedliche Zuständigkeiten: `/tools/list` = approved-Tools, `/tools/pending` = pending-Tools) | F13 |
+| `tests/E2E/ResponsiveDesignTest.php` | **Neu**: 7 Tests – Dashboard-Responsive-Grid, Settings-Responsive, Sidebar-Responsive-Klassen, MCP-Card-Layout, Onboarding-Responsive, Viewport-meta-tag auf Login/Dashboard/Settings, Full-Flow-Smoke (Login→Dashboard→Settings→Dialog) | F16 |
+
+**E2E-Test-Ergebnis (lokal, SQLite):**
+- `ResponsiveDesignTest`: 7 Tests, 21 Assertions ✅
+- Vollständige E2E-Suite: 66 Tests, 347 Assertions ✅ (1 skipped)
+- Keine Regressionen.
+
+**Verifikation F13:** `ToolListController` und `ToolApprovalController` haben unterschiedliche Zuständigkeiten und keine Route-Konflikte; `bin/console debug:router` zeigt keine Duplikate.
+**Verifikation F15:** `grep -rn "error_log(" src/` → 0 Treffer.
+**Verifikation F16:** Alle Templates enthalten responsive Klassen (`grid-cols-1 md:grid-cols-2`, `lg:`, `max-w-*`) und `meta[name="viewport"]`.
+

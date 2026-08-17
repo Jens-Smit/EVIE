@@ -7,12 +7,14 @@ use App\Repository\ToolDefinitionRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Psr\Log\LoggerInterface;
 use Symfony\Component\Routing\Attribute\Route;
 
 class ToolApprovalController extends AbstractController
 {
     public function __construct(
         private ToolDefinitionRepository $toolDefinitionRepo,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -24,11 +26,7 @@ class ToolApprovalController extends AbstractController
             'status' => ['pending', 'pending_approval'],
         ]);
 
-        // Debug-Logs hinzufügen
-        error_log('DEBUG: Gefundene ausstehende Tools: ' . count($pendingTools));
-        foreach ($pendingTools as $tool) {
-            error_log('DEBUG: Tool ID ' . $tool->getId() . ' - Name: ' . $tool->getName() . ' - Status: ' . $tool->getStatus());
-        }
+        $this->logger->debug('Ausstehende Tools geladen', ['count' => count($pendingTools)]);
 
         // Transformiere die Tools in das Format, das das Template erwartet
         $tools = array_map(function (ToolDefinition $tool) {
@@ -43,7 +41,7 @@ class ToolApprovalController extends AbstractController
             ];
         }, $pendingTools);
 
-        error_log('DEBUG: Transformierte Tools für Template: ' . count($tools));
+        $this->logger->debug('Tools fuer Template transformiert', ['count' => count($tools)]);
 
         return $this->render('tools/pending.html.twig', [
             'tools' => $tools,
