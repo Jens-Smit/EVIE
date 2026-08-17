@@ -597,3 +597,37 @@ Priorisierung: **P0** (Security/Blocker) → **P1** (Funktionalität/DSGVO) → 
 ---
 
 *Ende des Audits. Dieses Dokument lebt im `main`-Branch unter `docs/audit-frontend-2026-08-17.md` und ist die Grundlage für die Implementierung in den Phasen 0–5.*
+
+---
+
+## 11. Umsetzungs-Protokoll
+
+Dieses Protokoll dokumentiert die schrittweise Umsetzung der Phasen. Jede Phase
+wird erst nach grünen E2E-Tests als abgeschlossen markiert.
+
+### Phase 0 – Security & Auth (P0) ✅ ABGESCHLOSSEN
+
+**Befunde:** F1 (Auth-Redirect), F2 (Default-User-Bug), F12 (Route-Konflikte)
+
+**Durchgeführte Änderungen:**
+
+| Datei | Änderung | Befund |
+|-------|----------|--------|
+| `src/Controller/Frontend/DashboardController.php` | `find(1)`-Default-User entfernt; `AccessDeniedException` bei nicht angemeldetem Nutzer | F2 |
+| `src/Controller/Frontend/DocumentController.php` | analog; `UserProfileRepository`-Abhängigkeit entfernt | F2 |
+| `src/Controller/Frontend/SubAgentController.php` | analog | F2 |
+| `templates/base.html.twig` | `hx-headers='{"X-Requested-With": "XMLHttpRequest"}'` von `<body>` entfernt (nur `hx-boost` bleibt) | F1 |
+| `src/Security/Authenticator/LoginEntryPoint.php` | **Neu**: `AuthenticationEntryPointInterface`-Service, der unauthentifizierte Anfragen immer auf `/login` redirectet (302 statt 401) | F1 |
+| `config/packages/security.yaml` | `entry_point: App\Security\Authenticator\LoginEntryPoint` in der `main`-Firewall konfiguriert | F1 |
+| `config/routes.yaml` | 4 duplikate YAML-Routen (`app_home`, `app_documents`, `app_subagents`, `app_dashboard`) entfernt; Attribut-Routen sind kanonisch | F12 |
+| `tests/E2E/NavigationPagesTest.php` | `testAnonymousAccessToSidebarPagesRedirectsToLogin` und `testEveryFrontendPageLinkRedirectsAnonymousToLogin` verschärft: nur 302 zum `/login` akzeptiert (kein 401/403 mehr); zusätzlich `Location`-Header auf `/login` geprüft | F1 |
+
+**E2E-Test-Ergebnis (lokal, SQLite):**
+- `NavigationPagesTest`: 20 Tests, 161 Assertions ✅ (vorher 148)
+- Vollständige E2E-Suite: 34 Tests, 236 Assertions ✅ (1 skipped)
+- Keine Regressionen.
+
+**Verifikation F1:** Anonymer GET-Request auf `/dashboard` → 302 Redirect auf `/login` (vorher: 401 Unauthorized-Debug-Seite).
+**Verifikation F2:** `grep -rn "find(1)" src/Controller/Frontend/` → 0 Treffer.
+**Verifikation F12:** `bin/console debug:router` zeigt keine duplikaten Routen mehr.
+

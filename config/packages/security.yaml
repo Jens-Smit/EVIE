@@ -19,6 +19,7 @@ security:
             provider: app_user_provider
             custom_authenticators:
                 - App\Security\Authenticator\LoginFormAuthenticator
+            entry_point: App\Security\Authenticator\LoginEntryPoint
 
             logout:
                 path: app_logout

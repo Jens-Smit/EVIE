@@ -73,29 +73,14 @@ api_dashboard:
     methods: [GET]
 
 # Frontend Routes
-app_home:
-    path: /
-    controller: App\Controller\Frontend\HomeController::index
-    methods: [GET]
+# Hinweis: app_home, app_documents, app_subagents und app_dashboard sind als
+# Attribut-Routen auf den Frontend-Controllern definiert (kanonisch) und werden
+# hier NICHT dupliziert (F12 aus Frontend-Audit: Route-Konflikte behoben).
+# Nur Routen ohne Attribut-Entsprechung bleiben als YAML-Definition.
 
 app_agent_dialog:
     path: /agent/dialog
     controller: App\Controller\Frontend\AgentDialogController::dialog
-    methods: [GET]
-
-app_documents:
-    path: /documents
-    controller: App\Controller\Frontend\DocumentController::index
-    methods: [GET]
-
-app_subagents:
-    path: /subagents
-    controller: App\Controller\Frontend\SubAgentController::index
-    methods: [GET]
-
-app_dashboard:
-    path: /dashboard
-    controller: App\Controller\Frontend\DashboardController::index
     methods: [GET]
 
 app_tools:
