@@ -16,6 +16,13 @@
                     <i class="ph ph-clock-counter-clockwise"></i>
                     Verlauf
                 </a>
+                <div id="pending-tools-badge" class="hidden">
+                    <span class="badge badge-pending cursor-pointer" id="pending-tools-link" title="Ausstehende Tool-Freigaben">
+                        <i class="ph ph-hourglass"></i>
+                        <span id="pending-tools-count">0</span> Freigaben
+                    </span>
+                </div>
+            </div>
                 {% if continuing_conversation %}
                     <a href="{{ path('frontend_agent_dialog') }}" class="btn btn-ghost text-warning">
                         <i class="ph ph-x-circle"></i>
@@ -67,6 +74,9 @@
                 </div>
             {% endif %}
         </div>
+
+        {# HITL Inline Approval Container (wird per JS befüllt) #}
+        <div id="hitl-approval-container" class="space-y-3"></div>
 
         {# Chat Form #}
         <form id="chat-form" class="space-y-4" hx-boost="false">
@@ -174,6 +184,12 @@
                     }
 
                     appendMessage('agent', data.response || 'Keine Antwort erhalten.');
+
+                    // Frontend-Audit F8: HITL-Inline-Approval prüfen
+                    if (data.requires_approval || data.pending_tool) {
+                        showHitlApproval(data.pending_tool || data);
+                    }
+                    refreshPendingToolsBadge();
                 } catch (err) {
                     typingEl.remove();
                     appendMessage('agent', 'Fehler: ' + err.message);
@@ -210,6 +226,95 @@
                 chatContainer.scrollTop = chatContainer.scrollHeight;
                 return wrapper;
             }
+
+            // Frontend-Audit F8: HITL Inline Approval
+            function showHitlApproval(tool) {
+                const container = document.getElementById('hitl-approval-container');
+                const toolId = tool.id || tool.tool_id;
+                const toolName = tool.name || tool.tool_name || 'Unbekannt';
+                const toolDesc = tool.description || tool.tool_description || '';
+
+                const card = document.createElement('div');
+                card.className = 'bg-warning-soft border border-warning/30 rounded-xl p-4 space-y-3';
+                card.innerHTML = '<div class="flex items-center gap-2">' +
+                    '<i class="ph ph-hourglass text-warning text-xl"></i>' +
+                    '<strong class="text-content">Tool-Freigabe erforderlich</strong>' +
+                    '</div>' +
+                    '<p class="text-sm text-content">Neues Tool <strong>' + escapeHtml(toolName) + '</strong> möchte ausgeführt werden.</p>' +
+                    (toolDesc ? '<p class="text-xs text-content-muted">' + escapeHtml(toolDesc) + '</p>' : '') +
+                    '<div class="flex gap-2">' +
+                    '<button class="btn btn-primary hitl-approve" data-tool-id="' + toolId + '">' +
+                    '<i class="ph ph-check"></i> Genehmigen</button>' +
+                    '<button class="btn btn-ghost hitl-reject" data-tool-id="' + toolId + '">' +
+                    '<i class="ph ph-x"></i> Ablehnen</button>' +
+                    '</div>';
+                container.appendChild(card);
+
+                card.querySelector('.hitl-approve').addEventListener('click', function() {
+                    approveTool(toolId, card);
+                });
+                card.querySelector('.hitl-reject').addEventListener('click', function() {
+                    rejectTool(toolId, card);
+                });
+            }
+
+            async function approveTool(toolId, cardEl) {
+                try {
+                    const res = await fetch('/api/tools/' + toolId + '/approve', {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    if (res.ok) {
+                        cardEl.innerHTML = '<div class="flex items-center gap-2 text-success"><i class="ph ph-check-circle text-lg"></i> Tool genehmigt. Agent wird fortgesetzt.</div>';
+                        refreshPendingToolsBadge();
+                    }
+                } catch (e) {
+                    showToast('Freigabe fehlgeschlagen', 'error');
+                }
+            }
+
+            async function rejectTool(toolId, cardEl) {
+                try {
+                    const res = await fetch('/api/tools/' + toolId + '/reject', {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                    });
+                    if (res.ok) {
+                        cardEl.innerHTML = '<div class="flex items-center gap-2 text-danger"><i class="ph ph-x-circle text-lg"></i> Tool abgelehnt.</div>';
+                        refreshPendingToolsBadge();
+                    }
+                } catch (e) {
+                    showToast('Ablehnung fehlgeschlagen', 'error');
+                }
+            }
+
+            async function refreshPendingToolsBadge() {
+                try {
+                    const res = await fetch('{{ path('app_pending_tools_count') }}');
+                    const data = await res.json();
+                    const count = data.count || 0;
+                    const badge = document.getElementById('pending-tools-badge');
+                    const countEl = document.getElementById('pending-tools-count');
+                    if (count > 0) {
+                        countEl.textContent = count;
+                        badge.classList.remove('hidden');
+                    } else {
+                        badge.classList.add('hidden');
+                    }
+                } catch (e) { /* silent */ }
+            }
+
+            function escapeHtml(str) {
+                const div = document.createElement('div');
+                div.textContent = str;
+                return div.innerHTML;
+            }
+
+            // Badge beim Laden aktualisieren
+            refreshPendingToolsBadge();
+            document.getElementById('pending-tools-link')?.addEventListener('click', function() {
+                window.location.href = '{{ path('app_tool_pending_list') }}';
+            });
         });
     </script>
 {% endblock %}
