@@ -663,11 +663,11 @@
       "action": "{{ action }}",
       "step": "{{ step_id }}",
       "question": "{{ question }}",
-      "options": {{ options|tojson }},
-      "validation": {{ validation|tojson }},
+      "options": "{{ options|tojson }}",
+      "validation": "{{ validation|tojson }}",
       "context": {
-        "current_profile": {{ user_profile|tojson }},
-        "current_preferences": {{ user_preferences|tojson }}
+        "current_profile": "{{ user_profile|tojson }}",
+        "current_preferences": "{{ user_preferences|tojson }}"
       }
     }
   },
