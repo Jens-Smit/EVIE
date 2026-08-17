@@ -192,17 +192,10 @@ final class EvolutionGoldenPathTest extends WebTestCase
      */
     public function testToolApprovalEndpointRejectsUnauthenticatedAccess(): void
     {
-        // Erst ein Tool anlegen, damit die ID existiert.
-        $generator = static::getContainer()->get(ToolDefinitionGenerator::class);
-        $definition = $generator->generateToolDefinition(
-            'protected_tool',
-            'Test-Tool fuer Auth-Check',
-            [],
-        );
-        $toolId = $definition->getId();
-
-        // Ohne Login: der bestehende Client hat keine aktive Session (setUp
-        // loggt nur im Haupttest ein; dieser Test hat kein Login durchgefuehrt).
+        // Dieser Test hat kein Login durchgefuehrt (setUp erstellt nur den
+        // Client, der Haupttest loggt ein). Der Approval-Endpoint muss ohne
+        // Authentifizierung blockiert werden.
+        $toolId = 999;
         $this->client->request('POST', '/api/tools/' . $toolId . '/approve');
         $status = $this->client->getResponse()->getStatusCode();
         self::assertContains(
