@@ -70,7 +70,7 @@ class EmbeddingRepository extends ServiceEntityRepository
         // Query-Vektor als pgvector-Text-Literal: [0.1,0.2,...]
         $queryLiteral = '[' . implode(',', array_map('floatval', $queryVector)) . ']';
 
-        $sql = "SELECT id, 1 - (vector <=> :query::vector) AS similarity "
+        $sql = "SELECT id, 1 - (vector::text::vector <=> :query::vector) AS similarity "
             . "FROM embeddings "
             . "WHERE content_type = :contentType ";
 
@@ -86,8 +86,8 @@ class EmbeddingRepository extends ServiceEntityRepository
 
         // pgvector liefert Distanz; Min-Similarity-Filter + Sortierung nach
         // Aehnlichkeit absteigend + Limit, alles serverseitig.
-        $sql .= "AND 1 - (vector <=> :query::vector) >= :minSimilarity "
-            . "ORDER BY vector <=> :query::vector ASC "
+        $sql .= "AND 1 - (vector::text::vector <=> :query::vector) >= :minSimilarity "
+            . "ORDER BY vector::text::vector <=> :query::vector ASC "
             . "LIMIT :limit";
         $params['minSimilarity'] = $minSimilarity;
         $params['limit'] = $limit;
