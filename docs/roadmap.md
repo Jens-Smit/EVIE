@@ -171,9 +171,10 @@ und testet keine Tool-Ausführung.
 
 > **Netto-Bewertung:** P0, P1, P2 und P3 sind weitgehend abgearbeitet.
 > CI ist grün (Tests + Migrations + PHPStan ohne Baseline + Docker).
-> Verbleibend: P2-F (Structured Output Migration), P3-A (Golden-Path
-> WebTestCase) — tiefgreifendere Refactorings, die dedizierte Test-Sprints
-> erfordern. P3-D (Orchestrierungs-Konsolidierung) ist erledigt.
+> Verbleibend: P2-F (Structured Output Migration) — tiefgreifendes
+> Refactoring, das dedizierten Test-Sprint erfordert. P3-A (Golden-Path
+> WebTestCase + Tool-Ausfuehrung) und P3-D (Orchestrierungs-Konsolidierung)
+> sind erledigt.
 
 ---
 

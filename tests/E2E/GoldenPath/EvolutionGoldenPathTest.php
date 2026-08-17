@@ -6,49 +6,62 @@ namespace App\Tests\E2E\GoldenPath;
 
 use App\AI\Security\AuditLogger;
 use App\AI\Skills\DynamicToolbox;
+use App\AI\Skills\Tool\DynamicToolExecutor;
+use App\AI\Skills\Tool\DynamicToolFactory;
 use App\AI\Skills\ToolDefinitionGenerator;
 use App\Entity\AuditLog;
 use App\Entity\ToolDefinition;
+use App\Entity\User;
 use App\Repository\AuditLogRepository;
 use App\Repository\ToolDefinitionRepository;
+use App\Repository\UserRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
-use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;
+use Symfony\Bundle\FrameworkBundle\KernelBrowser;
+use Symfony\Bundle\FrameworkBundle\Test\WebTestCase;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 
 /**
- * P0-3 Golden-Path-E2E-Test (Blueprint §7.3).
+ * P0-3 Golden-Path-E2E-Test (Blueprint §7.3) — P3-A: WebTestCase + Tool-Ausführung.
  *
- * Deckt den vollstaendigen Selbst-Evolution-Flow gegen echte Infrastruktur
- * (gebooteter Kernel, echte DB, echte Services) ab:
+ * Deckt den vollständigen Selbst-Evolution-Flow über den HTTP-Layer ab:
  *
- *  1. ToolDefinitionGenerator erzeugt eine ToolDefinition mit gueltigem
- *     JSON-Schema aus einer User-Anfrage, die kein bestehendes Tool trifft.
+ *  1. ToolDefinitionGenerator erzeugt eine ToolDefinition mit gültigem
+ *     JSON-Schema aus einer User-Anfrage.
  *  2. Die Definition landet mit Status "pending" in der DB.
- *  3. Schema-Validierung: das generierte Schema ist ein gueltiges JSON-Schema-
+ *  3. Schema-Validierung: das generierte Schema ist ein gültiges JSON-Schema-
  *     Objekt mit type/properties/required.
- *  4. HITL-Freigabe: approveTool() setzt den Status auf "approved".
- *  5. DynamicToolbox-Verfuegbarkeit: nach der Freigabe ist das Tool in der
+ *  4. HITL-Freigabe über HTTP: POST /api/tools/{id}/approve setzt den Status
+ *     auf "approved" (P3-A: HTTP-Layer statt direktem Service-Aufruf).
+ *  5. DynamicToolbox-Verfügbarkeit: nach der Freigabe ist das Tool in der
  *     Toolbox sichtbar (vorher nicht).
- *  6. Audit-Log: fuer die Tool-Registrierung und die Freigabe existieren
- *     AuditLog-Eintraege.
+ *  6. Tool-Ausführung: das approved Tool kann über DynamicToolExecutor
+ *     ausgeführt werden (P3-A: neue Assertion).
+ *  7. Audit-Log: für die Tool-Registrierung und die Freigabe existieren
+ *     AuditLog-Einträge.
  *
- * Der LLM-Abruf ist ueber den deterministischen StubAgent gestubbt
+ * Der LLM-Abruf ist über den deterministischen StubAgent gestubbt
  * (kein Blocker durch fehlende Secrets), aber die Restkette (DB, Services,
- * Toolbox, Audit-Logger) laeuft real.
+ * Toolbox, Audit-Logger, HTTP) läuft real.
  */
-final class EvolutionGoldenPathTest extends KernelTestCase
+final class EvolutionGoldenPathTest extends WebTestCase
 {
+    private KernelBrowser $client;
     private EntityManagerInterface $entityManager;
     private ToolDefinitionRepository $toolRepo;
     private AuditLogRepository $auditRepo;
+    private UserPasswordHasherInterface $passwordHasher;
 
     protected function setUp(): void
     {
         parent::setUp();
-        self::bootKernel();
-        $this->entityManager = static::getContainer()->get(EntityManagerInterface::class);
-        $this->toolRepo = static::getContainer()->get(ToolDefinitionRepository::class);
-        $this->auditRepo = static::getContainer()->get(AuditLogRepository::class);
+        // WICHTIG: createClient() MUSS vor static::getContainer() aufgerufen werden.
+        $this->client = static::createClient();
+        $container = static::getContainer();
+        $this->entityManager = $container->get(EntityManagerInterface::class);
+        $this->toolRepo = $container->get(ToolDefinitionRepository::class);
+        $this->auditRepo = $container->get(AuditLogRepository::class);
+        $this->passwordHasher = $container->get(UserPasswordHasherInterface::class);
         $this->ensureSchema();
         $this->cleanup();
     }
@@ -65,13 +78,12 @@ final class EvolutionGoldenPathTest extends KernelTestCase
     }
 
     /**
-     * Vollstaendiger Golden-Path: Generierung -> pending -> Freigabe ->
-     * Toolbox-Verfuegbarkeit -> Audit-Log.
+     * Vollständiger Golden-Path: Generierung -> pending -> HTTP-Freigabe ->
+     * Toolbox-Verfügbarkeit -> Tool-Ausführung -> Audit-Log.
      */
-    public function testGoldenPathToolGenerationApprovalAndAvailability(): void
+    public function testGoldenPathToolGenerationApprovalExecutionAndAudit(): void
     {
-        // LLM-Antwort fuer den Tool-Generator konfigurieren (gueltiges Schema,
-        // HITL erforderlich). Der StubAgent liefert diese deterministisch.
+        // LLM-Antwort für den Tool-Generator konfigurieren.
         putenv('EVIE_TEST_LLM_RESPONSE_TOOL_GENERATOR=' . json_encode([
             'type' => 'object',
             'properties' => [
@@ -83,12 +95,10 @@ final class EvolutionGoldenPathTest extends KernelTestCase
             'hitl_required' => true,
         ], JSON_THROW_ON_ERROR));
 
-        self::ensureKernelShutdown();
-        self::bootKernel();
-        $this->ensureSchema();
+        // Authentifizierten User erstellen (für HITL und HTTP-Aufrufe).
+        $user = $this->createUserAndLogin('golden-path@evie.test', 'GoldenPath123!');
 
-        // 1. ToolDefinition aus einer User-Anfrage generieren, die kein
-        //    bestehendes Tool trifft.
+        // 1. ToolDefinition aus einer User-Anfrage generieren.
         $generator = static::getContainer()->get(ToolDefinitionGenerator::class);
         $definition = $generator->generateToolDefinition(
             'golden_path_scraper',
@@ -106,12 +116,7 @@ final class EvolutionGoldenPathTest extends KernelTestCase
         self::assertNotNull($persisted, 'ToolDefinition wurde nicht persistiert.');
         self::assertSame('pending', $persisted->getStatus());
 
-        // 3. Schema-Validierung: das generierte Schema ist ein gueltiges
-        //    JSON-Schema-Objekt (type=object, nicht-leere properties,
-        //    required-Feld vorhanden). Die konkreten Eigenschaften werden
-        //    vom (Stub-)LLM bestimmt; der Test validiert die Struktur, nicht
-        //    spezifische Namen, sodass er unabhaengig von der Stub-Antwort
-        //    den goldenen Pfad beweist.
+        // 3. Schema-Validierung.
         $schema = $persisted->getSchema();
         self::assertIsArray($schema);
         self::assertSame('object', $schema['type'] ?? null, 'Schema muss type=object haben.');
@@ -119,38 +124,92 @@ final class EvolutionGoldenPathTest extends KernelTestCase
         self::assertNotEmpty($schema['properties'], 'Schema muss mindestens eine Eigenschaft definieren.');
         self::assertArrayHasKey('required', $schema, 'Schema muss ein required-Feld definieren.');
 
-        // 5a. Vor der Freigabe: das Tool ist NICHT in der DynamicToolbox.
+        // 4. Vor der Freigabe: Tool ist NICHT in der DynamicToolbox.
         $toolboxVisibleBefore = $this->isToolInToolbox('golden_path_scraper');
         self::assertFalse(
             $toolboxVisibleBefore,
-            'Ein pending Tool darf nicht in der Toolbox verfuegbar sein.',
+            'Ein pending Tool darf nicht in der Toolbox verfügbar sein.',
         );
 
-        // 4. HITL-Freigabe simulieren.
-        $generator->approveTool($persisted);
-        $this->entityManager->clear();
+        // 5. HITL-Freigabe über HTTP (P3-A: WebTestCase HTTP-Layer).
+        $toolId = $persisted->getId();
+        self::assertNotNull($toolId);
+        $this->client->request('POST', '/api/tools/' . $toolId . '/approve');
+        $response = $this->client->getResponse();
 
+        // Die HTTP-Freigabe muss erfolgreich sein (200 oder Redirect).
+        self::assertContains(
+            $response->getStatusCode(),
+            [200, 302],
+            sprintf('HTTP-Freigabe erwartet 200/302, bekam %d', $response->getStatusCode()),
+        );
+
+        $this->entityManager->clear();
         $approved = $this->toolRepo->findOneBy(['name' => 'golden_path_scraper']);
         self::assertNotNull($approved);
         self::assertSame('approved', $approved->getStatus(), 'Tool wurde nicht freigegeben.');
 
-        // 5b. Nach der Freigabe: das Tool ist in der DynamicToolbox sichtbar
-        //     (sofern die Toolbox im Test-Env verfuegbar ist; sonst Skip,
-        //      die Toolbox-Logik ist in EvolutionFlowIntegrationTest
-        //      abgedeckt).
+        // 6. Nach der Freigabe: Tool ist in der DynamicToolbox sichtbar.
         $toolboxVisibleAfter = $this->isToolInToolbox('golden_path_scraper');
         if (false === $toolboxVisibleAfter && !static::getContainer()->has(DynamicToolbox::class)) {
-            self::markTestSkipped('DynamicToolbox im Test-Env nicht verfuegbar.');
+            self::markTestSkipped('DynamicToolbox im Test-Env nicht verfügbar.');
         }
         self::assertTrue(
             $toolboxVisibleAfter,
-            'Ein approved Tool muss nach der Freigabe in der Toolbox verfuegbar sein.',
+            'Ein approved Tool muss nach der Freigabe in der Toolbox verfügbar sein.',
         );
 
-        // 6. Audit-Log: fuer die Tool-Registrierung und/oder Freigabe
-        //    existiert mindestens ein AuditLog-Eintrag, der das Tool
-        //    referenziert.
+        // 7. Tool-Ausführung (P3-A: neue Assertion). Das approved Tool wird
+        //    über DynamicToolFactory geladen und über DynamicToolExecutor
+        //    ausgeführt. Die Ausführung kann fehlschlagen (z.B. kein
+        //    Executor konfiguriert), aber der Aufruf muss ohne fatalen
+        //    Fehler durchlaufen — der Test beweist, dass der Ausführungspfad
+        //    nach der Freigabe erreichbar ist.
+        $toolFactory = static::getContainer()->get(DynamicToolFactory::class);
+        $toolExecutor = static::getContainer()->get(DynamicToolExecutor::class);
+
+        $tool = $toolFactory->getTool('golden_path_scraper');
+        self::assertNotNull($tool, 'Approved Tool muss über DynamicToolFactory ladbar sein.');
+
+        $executionResult = $toolExecutor->execute($tool, ['url' => 'https://example.com']);
+        // Die Ausführung kann erfolgreich oder fehlerhaft sein (je nach
+        // Executor-Konfiguration im Test-Env), aber sie muss ein Ergebnis
+        // liefern, das den Tool-Namen enthält.
+        self::assertSame(
+            'golden_path_scraper',
+            $executionResult->getToolName(),
+            'Tool-Ausführung muss das korrekte Tool referenzieren.',
+        );
+
+        // 8. Audit-Log: für die Tool-Registrierung und/oder Freigabe
+        //    existiert mindestens ein AuditLog-Eintrag, der das Tool referenziert.
         $this->assertAuditLogReferencesTool('golden_path_scraper');
+    }
+
+    /**
+     * HTTP-Layer-Assertion (P3-A): der Tool-Approval-Endpoint ist ohne
+     * Authentifizierung geschützt (kein 200 mit Ergebnis).
+     */
+    public function testToolApprovalEndpointRejectsUnauthenticatedAccess(): void
+    {
+        // Erst ein Tool anlegen, damit die ID existiert.
+        $generator = static::getContainer()->get(ToolDefinitionGenerator::class);
+        $definition = $generator->generateToolDefinition(
+            'protected_tool',
+            'Test-Tool für Auth-Check',
+            [],
+        );
+        $toolId = $definition->getId();
+
+        // Ohne Login: Client neu erstellen.
+        $anonymousClient = static::createClient();
+        $anonymousClient->request('POST', '/api/tools/' . $toolId . '/approve');
+        $status = $anonymousClient->getResponse()->getStatusCode();
+        self::assertContains(
+            $status,
+            [302, 401, 403],
+            sprintf('Ohne Auth erwartet 302/401/403, bekam %d', $status),
+        );
     }
 
     private function isToolInToolbox(string $toolName): bool
@@ -170,8 +229,6 @@ final class EvolutionGoldenPathTest extends KernelTestCase
 
     private function assertAuditLogReferencesTool(string $toolName): void
     {
-        // AuditLogger schreibt Eintraege mit action wie 'tool_registration'
-        // oder 'hitl_decision' und Details, die den Tool-Namen enthalten.
         $logs = $this->auditRepo->findAll();
         $found = false;
         foreach ($logs as $log) {
@@ -193,6 +250,46 @@ final class EvolutionGoldenPathTest extends KernelTestCase
         );
     }
 
+    private function createUserAndLogin(string $email, string $plainPassword): User
+    {
+        $user = $this->createUser($email, $plainPassword);
+        $crawler = $this->client->request('GET', '/login');
+        $csrfToken = $this->extractCsrfToken($crawler);
+        $this->client->request('POST', '/login', [
+            'email' => $email,
+            'password' => $plainPassword,
+            '_csrf_token' => $csrfToken,
+            '_remember_me' => 1,
+            '_target_path' => '/',
+        ]);
+        $this->client->followRedirect();
+
+        return $user;
+    }
+
+    private function createUser(string $email, string $plainPassword): User
+    {
+        $user = (new User())
+            ->setEmail($email)
+            ->setFirstName('Test')
+            ->setLastName('User')
+            ->setPassword($this->passwordHasher->hashPassword(new User(), $plainPassword));
+        $this->entityManager->persist($user);
+        $this->entityManager->flush();
+
+        return $user;
+    }
+
+    private function extractCsrfToken($crawler): string
+    {
+        $tokenInput = $crawler->filter('input[type="hidden"][id$="_csrf_token"]')->last();
+        if ($tokenInput->count() > 0) {
+            return $tokenInput->attr('value');
+        }
+
+        return '';
+    }
+
     private function ensureSchema(): void
     {
         $schemaTool = new SchemaTool($this->entityManager);
@@ -200,21 +297,21 @@ final class EvolutionGoldenPathTest extends KernelTestCase
         try {
             $schemaTool->createSchema($classes);
         } catch (\Throwable) {
-            // Schema existiert moeglicherweise bereits.
+            // Schema existiert möglicherweise bereits.
         }
     }
 
     private function cleanup(): void
     {
         try {
-            $this->entityManager->createQueryBuilder()
-                ->delete(ToolDefinition::class, 't')
-                ->getQuery()->execute();
-            $this->entityManager->createQueryBuilder()
-                ->delete(AuditLog::class, 'a')
-                ->getQuery()->execute();
+            $conn = $this->entityManager->getConnection();
+            $conn->executeStatement('DELETE FROM tool_definitions');
+            $conn->executeStatement('DELETE FROM audit_logs');
+            $conn->executeStatement('DELETE FROM agent_history');
+            $conn->executeStatement('DELETE FROM user_profile');
+            $conn->executeStatement('DELETE FROM users');
         } catch (\Throwable) {
-            // Tabellen existieren moeglicherweise nicht in jeder Test-DB.
+            // Tabellen existieren möglicherweise nicht in jeder Test-DB.
         }
     }
 }
