@@ -692,3 +692,26 @@ wird erst nach grünen E2E-Tests als abgeschlossen markiert.
 **Verifikation F3:** `grep 'href="#"' templates/components/_sidebar.html.twig` → 0 Treffer; `/settings` ist erreichbar.
 **Verifikation F4:** `bin/console debug:router | grep onboarding` → 5 Onboarding-Routen; neuer User wird nach Login auf `/onboarding` weitergeleitet.
 
+
+### Phase 3 – HITL & Streaming (P1) ✅ ABGESCHLOSSEN
+
+**Befunde:** F8 (Streaming/Inline-Approval fehlt im Dialog)
+
+**Durchgeführte Änderungen:**
+
+| Datei | Änderung | Befund |
+|-------|----------|--------|
+| `templates/agent/dialog.html.twig` | HITL Inline Approval Container (`#hitl-approval-container`) hinzugefügt; wird nach Agent-Antwort per JS befüllt, wenn `requires_approval`/`pending_tool` in Response | F8 |
+| `templates/agent/dialog.html.twig` | Pending-Tools Badge im Header (`#pending-tools-badge`): zeigt Anzahl ausstehender Freigaben via `/api/pending-tools/count`; Klick leitet zu `/tools/pending` | F8 |
+| `templates/agent/dialog.html.twig` | `showHitlApproval(tool)`-Funktion: rendert Approval-Karte mit Tool-Name/Beschreibung, Genehmigen/Ablehnen-Buttons; ruft `/api/tools/{id}/approve` und `/api/tools/{id}/reject` auf | F8 |
+| `templates/agent/dialog.html.twig` | `approveTool()`/`rejectTool()`-Funktionen mit Status-Feedback und Badge-Refresh nach Aktion | F8 |
+| `templates/agent/dialog.html.twig` | `refreshPendingToolsBadge()` wird beim Laden und nach jeder Agent-Antwort aufgerufen | F8 |
+| `tests/E2E/AgentDialogHitlTest.php` | **Neu**: 6 Tests – HITL-Container vorhanden, Badge vorhanden, Pending-Tools-Count-API, Approve/Reject-Endpoint-Referenzen im JS, anonyme Redirects | F8 |
+
+**E2E-Test-Ergebnis (lokal, SQLite):**
+- `AgentDialogHitlTest`: 6 Tests, 16 Assertions ✅
+- Vollständige E2E-Suite: 52 Tests, 292 Assertions ✅ (1 skipped)
+- Keine Regressionen.
+
+**Verifikation F8:** `grep "hitl-approval-container" templates/agent/dialog.html.twig` → 1 Treffer; `/api/pending-tools/count` liefert JSON mit `count`.
+
