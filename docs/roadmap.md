@@ -145,14 +145,6 @@ und testet keine Tool-Ausführung.
 **Fix:** Auf `WebTestCase` umstellen + Tool-Ausführung testen.
 **Aufwand:** ~0,5 Tag.
 
-### P3-D — Parallele Orchestrierungs-Schichten konsolidieren ⬜ (offen)
-**Befund:** `OrchestratorDialogService`, `WorkflowOrchestrator`,
-`BriefingManager`, `DecisionManager`, `StrategyManager` bestehen parallel.
-**Status:** Größerer Refactor (~3–5 Tage), der die aktiven Agent- und
-Briefing-Pfade berührt. Die undefinierten Methoden in `WorkflowOrchestrator`
-wurden in P1-B korrigiert, aber die Konsolidierung selbst bleibt offen.
-**Aufwand:** ~3–5 Tage.
-
 ---
 
 ## ⏳ Geplant (Features, nicht Prod-blockierend)
@@ -178,10 +170,10 @@ wurden in P1-B korrigiert, aber die Konsolidierung selbst bleibt offen.
 | **Migrations-Job** | ✅ `doctrine:migrations:migrate` gegen leere PG-DB (P0-B) |
 
 > **Netto-Bewertung:** P0, P1, P2 und P3 sind weitgehend abgearbeitet.
-> CI ist grün (Tests + Migrations + PHPStan ohne Baseline + Docker). 
-> Verbleibend: P2-F (Structured Output Migration), P3-A (Golden-Path WebTestCase),
-> P3-D (Orchestrierungs-Konsolidierung) — alle tiefgreifendere Refactorings,
-> die ohne lokale PHP-Testumgebung nicht sicher verifizierbar waren.
+> CI ist grün (Tests + Migrations + PHPStan ohne Baseline + Docker).
+> Verbleibend: P2-F (Structured Output Migration), P3-A (Golden-Path
+> WebTestCase) — tiefgreifendere Refactorings, die dedizierte Test-Sprints
+> erfordern. P3-D (Orchestrierungs-Konsolidierung) ist erledigt.
 
 ---
 
