@@ -13,8 +13,8 @@ $conn = DriverManager::getConnection(['url' => getenv('DATABASE_URL')]);
 
 // Testdaten einfuegen
 $conn->executeStatement(
-    'INSERT INTO embeddings (content_hash, content, content_type, source, metadata, vector, created_at) '
-    . 'VALUES (:hash, :content, :type, :source, :meta, :vec, NOW())',
+    'INSERT INTO embeddings (id, content_hash, content, content_type, source, metadata, vector, created_at) '
+    . 'VALUES (DEFAULT, :hash, :content, :type, :source, :meta, :vec, NOW())',
     [
         'hash' => 'rag_regression_test',
         'source' => 'regression_test',
