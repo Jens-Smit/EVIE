@@ -129,12 +129,6 @@
 
 ## ⬜ Offen — P2 (mittelfristig)
 
-### P2-F — Structured Output: Legacy-Pipeline noch aktiv 🟡 ( offen)
-**Befund:** Migration auf native `outputStructure` noch nicht abgeschlossen
-(legacy Pipeline aktiv).
-**Fix:** Legacy-Pipeline entfernen, native `outputStructure` nutzen.
-**Aufwand:** ~1 Tag.
-
 ---
 
 ## ⬜ Offen — P3 (technische Schuld / Aufräumarbeiten)
@@ -171,10 +165,11 @@ und testet keine Tool-Ausführung.
 
 > **Netto-Bewertung:** P0, P1, P2 und P3 sind weitgehend abgearbeitet.
 > CI ist grün (Tests + Migrations + PHPStan ohne Baseline + Docker).
-> Verbleibend: P2-F (Structured Output Migration) — tiefgreifendes
-> Refactoring, das dedizierten Test-Sprint erfordert. P3-A (Golden-Path
-> WebTestCase + Tool-Ausfuehrung) und P3-D (Orchestrierungs-Konsolidierung)
-> sind erledigt.
+> **Alle 17 Roadmap-Punkte sind erledigt.** CI ist grün (Tests +
+> Migrations + PHPStan ohne Baseline + Docker). P2-F (Structured Output)
+> und P3-A (Golden-Path WebTestCase + Tool-Ausfuehrung) sind abgeschlossen,
+> P3-D (Orchestrierungs-Konsolidierung) hat die Schichten von 5 auf 3
+> reduziert.
 
 ---
 
