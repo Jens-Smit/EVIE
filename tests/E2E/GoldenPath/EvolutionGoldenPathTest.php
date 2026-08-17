@@ -196,15 +196,15 @@ final class EvolutionGoldenPathTest extends WebTestCase
         $generator = static::getContainer()->get(ToolDefinitionGenerator::class);
         $definition = $generator->generateToolDefinition(
             'protected_tool',
-            'Test-Tool für Auth-Check',
+            'Test-Tool fuer Auth-Check',
             [],
         );
         $toolId = $definition->getId();
 
-        // Ohne Login: Client neu erstellen.
-        $anonymousClient = static::createClient();
-        $anonymousClient->request('POST', '/api/tools/' . $toolId . '/approve');
-        $status = $anonymousClient->getResponse()->getStatusCode();
+        // Ohne Login: der bestehende Client hat keine aktive Session (setUp
+        // loggt nur im Haupttest ein; dieser Test hat kein Login durchgefuehrt).
+        $this->client->request('POST', '/api/tools/' . $toolId . '/approve');
+        $status = $this->client->getResponse()->getStatusCode();
         self::assertContains(
             $status,
             [302, 401, 403],
@@ -273,6 +273,7 @@ final class EvolutionGoldenPathTest extends WebTestCase
             ->setEmail($email)
             ->setFirstName('Test')
             ->setLastName('User')
+            ->setRoles(['ROLE_ADMIN'])
             ->setPassword($this->passwordHasher->hashPassword(new User(), $plainPassword));
         $this->entityManager->persist($user);
         $this->entityManager->flush();
