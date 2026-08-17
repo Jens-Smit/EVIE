@@ -8,6 +8,7 @@ use Psr\Log\LoggerInterface;
 use Symfony\AI\Agent\AgentInterface;
 use Symfony\AI\Platform\Message\MessageBag;
 use Symfony\AI\Platform\Result\ResultInterface;
+use Symfony\Contracts\HttpClient\Exception\HttpExceptionInterface;
 use Symfony\Contracts\HttpClient\Exception\TransportExceptionInterface;
 use Throwable;
 
@@ -106,7 +107,25 @@ final class LlmRetryExecutor
             return true;
         }
 
-        // HTTP-Status-basierte Pruefung fuer HttpException-Subklassen
+        // P2-3: Strukturierte HTTP-Status-Code-Extraktion vor String-Matching.
+        // HttpExceptionInterface hat eine Response mit getStatusCode().
+        if ($e instanceof HttpExceptionInterface) {
+            try {
+                $statusCode = $e->getResponse()->getStatusCode();
+                // 429 (Rate-Limit) und 5xx (Server-Fehler) sind transient
+                if ($statusCode === 429 || ($statusCode >= 500 && $statusCode <= 599)) {
+                    return true;
+                }
+                // 4xx ausser 429 sind nicht-transient (Validierung, Auth, Content-Policy)
+                if ($statusCode >= 400 && $statusCode < 500) {
+                    return false;
+                }
+            } catch (\Throwable) {
+                // Fallback auf String-Matching, wenn Response nicht verfuegbar
+            }
+        }
+
+        // Fallback: String-Matching fuer Faelle ohne strukturierten Status-Code
         $message = $e->getMessage();
         // HTTP 429 (Rate-Limit) — transiente Ueberlastung
         if (str_contains($message, '429') || str_contains($message, 'Too Many Requests')) {
