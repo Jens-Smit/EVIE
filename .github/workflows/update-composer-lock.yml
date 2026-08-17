@@ -1,0 +1,39 @@
+name: Update composer.lock
+
+on:
+  workflow_dispatch:
+
+jobs:
+  update-lock:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_pgsql, mbstring, ctype, iconv
+          coverage: none
+
+      - name: Run composer update (lock-file only)
+        run: composer update --lock --no-scripts --no-interaction
+
+      - name: Validate (with check-lock)
+        run: composer validate --strict --no-check-publish
+
+      - name: Commit updated composer.lock
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add composer.lock
+          if git diff --cached --quiet; then
+            echo "composer.lock ist bereits aktuell."
+          else
+            git commit -m "chore: composer.lock Drift aufgeloest (P2-4) [skip ci]"
+            git push
+            echo "composer.lock aktualisiert und gepusht."
+          fi
