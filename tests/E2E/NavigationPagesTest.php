@@ -325,10 +325,13 @@ class NavigationPagesTest extends WebTestCase
         foreach ($protectedPaths as $path) {
             $this->client->request('GET', $path);
             $statusCode = $this->client->getResponse()->getStatusCode();
-            $this->assertTrue(
-                in_array($statusCode, [302, 401, 403], true),
-                sprintf('Anonymer Zugriff auf %s sollte abgewiesen werden, bekam %d.', $path, $statusCode)
+            $this->assertSame(
+                302,
+                $statusCode,
+                sprintf('Anonymer Zugriff auf %s sollte 302 (Login-Redirect) liefern, bekam %d.', $path, $statusCode)
             );
+            // Redirect muss zum /login fuehren.
+            $this->assertStringEndsWith('/login', $this->client->getResponse()->headers->get('Location', ''));
         }
     }
 
@@ -366,8 +369,9 @@ class NavigationPagesTest extends WebTestCase
 
     public function testAnonymousAccessToSidebarPagesRedirectsToLogin(): void
     {
-        // Alle geschuetzten Seiten muessen anonyme Benutzer abweisen (Redirect zum
-        // Login bzw. 401), damit kein ungeschuetzter Zugriff moeglich ist.
+        // Alle geschuetzten Seiten muessen anonyme Benutzer zum Login weiterleiten
+        // (302 -> /login). 401 ist nicht akzeptabel, da es die rohe Symfony-Debug-
+        // Seite zeigen wuerde (F1 aus Frontend-Audit).
         $protectedPaths = [
             '/dashboard',
             '/dialog',
@@ -382,10 +386,13 @@ class NavigationPagesTest extends WebTestCase
         foreach ($protectedPaths as $path) {
             $this->client->request('GET', $path);
             $statusCode = $this->client->getResponse()->getStatusCode();
-            $this->assertTrue(
-                in_array($statusCode, [302, 401], true),
-                sprintf('Anonymer Zugriff auf %s sollte 302 (Login-Redirect) oder 401 liefern, bekam %d.', $path, $statusCode)
+            $this->assertSame(
+                302,
+                $statusCode,
+                sprintf('Anonymer Zugriff auf %s sollte 302 (Login-Redirect) liefern, bekam %d.', $path, $statusCode)
             );
+            $location = $this->client->getResponse()->headers->get('Location', '');
+            $this->assertStringEndsWith('/login', $location, sprintf('Redirect fuer %s sollte auf /login zeigen, ist aber: %s', $path, $location));
         }
     }
 
