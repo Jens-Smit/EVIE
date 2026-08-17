@@ -170,6 +170,7 @@ final class OrchestratorAgentLlmTest extends TestCase
             $this->createMock(FaultTolerantValidator::class),
             $this->responseNormalizer,
             $this->createMock(ToolDefinitionRepository::class),
+            new \App\AI\Agent\LlmRetryExecutor(new NullLogger(), maxRetries: 1, initialDelayMs: 1),
         );
     }
 
