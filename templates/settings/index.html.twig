@@ -1,0 +1,135 @@
+{# templates/settings/index.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Einstellungen - EVIE{% endblock %}
+
+{% block body %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <h1 class="text-2xl md:text-3xl font-bold text-content flex items-center gap-3">
+        <i class="ph ph-gear text-primary"></i>
+        Einstellungen
+    </h1>
+
+    {% for label, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="rounded-xl px-4 py-3 border flex items-center gap-2
+                        {% if label == 'success' %}bg-success-soft border-success/20 text-success
+                        {% else %}bg-danger-soft border-danger/20 text-danger{% endif %}">
+                <i class="ph {% if label == 'success' %}ph-check-circle{% else %}ph-warning-circle{% endif %} text-lg"></i>
+                <span>{{ message }}</span>
+            </div>
+        {% endfor %}
+    {% endfor %}
+
+    <!-- Profil -->
+    <div class="card">
+        <div class="flex items-center gap-2 mb-4">
+            <i class="ph ph-user-circle text-primary text-xl"></i>
+            <h2 class="card-title">Profil</h2>
+        </div>
+        <form method="post" action="{{ path('app_settings_profile') }}" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-content mb-1" for="firstName">Vorname</label>
+                    <input type="text" id="firstName" name="firstName"
+                           value="{{ user.firstName ?? '' }}"
+                           class="w-full px-3 py-2 bg-surface-muted border border-border rounded-xl text-content focus:ring-2 focus:ring-primary focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-content mb-1" for="lastName">Nachname</label>
+                    <input type="text" id="lastName" name="lastName"
+                           value="{{ user.lastName ?? '' }}"
+                           class="w-full px-3 py-2 bg-surface-muted border border-border rounded-xl text-content focus:ring-2 focus:ring-primary focus:border-transparent">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-content mb-1">E-Mail</label>
+                <input type="email" value="{{ user.email }}" disabled
+                       class="w-full px-3 py-2 bg-surface-elevated border border-border rounded-xl text-content-muted">
+                <p class="text-xs text-content-muted mt-1">Die E-Mail-Adresse kann nicht geändert werden.</p>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="ph ph-floppy-disk"></i>
+                Profil speichern
+            </button>
+        </form>
+    </div>
+
+    <!-- Erscheinungsbild -->
+    <div class="card">
+        <div class="flex items-center gap-2 mb-4">
+            <i class="ph ph-palette text-primary text-xl"></i>
+            <h2 class="card-title">Erscheinungsbild</h2>
+        </div>
+        <div class="space-y-3">
+            <div class="flex items-center justify-between p-3 bg-surface-muted rounded-xl border border-border">
+                <div>
+                    <p class="font-medium text-content">Dark Mode</p>
+                    <p class="text-sm text-content-muted">Zwischen Hell- und Dunkel-Modus wechseln</p>
+                </div>
+                <button onclick="toggleTheme()" class="btn btn-ghost">
+                    <i id="theme-icon" class="ph ph-sun text-xl"></i>
+                    Wechseln
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Onboarding -->
+    <div class="card">
+        <div class="flex items-center gap-2 mb-4">
+            <i class="ph ph-rocket text-primary text-xl"></i>
+            <h2 class="card-title">Onboarding</h2>
+        </div>
+        <div class="flex items-center justify-between p-3 bg-surface-muted rounded-xl border border-border">
+            <div>
+                <p class="font-medium text-content">
+                    Status:
+                    {% if user.onboardingComplete %}
+                        <span class="badge badge-approved">Abgeschlossen</span>
+                    {% else %}
+                        <span class="badge badge-pending">Ausstehend</span>
+                    {% endif %}
+                </p>
+                <p class="text-sm text-content-muted mt-1">Onboarding erneut durchlaufen, um deine Präferenzen zu aktualisieren.</p>
+            </div>
+            <form method="post" action="{{ path('app_settings_onboarding_reset') }}">
+                <button type="submit" class="btn btn-ghost">
+                    <i class="ph ph-arrow-counter-clockwise"></i>
+                    Onboarding wiederholen
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Datenschutz (Phase 4 wird DSGVO-Aktionen hier ergänzen) -->
+    <div class="card">
+        <div class="flex items-center gap-2 mb-4">
+            <i class="ph ph-shield-check text-primary text-xl"></i>
+            <h2 class="card-title">Datenschutz & DSGVO</h2>
+        </div>
+        <div class="space-y-3">
+            <div class="flex items-center justify-between p-3 bg-surface-muted rounded-xl border border-border">
+                <div>
+                    <p class="font-medium text-content">Datenschutzerklärung</p>
+                    <p class="text-sm text-content-muted">Wie deine Daten verarbeitet werden</p>
+                </div>
+                <a href="{{ path('app_privacy_policy') }}" class="btn btn-ghost">
+                    <i class="ph ph-file-text"></i>
+                    Anzeigen
+                </a>
+            </div>
+            <div class="flex items-center justify-between p-3 bg-surface-muted rounded-xl border border-border">
+                <div>
+                    <p class="font-medium text-content">Impressum</p>
+                    <p class="text-sm text-content-muted">Angaben gemäß §5 TMG</p>
+                </div>
+                <a href="{{ path('app_imprint') }}" class="btn btn-ghost">
+                    <i class="ph ph-file-text"></i>
+                    Anzeigen
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

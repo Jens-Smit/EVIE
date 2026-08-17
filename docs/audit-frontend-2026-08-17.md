@@ -660,3 +660,35 @@ wird erst nach grünen E2E-Tests als abgeschlossen markiert.
 **Verifikation F6/F7:** Dashboard nutzt jetzt ausschließlich Design-System-Klassen (`card`, `text-content-muted`, `text-primary`).
 **Verifikation F14:** `grep -rln "fas fa-\|col-md-\|btn-outline\|table-hover" templates/mcp/` → 0 Treffer.
 
+
+### Phase 2 – Onboarding & Einstellungen (P1) ✅ ABGESCHLOSSEN
+
+**Befunde:** F3 (Einstellungen `href="#"`), F4 (Onboarding-Frontend fehlt)
+
+**Durchgeführte Änderungen:**
+
+| Datei | Änderung | Befund |
+|-------|----------|--------|
+| `src/Entity/User.php` | `onboardingComplete` Boolean-Property + Getter/Setter hinzugefügt | F4 |
+| `migrations/Version20260817000002.php` | Migration: `ALTER TABLE users ADD onboarding_complete` | F4 |
+| `src/Controller/Frontend/OnboardingController.php` | **Neu**: `/onboarding` (Seite), `/onboarding/start` (Flow starten), `/onboarding/next` (Antwort verarbeiten), `/onboarding/complete` (Flag setzen), `/onboarding/status` (Status) | F4 |
+| `templates/onboarding/index.html.twig` | **Neu**: Chat-basierte Onboarding-UI mit Alpine.js (`onboardingFlow()`), Fortschrittsanzeige, Multiple-Choice + Text-Input, Skip-Option, Completion-State | F4 |
+| `src/Security/Authenticator/LoginFormAuthenticator.php` | `onAuthenticationSuccess`: Redirect nach `/onboarding` wenn `!user.isOnboardingComplete()` | F4 |
+| `src/Controller/Frontend/SettingsController.php` | **Neu**: `/settings` (Seite), `/settings/profile` (Profil-Update), `/settings/onboarding/reset` (Onboarding wiederholen) | F3 |
+| `templates/settings/index.html.twig` | **Neu**: Profil-Bearbeitung, Dark-Mode-Toggle, Onboarding-Status + Reset, Verweise auf Datenschutz/Impressum | F3 |
+| `templates/components/_sidebar.html.twig` | Einstellungen-Link von `href="#"` → `{{ path('app_settings') }}` mit active-State | F3 |
+| `src/Controller/Frontend/LegalController.php` | **Neu**: `/datenschutz` (Datenschutzerklärung) + `/impressum` – vorab für Phase 4 erstellt, da Settings-Template referenziert | F10, F11 (vorab) |
+| `templates/legal/datenschutz.html.twig` | **Neu**: Vollständige Datenschutzerklärung (Verantwortlicher, Datenarten, Rechtsgrundlage, Mistral AVV, Speicherdauer, DSGVO-Rechte) | F10 |
+| `templates/legal/impressum.html.twig` | **Neu**: Impressum (§5 TMG, §18 MStV) | F11 |
+| `config/packages/security.yaml` | `/datenschutz` + `/impressum` auf `PUBLIC_ACCESS` gesetzt | F10, F11 |
+| `templates/auth_base.html.twig` | Footer mit Datenschutz- und Impressum-Links ergänzt | F10, F11 |
+| `tests/E2E/OnboardingSettingsTest.php` | **Neu**: 12 Tests – Onboarding-Redirect nach Login, Onboarding-Seite, Complete-Endpoint, Settings-Seite, Profil-Update, Onboarding-Reset, Sidebar-Link, anonyme Zugriffs-Redirects | F3, F4 |
+
+**E2E-Test-Ergebnis (lokal, SQLite):**
+- `OnboardingSettingsTest`: 12 Tests, 40 Assertions ✅
+- Vollständige E2E-Suite: 46 Tests, 276 Assertions ✅ (1 skipped)
+- Keine Regressionen.
+
+**Verifikation F3:** `grep 'href="#"' templates/components/_sidebar.html.twig` → 0 Treffer; `/settings` ist erreichbar.
+**Verifikation F4:** `bin/console debug:router | grep onboarding` → 5 Onboarding-Routen; neuer User wird nach Login auf `/onboarding` weitergeleitet.
+
