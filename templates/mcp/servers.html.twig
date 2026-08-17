@@ -3,209 +3,113 @@
 
 {% block title %}MCP-Server Verwaltung - EVIE{% endblock %}
 
-{% block breadcrumb %}
-    <nav aria-label="breadcrumb">
-        <ol class="breadcrumb">
-            <li class="breadcrumb-item"><a href="{{ path('app_dashboard') }}">Dashboard</a></li>
-            <li class="breadcrumb-item active" aria-current="page">MCP-Server</li>
-        </ol>
-    </nav>
-{% endblock %}
-
-{% block content %}
-<div class="container-fluid">
-    <div class="d-flex justify-content-between align-items-center mb-4">
-        <h1 class="h3">
-            <i class="fas fa-server me-2"></i>
+{% block body %}
+<div class="max-w-6xl mx-auto space-y-6">
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl md:text-3xl font-bold text-content flex items-center gap-3">
+            <i class="ph ph-server text-primary"></i>
             MCP-Server Verwaltung
         </h1>
         <a href="{{ path('mcp_server_new') }}" class="btn btn-primary">
-            <i class="fas fa-plus me-1"></i> Neuer MCP-Server
+            <i class="ph ph-plus"></i>
+            Neuer MCP-Server
         </a>
     </div>
 
-    {% if app.session.flashBag.has('success') %}
-        {% for message in app.session.flashBag.get('success') %}
-            <div class="alert alert-success alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+    {% for label, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="rounded-xl px-4 py-3 border flex items-center gap-2
+                        {% if label == 'success' %}bg-success-soft border-success/20 text-success
+                        {% else %}bg-danger-soft border-danger/20 text-danger{% endif %}">
+                <i class="ph {% if label == 'success' %}ph-check-circle{% else %}ph-warning-circle{% endif %} text-lg"></i>
+                <span>{{ message }}</span>
             </div>
         {% endfor %}
-    {% endif %}
+    {% endfor %}
 
-    {% if app.session.flashBag.has('error') %}
-        {% for message in app.session.flashBag.get('error') %}
-            <div class="alert alert-danger alert-dismissible fade show" role="alert">
-                {{ message }}
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-        {% endfor %}
-    {% endif %}
+    <div class="card">
+        <div class="flex items-center gap-2 mb-4">
+            <i class="ph ph-list text-primary text-xl"></i>
+            <h2 class="card-title">MCP-Server Liste</h2>
+        </div>
 
-    <div class="card shadow-sm">
-        <div class="card-header">
-            <h5 class="mb-0">
-                <i class="fas fa-list me-2"></i>
-                MCP-Server Liste
-            </h5>
+        {% if servers|length > 0 %}
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-border text-left text-content-muted">
+                        <th class="py-3 px-2">Name</th>
+                        <th class="py-3 px-2">Typ</th>
+                        <th class="py-3 px-2">Beschreibung</th>
+                        <th class="py-3 px-2">Status</th>
+                        <th class="py-3 px-2">Tools</th>
+                        <th class="py-3 px-2">Aktionen</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for server in servers %}
+                    <tr class="border-b border-border hover:bg-surface-muted">
+                        <td class="py-3 px-2">
+                            <strong class="text-content">{{ server.name }}</strong>
+                            {% if server.description %}
+                                <br>
+                                <small class="text-content-muted">{{ (server.description|slice(0, 50)) ~ (server.description|length > 50 ? '...') }}</small>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-2">
+                            <span class="badge
+                                {% if server.type == 'filesystem' %}badge-approved
+                                {% elseif server.type == 'playwright' %}badge-approved
+                                {% elseif server.type == 'github' %}badge-pending
+                                {% else %}badge-rejected{% endif %}">
+                                {{ availableTypes[server.type] ?? server.type }}
+                            </span>
+                        </td>
+                        <td class="py-3 px-2 text-content-muted">{{ server.type }}</td>
+                        <td class="py-3 px-2">
+                            {% if server.isEnabled %}
+                                <span class="badge badge-approved">Aktiv</span>
+                            {% else %}
+                                <span class="badge badge-rejected">Inaktiv</span>
+                            {% endif %}
+                        </td>
+                        <td class="py-3 px-2 text-content">{{ server.toolsCount|default(0) }}</td>
+                        <td class="py-3 px-2">
+                            <div class="flex items-center gap-2">
+                                <a href="{{ path('mcp_server_show', {'name': server.name}) }}"
+                                   class="text-primary hover:text-primary-hover" title="Anzeigen">
+                                    <i class="ph ph-eye text-lg"></i>
+                                </a>
+                                <a href="{{ path('mcp_server_edit', {'name': server.name}) }}"
+                                   class="text-content-muted hover:text-primary" title="Bearbeiten">
+                                    <i class="ph ph-pencil-simple text-lg"></i>
+                                </a>
+                                <form method="post" action="{{ path('mcp_server_toggle', {'name': server.name}) }}" class="inline">
+                                    <input type="hidden" name="_token" value="{{ csrf_token('toggle' ~ server.name) }}">
+                                    <button type="submit" class="text-content-muted hover:text-warning" title="Aktivieren/Deaktivieren">
+                                        <i class="ph ph-power text-lg"></i>
+                                    </button>
+                                </form>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
         </div>
-        <div class="card-body p-0">
-            {% if servers|length > 0 %}
-                <div class="table-responsive">
-                    <table class="table table-hover mb-0">
-                        <thead class="table-light">
-                            <tr>
-                                <th>Name</th>
-                                <th>Typ</th>
-                                <th>Beschreibung</th>
-                                <th>Status</th>
-                                <th>Tools</th>
-                                <th>Aktionen</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% for server in servers %}
-                                <tr>
-                                    <td>
-                                        <strong>{{ server.name }}</strong>
-                                        {% if server.description %}
-                                            <br>
-                                            <small class="text-muted">{{ (server.description|slice(0, 50)) ~ (server.description|length > 50 ? '...') }}</small>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-{{ server.type == 'filesystem' ? 'primary' : server.type == 'playwright' ? 'success' : server.type == 'github' ? 'info' : 'secondary' }}">
-                                            {{ availableTypes[server.type] ?? server.type }}
-                                        </span>
-                                    </td>
-                                    <td>{{ ((server.description|default('-'))|slice(0, 100)) ~ ((server.description|default('-'))|length > 100 ? '...') }}</td>
-                                    <td>
-                                        {% if server.isActive %}
-                                            <span class="badge bg-success">Aktiv</span>
-                                        {% else %}
-                                            <span class="badge bg-secondary">Inaktiv</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        {% if server.allowedTools|length > 0 %}
-                                            <span class="badge bg-info">
-                                                {{ server.allowedTools|length }} Tools
-                                            </span>
-                                        {% else %}
-                                            <span class="text-muted">Alle</span>
-                                        {% endif %}
-                                    </td>
-                                    <td>
-                                        <div class="btn-group btn-group-sm" role="group">
-                                            <a href="{{ path('mcp_server_show', {'name': server.name}) }}" 
-                                               class="btn btn-outline-primary" 
-                                               title="Anzeigen">
-                                                <i class="fas fa-eye"></i>
-                                            </a>
-                                            <a href="{{ path('mcp_server_edit', {'name': server.name}) }}" 
-                                               class="btn btn-outline-secondary" 
-                                               title="Bearbeiten">
-                                                <i class="fas fa-edit"></i>
-                                            </a>
-                                            {% if server.isActive %}
-                                                <form action="{{ path('mcp_server_toggle', {'name': server.name}) }}" 
-                                                      method="post" 
-                                                      class="d-inline">
-                                                    <input type="hidden" 
-                                                           name="_token" 
-                                                           value="{{ csrf_token('toggle' ~ server.id.toRfc4122()) }}">
-                                                    <button type="submit" 
-                                                            class="btn btn-outline-warning" 
-                                                            title="Deaktivieren">
-                                                        <i class="fas fa-pause"></i>
-                                                    </button>
-                                                </form>
-                                            {% else %}
-                                                <form action="{{ path('mcp_server_toggle', {'name': server.name}) }}" 
-                                                      method="post" 
-                                                      class="d-inline">
-                                                    <input type="hidden" 
-                                                           name="_token" 
-                                                           value="{{ csrf_token('toggle' ~ server.id.toRfc4122()) }}">
-                                                    <button type="submit" 
-                                                            class="btn btn-outline-success" 
-                                                            title="Aktivieren">
-                                                        <i class="fas fa-play"></i>
-                                                    </button>
-                                                </form>
-                                            {% endif %}
-                                            <form action="{{ path('mcp_server_delete', {'name': server.name}) }}" 
-                                                  method="post" 
-                                                  class="d-inline"
-                                                  onsubmit="return confirm('Möchten Sie diesen MCP-Server wirklich löschen?');">
-                                                <input type="hidden" 
-                                                       name="_token" 
-                                                       value="{{ csrf_token('delete' ~ server.id.toRfc4122()) }}">
-                                                <button type="submit" 
-                                                        class="btn btn-outline-danger" 
-                                                        title="Löschen">
-                                                    <i class="fas fa-trash"></i>
-                                                </button>
-                                            </form>
-                                        </div>
-                                    </td>
-                                </tr>
-                            {% endfor %}
-                        </tbody>
-                    </table>
-                </div>
-            {% else %}
-                <div class="alert alert-info mb-0">
-                    <i class="fas fa-info-circle me-2"></i>
-                    Keine MCP-Server-Definitionen gefunden. 
-                    <a href="{{ path('mcp_server_new') }}">Erstellen Sie einen neuen MCP-Server</a>.
-                </div>
-            {% endif %}
+        {% else %}
+        <div class="text-center py-12 text-content-muted">
+            <i class="ph ph-server text-4xl mb-2 block"></i>
+            <p>Keine MCP-Server konfiguriert.</p>
         </div>
-        <div class="card-footer">
-            <div class="d-flex justify-content-between">
-                <span>
-                    <strong>{{ servers|length }}</strong> MCP-Server
-                </span>
-                <form action="{{ path('mcp_servers_reload') }}" method="post" class="d-inline">
-                    <input type="hidden" name="_token" value="{{ csrf_token('reload_servers') }}">
-                    <button type="submit" class="btn btn-sm btn-outline-primary">
-                        <i class="fas fa-sync-alt me-1"></i> Neu laden
-                    </button>
-                </form>
-            </div>
-        </div>
+        {% endif %}
     </div>
 
-    <div class="card shadow-sm mt-4">
-        <div class="card-header">
-            <h5 class="mb-0">
-                <i class="fas fa-question-circle me-2"></i>
-                Informationen
-            </h5>
-        </div>
-        <div class="card-body">
-            <p>
-                <strong>MCP (Model Context Protocol)</strong> ermöglicht die Integration externer Tools und Dienste 
-                in Ihr AI-System. Mit dynamischen MCP-Servern können Sie:
-            </p>
-            <ul>
-                <li>Neue MCP-Server ohne Code-Änderungen hinzufügen</li>
-                <li>Server für spezifische Aufgaben konfigurieren</li>
-                <li>Sicherheitsrichtlinien pro Server definieren</li>
-                <li>Tools und Ressourcen whitelisten/blacklisten</li>
-            </ul>
-            <p>
-                <strong>Verfügbare Server-Typen:</strong>
-            </p>
-            <div class="d-flex flex-wrap gap-2">
-                {% for type, label in availableTypes %}
-                    <span class="badge bg-{{ type == 'filesystem' ? 'primary' : type == 'playwright' ? 'success' : type == 'github' ? 'info' : 'secondary' }}">
-                        {{ label }}
-                    </span>
-                {% endfor %}
-            </div>
-        </div>
+    <div class="card">
+        <a href="{{ path('mcp_servers_reload') }}" class="btn btn-ghost">
+            <i class="ph ph-arrow-clockwise"></i>
+            MCP-Server neu laden
+        </a>
     </div>
 </div>
 {% endblock %}

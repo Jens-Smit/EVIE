@@ -21,7 +21,7 @@
                         <i class="fas {{ statusIcons[session.status] ?? 'fa-question-circle' }}"></i>
                         <div>
                             <strong>{{ session.toolName }}</strong>
-                            <div class="text-muted small">
+                            <div class="text-content-muted small">
                                 Session: {{ (session.sessionId|slice(0, 20)) ~ (session.sessionId|length > 20 ? '...') }}
                             </div>
                         </div>
@@ -31,7 +31,7 @@
                     {% if session.progressPercentage is not null %}
                         <span class="badge bg-primary">{{ session.progressPercentage|round(1) }}%</span>
                     {% endif %}
-                    <span class="text-muted small">{{ session.createdAt|date('H:i') }}</span>
+                    <span class="text-content-muted small">{{ session.createdAt|date('H:i') }}</span>
                 </div>
             </a>
         {% endfor %}

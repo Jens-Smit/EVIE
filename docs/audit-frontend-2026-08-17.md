@@ -631,3 +631,32 @@ wird erst nach grünen E2E-Tests als abgeschlossen markiert.
 **Verifikation F2:** `grep -rn "find(1)" src/Controller/Frontend/` → 0 Treffer.
 **Verifikation F12:** `bin/console debug:router` zeigt keine duplikaten Routen mehr.
 
+
+### Phase 1 – Design-System (P0/P1) ✅ ABGESCHLOSSEN
+
+**Befunde:** F5 (zwei Tailwind-Setups), F6 (Design-Inkonsistenz), F7 (Darkmode-Lücken), F14 (Bootstrap ohne Framework)
+
+**Durchgeführte Änderungen:**
+
+| Datei | Änderung | Befund |
+|-------|----------|--------|
+| `assets/styles/tailwind.css` | Komponenten-Klassen ergänzt: `.card`, `.card-title`, `.btn`, `.btn-primary`, `.btn-secondary`, `.btn-ghost`, `.badge`, `.badge-approved/pending/rejected`, `.chat-bubble-system/user/agent` | F5 |
+| `public/assets/styles/tailwind.css` | Neu kompiliert via `node build-tailwind.js` (enthält jetzt 82 Design-Variablen + 16 Komponenten-Klassen) | F5 |
+| `templates/base.html.twig` | CDN (`cdn.tailwindcss.com`) + reduzierte Inline-Config entfernt; stattdessen `<link rel="stylesheet" href="{{ asset('assets/styles/tailwind.css') }}">` | F5 |
+| `templates/auth_base.html.twig` | analog: CDN entfernt, kompiliertes CSS eingebunden | F5 |
+| `templates/dashboard/index.html.twig` | Vollständig auf Design-System migriert: `bg-white dark:bg-slate-800` → `card`, `text-gray-500` → `text-content-muted`, `text-blue-600` → `text-primary`, `bg-gray-50` → `bg-surface-muted`; einheitliches Card-Layout mit Icon-Badges | F6, F7 |
+| `templates/mcp/servers.html.twig` | Bootstrap → Design-System: `table table-hover` → Tailwind-Table, `badge bg-*` → `badge badge-approved/pending/rejected`, `fas fa-*` → `ph ph-*`, `btn-outline-secondary` → `btn btn-ghost` | F14 |
+| `templates/mcp/server_new.html.twig` | Bootstrap-Form → Design-System: `form-control` → Tailwind-Inputs, `card shadow-sm` → `card`, Bootstrap-Grid → Tailwind-Grid | F14 |
+| `templates/mcp/server_edit.html.twig` | Eigenständige Version (vorher von server_new geerbt mit nicht-existenten Blocks); auf Design-System migriert | F14 |
+| `templates/mcp/server_show.html.twig` | Bootstrap → Design-System: `dl`-Layout, Badges, Card-Struktur | F14 |
+| `templates/htmx/partials/*.twig` (8 Dateien) | Darkmode-Klassen ergänzt: `bg-white` → `bg-white dark:bg-slate-800`, `text-muted` → `text-content-muted` | F7 |
+| `composer.json` | `symfony/asset` hinzugefügt (Voraussetzung für `asset()` Twig-Funktion) | F5 |
+
+**E2E-Test-Ergebnis (lokal, SQLite):**
+- Vollständige E2E-Suite: 34 Tests, 236 Assertions ✅ (1 skipped)
+- Keine Regressionen.
+
+**Verifikation F5:** `grep "cdn.tailwindcss" templates/*.twig` → 0 Treffer; `grep "assets/styles/tailwind.css" templates/base.html.twig` → 1 Treffer.
+**Verifikation F6/F7:** Dashboard nutzt jetzt ausschließlich Design-System-Klassen (`card`, `text-content-muted`, `text-primary`).
+**Verifikation F14:** `grep -rln "fas fa-\|col-md-\|btn-outline\|table-hover" templates/mcp/` → 0 Treffer.
+

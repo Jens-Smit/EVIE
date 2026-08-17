@@ -23,16 +23,16 @@
             {% set resultType = result is iterable and result is not string ? 'array' : result is string ? 'string' : result is object ? 'object' : 'scalar' %}
             
             {% if resultType == 'array' %}
-                <pre class="bg-white p-3 rounded border mb-0">{{ result|json_encode|raw }}</pre>
+                <pre class="bg-white dark:bg-slate-800 p-3 rounded border mb-0">{{ result|json_encode|raw }}</pre>
             {% elseif resultType == 'string' %}
-                <div class="bg-white p-3 rounded border">{{ result|nl2br }}</div>
+                <div class="bg-white dark:bg-slate-800 p-3 rounded border">{{ result|nl2br }}</div>
             {% elseif resultType == 'object' %}
-                <pre class="bg-white p-3 rounded border mb-0">{{ result|json_encode|raw }}</pre>
+                <pre class="bg-white dark:bg-slate-800 p-3 rounded border mb-0">{{ result|json_encode|raw }}</pre>
             {% else %}
-                <div class="bg-white p-3 rounded border">{{ result|dump }}</div>
+                <div class="bg-white dark:bg-slate-800 p-3 rounded border">{{ result|dump }}</div>
             {% endif %}
         {% else %}
-            <div class="bg-white p-3 rounded border text-muted">
+            <div class="bg-white dark:bg-slate-800 p-3 rounded border text-muted">
                 Kein Ergebnis zurückgegeben
             </div>
         {% endif %}
