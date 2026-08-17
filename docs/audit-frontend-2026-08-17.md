@@ -764,3 +764,85 @@ wird erst nach grünen E2E-Tests als abgeschlossen markiert.
 **Verifikation F15:** `grep -rn "error_log(" src/` → 0 Treffer.
 **Verifikation F16:** Alle Templates enthalten responsive Klassen (`grid-cols-1 md:grid-cols-2`, `lg:`, `max-w-*`) und `meta[name="viewport"]`.
 
+
+---
+
+## 12. Gesamtevaluierung
+
+Alle 6 Phasen wurden nacheinander abgearbeitet. Jede Phase wurde vor Übergang zur
+nächsten durch E2E-Tests verifiziert und dokumentiert.
+
+### Zusammenfassung der Phasen
+
+| Phase | Priorität | Befunde | Status | E2E-Tests (neu) |
+|-------|-----------|---------|--------|-----------------|
+| Phase 0 | P0 | F1, F2, F12 | ✅ Abgeschlossen | 20 (verschärft) |
+| Phase 1 | P0/P1 | F5, F6, F7, F14 | ✅ Abgeschlossen | — (Migration) |
+| Phase 2 | P1 | F3, F4 (+F10, F11 vorab) | ✅ Abgeschlossen | 12 |
+| Phase 3 | P1 | F8 | ✅ Abgeschlossen | 6 |
+| Phase 4 | P1 | F9, F10, F11 | ✅ Abgeschlossen | 7 (DSGVO) |
+| Phase 5 | P2 | F13, F15, F16 | ✅ Abgeschlossen | 7 (Responsiv) |
+
+### E2E-Test-Gesamtergebnis
+
+- **66 Tests, 347 Assertions** ✅ (1 skipped)
+- Ausgangsbasis: 34 Tests, 236 Assertions
+- Zuwachs: +32 Tests, +111 Assertions
+- Alle Tests grün, keine Regressionen.
+
+### Befund-Übersicht (alle 16 Befunde behoben)
+
+| Befund | Beschreibung | Phase | Status |
+|--------|-------------|-------|--------|
+| F1 | Auth-Redirect bricht in prod ab | 0 | ✅ |
+| F2 | Default-User-Bug (Tenant-Isolation) | 0 | ✅ |
+| F3 | Einstellungen-Link `href="#"` | 2 | ✅ |
+| F4 | Onboarding-Frontend fehlt | 2 | ✅ |
+| F5 | Zwei widersprüchliche Tailwind-Setups | 1 | ✅ |
+| F6 | Design-Inkonsistenz (alte Klassen) | 1 | ✅ |
+| F7 | Darkmode-Lücken in HTMX-Partials | 1 | ✅ |
+| F8 | Streaming/Inline-Approval fehlt | 3 | ✅ |
+| F9 | Datenschutz-UI fehlt | 4 | ✅ |
+| F10 | Datenschutzerklärung fehlt | 2/4 | ✅ |
+| F11 | Impressum fehlt | 2/4 | ✅ |
+| F12 | Route-Konflikte (YAML + Attribut) | 0 | ✅ |
+| F13 | Controller-Konsolidierung | 5 | ✅ (verifiziert: kein Konflikt) |
+| F14 | Bootstrap ohne Framework | 1 | ✅ |
+| F15 | `error_log()` in prod | 5 | ✅ |
+| F16 | Responsiv-Tests fehlen | 5 | ✅ |
+
+### Neue/Geänderte Dateien
+
+**Neue Controller (4):**
+- `src/Controller/Frontend/OnboardingController.php`
+- `src/Controller/Frontend/SettingsController.php`
+- `src/Controller/Frontend/LegalController.php`
+- `src/Security/Authenticator/LoginEntryPoint.php`
+
+**Neue Templates (8):**
+- `templates/onboarding/index.html.twig`
+- `templates/settings/index.html.twig`
+- `templates/legal/datenschutz.html.twig`
+- `templates/legal/impressum.html.twig`
+- Migrierte Templates: `dashboard/`, `mcp/servers`, `mcp/server_new`, `mcp/server_edit`, `mcp/server_show`
+
+**Neue E2E-Tests (3 Suiten, 32 Tests):**
+- `tests/E2E/OnboardingSettingsTest.php` (19 Tests)
+- `tests/E2E/AgentDialogHitlTest.php` (6 Tests)
+- `tests/E2E/ResponsiveDesignTest.php` (7 Tests)
+
+**Migration:** `Version20260817000002.php` (onboarding_complete)
+
+**Doku:** Diese Audit-Datei (`docs/audit-frontend-2026-08-17.md`) wurde um das
+komplette Umsetzungs-Protokoll (Abschnitt 11) und diese Evaluierung (Abschnitt 12)
+erweitert.
+
+### Architektur-Compliance
+
+- ✅ Symfony-AI-kompatibel (OnboardingFlowManager wird getriggert, kein eigener AI-Code)
+- ✅ Blueprint §17 (E2E Smoke + Auth + Navigation + Onboarding + HITL + DSGVO)
+- ✅ Keine Mockdaten, keine Platzhalter, keine Fantasie-Tools
+- ✅ Keine inkompatiblen Bridges
+- ✅ Keine Konstruktor-Injection für AI-Tools (nur für Standard-Symfony-Services)
+- ✅ Multi-Agent-Architektur nicht verändert (Orchestrator/SubAgent/Tool-System intakt)
+
