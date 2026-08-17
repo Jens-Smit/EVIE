@@ -35,7 +35,7 @@ final class LlmRetryIntegrationTest extends TestCase
             $callCount++;
             if ($callCount === 1) {
                 // Erster Aufruf: transienter Fehler (TransportException = Netzwerk/Timeout)
-                throw new class('Connection timed out') extends \Exception implements TransportException {
+                throw new class('Connection timed out') extends \Exception implements TransportExceptionInterface {
                     public function getResponse(): ?ResponseInterface
                     {
                         return null;
