@@ -117,8 +117,3 @@ services:
                 allow_redirects: false
                 max_redirects: 0
 
-    # StoreRetrieverAdapter: native Symfony AI RetrieverInterface-Bridge mit
-    # Tenant-Filterung. Wird vom ContextInjector (als InputProcessor) genutzt.
-    App\AI\Rag\StoreRetrieverAdapter:
-        arguments:
-            $evieRetriever: '@App\AI\Rag\Retriever'

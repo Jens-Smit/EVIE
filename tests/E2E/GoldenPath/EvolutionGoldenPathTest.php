@@ -24,7 +24,7 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
 /**
  * P0-3 Golden-Path-E2E-Test (Blueprint §7.3) — P3-A: WebTestCase + Tool-Ausführung.
  *
- * Deckt den vollständigen Selbst-Evolution-Flow über den HTTP-Layer ab:
+ * Deckt den vollständigen Selbst-Evolution-Flow ab (WebTestCase):
  *
  *  1. ToolDefinitionGenerator erzeugt eine ToolDefinition mit gültigem
  *     JSON-Schema aus einer User-Anfrage.
@@ -32,7 +32,7 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
  *  3. Schema-Validierung: das generierte Schema ist ein gültiges JSON-Schema-
  *     Objekt mit type/properties/required.
  *  4. HITL-Freigabe über HTTP: POST /api/tools/{id}/approve setzt den Status
- *     auf "approved" (P3-A: HTTP-Layer statt direktem Service-Aufruf).
+ *     auf "approved" (P3-A: via Service-Aufruf; HTTP-Ansatz wegen CSRF-Komplexitaet verworfen, siehe Commit c94197b).
  *  5. DynamicToolbox-Verfügbarkeit: nach der Freigabe ist das Tool in der
  *     Toolbox sichtbar (vorher nicht).
  *  6. Tool-Ausführung: das approved Tool kann über DynamicToolExecutor
@@ -131,7 +131,7 @@ final class EvolutionGoldenPathTest extends WebTestCase
             'Ein pending Tool darf nicht in der Toolbox verfügbar sein.',
         );
 
-        // 5. HITL-Freigabe über HTTP (P3-A: WebTestCase HTTP-Layer).
+        // 5. HITL-Freigabe (P3-A: via Service-Aufruf; HTTP-Ansatz wegen CSRF-Komplexitaet verworfen).
         $generator->approveTool($persisted);
 
         $this->entityManager->clear();
