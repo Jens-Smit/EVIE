@@ -715,3 +715,30 @@ wird erst nach grünen E2E-Tests als abgeschlossen markiert.
 
 **Verifikation F8:** `grep "hitl-approval-container" templates/agent/dialog.html.twig` → 1 Treffer; `/api/pending-tools/count` liefert JSON mit `count`.
 
+
+### Phase 4 – DSGVO (P1) ✅ ABGESCHLOSSEN
+
+**Befunde:** F9 (Datenschutz-UI fehlt), F10 (Datenschutzerklärung), F11 (Impressum)
+
+**Durchgeführte Änderungen:**
+
+| Datei | Änderung | Befund |
+|-------|----------|--------|
+| `src/Controller/Frontend/SettingsController.php` | `exportData()`: Art. 20 DSGVO – exportiert User-Daten als JSON-Download (`Content-Disposition: attachment`); `deleteAccount()`: Art. 17 DSGVO – löscht Account mit CSRF-Schutz + Bestätigungsphrase "LOESCHEN" + Session-Invalidierung | F9 |
+| `templates/settings/index.html.twig` | DSGVO-Aktions-UI: Daten-Export-Button (JSON-Download), Account-Löschung mit Bestätigungsformular (CSRF + "LOESCHEN"-Phrase + confirm-Dialog) | F9 |
+| `tests/E2E/OnboardingSettingsTest.php` | 7 neue DSGVO-Tests: DSGVO-Aktionen vorhanden, JSON-Export-Download, Löschung erfordert Bestätigung, CSRF-Schutz, erfolgreiche Löschung, Datenschutz/Impressum öffentlich | F9, F10, F11 |
+
+**Vorab in Phase 2 erstellt (hier nur verifiziert):**
+- `src/Controller/Frontend/LegalController.php` – `/datenschutz` + `/impressum` (PUBLIC_ACCESS)
+- `templates/legal/datenschutz.html.twig` – vollständige Datenschutzerklärung
+- `templates/legal/impressum.html.twig` – Impressum (§5 TMG)
+
+**E2E-Test-Ergebnis (lokal, SQLite):**
+- `OnboardingSettingsTest`: 19 Tests, 74 Assertions ✅ (7 neue DSGVO-Tests)
+- Vollständige E2E-Suite: 59 Tests, 326 Assertions ✅ (1 skipped)
+- Keine Regressionen.
+
+**Verifikation F9:** `/settings/export-data` liefert JSON mit `legal_notice` (Art. 20); `/settings/delete-account` erfordert CSRF-Token + "LOESCHEN"-Phrase; Account wird nach Bestätigung gelöscht.
+**Verifikation F10:** `/datenschutz` ist öffentlich zugänglich (PUBLIC_ACCESS), enthält DSGVO-Artikel und Mistral-AVV-Hinweis.
+**Verifikation F11:** `/impressum` ist öffentlich zugänglich, enthält §5 TMG / §18 MStV.
+

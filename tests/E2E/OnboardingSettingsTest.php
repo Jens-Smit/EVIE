@@ -42,8 +42,12 @@ class OnboardingSettingsTest extends WebTestCase
 
     protected function tearDown(): void
     {
+        // Zuerst Users purgen, dann Kernel shutdown (damit der EM noch aktiv ist).
         $this->purgeUsers();
         parent::tearDown();
+        // Kernel shutdown erzwingen, damit der naechste setUp einen frischen
+        // Client mit neuer Session erhaelt (wichtig nach Account-Loeschungen).
+        static::ensureKernelShutdown();
     }
 
     public function testNewUserIsRedirectedToOnboardingAfterLogin(): void
@@ -186,6 +190,113 @@ class OnboardingSettingsTest extends WebTestCase
         $this->assertSame('Einstellungen', trim($settingsLink->text()));
     }
 
+    public function testSettingsPageContainsDsgvoActions(): void
+    {
+        $this->createUserAndLogin('dsgvo@beispiel.de', 'DsgvoPass123');
+
+        $crawler = $this->client->request('GET', '/settings');
+
+        $this->assertResponseIsSuccessful();
+        // Daten-Export Link (Art. 20)
+        $exportLink = $crawler->filter('a[href*="/settings/export-data"]');
+        $this->assertGreaterThan(0, $exportLink->count(), 'Settings sollte einen Daten-Export-Link enthalten.');
+        // Account-Loesch-Form (Art. 17)
+        $deleteForm = $crawler->filter('form[action*="/settings/delete-account"]');
+        $this->assertGreaterThan(0, $deleteForm->count(), 'Settings sollte ein Account-Loesch-Form enthalten.');
+        $this->assertSelectorExists('input[name="confirmation"]');
+        $this->assertSelectorExists('input[name="_token"]');
+    }
+
+    public function testDataExportReturnsJsonDownload(): void
+    {
+        $this->createUserAndLogin('export@beispiel.de', 'ExportPass123');
+
+        $this->client->request('GET', '/settings/export-data');
+
+        $this->assertResponseIsSuccessful();
+        $this->assertSame('application/json; charset=utf-8', $this->client->getResponse()->headers->get('Content-Type'));
+        $contentDisposition = $this->client->getResponse()->headers->get('Content-Disposition', '');
+        $this->assertStringContainsString('attachment', $contentDisposition);
+        $this->assertStringContainsString('export@beispiel.de', $contentDisposition);
+
+        $data = json_decode($this->client->getResponse()->getContent(), true);
+        $this->assertSame('export@beispiel.de', $data['user']['email']);
+        $this->assertArrayHasKey('legal_notice', $data);
+        $this->assertStringContainsString('Art. 20 DSGVO', $data['legal_notice']);
+    }
+
+    public function testDeleteAccountRequiresConfirmation(): void
+    {
+        $this->createUserAndLogin('delete1@beispiel.de', 'DeletePass123');
+
+        // Ohne Bestaetigungsphrase -> Fehler
+        $csrfToken = $this->generateCsrfToken('delete-account');
+        $this->client->request('POST', '/settings/delete-account', [
+            'confirmation' => 'FALSCH',
+            '_token' => $csrfToken,
+        ]);
+
+        $this->assertResponseRedirects('/settings');
+        $this->client->followRedirect();
+        $this->assertSelectorTextContains('', 'Bitte geben Sie zur Best');
+    }
+
+    public function testDeleteAccountRequiresValidCsrfToken(): void
+    {
+        $this->createUserAndLogin('delete2@beispiel.de', 'DeletePass123');
+
+        // Ungueltiges CSRF-Token -> Fehler
+        $this->client->request('POST', '/settings/delete-account', [
+            'confirmation' => 'LOESCHEN',
+            '_token' => 'invalid',
+        ]);
+
+        $this->assertResponseRedirects('/settings');
+        $this->client->followRedirect();
+        $this->assertSelectorTextContains('', 'Ungültiges Sicherheitstoken');
+    }
+
+    public function testDeleteAccountSucceedsWithConfirmation(): void
+    {
+        $user = $this->createUser('delete3@beispiel.de', 'DeletePass123');
+        $userId = $user->getId();
+        $this->login('delete3@beispiel.de', 'DeletePass123');
+
+        $csrfToken = $this->generateCsrfToken('delete-account');
+        $this->client->request('POST', '/settings/delete-account', [
+            'confirmation' => 'LOESCHEN',
+            '_token' => $csrfToken,
+        ]);
+
+        // Nach Loeschung -> Redirect (Home oder Login)
+        $this->assertResponseRedirects();
+
+        // User sollte geloescht sein. Neuen Entity Manager holen, da die
+        // Session invalidiert wurde und der alte EM ggf. closed ist.
+        $container = static::getContainer();
+        $em = $container->get(EntityManagerInterface::class);
+        $deletedUser = $em->getRepository(User::class)->find($userId);
+        $this->assertNull($deletedUser, 'User sollte nach Loeschung nicht mehr existieren.');
+
+    }
+
+    public function testPrivacyPolicyIsPubliclyAccessible(): void
+    {
+        $this->client->request('GET', '/datenschutz');
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorTextContains('', 'Datenschutzerklärung');
+        $this->assertSelectorTextContains('', 'DSGVO');
+        $this->assertSelectorTextContains('', 'Mistral AI');
+    }
+
+    public function testImprintIsPubliclyAccessible(): void
+    {
+        $this->client->request('GET', '/impressum');
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorTextContains('', 'Impressum');
+        $this->assertSelectorTextContains('', 'TMG');
+    }
+
     // ------------------------------------------------------------------
     // Helpers
     // ------------------------------------------------------------------
@@ -245,6 +356,26 @@ class OnboardingSettingsTest extends WebTestCase
             '_csrf_token' => $csrfToken,
             '_remember_me' => 1,
         ]);
+    }
+
+    private function generateCsrfToken(string $tokenId): string
+    {
+        // CSRF-Token aus dem gerenderten Settings-Template extrahieren,
+        // da der TokenManager eine aktive Session braucht, die nur
+        // innerhalb eines Requests verfuegbar ist (mock_file storage).
+        $crawler = $this->client->request('GET', '/settings');
+        $tokenInput = $crawler->filter('input[name="_token"]')->last();
+        if ($tokenInput->count() > 0) {
+            $value = $tokenInput->attr('value');
+            if (is_string($value) && $value !== '') {
+                return $value;
+            }
+        }
+        // Fallback: TokenManager direkt (funktioniert, wenn Session aktiv ist).
+        return static::getContainer()
+            ->get('security.csrf.token_manager')
+            ->getToken($tokenId)
+            ->getValue();
     }
 
     private function extractCsrfToken(Crawler $crawler): string
