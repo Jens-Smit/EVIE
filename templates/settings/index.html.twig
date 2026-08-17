@@ -102,7 +102,7 @@
         </div>
     </div>
 
-    <!-- Datenschutz (Phase 4 wird DSGVO-Aktionen hier ergänzen) -->
+    <!-- Datenschutz & DSGVO -->
     <div class="card">
         <div class="flex items-center gap-2 mb-4">
             <i class="ph ph-shield-check text-primary text-xl"></i>
@@ -128,6 +128,53 @@
                     <i class="ph ph-file-text"></i>
                     Anzeigen
                 </a>
+            </div>
+
+            <!-- DSGVO Art. 20: Datenübertragbarkeit -->
+            <div class="flex items-center justify-between p-3 bg-surface-muted rounded-xl border border-border">
+                <div>
+                    <p class="font-medium text-content">Daten exportieren</p>
+                    <p class="text-sm text-content-muted">Alle deine Daten als JSON herunterladen (Art. 20 DSGVO)</p>
+                </div>
+                <a href="{{ path('app_settings_export_data') }}" class="btn btn-secondary">
+                    <i class="ph ph-download-simple"></i>
+                    Export
+                </a>
+            </div>
+
+            <!-- DSGVO Art. 17: Recht auf Vergessenwerden -->
+            <div class="p-3 bg-danger-soft rounded-xl border border-danger/30">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <p class="font-medium text-content">Account löschen</p>
+                        <p class="text-sm text-content-muted">Alle Daten unwiderruflich entfernen (Art. 17 DSGVO)</p>
+                    </div>
+                    <button type="button" onclick="document.getElementById('delete-form').classList.toggle('hidden')" class="btn btn-ghost text-danger">
+                        <i class="ph ph-trash"></i>
+                        Löschen
+                    </button>
+                </div>
+                <form id="delete-form" method="post" action="{{ path('app_settings_delete_account') }}" class="hidden space-y-3 border-t border-danger/20 pt-3">
+                    <p class="text-sm text-content">
+                        <i class="ph ph-warning text-danger"></i>
+                        Diese Aktion kann <strong>nicht rückgängig</strong> gemacht werden.
+                        Alle deine Daten werden permanent gelöscht.
+                    </p>
+                    <div>
+                        <label class="block text-sm font-medium text-content mb-1" for="confirmation">
+                            Zur Bestätigung "LOESCHEN" eingeben:
+                        </label>
+                        <input type="text" id="confirmation" name="confirmation"
+                               class="w-full px-3 py-2 bg-surface border border-border rounded-xl text-content focus:ring-2 focus:ring-danger focus:border-transparent"
+                               placeholder="LOESCHEN" required>
+                    </div>
+                    <input type="hidden" name="_token" value="{{ csrf_token('delete-account') }}">
+                    <button type="submit" class="btn btn-primary bg-danger hover:bg-danger/90"
+                            onclick="return confirm('Wirklich unwiderruflich löschen?')">
+                        <i class="ph ph-trash"></i>
+                        Account endgültig löschen
+                    </button>
+                </form>
             </div>
         </div>
     </div>
