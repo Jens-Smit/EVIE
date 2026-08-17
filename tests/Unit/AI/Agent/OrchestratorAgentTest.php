@@ -18,6 +18,7 @@ use Symfony\AI\Platform\Message\MessageBag;
 use Symfony\AI\Platform\PlatformInterface;
 use Symfony\AI\Platform\Result\TextResult;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
+use App\AI\Agent\LlmRetryExecutor;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -47,6 +48,11 @@ class OrchestratorAgentTest extends TestCase
             $this->createMock(FaultTolerantValidator::class),
             $this->createMock(ResponseNormalizer::class),
             $this->createMock(ToolDefinitionRepository::class),
+            new \App\AI\Agent\LlmRetryExecutor(
+                $this->createMock(LoggerInterface::class),
+                maxRetries: 2,
+                initialDelayMs: 1,
+            ),
         );
     }
 

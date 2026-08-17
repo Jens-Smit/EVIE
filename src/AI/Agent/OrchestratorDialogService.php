@@ -34,6 +34,7 @@ final readonly class OrchestratorDialogService
         private FaultTolerantValidator $faultTolerantValidator,
         private ResponseNormalizer $responseNormalizer,
         private ToolDefinitionRepository $toolDefinitionRepo,
+        private LlmRetryExecutor $llmRetryExecutor,
     ) {
     }
 
@@ -47,7 +48,7 @@ final readonly class OrchestratorDialogService
         $messages = new MessageBag(Message::ofUser($userMessage));
 
         try {
-            $result = $this->agent->call($messages);
+            $result = $this->llmRetryExecutor->callAgentWithRetry($this->agent, $messages);
             $responseContent = $result->getContent();
 
             $this->logger->debug('Orchestrator-Agent Antwort (Rohdaten)', [
@@ -193,7 +194,10 @@ final readonly class OrchestratorDialogService
             PROMPT;
 
             $messages = new MessageBag(Message::ofUser($prompt));
-            $result = $this->platform->invoke('mistral-small-latest', $messages)->asText();
+            $result = $this->llmRetryExecutor->executeWithRetry(
+                $messages,
+                fn (MessageBag $m) => $this->platform->invoke('mistral-small-latest', $m)
+            )->asText();
             
             return trim($result) === 'YES';
         } catch (\Exception $e) {
@@ -719,7 +723,10 @@ final readonly class OrchestratorDialogService
         $messages = new MessageBag(Message::ofUser($task));
 
         // 3. Sub-Agent ausführen
-        $result = $subAgent->call($messages);
+        $result = $this->llmRetryExecutor->executeWithRetry(
+            $messages,
+            fn (MessageBag $m) => $subAgent->call($m)
+        );
 
         // 4. Ergebnis zurückgeben
         return $result->getContent();
