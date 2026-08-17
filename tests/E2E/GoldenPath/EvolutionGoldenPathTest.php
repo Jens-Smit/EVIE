@@ -253,16 +253,9 @@ final class EvolutionGoldenPathTest extends WebTestCase
     private function createUserAndLogin(string $email, string $plainPassword): User
     {
         $user = $this->createUser($email, $plainPassword);
-        $crawler = $this->client->request('GET', '/login');
-        $csrfToken = $this->extractCsrfToken($crawler);
-        $this->client->request('POST', '/login', [
-            'email' => $email,
-            'password' => $plainPassword,
-            '_csrf_token' => $csrfToken,
-            '_remember_me' => 1,
-            '_target_path' => '/',
-        ]);
-        $this->client->followRedirect();
+        // Direktes Login ueber KernelBrowser::loginUser() (zuverlaessiger
+        // als das Login-Formular mit CSRF in Test-Umgebungen).
+        $this->client->loginUser($user);
 
         return $user;
     }
@@ -279,16 +272,6 @@ final class EvolutionGoldenPathTest extends WebTestCase
         $this->entityManager->flush();
 
         return $user;
-    }
-
-    private function extractCsrfToken($crawler): string
-    {
-        $tokenInput = $crawler->filter('input[type="hidden"][id$="_csrf_token"]')->last();
-        if ($tokenInput->count() > 0) {
-            return $tokenInput->attr('value');
-        }
-
-        return '';
     }
 
     private function ensureSchema(): void
