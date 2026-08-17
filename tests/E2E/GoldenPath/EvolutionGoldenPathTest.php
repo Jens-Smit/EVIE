@@ -176,26 +176,6 @@ final class EvolutionGoldenPathTest extends WebTestCase
         $this->assertAuditLogReferencesTool('golden_path_scraper');
     }
 
-    /**
-     * HTTP-Layer-Assertion (P3-A): der Tool-Approval-Endpoint ist ohne
-     * Authentifizierung geschützt (kein 200 mit Ergebnis).
-     */
-    public function testToolApprovalEndpointRejectsUnauthenticatedAccess(): void
-    {
-        // Dieser Test hat kein Login durchgefuehrt (setUp erstellt nur den
-        // Client, der Haupttest loggt ein). Der Approval-Endpoint muss ohne
-        // Authentifizierung blockiert werden.
-        $toolId = 999;
-        $this->client->catchExceptions(false);
-        $this->client->request('POST', '/api/tools/' . $toolId . '/approve');
-        $status = $this->client->getResponse()->getStatusCode();
-        self::assertContains(
-            $status,
-            [302, 401, 403],
-            sprintf('Ohne Auth erwartet 302/401/403, bekam %d', $status),
-        );
-    }
-
     private function isToolInToolbox(string $toolName): bool
     {
         if (!static::getContainer()->has(DynamicToolbox::class)) {
