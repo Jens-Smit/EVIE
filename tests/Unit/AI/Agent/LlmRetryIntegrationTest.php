@@ -56,7 +56,7 @@ final class LlmRetryIntegrationTest extends TestCase
         $result = $executor->callAgentWithRetry($agent, $messages);
 
         self::assertSame(2, $callCount, 'LlmRetryExecutor muss nach transientem Fehler erneut aufrufen.');
-        self::assertSame('Erfolgnach Retry', substr($result->getContent() ?? '', 0, 16) ?: 'Erfolgreiche Antwort nach Retry');
+        self::assertStringContainsString("Erfolgreiche Antwort", $result->getContent() ?? "", "Retry muss erfolgreiche Antwort liefern.");
     }
 
     public function testNoRetryOnNonTransientFailure(): void
