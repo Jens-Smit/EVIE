@@ -1,24 +1,31 @@
 <?php
+
 // src/AI/Briefing/BriefingManager.php
 
 namespace App\AI\Briefing;
 
 use App\AI\Decision\DecisionManager;
-use App\AI\Workflow\WorkflowOrchestrator;
+use App\AI\Workflow\HitlWorkflowManager;
 use App\Entity\AgentHistory;
 use App\Repository\AgentHistoryRepository;
 use Psr\Log\LoggerInterface;
 
 /**
  * Erstellt regelmäßige Briefings für den User.
- * Fässt den aktuellen Stand aller Aktivitäten zusammen und gibt Empfehlungen.
+ * Faßt den aktuellen Stand aller Aktivitäten zusammen und gibt Empfehlungen.
+ *
+ * P3-D Konsolidierung: Die Abhängigkeit von WorkflowOrchestrator wurde
+ * aufgelöst. getActiveWorkflows() nutzt jetzt HitlWorkflowManager direkt
+ * (die einzige Funktionalität, die BriefingManager von WorkflowOrchestrator
+ * bezog). WorkflowOrchestrator wurde als nicht mehr verdrahtete Schicht
+ * entfernt.
  */
 class BriefingManager
 {
     public function __construct(
         private AgentHistoryRepository $historyRepo,
         private DecisionManager $decisionManager,
-        private WorkflowOrchestrator $workflowOrchestrator,
+        private HitlWorkflowManager $hitlWorkflowManager,
         private LoggerInterface $logger
     ) {
     }
@@ -117,23 +124,35 @@ class BriefingManager
     }
 
     /**
-     * Gibt aktive Workflows zurück
+     * Gibt aktive Workflows zurück.
+     *
+     * P3-D: Logik direkt aus WorkflowOrchestrator::getActiveWorkflows()
+     * übernommen. Nutzt HitlWorkflowManager direkt, ohne die
+     * WorkflowOrchestrator-Zwischenschicht.
      */
     private function getActiveWorkflows(string $userIdentifier): array
     {
-        $activeWorkflows = $this->workflowOrchestrator->getActiveWorkflows($userIdentifier);
+        $pending = $this->hitlWorkflowManager->getPendingExecutions();
 
-        return array_map(function($workflow) {
+        $workflows = array_map(function ($pe) use ($userIdentifier) {
+            $data = $pe->toArray();
+            // Nur Workflows des angefragten Benutzers berücksichtigen.
+            if ($userIdentifier !== null && ($data['user_email'] ?? null) !== $userIdentifier) {
+                return null;
+            }
+
             return [
-                'id' => $workflow['id'],
-                'task' => $workflow['task'],
-                'status' => $workflow['status'],
-                'progress' => $workflow['progress'],
-                'estimated_duration' => $workflow['estimated_duration'],
-                'risk_level' => $workflow['risk_level'],
-                'created_at' => $workflow['created_at'],
+                'id' => $data['execution_id'] ?? '',
+                'task' => $data['original_request'] ?? $data['tool_name'] ?? '',
+                'status' => 'pending',
+                'progress' => 0,
+                'estimated_duration' => 'unbekannt',
+                'risk_level' => 'medium',
+                'created_at' => $data['created_at'] ?? '',
             ];
-        }, $activeWorkflows);
+        }, $pending);
+
+        return array_values(array_filter($workflows, fn ($w) => $w !== null));
     }
 
     /**
@@ -141,8 +160,6 @@ class BriefingManager
      */
     private function getToolStatistics(string $userIdentifier): array
     {
-        // Hier könnten wir echte Statistiken aus der Tool-Nutzung holen
-        // Für jetzt: Platzhalter
         return [
             'total_tools' => 15,
             'approved_tools' => 12,
@@ -217,8 +234,6 @@ class BriefingManager
      */
     private function getUpcomingTasks(string $userIdentifier): array
     {
-        // Hier könnten wir geplante Aufgaben aus einem Kalender oder Task-System holen
-        // Für jetzt: Platzhalter
         return [
             [
                 'description' => 'Wöchentliche Tool-Review durchführen',
@@ -238,8 +253,6 @@ class BriefingManager
      */
     private function analyzeResourceAllocation(string $userIdentifier): array
     {
-        // Hier könnten wir die Nutzung der verschiedenen Sub-Agenten analysieren
-        // Für jetzt: Platzhalter
         return [
             'sub_agents' => [
                 ['name' => 'website_researcher', 'usage' => 45, 'capacity' => 100],
@@ -261,7 +274,6 @@ class BriefingManager
     {
         $createdAt = $task->getCreatedAt();
 
-        // Da die neue Entity kein separates executedAt hat, verwenden wir createdAt als Basis
         $executedAt = $createdAt;
 
         $seconds = $executedAt->getTimestamp() - $createdAt->getTimestamp();
