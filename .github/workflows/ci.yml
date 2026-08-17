@@ -246,37 +246,10 @@ jobs:
           PGVECTOR_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_migrate?serverVersion=15&charset=utf8'
           MISTRAL_API_KEY: test
           GEMINI_API_KEY: test
-        # P0-1: Struktureller Regressionstest. Fuegt Test-Zeilen in die
-        # embeddings-Tabelle ein und ruft findSimilar() gegen die echte
-        # PostgreSQL+pgvector-Instanz auf. Haette sowohl den urspruenglichen
-        # Bug (Zyklus 3) als auch die Regression (Zyklus 5) sofort sichtbar
-        # gemacht. Verhindert zukuenftige Cast-Regressions blind durch
-        # SQLite-Tests.
         run: |
           php bin/console cache:warmup --env=prod --no-interaction
-          # Testdaten einfuegen und findSimilar() aufrufen
-          php -r "
-          require 'vendor/autoload.php';
-          use Doctrine\DBAL\DriverManager;
-          \$conn = DriverManager::getConnection(['url' => getenv('DATABASE_URL')]);
-          \$conn->executeStatement('INSERT INTO embeddings (content_hash, content, content_type, metadata, vector, created_at) VALUES (:hash, :content, :type, :meta, :vec, NOW()) ON CONFLICT DO NOTHING', [
-              'hash' => 'test1', 'content' => 'Test content 1', 'type' => 'knowledge', 'meta' => '{}', 'vec' => '[0.1,0.2,0.3]'
-          ]);
-          \$rows = \$conn->executeQuery('SELECT id, 1 - (vector::text::vector <=> :query::vector) AS similarity FROM embeddings WHERE content_type = :type AND 1 - (vector::text::vector <=> :query::vector) >= 0.5 ORDER BY vector::text::vector <=> :query::vector ASC LIMIT 5', [
-              'query' => '[0.1,0.2,0.3]', 'type' => 'knowledge'
-          ])->fetchAllAssociative();
-          if (count(\$rows) === 0) { echo 'FAIL: findSimilar returned no results' . PHP_EOL; exit(1); }
-          echo 'PASS: findSimilar returned ' . count(\$rows) . ' result(s)' . PHP_EOL;
-          "
+          php tests/scripts/rag_pgvector_regression_test.php
 
-  # ===================================================================
-  # E2E-LLM-Job: kritische Aktionen mit echtem Mistral-API-Abruf.
-  # Laeuft nur mit gesetzten Secrets (MISTRAL_API_KEY, TAVILY_API_KEY).
-  # LLM-Aufrufe sind minimiert: jeder Test macht genau 1 Abruf.
-  # Dieser Job ist mit continue-on-error abgesichert, damit Secrets-
-  # Abwesenheit den Default-CI-Workflow nicht blockiert; mit Secrets
-  # muss er gruen sein.
-  # ===================================================================
   e2e-llm:
     runs-on: ubuntu-latest
     continue-on-error: true
