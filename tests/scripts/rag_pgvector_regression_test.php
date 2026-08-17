@@ -11,19 +11,18 @@ use Doctrine\DBAL\DriverManager;
 
 $conn = DriverManager::getConnection(['url' => getenv('DATABASE_URL')]);
 
-// Testdaten einfuegen
-$conn->executeStatement(
-    'INSERT INTO embeddings (id, content_hash, content, content_type, source, metadata, vector, created_at) '
-    . 'VALUES (DEFAULT, :hash, :content, :type, :source, :meta, :vec, NOW())',
-    [
-        'hash' => 'rag_regression_test',
-        'source' => 'regression_test',
-        'content' => 'Regression test content',
-        'type' => 'knowledge',
-        'meta' => '{}',
-        'vec' => '[0.1,0.2,0.3]',
-    ]
-);
+// Testdaten einfuegen (nextval fuer SERIAL, da Doctrine DROP DEFAULT)
+$sql = "INSERT INTO embeddings (id, content_hash, content, content_type, source, metadata, vector, created_at) "
+    . "VALUES (nextval(pg_get_serial_sequence('embeddings', 'id')), :hash, :content, :type, :source, :meta, :vec, NOW())";
+
+$conn->executeStatement($sql, [
+    'hash' => 'rag_regression_test',
+    'content' => 'Regression test content',
+    'type' => 'knowledge',
+    'source' => 'regression_test',
+    'meta' => '{}',
+    'vec' => '[0.1,0.2,0.3]',
+]);
 
 // findSimilar()-SQL ausfuehren (derselbe SQL-Pfad wie EmbeddingRepository::findSimilarPgVector)
 $rows = $conn->executeQuery(
