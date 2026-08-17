@@ -186,6 +186,7 @@ final class EvolutionGoldenPathTest extends WebTestCase
         // Client, der Haupttest loggt ein). Der Approval-Endpoint muss ohne
         // Authentifizierung blockiert werden.
         $toolId = 999;
+        $this->client->catchExceptions(false);
         $this->client->request('POST', '/api/tools/' . $toolId . '/approve');
         $status = $this->client->getResponse()->getStatusCode();
         self::assertContains(
