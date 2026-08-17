@@ -5,7 +5,7 @@
  * PostgreSQL+pgvector-Instanz aus. Verhindert Cast-Regressions,
  * die SQLite-Tests nicht erkennen.
  */
-require __DIR__ . '/vendor/autoload.php';
+require dirname(__DIR__, 2) . '/vendor/autoload.php';
 
 use Doctrine\DBAL\DriverManager;
 
