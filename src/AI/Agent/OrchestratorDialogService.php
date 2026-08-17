@@ -194,10 +194,7 @@ final readonly class OrchestratorDialogService
             PROMPT;
 
             $messages = new MessageBag(Message::ofUser($prompt));
-            $result = $this->llmRetryExecutor->executeWithRetry(
-                $messages,
-                fn (MessageBag $m) => $this->platform->invoke('mistral-small-latest', $m)
-            )->asText();
+            $result = $this->platform->invoke('mistral-small-latest', $messages)->asText();
             
             return trim($result) === 'YES';
         } catch (\Exception $e) {
