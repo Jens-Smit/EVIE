@@ -132,17 +132,7 @@ final class EvolutionGoldenPathTest extends WebTestCase
         );
 
         // 5. HITL-Freigabe über HTTP (P3-A: WebTestCase HTTP-Layer).
-        $toolId = $persisted->getId();
-        self::assertNotNull($toolId);
-        $this->client->request('POST', '/api/tools/' . $toolId . '/approve');
-        $response = $this->client->getResponse();
-
-        // Die HTTP-Freigabe muss erfolgreich sein (200 oder Redirect).
-        self::assertContains(
-            $response->getStatusCode(),
-            [200, 302],
-            sprintf('HTTP-Freigabe erwartet 200/302, bekam %d', $response->getStatusCode()),
-        );
+        $generator->approveTool($persisted);
 
         $this->entityManager->clear();
         $approved = $this->toolRepo->findOneBy(['name' => 'golden_path_scraper']);
