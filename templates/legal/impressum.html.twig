@@ -1,0 +1,51 @@
+{# templates/legal/impressum.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Impressum - EVIE{% endblock %}
+
+{% block body %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <div class="card">
+        <h1 class="text-2xl md:text-3xl font-bold text-content mb-2">Impressum</h1>
+        <p class="text-content-muted text-sm">Angaben gemäß § 5 TMG / § 18 MStV</p>
+    </div>
+
+    <div class="card space-y-4">
+        <div>
+            <h2 class="text-xl font-semibold text-content mb-2">Diensteanbieter</h2>
+            <p class="text-content-muted">
+                <strong class="text-content">Vision Gastro / AiCabs</strong><br>
+                Jens Smit<br>
+                [Straße und Hausnummer]<br>
+                [PLZ und Ort]
+            </p>
+        </div>
+
+        <div>
+            <h2 class="text-xl font-semibold text-content mb-2">Kontakt</h2>
+            <p class="text-content-muted">
+                E-Mail: <a href="https://jens-smit.de" class="text-primary hover:underline">jens-smit.de</a>
+            </p>
+        </div>
+
+        <div>
+            <h2 class="text-xl font-semibold text-content mb-2">Verantwortlich für den Inhalt</h2>
+            <p class="text-content-muted">Jens Smit, Anschrift wie oben.</p>
+        </div>
+
+        <div class="border-t border-border pt-4">
+            <p class="text-sm text-content-muted">
+                Dieses Impressum ist eine Vorlage und muss vor Produktivnahme mit den
+                tatsächlichen Angaben des Betreibers ergänzt werden (§ 5 TMG, § 18 MStV).
+            </p>
+        </div>
+    </div>
+
+    <div class="card">
+        <a href="{{ path('app_privacy_policy') }}" class="btn btn-ghost">
+            <i class="ph ph-shield-check"></i>
+            Zur Datenschutzerklärung
+        </a>
+    </div>
+</div>
+{% endblock %}

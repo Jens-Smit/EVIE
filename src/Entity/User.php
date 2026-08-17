@@ -45,6 +45,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?DateTimeImmutable $lastLoginAt = null;
 
+    #[ORM\Column(type: 'boolean', options: ['default' => false])]
+    private bool $onboardingComplete = false;
+
     #[ORM\OneToOne(mappedBy: 'user', targetEntity: UserProfile::class, cascade: ['persist'])]
     private ?UserProfile $profile = null;
 
@@ -189,6 +192,17 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setLastLoginAt(?DateTimeImmutable $lastLoginAt): static
     {
         $this->lastLoginAt = $lastLoginAt;
+        return $this;
+    }
+
+    public function isOnboardingComplete(): bool
+    {
+        return $this->onboardingComplete;
+    }
+
+    public function setOnboardingComplete(bool $onboardingComplete): static
+    {
+        $this->onboardingComplete = $onboardingComplete;
         return $this;
     }
 

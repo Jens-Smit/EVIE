@@ -1,0 +1,84 @@
+{# templates/legal/datenschutz.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Datenschutzerklärung - EVIE{% endblock %}
+
+{% block body %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <div class="card">
+        <h1 class="text-2xl md:text-3xl font-bold text-content mb-2">Datenschutzerklärung</h1>
+        <p class="text-content-muted text-sm">Stand: {{ 'now'|date('d.m.Y') }}</p>
+    </div>
+
+    <div class="card space-y-4">
+        <div>
+            <h2 class="text-xl font-semibold text-content mb-2">1. Verantwortlicher</h2>
+            <p class="text-content-muted">
+                Verantwortlich für die Datenverarbeitung auf dieser Plattform ist der
+                in unserem <a href="{{ path('app_imprint') }}" class="text-primary hover:underline">Impressum</a>
+                genannte Betreiber.
+            </p>
+        </div>
+
+        <div>
+            <h2 class="text-xl font-semibold text-content mb-2">2. Erhebung und Speicherung personenbezogener Daten</h2>
+            <p class="text-content-muted mb-2">Wir verarbeiten folgende personenbezogene Daten:</p>
+            <ul class="list-disc list-inside space-y-1 text-content-muted text-sm ml-4">
+                <li><strong class="text-content">Bestandsdaten:</strong> E-Mail-Adresse, Vor- und Nachname (bei Registrierung)</li>
+                <li><strong class="text-content">Onboarding-Daten:</strong> Nutzertyp, Branche, Präferenzen (im Onboarding-Flow freiwillig angegeben)</li>
+                <li><strong class="text-content">Nutzungsdaten:</strong> Agent-Dialoge, Tool-Ausführungen, Entscheidungs-Logs (Audit-Trail)</li>
+                <li><strong class="text-content">Meta-Daten:</strong> Zeitstempel, Login-Zeiten</li>
+            </ul>
+        </div>
+
+        <div>
+            <h2 class="text-xl font-semibold text-content mb-2">3. Rechtsgrundlage</h2>
+            <p class="text-content-muted">
+                Die Verarbeitung erfolgt auf Grundlage von Art. 6 Abs. 1 lit. b DSGVO
+                (Vertragserfüllung) für die Bestands- und Nutzungsdaten sowie
+                Art. 6 Abs. 1 lit. a DSGVO (Einwilligung) für die Onboarding-Daten.
+            </p>
+        </div>
+
+        <div>
+            <h2 class="text-xl font-semibold text-content mb-2">4. Verarbeitung durch Mistral AI (Auftragsverarbeiter)</h2>
+            <p class="text-content-muted">
+                Für die KI-gestützte Verarbeitung nutzen wir <strong class="text-content">Mistral AI</strong>
+                als Auftragsverarbeiter gemäß Art. 28 DSGVO. Ihre Eingaben an den
+                EVIE-Agenten werden an Mistral übermittelt, um KI-Antworten zu generieren.
+                Ein entsprechender Auftragsverarbeitungsvertrag (AVV) liegt vor.
+            </p>
+        </div>
+
+        <div>
+            <h2 class="text-xl font-semibold text-content mb-2">5. Speicherdauer</h2>
+            <p class="text-content-muted">
+                Personenbezogene Daten werden gespeichert, solange das Nutzungsverhältnis
+                besteht. Nach Beendigung werden die Daten gelöscht, es sei denn,
+                gesetzliche Aufbewahrungspflichten stehen entgegen.
+            </p>
+        </div>
+
+        <div>
+            <h2 class="text-xl font-semibold text-content mb-2">6. Ihre Rechte (DSGVO)</h2>
+            <p class="text-content-muted mb-2">Sie haben folgende Rechte:</p>
+            <ul class="list-disc list-inside space-y-1 text-content-muted text-sm ml-4">
+                <li><strong class="text-content">Art. 15:</strong> Auskunft über Ihre Daten</li>
+                <li><strong class="text-content">Art. 16:</strong> Berichtigung unrichtiger Daten</li>
+                <li><strong class="text-content">Art. 17:</strong> Löschung (Recht auf Vergessenwerden)</li>
+                <li><strong class="text-content">Art. 20:</strong> Datenübertragbarkeit</li>
+                <li><strong class="text-content">Art. 7 Abs. 3:</strong> Widerruf der Einwilligung</li>
+                <li><strong class="text-content">Art. 77:</strong> Beschwerde bei einer Aufsichtsbehörde</li>
+            </ul>
+            {% if app.user %}
+            <p class="mt-3">
+                <a href="{{ path('app_settings') }}" class="btn btn-primary">
+                    <i class="ph ph-shield-check"></i>
+                    Zu den DSGVO-Aktionen (Einstellungen)
+                </a>
+            </p>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

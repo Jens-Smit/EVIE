@@ -61,6 +61,12 @@ class LoginFormAuthenticator extends AbstractAuthenticator
             return new RedirectResponse($targetPath);
         }
 
+        // Frontend-Audit F4: Neuer Nutzer ohne abgeschlossenes Onboarding
+        // wird zum Onboarding-Flow weitergeleitet.
+        if ($user instanceof User && !$user->isOnboardingComplete()) {
+            return new RedirectResponse($this->urlGenerator->generate('app_onboarding'));
+        }
+
         return new RedirectResponse($this->urlGenerator->generate('app_home'));
     }
 

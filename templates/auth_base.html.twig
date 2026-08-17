@@ -107,9 +107,14 @@
         {% block body %}{% endblock %}
 
         <!-- Footer -->
-        <p class="text-center text-xs text-slate-500 dark:text-slate-500 mt-8">
-            &copy; {{ 'now'|date('Y') }} EVIE &middot; Vision Gastro / AiCabs
-        </p>
+        <div class="text-center text-xs text-slate-500 dark:text-slate-500 mt-8 space-y-1">
+            <p>&copy; {{ 'now'|date('Y') }} EVIE &middot; Vision Gastro / AiCabs</p>
+            <p>
+                <a href="{{ path('app_privacy_policy') }}" class="hover:text-slate-700 dark:hover:text-slate-300 underline">Datenschutz</a>
+                &middot;
+                <a href="{{ path('app_imprint') }}" class="hover:text-slate-700 dark:hover:text-slate-300 underline">Impressum</a>
+            </p>
+        </div>
     </div>
 
     {% block javascripts %}{% endblock %}

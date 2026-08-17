@@ -1,0 +1,178 @@
+{# templates/onboarding/index.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Onboarding - EVIE{% endblock %}
+
+{% block body %}
+<div class="max-w-2xl mx-auto" x-data="onboardingFlow()" x-init="init()">
+    <div class="card p-8">
+        <!-- Header -->
+        <div class="flex items-center gap-4 mb-6">
+            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center shadow-button shrink-0">
+                <i class="ph ph-brain text-white text-3xl"></i>
+            </div>
+            <div>
+                <h1 class="text-2xl md:text-3xl font-bold text-content">Willkommen bei EVIE</h1>
+                <p class="text-content-muted">Lass uns ein paar Dinge einrichten, damit EVIE optimal für dich arbeitet.</p>
+            </div>
+        </div>
+
+        <!-- Fortschrittsanzeige -->
+        <div class="flex items-center gap-2 mb-8">
+            <template x-for="i in 4" :key="i">
+                <div class="flex-1 h-1.5 rounded-full transition-colors duration-300"
+                     :class="currentStep >= i ? 'bg-primary' : 'bg-surface-elevated'"></div>
+            </template>
+        </div>
+
+        <!-- Loading State -->
+        <div x-show="loading" class="flex flex-col items-center justify-center py-12">
+            <div class="spinner mb-4"></div>
+            <p class="text-content-muted">Lade Onboarding...</p>
+        </div>
+
+        <!-- Frage-Bereich -->
+        <div x-show="!loading && !completed" class="space-y-6">
+            <div>
+                <h2 class="text-xl font-semibold text-content mb-2" x-text="currentQuestion"></h2>
+                <p x-show="currentError" class="text-danger text-sm" x-text="currentError"></p>
+            </div>
+
+            <!-- Multiple Choice -->
+            <div x-show="currentType === 'multiple_choice'" class="space-y-3">
+                <template x-for="option in currentOptions" :key="option">
+                    <button @click="submitResponse(option)"
+                            class="w-full text-left p-4 rounded-xl border border-border bg-surface-muted
+                                   hover:bg-primary-soft hover:border-primary transition-all
+                                   text-content font-medium">
+                        <span x-text="option"></span>
+                    </button>
+                </template>
+            </div>
+
+            <!-- Text Input -->
+            <div x-show="currentType === 'text'" class="space-y-3">
+                <textarea x-model="textInput"
+                          class="w-full p-3 border border-border rounded-xl bg-surface-muted text-content
+                                 focus:ring-2 focus:ring-primary focus:border-transparent"
+                          rows="3"
+                          placeholder="Deine Antwort..."></textarea>
+                <button @click="submitResponse(textInput)"
+                        class="btn btn-primary"
+                        :disabled="!textInput.trim()">
+                    <i class="ph ph-arrow-right"></i>
+                    Weiter
+                </button>
+            </div>
+
+            <!-- Skip / Später -->
+            <div class="pt-4 border-t border-border">
+                <button @click="skipOnboarding()"
+                        class="text-sm text-content-muted hover:text-content">
+                    Überspringen und später durchführen
+                </button>
+            </div>
+        </div>
+
+        <!-- Completion State -->
+        <div x-show="completed" class="flex flex-col items-center justify-center py-12 space-y-4">
+            <div class="w-16 h-16 rounded-full bg-success-soft flex items-center justify-center">
+                <i class="ph ph-check-circle text-success text-4xl"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-content">Onboarding abgeschlossen!</h2>
+            <p class="text-content-muted text-center">Danke für deine Angaben. Du kannst jetzt EVIE nutzen.</p>
+            <a href="{{ path('app_dashboard') }}" class="btn btn-primary">
+                <i class="ph ph-house"></i>
+                Zum Dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+{% block javascripts %}
+<script>
+function onboardingFlow() {
+    return {
+        loading: true,
+        completed: false,
+        currentStep: 0,
+        currentQuestion: '',
+        currentType: 'multiple_choice',
+        currentOptions: [],
+        currentError: '',
+        textInput: '',
+
+        async init() {
+            try {
+                const response = await fetch('{{ path('app_onboarding_start') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({})
+                });
+                const data = await response.json();
+                this.updateStep(data);
+            } catch (e) {
+                this.currentError = 'Onboarding konnte nicht gestartet werden.';
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async submitResponse(response) {
+            this.loading = true;
+            this.currentError = '';
+            try {
+                const res = await fetch('{{ path('app_onboarding_next') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: JSON.stringify({ response: response })
+                });
+                const data = await res.json();
+                this.textInput = '';
+                this.updateStep(data);
+            } catch (e) {
+                this.currentError = 'Antwort konnte nicht gesendet werden.';
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        async skipOnboarding() {
+            if (!confirm('Möchtest du das Onboarding wirklich überspringen? Du kannst es später in den Einstellungen nachholen.')) {
+                return;
+            }
+            try {
+                await fetch('{{ path('app_onboarding_complete') }}', {
+                    method: 'POST',
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                window.location.href = '{{ path("app_dashboard") }}';
+            } catch (e) {
+                this.currentError = 'Überspringen fehlgeschlagen.';
+            }
+        },
+
+        updateStep(data) {
+            if (data.status === 'completed') {
+                this.completed = true;
+                return;
+            }
+            this.currentStep = (data.current_step ?? 0) + 1;
+            this.currentQuestion = data.question ?? 'Wie können wir dir helfen?';
+            this.currentType = data.type ?? 'multiple_choice';
+            this.currentOptions = data.options ?? [];
+            if (data.fallback) {
+                // Fallback-Modus: nur Legacy-Schritte durchlaufen
+            }
+        }
+    }
+}
+</script>
+{% endblock %}
+{% endblock %}
