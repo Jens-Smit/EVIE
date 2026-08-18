@@ -500,6 +500,7 @@ class OnboardingFlowManager
 
         $step = $this->getLegacySteps()[$this->currentStep];
         return [
+            'status' => 'in_progress',
             'step_id' => $step['id'],
             'question' => $step['question'],
             'type' => $step['type'] ?? 'multiple_choice',
