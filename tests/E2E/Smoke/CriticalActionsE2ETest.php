@@ -59,8 +59,9 @@ final class CriticalActionsE2ETest extends WebTestCase
         ], json_encode(['message' => 'Hallo'], JSON_THROW_ON_ERROR));
 
         $status = $this->client->getResponse()->getStatusCode();
-        // Ohne Auth -> Redirect (302) zu Login, 401 oder 403. Niemals 200.
-        self::assertContains($status, [302, 401, 403], sprintf('Ohne Auth erwartet 302/401/403, bekam %d', $status));
+        // Ohne Auth -> Redirect (302) zu Login, 401, 403 oder 429 (Rate-Limit).
+        // Niemals 200 (keine unautorisierte Tool-Ausfuehrung).
+        self::assertContains($status, [302, 401, 403, 429], sprintf('Ohne Auth erwartet 302/401/403/429, bekam %d', $status));
     }
 
     public function testAgentDialogRejectsTenantSpoofingForAnonymousUser(): void
@@ -75,7 +76,7 @@ final class CriticalActionsE2ETest extends WebTestCase
         ], JSON_THROW_ON_ERROR));
 
         $status = $this->client->getResponse()->getStatusCode();
-        self::assertContains($status, [302, 401, 403]);
+        self::assertContains($status, [302, 401, 403, 429]);
     }
 
     public function testToolApprovalEndpointProtectedForAnonymousUser(): void

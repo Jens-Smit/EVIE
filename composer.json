@@ -1,102 +1,105 @@
 {
-  "name": "jens-smit/evie",
-  "description": "Self-evolving AI Agent Platform",
-  "type": "project",
-  "license": "MIT",
-  "require": {
-    "php": "^8.2",
-    "ext-json": "*",
-    "ext-pdo_pgsql": "*",
-    "doctrine/dbal": "^3.7",
-    "doctrine/doctrine-bundle": "^2.10",
-    "doctrine/doctrine-migrations-bundle": "^3.3",
-    "doctrine/orm": "^3.6",
-    "doctrine/persistence": "^3.1",
-    "lcobucci/clock": "^2.1",
-    "lcobucci/jwt": "^4.3",
-    "pgvector/pgvector": "^0.1",
-    "symfony/ai-agent": "^0.12",
-    "symfony/ai-bundle": "^0.12",
-    "symfony/ai-cache-message-store": "^0.12",
-    "symfony/ai-chat": "^0.12",
-    "symfony/ai-firecrawl-tool": "^0.12",
-    "symfony/ai-gemini-platform": "^0.12",
-    "symfony/ai-mistral-platform": "^0.12",
-    "symfony/ai-postgres-store": "^0.12",
-    "symfony/ai-tavily-tool": "^0.12",
-    "symfony/asset": "*",
-    "symfony/console": "^7.4",
-    "symfony/dotenv": "^7.4",
-    "symfony/form": "^7.4",
-    "symfony/framework-bundle": "^7.4",
-    "symfony/http-client": "^7.4",
-    "symfony/mailer": "^7.4",
-    "symfony/mercure": "^0.8 || ^0.9",
-    "symfony/mercure-bundle": "^0.5.0",
-    "symfony/messenger": "^7.4",
-    "symfony/monolog-bundle": "^4.0",
-    "symfony/notifier": "^7.4",
-    "symfony/rate-limiter": "^7.4",
-    "symfony/runtime": "^7.4",
-    "symfony/security-bundle": "^7.4",
-    "symfony/translation": "^7.4",
-    "symfony/twig-bundle": "^7.4",
-    "symfony/validator": "^7.4",
-    "symfony/web-link": "^7.4",
-    "symfony/yaml": "^7.4"
-  },
-  "require-dev": {
-    "phpstan/phpstan": "^1.10",
-    "phpunit/phpunit": "^10.5",
-    "symfony/browser-kit": "^7.4",
-    "symfony/css-selector": "^7.4",
-    "symfony/debug-bundle": "^7.4",
-    "symfony/dom-crawler": "^7.4",
-    "symfony/maker-bundle": "^1.50",
-    "symfony/phpunit-bridge": "^7.4",
-    "symfony/web-profiler-bundle": "^7.4"
-  },
-  "config": {
-    "optimize-autoloader": true,
-    "preferred-install": {
-      "*": "dist",
-      "symfony/*": "dist"
+    "name": "jens-smit/evie",
+    "description": "Self-evolving AI Agent Platform",
+    "type": "project",
+    "license": "MIT",
+    "require": {
+        "php": "^8.2",
+        "ext-json": "*",
+        "ext-pdo_pgsql": "*",
+        "doctrine/dbal": "^3.7",
+        "doctrine/doctrine-bundle": "^2.10",
+        "doctrine/doctrine-migrations-bundle": "^3.3",
+        "doctrine/orm": "^3.6",
+        "doctrine/persistence": "^3.1",
+        "lcobucci/clock": "^2.1",
+        "lcobucci/jwt": "^4.3",
+        "pgvector/pgvector": "^0.1",
+        "symfony/ai-agent": "^0.12",
+        "symfony/ai-bundle": "^0.12",
+        "symfony/ai-cache-message-store": "^0.12",
+        "symfony/ai-chat": "^0.12",
+        "symfony/ai-firecrawl-tool": "^0.12",
+        "symfony/ai-gemini-platform": "^0.12",
+        "symfony/ai-mistral-platform": "^0.12",
+        "symfony/ai-postgres-store": "^0.12",
+        "symfony/ai-tavily-tool": "^0.12",
+        "symfony/asset": "^7.4",
+        "symfony/console": "^7.4",
+        "symfony/dotenv": "^7.4",
+        "symfony/form": "^7.4",
+        "symfony/framework-bundle": "^7.4",
+        "symfony/http-client": "^7.4",
+        "symfony/mailer": "^7.4",
+        "symfony/mercure": "^0.8 || ^0.9",
+        "symfony/mercure-bundle": "^0.5.0",
+        "symfony/messenger": "^7.4",
+        "symfony/monolog-bundle": "^4.0",
+        "symfony/notifier": "^7.4",
+        "symfony/rate-limiter": "^7.4",
+        "symfony/runtime": "^7.4",
+        "symfony/security-bundle": "^7.4",
+        "symfony/translation": "^7.4",
+        "symfony/twig-bundle": "^7.4",
+        "symfony/validator": "^7.4",
+        "symfony/web-link": "^7.4",
+        "symfony/yaml": "^7.4"
     },
-    "sort-packages": true,
-    "allow-plugins": {
-      "symfony/flex": true,
-      "symfony/runtime": true,
-      "php-http/discovery": true
-    }
-  },
-  "autoload": {
-    "psr-4": {
-      "App\\": "src/"
-    }
-  },
-  "autoload-dev": {
-    "psr-4": {
-      "App\\Tests\\": "tests/"
-    }
-  },
-  "scripts": {
-    "post-install-cmd": [
-      "@auto-scripts"
-    ],
-    "post-update-cmd": [
-      "@auto-scripts"
-    ],
-    "auto-scripts": {
-      "cache:clear": "symfony-cmd",
-      "assets:install %PUBLIC_DIR%": "symfony-cmd"
+    "require-dev": {
+        "phpstan/phpstan": "^1.10",
+        "phpunit/phpunit": "^10.5",
+        "symfony/browser-kit": "^7.4",
+        "symfony/css-selector": "^7.4",
+        "symfony/debug-bundle": "^7.4",
+        "symfony/dom-crawler": "^7.4",
+        "symfony/maker-bundle": "^1.50",
+        "symfony/phpunit-bridge": "^7.4",
+        "symfony/web-profiler-bundle": "^7.4"
     },
-    "auto-scripts-config": {
-      "cache:clear": [
-        "@on-change"
-      ],
-      "assets:install %PUBLIC_DIR%": [
-        "@on-change"
-      ]
+    "config": {
+        "optimize-autoloader": true,
+        "preferred-install": {
+            "*": "dist",
+            "symfony/*": "dist"
+        },
+        "sort-packages": true,
+        "allow-plugins": {
+            "symfony/flex": true,
+            "symfony/runtime": true,
+            "php-http/discovery": true
+        },
+        "platform": {
+            "php": "8.2"
+        }
+    },
+    "autoload": {
+        "psr-4": {
+            "App\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "App\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "post-install-cmd": [
+            "@auto-scripts"
+        ],
+        "post-update-cmd": [
+            "@auto-scripts"
+        ],
+        "auto-scripts": {
+            "cache:clear": "symfony-cmd",
+            "assets:install %PUBLIC_DIR%": "symfony-cmd"
+        },
+        "auto-scripts-config": {
+            "cache:clear": [
+                "@on-change"
+            ],
+            "assets:install %PUBLIC_DIR%": [
+                "@on-change"
+            ]
+        }
     }
-  }
 }
