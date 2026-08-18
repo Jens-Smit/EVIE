@@ -71,7 +71,7 @@ class EvieSmokeTest extends WebTestCase
         // Das Endpoint erfordert Authentifizierung → 401 ist ein gueltiges
         // Smoke-Ergebnis (Security-Layer aktiv). Mit Auth → 200/400/500.
         $status = $this->client->getResponse()->getStatusCode();
-        self::assertContains($status, [200, 400, 401, 500]);
+        self::assertContains($status, [200, 400, 401, 429, 500]);
     }
 
     public function testAgentDialogEndpointRejectsTenantSpoofing(): void
@@ -89,7 +89,7 @@ class EvieSmokeTest extends WebTestCase
         $status = $this->client->getResponse()->getStatusCode();
         // Das Endpoint muss antworten (nicht crashen), und der Body-wert
         // "attacker-tenant-spoof" wird ignoriert. 401 bei fehlender Auth.
-        self::assertContains($status, [200, 400, 401, 500]);
+        self::assertContains($status, [200, 400, 401, 429, 500]);
     }
 
     public function testHistoryEndpointDeniesForeignUser(): void

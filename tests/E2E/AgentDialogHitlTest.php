@@ -103,8 +103,11 @@ class AgentDialogHitlTest extends WebTestCase
 
     public function testAnonymousPendingToolsCountReturnsUnauthorized(): void
     {
+        // API-Endpunkt liefert 401 JSON (kein Login-Redirect fuer API-Clients).
         $this->client->request('GET', '/api/pending-tools/count');
-        $this->assertResponseRedirects('/login');
+        $response = $this->client->getResponse();
+        $this->assertSame(401, $response->getStatusCode(), 'API-Endpunkt ohne Auth sollte 401 liefern.');
+        $this->assertSame('application/json', $response->headers->get('Content-Type'));
     }
 
     // ------------------------------------------------------------------
