@@ -24,6 +24,7 @@
         "symfony/ai-mistral-platform": "^0.12",
         "symfony/ai-postgres-store": "^0.12",
         "symfony/ai-tavily-tool": "^0.12",
+        "symfony/asset": "^7.4",
         "symfony/console": "^7.4",
         "symfony/dotenv": "^7.4",
         "symfony/form": "^7.4",
@@ -42,8 +43,7 @@
         "symfony/twig-bundle": "^7.4",
         "symfony/validator": "^7.4",
         "symfony/web-link": "^7.4",
-        "symfony/yaml": "^7.4",
-        "symfony/asset": "^7.4"
+        "symfony/yaml": "^7.4"
     },
     "require-dev": {
         "phpstan/phpstan": "^1.10",

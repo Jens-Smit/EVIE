@@ -67,9 +67,9 @@ class StreamingSession
     #[ORM\Column(type: 'string', length: 255, nullable: true)]
     private ?string $correlationId = null;
 
-    #[ORM\ManyToOne(targetEntity: UserProfile::class)]
+    #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: true)]
-    private ?UserProfile $user = null;
+    private ?User $user = null;
 
     public function __construct()
     {
@@ -248,7 +248,11 @@ class StreamingSession
         return $this->updatedAt;
     }
 
-  
+    public function setUpdatedAt(?\DateTimeImmutable $updatedAt): self
+    {
+        $this->updatedAt = $updatedAt;
+        return $this;
+    }
 
     public function getCorrelationId(): ?string
     {
@@ -261,12 +265,12 @@ class StreamingSession
         return $this;
     }
 
-    public function getUser(): ?UserProfile
+    public function getUser(): ?User
     {
         return $this->user;
     }
 
-    public function setUser(?UserProfile $user): self
+    public function setUser(?User $user): self
     {
         $this->user = $user;
         return $this;

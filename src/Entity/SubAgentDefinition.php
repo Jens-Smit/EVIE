@@ -38,8 +38,8 @@ class SubAgentDefinition
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $updatedAt = null;
 
-    #[ORM\ManyToOne(targetEntity: UserProfile::class)]
-    private ?UserProfile $createdBy = null;
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    private ?User $createdBy = null;
 
     public function __construct()
     {
@@ -129,13 +129,12 @@ class SubAgentDefinition
         return $this;
     }
 
-    public function getCreatedBy(): ?UserProfile
+    public function getCreatedBy(): ?User
     {
         return $this->createdBy;
     }
-    
 
-    public function setCreatedBy(?UserProfile $createdBy): self
+    public function setCreatedBy(?User $createdBy): self
     {
         $this->createdBy = $createdBy;
         return $this;
