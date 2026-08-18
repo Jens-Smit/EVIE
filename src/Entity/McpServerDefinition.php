@@ -48,9 +48,9 @@ class McpServerDefinition
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?\DateTimeImmutable $updatedAt = null;
 
-    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\ManyToOne(targetEntity: UserProfile::class)]
     #[ORM\JoinColumn(nullable: true)]
-    private ?User $createdBy = null;
+    private ?UserProfile $createdBy = null;
 
     public function __construct()
     {
@@ -164,12 +164,13 @@ class McpServerDefinition
         return $this;
     }
 
-    public function getCreatedBy(): ?User
+    public function getCreatedBy(): ?UserProfile
     {
         return $this->createdBy;
     }
+   
 
-    public function setCreatedBy(?User $createdBy): self
+    public function setCreatedBy(?UserProfile $createdBy): self
     {
         $this->createdBy = $createdBy;
         return $this;

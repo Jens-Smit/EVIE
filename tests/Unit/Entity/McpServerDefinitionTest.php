@@ -4,7 +4,7 @@
 namespace App\Tests\Unit\Entity;
 
 use App\Entity\McpServerDefinition;
-use App\Entity\User;
+use App\Entity\UserProfile;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
@@ -69,7 +69,7 @@ class McpServerDefinitionTest extends TestCase
         $this->assertEquals($updatedAt, $definition->getUpdatedAt());
 
         // Test createdBy
-        $user = new User();
+        $user = new UserProfile();
         $definition->setCreatedBy($user);
         $this->assertSame($user, $definition->getCreatedBy());
     }

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Mercure Hub Configuration for EVIE Streaming
 # Mercure is optional (used for real-time streaming updates).
 # Reference: docs/PHASE2_MEASURE5_CHANGES.md - StreamingPublisher (Mercure Integration)
@@ -9,6 +10,8 @@ parameters:
     env(MERCURE_PUBLIC_URL): 'http://localhost:3000/.well-known/mercure'
     env(MERCURE_JWT_SECRET): 'change_me'
 
+=======
+>>>>>>> 320dc8e (create one new migration)
 mercure:
     hubs:
         default:
@@ -16,5 +19,8 @@ mercure:
             public_url: '%env(MERCURE_PUBLIC_URL)%'
             jwt:
                 secret: '%env(MERCURE_JWT_SECRET)%'
+<<<<<<< HEAD
                 publish: ['*']
                 subscribe: ['*']
+=======
+>>>>>>> 320dc8e (create one new migration)

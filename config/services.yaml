@@ -26,6 +26,49 @@ services:
         arguments:
             $apiKey: '%env(MISTRAL_API_KEY)%'
 
+<<<<<<< HEAD
+=======
+    # Tool Definition Generator - FIXED: toolGeneratorAgent wird als Service injiziert
+    App\AI\Skills\ToolDefinitionGenerator:
+        arguments:
+            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
+            $toolCategoryRepo: '@App\Repository\ToolCategoryRepository'
+            $platform: '@ai.platform.mistral'
+            $logger: '@logger'
+        calls:
+            - [setToolGeneratorAgent, ['@ai.agent.tool_generator']]  # ✅ Setter Injection
+
+    # Sub-Agent Factory - UPDATED: DynamicSkillRegistry wird über Setter Injection injiziert
+    App\AI\Agent\SubAgentFactory:
+        arguments:
+            $platform: '@ai.platform.mistral'
+            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
+            $logger: '@logger'
+            $container: '@service_container'
+            $subAgentDefinitionRepo: '@App\Repository\SubAgentDefinitionRepository'
+            $params: '@parameter_bag'
+        calls:
+            - [setDynamicSkillRegistry, ['@App\AI\Skills\DynamicSkillRegistry']]
+
+    # Sub-Agent Dispatcher - UPDATED mit SubAgentFactory und SubAgentDefinitionRepository
+    App\AI\Agent\SubAgentDispatcher:
+        arguments:
+            $platform: '@ai.platform.mistral'
+            $logger: '@logger'
+            $jsonResponseEnforcer: '@App\AI\Response\JsonResponseEnforcer'
+            $faultTolerantValidator: '@App\AI\Response\FaultTolerantValidator'
+            $toolGenerator: '@App\AI\Skills\ToolDefinitionGenerator'
+            $toolDefinitionRepo: '@App\Repository\ToolDefinitionRepository'
+            $subAgentDefinitionRepo: '@App\Repository\SubAgentDefinitionRepository'
+            $dispatcher: '@event_dispatcher'
+            $urlGenerator: '@router'
+            $subAgentFactory: '@App\AI\Agent\SubAgentFactory'
+            $firecrawl: '@Symfony\AI\Agent\Bridge\Firecrawl\Firecrawl'
+            $tavily: '@Symfony\AI\Agent\Bridge\Tavily\Tavily'
+        tags: ['container.hot_path']
+
+    # ========================================================================
+>>>>>>> 320dc8e (create one new migration)
     # Security Services
     App\Security\UserProvider: ~
     App\Security\UserContext: ~

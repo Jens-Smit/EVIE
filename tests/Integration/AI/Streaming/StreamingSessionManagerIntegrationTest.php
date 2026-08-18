@@ -5,7 +5,7 @@ namespace App\Tests\Integration\AI\Streaming;
 
 use App\AI\Streaming\StreamingSessionManager;
 use App\Entity\StreamingSession;
-use App\Entity\User;
+use App\Entity\UserProfile;
 use App\Repository\StreamingSessionRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Test\KernelTestCase;

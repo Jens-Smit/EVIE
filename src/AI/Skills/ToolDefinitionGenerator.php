@@ -25,11 +25,15 @@ class ToolDefinitionGenerator
         private ToolDefinitionRepository $toolDefinitionRepo,
         private ToolCategoryRepository $toolCategoryRepo,
         private PlatformInterface $platform,
-        private AgentInterface $toolGeneratorAgent,
-        private LoggerInterface $logger
+        private LoggerInterface $logger,
+        private ?AgentInterface $toolGeneratorAgent = null
     ) {
     }
-
+    // Setter für Lazy Injection
+    public function setToolGeneratorAgent(AgentInterface $agent): void
+    {
+        $this->toolGeneratorAgent = $agent;
+    }
     /**
      * Generiert eine neue Tool-Definition basierend auf der User-Anfrage.
      * NUTZT den optimierten tool_generator-Agent mit File-Based Prompt aus Phase 3.

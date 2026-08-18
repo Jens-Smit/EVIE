@@ -4,7 +4,7 @@
 namespace App\Tests\Unit\Entity;
 
 use App\Entity\StreamingSession;
-use App\Entity\User;
+use App\Entity\UserProfile;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\Uid\Uuid;
 
