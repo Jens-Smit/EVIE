@@ -7,7 +7,7 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: ${{ github.repository }}  # lowercase via steps.repo-lower
 
 jobs:
   build-and-push:
@@ -29,11 +29,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Lowercase repository name
+        id: repo-lower
+        run: echo "name=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
       - name: Extract metadata
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ steps.repo-lower.outputs.name }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,format=short
@@ -65,6 +69,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Lowercase repository name
+        id: repo-lower
+        run: echo "name=$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
       - name: Run image smoke test
         env:
           APP_SECRET: test-secret-for-evie-1234567890abcdef
@@ -72,7 +80,7 @@ jobs:
           MISTRAL_API_KEY: test
           GEMINI_API_KEY: test
         run: |
-          IMAGE="ghcr.io/${{ github.repository }}:latest"
+          IMAGE="ghcr.io/${{ steps.repo-lower.outputs.name }}:latest"
           echo "Pulling $IMAGE"
           docker pull "$IMAGE"
 
