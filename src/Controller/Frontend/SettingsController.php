@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Controller\Frontend;
 
 use App\Entity\User;
+use App\Service\DataPrivacyService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -14,16 +15,17 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 use Symfony\Component\Routing\Annotation\Route;
 
 /**
- * SettingsController – Einstellungsseite für den Nutzer.
+ * SettingsController - Einstellungsseite fuer den Nutzer.
  *
  * Frontend-Audit F3: Der "Einstellungen"-Link in der Sidebar war href="#".
- * Diese Seite bündelt: Profil-Bearbeitung, Theme-Präferenz, und Verweis auf
- * DSGVO-Aktionen (export/löschen – implementiert in Phase 4).
+ * Diese Seite buendelt: Profil-Bearbeitung, Theme-Praeferenz, und Verweis auf
+ * DSGVO-Aktionen (export/loeschen - implementiert in Phase 4).
  */
 class SettingsController extends AbstractController
 {
     public function __construct(
         private readonly EntityManagerInterface $entityManager,
+        private readonly DataPrivacyService $dataPrivacyService,
     ) {
     }
 
@@ -85,6 +87,9 @@ class SettingsController extends AbstractController
     /**
      * DSGVO Art. 20 - Recht auf Datenuebertragbarkeit.
      * Exportiert alle personenbezogenen Daten als JSON-Download.
+     *
+     * Nutzt DataPrivacyService::exportUserData() fuer einen vollstaendigen Export
+     * (Fix fuer P1-2 aus Audit Zyklus 6: vereinheitlichte DSGVO-Implementierung).
      */
     #[Route('/settings/export-data', name: 'app_settings_export_data', methods: ['GET'])]
     public function exportData(): Response
@@ -94,24 +99,7 @@ class SettingsController extends AbstractController
             throw $this->createAccessDeniedException('Authentifizierung erforderlich.');
         }
 
-        $profile = $user->getProfile();
-        $data = [
-            'export_date' => (new \DateTimeImmutable())->format('c'),
-            'user' => [
-                'email' => $user->getEmail(),
-                'first_name' => $user->getFirstName(),
-                'last_name' => $user->getLastName(),
-                'onboarding_complete' => $user->isOnboardingComplete(),
-                'created_at' => $user->getCreatedAt()?->format('c'),
-                'last_login_at' => $user->getLastLoginAt()?->format('c'),
-            ],
-            'profile' => $profile ? [
-                'user_identifier' => $profile->getUserIdentifier(),
-                'user_type' => $profile->getUserType(),
-                'onboarding_data' => $profile->getOnboardingData(),
-            ] : null,
-            'legal_notice' => 'Dieser Export wurde gemäß Art. 20 DSGVO (Recht auf Datenübertragbarkeit) erstellt.',
-        ];
+        $data = $this->dataPrivacyService->exportUserData($user);
 
         $json = json_encode($data, JSON_PRETTY_PRINT | JSON_UNESCAPED_UNICODE);
 
@@ -125,6 +113,10 @@ class SettingsController extends AbstractController
     /**
      * DSGVO Art. 17 - Recht auf Loeschung (Recht auf Vergessenwerden).
      * Loescht den Account und alle verknuepften Daten.
+     *
+     * Nutzt DataPrivacyService::deleteUserData() um alle verknuepften Entitaeten
+     * (SubAgent, AgentHistory, Document, DecisionLog, Embedding, AuditLog) korrekt
+     * zu loeschen und Fremdschlüssel-Verletzungen zu vermeiden (Fix fuer P0-1 aus Audit Zyklus 6).
      */
     #[Route('/settings/delete-account', name: 'app_settings_delete_account', methods: ['POST'])]
     public function deleteAccount(Request $request): Response
@@ -137,30 +129,28 @@ class SettingsController extends AbstractController
         // CSRF-Schutz fuer kritische Aktion.
         $submittedToken = $request->request->get('_token');
         if (!$this->isCsrfTokenValid('delete-account', $submittedToken)) {
-            $this->addFlash('error', 'Ungültiges Sicherheitstoken. Aktion abgebrochen.');
+            $this->addFlash('error', 'Ungueltiges Sicherheitstoken. Aktion abgebrochen.');
             return $this->redirectToRoute('app_settings');
         }
 
         // Bestaetigungs-Phrase pruefen (zusaetzliche Sicherheit).
         $confirmation = $request->request->get('confirmation', '');
         if ($confirmation !== 'LOESCHEN') {
-            $this->addFlash('error', 'Bitte geben Sie zur Bestätigung "LOESCHEN" ein.');
+            $this->addFlash('error', 'Bitte geben Sie zur Bestaetigung "LOESCHEN" ein.');
             return $this->redirectToRoute('app_settings');
         }
 
-        // Profile loeschen (cascade), dann User.
-        $profile = $user->getProfile();
-        if ($profile) {
-            $this->entityManager->remove($profile);
-        }
-        $this->entityManager->remove($user);
-        $this->entityManager->flush();
+        // DataPrivacyService nutzt die korrekte Loeschreihenfolge und loescht
+        // alle verknuepften Entitaeten (SubAgent, AgentHistory, Document, DecisionLog,
+        // Embedding, AuditLog) vor dem UserProfile, um Fremdschlüssel-Verletzungen
+        // zu vermeiden (Fix fuer P0-1 aus Audit Zyklus 6).
+        $this->dataPrivacyService->deleteUserData($user);
 
         // Session loeschen und ausloggen.
         $this->container->get('security.token_storage')->setToken(null);
         $request->getSession()->invalidate();
 
-        $this->addFlash('success', 'Ihr Account wurde gelöscht. Wir bedauern Ihren Weggang.');
+        $this->addFlash('success', 'Ihr Account wurde geloescht. Wir bedauern Ihren Weggang.');
 
         return $this->redirectToRoute('app_home');
     }

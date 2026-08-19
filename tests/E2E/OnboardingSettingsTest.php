@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\E2E;
 
 use App\Entity\User;
+use App\Entity\UserProfile;
 use Doctrine\ORM\EntityManagerInterface;
 use Doctrine\ORM\Tools\SchemaTool;
 use Symfony\Bundle\FrameworkBundle\KernelBrowser;
@@ -22,6 +23,7 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
  *  - Einstellungen-Seite /settings ist erreichbar (vorher href="#")
  *  - Profil-Update funktioniert
  *  - Onboarding-Reset funktioniert
+ *  - Account-Loeschung (P0-1 aus Audit Zyklus 6: Fix fuer Fremdschlüssel-Verletzungen)
  */
 class OnboardingSettingsTest extends WebTestCase
 {
@@ -253,7 +255,7 @@ class OnboardingSettingsTest extends WebTestCase
 
         $this->assertResponseRedirects('/settings');
         $this->client->followRedirect();
-        $this->assertSelectorTextContains('', 'Ungültiges Sicherheitstoken');
+        $this->assertSelectorTextContains('', 'Ungueltiges Sicherheitstoken');
     }
 
     public function testDeleteAccountSucceedsWithConfirmation(): void
@@ -271,20 +273,65 @@ class OnboardingSettingsTest extends WebTestCase
         // Nach Loeschung -> Redirect (Home oder Login)
         $this->assertResponseRedirects();
 
-        // User sollte geloescht sein. Neuen Entity Manager holen, da die
-        // Session invalidiert wurde und der alte EM ggf. closed ist.
+        // User sollte deaktiviert sein (nicht hart geloescht, um Audit-Trail zu erhalten).
+        // Fix fuer P0-1 aus Audit Zyklus 6: DataPrivacyService::deleteUserData()
+        // deaktiviert den User und loescht alle personenbezogenen Daten.
         $container = static::getContainer();
         $em = $container->get(EntityManagerInterface::class);
         $deletedUser = $em->getRepository(User::class)->find($userId);
-        $this->assertNull($deletedUser, 'User sollte nach Loeschung nicht mehr existieren.');
+        $this->assertNotNull($deletedUser, 'User sollte nach Loeschung noch existieren (deaktiviert).');
+        $this->assertFalse($deletedUser->isActive(), 'User sollte deaktiviert sein.');
+    }
 
+    /**
+     * Test fuer P0-1 aus Audit Zyklus 6: Account-Loeschung mit echten Daten.
+     * 
+     * Dieser Test reproduziert den Bug, bei dem die Loeschung fehlschlaegt,
+     * wenn ein Nutzer verknuepfte Daten hat (UserProfile). Nach dem Fix sollte
+     * die Loeschung erfolgreich sein, da DataPrivacyService::deleteUserData()
+     * alle verknuepften Entitaeten korrekt loescht.
+     */
+    public function testDeleteAccountSucceedsWithRealisticUserData(): void
+    {
+        $user = $this->createUser('deletewithdata@beispiel.de', 'DeleteDataPass123');
+        $userId = $user->getId();
+        
+        // UserProfile erstellen (realistischer Fall: Nutzer hat ein Profil)
+        $profile = new UserProfile();
+        $profile->setUser($user);
+        $profile->setUserIdentifier('test_user_' . $userId);
+        $profile->setEmail('deletewithdata@beispiel.de');
+        $this->entityManager->persist($profile);
+        $this->entityManager->flush();
+
+        $this->login('deletewithdata@beispiel.de', 'DeleteDataPass123');
+
+        $csrfToken = $this->generateCsrfToken('delete-account');
+        $this->client->request('POST', '/settings/delete-account', [
+            'confirmation' => 'LOESCHEN',
+            '_token' => $csrfToken,
+        ]);
+
+        // Nach Loeschung -> Redirect (Home oder Login)
+        $this->assertResponseRedirects();
+
+        // User sollte deaktiviert sein
+        $container = static::getContainer();
+        $em = $container->get(EntityManagerInterface::class);
+        $deletedUser = $em->getRepository(User::class)->find($userId);
+        $this->assertNotNull($deletedUser, 'User sollte nach Loeschung noch existieren (deaktiviert).');
+        $this->assertFalse($deletedUser->isActive(), 'User sollte deaktiviert sein.');
+        
+        // UserProfile sollte geloescht sein
+        $deletedProfile = $em->getRepository(UserProfile::class)->findOneBy(['user' => $deletedUser]);
+        $this->assertNull($deletedProfile, 'UserProfile sollte geloescht sein.');
     }
 
     public function testPrivacyPolicyIsPubliclyAccessible(): void
     {
         $this->client->request('GET', '/datenschutz');
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorTextContains('', 'Datenschutzerklärung');
+        $this->assertSelectorTextContains('', 'Datenschutzerklaerung');
         $this->assertSelectorTextContains('', 'DSGVO');
         $this->assertSelectorTextContains('', 'Mistral AI');
     }
@@ -318,6 +365,11 @@ class OnboardingSettingsTest extends WebTestCase
         $conn->executeStatement('DELETE FROM reset_password_request');
         $conn->executeStatement('DELETE FROM tool_definitions');
         $conn->executeStatement('DELETE FROM ai_sub_agent_definitions');
+        $conn->executeStatement('DELETE FROM sub_agent');
+        $conn->executeStatement('DELETE FROM agent_history');
+        $conn->executeStatement('DELETE FROM document');
+        $conn->executeStatement('DELETE FROM decision_log');
+        $conn->executeStatement('DELETE FROM user_profile');
         $conn->executeStatement('DELETE FROM users');
         $this->entityManager->clear();
     }
@@ -340,7 +392,7 @@ class OnboardingSettingsTest extends WebTestCase
     {
         $user = $this->createUser($email, $plainPassword);
         $this->login($email, $plainPassword);
-        // Onboarding-Redirect überspringen, indem wir es direkt als complete markieren.
+        // Onboarding-Redirect ueberspringen, indem wir es direkt als complete markieren.
         $user->setOnboardingComplete(true);
         $this->entityManager->flush();
         return $user;

@@ -82,7 +82,7 @@
                       border w-full flex items-center gap-3 px-4 py-3 rounded-xl
                       transition-all active:scale-95 font-medium">
                 <i class="ph ph-wrench text-xl"></i>
-                <span>Fähigkeiten</span>
+                <span>F&auml;higkeiten</span>
             </a>
 
             <a href="{{ path('frontend_agent_history') }}"
@@ -91,6 +91,23 @@
                       transition-all active:scale-95 font-medium">
                 <i class="ph ph-clock-counter-clockwise text-xl"></i>
                 <span>Verlauf</span>
+            </a>
+
+            {# P1-1: Decision-Log und Briefing im Frontend verlinken (Audit Zyklus 6) #}
+            <a href="{{ path('app_decisions') }}"
+               class="nav-btn {% if app.request.attributes.get('_route') == 'app_decisions' %}active{% else %}inactive{% endif %}
+                      border w-full flex items-center gap-3 px-4 py-3 rounded-xl
+                      transition-all active:scale-95 font-medium">
+                <i class="ph ph-check-circle text-xl"></i>
+                <span>Entscheidungen</span>
+            </a>
+
+            <a href="{{ path('app_briefing') }}"
+               class="nav-btn {% if app.request.attributes.get('_route') == 'app_briefing' %}active{% else %}inactive{% endif %}
+                      border w-full flex items-center gap-3 px-4 py-3 rounded-xl
+                      transition-all active:scale-95 font-medium">
+                <i class="ph ph-chart-bar text-xl"></i>
+                <span>Briefing</span>
             </a>
         </nav>
     </div>
