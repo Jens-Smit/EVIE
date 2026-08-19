@@ -1,0 +1,79 @@
+{# templates/frontend/settings/_sidebar.html.twig #}
+
+<nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block bg-light sidebar collapse">
+    <div class="position-sticky pt-3">
+        <ul class="nav flex-column">
+            <li class="nav-item">
+                <a class="nav-link {% if app.request.get('_route') starts with 'app_settings' %}active{% endif %}" 
+                   href="{{ path('app_settings') }}">
+                    <i class="fas fa-cog me-2"></i> Allgemeine Einstellungen
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if app.request.get('_route') starts with 'app_llm' %}active{% endif %}" 
+                   href="{{ path('app_llm_settings') }}">
+                    <i class="fas fa-brain me-2"></i> LLM-Einstellungen
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if app.request.get('_route') starts with 'app_user_secret' %}active{% endif %}" 
+                   href="{{ path('app_user_secrets') }}">
+                    <i class="fas fa-key me-2"></i> API-Keys & Secrets
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link {% if app.request.get('_route') starts with 'app_scheduled_task' %}active{% endif %}" 
+                   href="{{ path('app_scheduled_tasks') }}">
+                    <i class="fas fa-calendar-alt me-2"></i> Geplante Aufgaben
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="fas fa-palette me-2"></i> Design
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="fas fa-bell me-2"></i> Benachrichtigungen
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="fas fa-shield-alt me-2"></i> Sicherheit
+                </a>
+            </li>
+        </ul>
+
+        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+            <span>Tools</span>
+        </h6>
+        <ul class="nav flex-column mb-2">
+            <li class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="fas fa-tools me-2"></i> Tool-Verwaltung
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="fas fa-puzzle-piece me-2"></i> Sub-Agenten
+                </a>
+            </li>
+        </ul>
+
+        <h6 class="sidebar-heading d-flex justify-content-between align-items-center px-3 mt-4 mb-1 text-muted">
+            <span>System</span>
+        </h6>
+        <ul class="nav flex-column mb-2">
+            <li class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="fas fa-database me-2"></i> Datenbank
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" href="#">
+                    <i class="fas fa-file-alt me-2"></i> Protokolle
+                </a>
+            </li>
+        </ul>
+    </div>
+</nav>

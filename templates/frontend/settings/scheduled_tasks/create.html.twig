@@ -1,0 +1,137 @@
+{# templates/frontend/settings/scheduled_tasks/create.html.twig #}
+
+{% extends 'base.html.twig' %}
+
+{% block title %}Neue geplante Aufgabe{% endblock %}
+
+{% block body %}
+<div class="container-fluid">
+    <div class="row">
+        {# Seitenleiste #}
+        {% include 'frontend/settings/_sidebar.html.twig' %}
+        
+        {# Hauptinhalt #}
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">Neue geplante Aufgabe</h1>
+            </div>
+
+            {# Erfolgreich/Fehler-Meldungen #}
+            {% for message in app.flashes('success') %}
+                <div class="alert alert-success alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+            
+            {% for message in app.flashes('error') %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+
+            <div class="card">
+                <div class="card-header">
+                    <h5>Aufgabe erstellen</h5>
+                </div>
+                <div class="card-body">
+                    <form method="post" action="{{ path('app_scheduled_task_create') }}">
+                        <div class="mb-3">
+                            <label for="task_description" class="form-label">Aufgabenbeschreibung *</label>
+                            <textarea class="form-control" id="task_description" name="task_description" rows="3" 
+                                      placeholder="z.B. Prüfe meine E-Mails und erstelle eine Zusammenfassung" required></textarea>
+                            <div class="form-text">
+                                Beschreiben Sie, was die Aufgabe tun soll.
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="task_type" class="form-label">Aufgabentyp *</label>
+                                    <select class="form-select" id="task_type" name="task_type" required>
+                                        <option value="">Bitte wählen</option>
+                                        {% for type, label in taskTypes %}
+                                            <option value="{{ type }}">{{ label }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="mb-3">
+                                    <label for="scheduled_at" class="form-label">Datum und Uhrzeit *</label>
+                                    <input type="datetime-local" class="form-control" id="scheduled_at" name="scheduled_at" required>
+                                    <div class="form-text">
+                                        Wählen Sie aus, wann die Aufgabe ausgeführt werden soll.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <div class="form-check">
+                                <input type="checkbox" class="form-check-input" id="is_recurring" name="is_recurring" value="1">
+                                <label class="form-check-label" for="is_recurring">
+                                    Wiederkehrende Aufgabe
+                                </label>
+                            </div>
+                        </div>
+
+                        <div id="recurrence-section" style="display: none;">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="recurrence_pattern" class="form-label">Wiederholungsmuster</label>
+                                        <select class="form-select" id="recurrence_pattern" name="recurrence_pattern">
+                                            <option value="">Bitte wählen</option>
+                                            {% for pattern, label in recurrencePatterns %}
+                                                <option value="{{ pattern }}">{{ label }}</option>
+                                            {% endfor %}
+                                        </select>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="mb-3">
+                                        <label for="recurrence_interval" class="form-label">Intervall</label>
+                                        <input type="number" class="form-control" id="recurrence_interval" name="recurrence_interval" 
+                                               value="1" min="1">
+                                        <div class="form-text">
+                                            z.B. 1 für täglich, 2 für alle 2 Tage, etc.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between">
+                            <a href="{{ path('app_scheduled_tasks') }}" class="btn btn-secondary">
+                                <i class="fas fa-arrow-left"></i> Zurück
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-save"></i> Speichern
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script>
+// Wiederkehrende Aufgabe Toggle
+const isRecurringCheckbox = document.getElementById('is_recurring');
+const recurrenceSection = document.getElementById('recurrence-section');
+
+isRecurringCheckbox.addEventListener('change', function() {
+    recurrenceSection.style.display = this.checked ? 'block' : 'none';
+});
+
+// Setze Standard-Datum (1 Stunde in der Zukunft)
+const scheduledAtInput = document.getElementById('scheduled_at');
+const now = new Date();
+const future = new Date(now.getTime() + 60 * 60 * 1000); // 1 Stunde in der Zukunft
+scheduledAtInput.value = future.toISOString().slice(0, 16);
+</script>
+{% endblock %}

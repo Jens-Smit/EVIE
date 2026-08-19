@@ -1,0 +1,166 @@
+{# templates/frontend/settings/scheduled_tasks/show.html.twig #}
+
+{% extends 'base.html.twig' %}
+
+{% block title %}Aufgabendetails{% endblock %}
+
+{% block body %}
+<div class="container-fluid">
+    <div class="row">
+        {# Seitenleiste #}
+        {% include 'frontend/settings/_sidebar.html.twig' %}
+        
+        {# Hauptinhalt #}
+        <main class="col-md-9 ms-sm-auto col-lg-10 px-md-4">
+            <div class="d-flex justify-content-between flex-wrap flex-md-nowrap align-items-center pt-3 pb-2 mb-3 border-bottom">
+                <h1 class="h2">Aufgabendetails</h1>
+                <div class="btn-toolbar mb-2 mb-md-0">
+                    <div class="btn-group me-2">
+                        <a href="{{ path('app_scheduled_tasks') }}" class="btn btn-secondary btn-sm">
+                            <i class="fas fa-arrow-left"></i> Zurück
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>Aufgabe #{{ task.id }}</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <dl class="row">
+                                <dt class="col-sm-4">Beschreibung:</dt>
+                                <dd class="col-sm-8">{{ task.taskDescription }}</dd>
+                                
+                                <dt class="col-sm-4">Typ:</dt>
+                                <dd class="col-sm-8">{{ task.getTaskTypeLabel() }}</dd>
+                                
+                                <dt class="col-sm-4">Status:</dt>
+                                <dd class="col-sm-8">
+                                    <span class="badge 
+                                        {% if task.isPending %}bg-secondary
+                                        {% elseif task.isExecuted %}bg-success
+                                        {% elseif task.isFailed %}bg-danger
+                                        {% elseif task.isExecuting %}bg-primary
+                                        {% else %}bg-warning{% endif %}">
+                                        {{ task.getStatusLabel() }}
+                                    </span>
+                                </dd>
+                                
+                                <dt class="col-sm-4">Wiederkehrend:</dt>
+                                <dd class="col-sm-8">{{ task.getRecurrenceLabel() }}</dd>
+                                
+                                <dt class="col-sm-4">Aktiv:</dt>
+                                <dd class="col-sm-8">
+                                    {% if task.isActive %}
+                                        <span class="badge bg-success">Ja</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">Nein</span>
+                                    {% endif %}
+                                </dd>
+                            </dl>
+                        </div>
+                        <div class="col-md-6">
+                            <dl class="row">
+                                <dt class="col-sm-4">Erstellt:</dt>
+                                <dd class="col-sm-8">{{ task.createdAt|date('d.m.Y H:i') }}</dd>
+                                
+                                <dt class="col-sm-4">Geplant für:</dt>
+                                <dd class="col-sm-8">{{ task.scheduledAt|date('d.m.Y H:i') }}</dd>
+                                
+                                {% if task.executedAt %}
+                                <dt class="col-sm-4">Ausgeführt:</dt>
+                                <dd class="col-sm-8">{{ task.executedAt|date('d.m.Y H:i') }}</dd>
+                                {% endif %}
+                                
+                                {% if task.nextExecutionAt %}
+                                <dt class="col-sm-4">Nächste Ausführung:</dt>
+                                <dd class="col-sm-8">{{ task.nextExecutionAt|date('d.m.Y H:i') }}</dd>
+                                {% endif %}
+                            </dl>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            {% if task.result %}
+            <div class="card mb-4">
+                <div class="card-header bg-success text-white">
+                    <h5>Ergebnis</h5>
+                </div>
+                <div class="card-body">
+                    <pre class="bg-light p-3 rounded">{{ task.result }}</pre>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if task.errorMessage %}
+            <div class="card mb-4">
+                <div class="card-header bg-danger text-white">
+                    <h5>Fehlermeldung</h5>
+                </div>
+                <div class="card-body">
+                    <pre class="bg-light p-3 rounded text-danger">{{ task.errorMessage }}</pre>
+                </div>
+            </div>
+            {% endif %}
+
+            {% if task.parameters|length > 0 %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>Parameter</h5>
+                </div>
+                <div class="card-body">
+                    <pre class="bg-light p-3 rounded">{{ task.parameters|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre>
+                </div>
+            </div>
+            {% endif %}
+
+            <div class="card">
+                <div class="card-header">
+                    <h5>Aktionen</h5>
+                </div>
+                <div class="card-body">
+                    <div class="d-flex gap-2">
+                        <a href="{{ path('app_scheduled_task_edit', {'id': task.id}) }}" class="btn btn-primary">
+                            <i class="fas fa-edit"></i> Bearbeiten
+                        </a>
+                        
+                        {% if task.isActive %}
+                            <form method="post" action="{{ path('app_scheduled_task_toggle', {'id': task.id}) }}" 
+                                  onsubmit="return confirm('Soll diese Aufgabe deaktiviert werden?')">
+                                <button type="submit" class="btn btn-warning">
+                                    <i class="fas fa-pause"></i> Deaktivieren
+                                </button>
+                            </form>
+                        {% else %}
+                            <form method="post" action="{{ path('app_scheduled_task_toggle', {'id': task.id}) }}" 
+                                  onsubmit="return confirm('Soll diese Aufgabe aktiviert werden?')">
+                                <button type="submit" class="btn btn-success">
+                                    <i class="fas fa-play"></i> Aktivieren
+                                </button>
+                            </form>
+                        {% endif %}
+                        
+                        <form method="post" action="{{ path('app_scheduled_task_execute', {'id': task.id}) }}" 
+                              onsubmit="return confirm('Soll diese Aufgabe sofort ausgeführt werden?')">
+                            <button type="submit" class="btn btn-info">
+                                <i class="fas fa-play-circle"></i> Sofort ausführen
+                            </button>
+                        </form>
+                        
+                        <form method="post" action="{{ path('app_scheduled_task_delete', {'id': task.id}) }}" 
+                              onsubmit="return confirm('Sind Sie sicher, dass Sie diese Aufgabe löschen möchten?')">
+                            <button type="submit" class="btn btn-danger">
+                                <i class="fas fa-trash"></i> Löschen
+                            </button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+</div>
+{% endblock %}

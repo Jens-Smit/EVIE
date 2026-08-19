@@ -1,26 +1,40 @@
+# Symfony Messenger Configuration for EVIE
+# This configuration enables async message processing for Sub-Agent execution
+
 framework:
     messenger:
+        # Serializer configuration
+        serializer:
+            default_serializer: messenger.transport.serializer
+            symfony_serializer:
+                format: json
+                context: {}
+
+        # Transport configuration
+        transports:
+            # Async transport for Sub-Agent execution
+            async:
+                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+                serializer: messenger.transport.serializer
+                retry_strategy:
+                    max_retries: 3
+                    delay: 1000
+                    multiplier: 2
+                    max_delay: 0
+
+            # Sync transport for immediate processing
+            sync: 'sync://'
+
+        # Routing configuration
+        routing:
+            # Route ExecuteSubAgentMessage to async transport
+            'App\Message\ExecuteSubAgentMessage': async
+            
+            # Route SubAgentResultMessage to sync transport (immediate processing)
+            'App\Message\SubAgentResultMessage': sync
+
+        # Failure transport (for failed messages)
         failure_transport: failed
 
         transports:
-            hitl_approvals: '%env(MESSENGER_TRANSPORT_DSN)%'
-            # https://symfony.com/doc/current/messenger.html#transport-configuration
-            async:
-                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
-                retry_strategy:
-                    max_retries: 3
-                    multiplier: 2
             failed: 'doctrine://default?queue_name=failed'
-            # sync: 'sync://'
-
-        default_bus: messenger.bus.default
-
-        buses:
-            messenger.bus.default: []
-
-        routing:
-            Symfony\Component\Mailer\Messenger\SendEmailMessage: async
-            App\Message\ToolApprovalRequested: hitl_approvals
-            App\Message\MailDraftApprovalRequested: hitl_approvals
-            # Route your messages to the transports
-            # 'App\Message\YourMessage': async

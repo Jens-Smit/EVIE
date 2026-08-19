@@ -117,3 +117,69 @@ services:
                 allow_redirects: false
                 max_redirects: 0
 
+
+
+    # =====================================================================
+    # EVIE v0.9.5 - Multi-LLM & Extended Features Services
+    # =====================================================================
+
+    # LLM Provider Services
+    App\AI\LLM\LLMProviderFactory:
+        arguments:
+            $defaultProvider: '%env(default::DEFAULT_LLM_PROVIDER)%'
+            $defaultModel: '%env(default::DEFAULT_LLM_MODEL)%'
+
+    App\AI\LLM\LLMPlatformResolver:
+        arguments:
+            $mistralApiKey: '%env(MISTRAL_API_KEY)%'
+            $openAiApiKey: '%env(OPENAI_API_KEY)%'
+            $googleApiKey: '%env(GOOGLE_API_KEY)%'
+            $anthropicApiKey: '%env(ANTHROPIC_API_KEY)%'
+
+    # Encryption Service
+    App\Service\EncryptionService:
+        arguments:
+            $encryptionKey: '%env(ENCRYPTION_KEY)%'
+
+    # User Secrets Services
+    App\AI\Secrets\UserSecretManager: ~
+    App\AI\Secrets\SecretRequestService: ~
+
+    # Tasks Services
+    App\AI\Tasks\ScheduledTaskManager: ~
+
+    # Chat Services
+    App\AI\Chat\ConversationManager: ~
+
+    # Notification Service
+    App\Service\NotificationService: ~
+
+    # Message Handlers
+    App\MessageHandler\ExecuteSubAgentMessageHandler: ~
+    App\MessageHandler\SubAgentResultMessageHandler: ~
+
+    # =====================================================================
+    # LLM Provider Interfaces (für Autowiring)
+    # =====================================================================
+
+    App\AI\LLM\LLMProviderInterface:
+        class: App\AI\LLM\Provider\MistralProvider
+
+    # =====================================================================
+    # Platform Services für Multi-LLM
+    # =====================================================================
+
+    # OpenAI Platform
+    Symfony\AI\Platform\OpenAI\OpenAIPlatform:
+        arguments:
+            $apiKey: '%env(OPENAI_API_KEY)%'
+
+    # Google Platform
+    Symfony\AI\Platform\Google\GooglePlatform:
+        arguments:
+            $apiKey: '%env(GOOGLE_API_KEY)%'
+
+    # Anthropic Platform
+    Symfony\AI\Platform\Anthropic\AnthropicPlatform:
+        arguments:
+            $apiKey: '%env(ANTHROPIC_API_KEY)%'
