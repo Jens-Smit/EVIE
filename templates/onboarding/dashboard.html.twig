@@ -1,0 +1,814 @@
+{# templates/onboarding/dashboard.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Onboarding - EVIE{% endblock %}
+
+{% block body %}
+<div class="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8" x-data="{
+    currentStep: '{{ currentStep }}',
+    steps: {{ steps|json_encode|raw }},
+    progress: {{ progress|json_encode|raw }},
+    
+    getStepIndex(step) {
+        return this.steps.indexOf(step);
+    },
+    
+    isStepCompleted(step) {
+        return this.getStepIndex(step) < this.getStepIndex(this.currentStep);
+    },
+    
+    isStepActive(step) {
+        return step === this.currentStep;
+    },
+    
+    isStepUpcoming(step) {
+        return this.getStepIndex(step) > this.getStepIndex(this.currentStep);
+    }
+}">
+    {# Header #}
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-slate-900 dark:text-slate-100 mb-2">Welcome to EVIE!</h1>
+        <p class="text-slate-600 dark:text-slate-400">Let's get you started with our AI agent platform</p>
+    </div>
+
+    {# Progress Indicator #}
+    <div class="mb-12">
+        <div class="flex justify-between items-center mb-6">
+            <div>
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Onboarding Progress</h2>
+                <p class="text-sm text-slate-500 dark:text-slate-400">{{ progress.completedSteps|length }} of {{ progress.totalSteps }} steps completed</p>
+            </div>
+            <div class="text-lg font-bold text-primary">{{ progress.progressPercentage }}%</div>
+        </div>
+        
+        <div class="evie-onboarding-progress">
+            {% for step in steps %}
+                <div class="step {% if isStepCompleted(step) %}completed{% elseif isStepActive(step) %}active{% else %}{% endif %}">
+                    <div class="circle">
+                        {% if isStepCompleted(step) %}
+                            <i class="ph ph-check text-white"></i>
+                        {% else %}
+                            {{ getStepIndex(step) + 1 }}
+                        {% endif %}
+                    </div>
+                    <div class="label">{{ step|replace({'_', '-'}, {'_': ' ', '-': ' '})|title }}</div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    {# Current Step Content #}
+    <div class="glass-panel p-6">
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-semibold text-slate-900 dark:text-slate-100">
+                {{ currentStep|replace({'_', '-'}, {'_': ' ', '-': ' '})|title }}
+            </h2>
+            <div class="flex items-center gap-2">
+                {% if currentStep != 'start' %}
+                    <a href="{{ path('onboarding_step', {'step': steps[getStepIndex(currentStep) - 1]}) }}" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                        <i class="ph ph-arrow-left"></i>
+                        Back
+                    </a>
+                {% endif %}
+                {% if currentStep != 'ready' %}
+                    <form action="{{ path('onboarding_skip') }}" method="post" class="inline">
+                        <button type="submit" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors">
+                            Skip Onboarding
+                        </button>
+                    </form>
+                {% endif %}
+            </div>
+        </div>
+
+        {# Step Content #}
+        <div class="space-y-6">
+            {% if currentStep == 'start' %}
+                {# Start Step #}
+                <div class="text-center">
+                    <i class="ph ph-rocket-launch text-6xl text-primary mb-4"></i>
+                    <h3 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Get Started with EVIE</h3>
+                    <p class="text-slate-600 dark:text-slate-400 mb-6 max-w-2xl mx-auto">
+                        EVIE is an AI agent platform that helps you automate tasks, manage conversations, and integrate with various services.
+                    </p>
+                    <div class="space-y-4 text-left max-w-md mx-auto">
+                        <div class="flex items-start gap-3">
+                            <i class="ph ph-check-circle text-emerald-500 text-xl mt-0.5"></i>
+                            <div>
+                                <h4 class="font-semibold text-slate-900 dark:text-slate-100">Configure your AI models</h4>
+                                <p class="text-sm text-slate-600 dark:text-slate-400">Set up LLM providers like Mistral, OpenAI, or Anthropic</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <i class="ph ph-check-circle text-emerald-500 text-xl mt-0.5"></i>
+                            <div>
+                                <h4 class="font-semibold text-slate-900 dark:text-slate-100">Install capabilities</h4>
+                                <p class="text-sm text-slate-600 dark:text-slate-400">Add features like email, GitHub, or web browsing</p>
+                            </div>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <i class="ph ph-check-circle text-emerald-500 text-xl mt-0.5"></i>
+                            <div>
+                                <h4 class="font-semibold text-slate-900 dark:text-slate-100">Start chatting</h4>
+                                <p class="text-sm text-slate-600 dark:text-slate-400">Create conversations and interact with AI agents</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="mt-8">
+                        <a href="{{ path('onboarding_user_goals') }}" class="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors inline-flex items-center gap-2">
+                            <span>Start Onboarding</span>
+                            <i class="ph ph-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+            
+            {% elseif currentStep == 'user_goals' %}
+                {# User Goals Step #}
+                <div>
+                    <h3 class="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">What are your goals?</h3>
+                    <p class="text-slate-600 dark:text-slate-400 mb-6">
+                        Tell us what you want to achieve with EVIE. This will help us recommend the right capabilities and integrations for you.
+                    </p>
+                    
+                    <form method="post" class="space-y-4">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {% for goal in recommendedGoals %}
+                                <label class="flex items-center gap-3 p-4 bg-slate-50 dark:bg-slate-900/30 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors cursor-pointer">
+                                    <input type="checkbox" name="goals[]" value="{{ goal }}" class="w-5 h-5 text-primary border-slate-300 dark:border-slate-600 rounded focus:ring-primary/50" {% if goal in existingGoals %}checked{% endif %}>
+                                    <span class="text-slate-800 dark:text-slate-200">{{ goal }}</span>
+                                </label>
+                            {% endfor %}
+                        </div>
+                        
+                        <div class="flex items-center gap-4">
+                            <select name="user_type" class="px-4 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                                {% for type in userTypes %}
+                                    <option value="{{ type }}" {% if type == userType %}selected{% endif %}>{{ type|title }} User</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        
+                        <div class="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-700">
+                            <a href="{{ path('onboarding_dashboard') }}" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                                Skip
+                            </a>
+                            <button type="submit" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                                Continue
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            
+            {% elseif currentStep == 'system_discovery' %}
+                {# System Discovery Step #}
+                <div>
+                    <h3 class="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">Discovering Your System</h3>
+                    <p class="text-slate-600 dark:text-slate-400 mb-6">
+                        Based on your goals, we've identified capabilities and integrations that would be useful for you.
+                    </p>
+                    
+                    {% if goals|length > 0 %}
+                        <div class="mb-6">
+                            <h4 class="text-lg font-medium text-slate-900 dark:text-slate-100 mb-3">Your Goals</h4>
+                            <div class="flex flex-wrap gap-2">
+                                {% for goal in goals %}
+                                    <span class="px-3 py-1 bg-primary/10 dark:bg-primary/20 text-primary dark:text-white rounded-full text-sm">{{ goal }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {# Discovered Capabilities #}
+                        <div class="glass-panel p-4">
+                            <h4 class="text-lg font-medium text-slate-900 dark:text-slate-100 mb-3">Discovered Capabilities</h4>
+                            <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">{{ discoveredCapabilities|length }} capabilities available for installation</p>
+                            
+                            {% if discoveredCapabilities|length > 0 %}
+                                <div class="space-y-3 max-h-64 overflow-y-auto">
+                                    {% for capability in discoveredCapabilities %}
+                                        <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                                            <div>
+                                                <div class="font-medium text-slate-900 dark:text-slate-100">{{ capability.name }}</div>
+                                                <div class="text-xs text-slate-500 dark:text-slate-400">{{ capability.description }}</div>
+                                            </div>
+                                            <span class="text-xs text-slate-500 dark:text-slate-400">{{ capability.category }}</span>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="text-center text-slate-500 dark:text-slate-400 py-4">
+                                    <i class="ph ph-magnifying-glass text-2xl mb-2"></i>
+                                    <p>No new capabilities discovered</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        {# Recommended Capabilities #}
+                        <div class="glass-panel p-4">
+                            <h4 class="text-lg font-medium text-slate-900 dark:text-slate-100 mb-3">Recommended Capabilities</h4>
+                            <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Based on your goals, we recommend these capabilities</p>
+                            
+                            {% if recommendedCapabilities|length > 0 %}
+                                <form method="post" class="space-y-3">
+                                    {% for capability in recommendedCapabilities %}
+                                        <label class="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors cursor-pointer">
+                                            <input type="checkbox" name="capabilities[]" value="{{ capability.identifier }}" class="w-5 h-5 text-primary border-slate-300 dark:border-slate-600 rounded focus:ring-primary/50">
+                                            <div class="flex-1 min-w-0">
+                                                <div class="font-medium text-slate-900 dark:text-slate-100">{{ capability.name }}</div>
+                                                <div class="text-xs text-slate-500 dark:text-slate-400 truncate">{{ capability.description }}</div>
+                                            </div>
+                                            <span class="text-xs text-slate-500 dark:text-slate-400">{{ capability.category }}</span>
+                                        </label>
+                                    {% endfor %}
+                                    
+                                    <div class="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-700">
+                                        <a href="{{ path('onboarding_dashboard') }}" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                                            Skip
+                                        </a>
+                                        <button type="submit" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                                            Install Selected
+                                        </button>
+                                    </div>
+                                </form>
+                            {% else %}
+                                <div class="text-center text-slate-500 dark:text-slate-400 py-4">
+                                    <i class="ph ph-star text-2xl mb-2"></i>
+                                    <p>No recommendations based on your goals</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            
+            {% elseif currentStep == 'llm_selection' %}
+                {# LLM Selection Step #}
+                <div>
+                    <h3 class="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">Configure LLM Provider</h3>
+                    <p class="text-slate-600 dark:text-slate-400 mb-6">
+                        Select and configure a Large Language Model provider for your AI agents.
+                    </p>
+                    
+                    {% if llmConfigs|length > 0 %}
+                        <div class="mb-6">
+                            <h4 class="text-lg font-medium text-slate-900 dark:text-slate-100 mb-3">Your LLM Configurations</h4>
+                            <div class="space-y-3">
+                                {% for config in llmConfigs %}
+                                    <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                                        <div class="flex items-center gap-3">
+                                            <div class="w-8 h-8 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
+                                                <i class="ph ph-cpu text-primary text-sm"></i>
+                                            </div>
+                                            <div>
+                                                <div class="font-medium text-slate-900 dark:text-slate-100">{{ config.provider }}:{{ config.model }}</div>
+                                                <div class="text-xs text-slate-500 dark:text-slate-400">
+                                                    {% if config.isDefault %}
+                                                        <span class="text-amber-600 dark:text-amber-400">Default</span>
+                                                    {% endif %}
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            {% if config.isConfigured %}
+                                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                                <span class="text-xs text-emerald-600 dark:text-emerald-400">Configured</span>
+                                            {% else %}
+                                                <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                                                <span class="text-xs text-amber-600 dark:text-amber-400">Needs Config</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    {% endif %}
+                    
+                    <div class="glass-panel p-4">
+                        <h4 class="text-lg font-medium text-slate-900 dark:text-slate-100 mb-3">Add New LLM Configuration</h4>
+                        
+                        <form method="post" class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="provider" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Provider</label>
+                                    <select id="provider" name="provider" class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50" required>
+                                        <option value="">Select a provider</option>
+                                        {% for provider in providers %}
+                                            <optgroup label="{{ provider.name }}">
+                                                {% for model, modelName in provider.models %}
+                                                    <option value="{{ provider.identifier }}:{{ model }}">{{ modelName }}</option>
+                                                {% endfor %}
+                                            </optgroup>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label for="model" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Model</label>
+                                    <input type="text" id="model" name="model" class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50" required>
+                                </div>
+                            </div>
+                            
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Configuration (Optional)</label>
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Temperature</label>
+                                        <input type="number" name="configuration[temperature]" min="0" max="2" step="0.1" value="0.7" class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs text-slate-500 dark:text-slate-400 mb-1">Max Tokens</label>
+                                        <input type="number" name="configuration[max_tokens]" min="1" max="32768" value="4096" class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200">
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="flex items-center gap-4">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" name="is_default" value="1" class="w-5 h-5 text-primary border-slate-300 dark:border-slate-600 rounded focus:ring-primary/50">
+                                    <span class="text-slate-700 dark:text-slate-300">Set as default</span>
+                                </label>
+                            </div>
+                            
+                            <div class="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-700">
+                                <a href="{{ path('onboarding_dashboard') }}" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                                    Skip
+                                </a>
+                                <button type="submit" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                                    Save & Continue
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            
+            {% elseif currentStep == 'secret_setup' %}
+                {# Secret Setup Step #}
+                <div>
+                    <h3 class="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">Configure Secrets</h3>
+                    <p class="text-slate-600 dark:text-slate-400 mb-6">
+                        Some capabilities require API keys or other secrets to function properly. Configure them here.
+                    </p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {# Required Secrets #}
+                        <div class="glass-panel p-4">
+                            <h4 class="text-lg font-medium text-slate-900 dark:text-slate-100 mb-3">Required Secrets</h4>
+                            <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">{{ requirements.required|length }} secrets required</p>
+                            
+                            {% if requirements.required|length > 0 %}
+                                <div class="space-y-3">
+                                    {% for secret in requirements.required %}
+                                        <div class="p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                                            <div class="flex justify-between items-start mb-1">
+                                                <div>
+                                                    <div class="font-medium text-slate-900 dark:text-slate-100">{{ secret.key }}</div>
+                                                    <div class="text-xs text-slate-500 dark:text-slate-400">{{ secret.description }}</div>
+                                                </div>
+                                                <span class="evie-badge evie-badge-error">Required</span>
+                                            </div>
+                                            <div class="text-xs text-slate-500 dark:text-slate-400">
+                                                Required by: {{ secret.capability }}
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="text-center text-emerald-600 dark:text-emerald-400 py-4">
+                                    <i class="ph ph-check-circle text-3xl mb-2"></i>
+                                    <p>All required secrets are configured!</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        {# Configured Secrets #}
+                        <div class="glass-panel p-4">
+                            <h4 class="text-lg font-medium text-slate-900 dark:text-slate-100 mb-3">Configured Secrets</h4>
+                            <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">{{ requirements.configured|length }} secrets configured</p>
+                            
+                            {% if requirements.configured|length > 0 %}
+                                <div class="space-y-3">
+                                    {% for secret in requirements.configured %}
+                                        <div class="p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                                            <div class="flex justify-between items-start mb-1">
+                                                <div>
+                                                    <div class="font-medium text-slate-900 dark:text-slate-100">{{ secret.key }}</div>
+                                                    <div class="text-xs text-slate-500 dark:text-slate-400">{{ secret.description }}</div>
+                                                </div>
+                                                <span class="evie-badge evie-badge-success">Configured</span>
+                                            </div>
+                                            <div class="text-xs text-slate-500 dark:text-slate-400">
+                                                Required by: {{ secret.capability }}
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="text-center text-slate-500 dark:text-slate-400 py-4">
+                                    <i class="ph ph-lock-simple text-3xl mb-2"></i>
+                                    <p>No secrets configured yet</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="mt-6 glass-panel p-4">
+                        <h4 class="text-lg font-medium text-slate-900 dark:text-slate-100 mb-3">Add Secret</h4>
+                        
+                        <form method="post" class="space-y-4">
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label for="secret_key" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Secret Key</label>
+                                    <input type="text" id="secret_key" name="secret_key" class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50" placeholder="e.g., MISTRAL_API_KEY" required>
+                                </div>
+                                <div>
+                                    <label for="secret_value" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Secret Value</label>
+                                    <input type="password" id="secret_value" name="secret_value" class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50" placeholder="Your API key" required>
+                                </div>
+                            </div>
+                            <div>
+                                <label for="description" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description (Optional)</label>
+                                <input type="text" id="description" name="description" class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50" placeholder="e.g., Mistral API Key">
+                            </div>
+                            
+                            <div class="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-700">
+                                <a href="{{ path('onboarding_dashboard') }}" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                                    Skip
+                                </a>
+                                <button type="submit" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                                    Save Secret
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            
+            {% elseif currentStep == 'integration_setup' %}
+                {# Integration Setup Step #}
+                <div>
+                    <h3 class="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">Configure Integrations</h3>
+                    <p class="text-slate-600 dark:text-slate-400 mb-6">
+                        Integrations allow EVIE to connect with external services like Microsoft, Google, GitHub, and more.
+                    </p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {# Required Integrations #}
+                        <div class="glass-panel p-4">
+                            <h4 class="text-lg font-medium text-slate-900 dark:text-slate-100 mb-3">Required Integrations</h4>
+                            <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">{{ requirements.required|length }} integrations required</p>
+                            
+                            {% if requirements.required|length > 0 %}
+                                <div class="space-y-3">
+                                    {% for integration in requirements.required %}
+                                        <div class="p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                                            <div class="flex justify-between items-start mb-1">
+                                                <div>
+                                                    <div class="font-medium text-slate-900 dark:text-slate-100">{{ integration.integration }}</div>
+                                                    <div class="text-xs text-slate-500 dark:text-slate-400">{{ integration.description }}</div>
+                                                </div>
+                                                <span class="evie-badge evie-badge-error">Required</span>
+                                            </div>
+                                            <div class="text-xs text-slate-500 dark:text-slate-400">
+                                                Required by: {{ integration.capability }}
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="text-center text-emerald-600 dark:text-emerald-400 py-4">
+                                    <i class="ph ph-check-circle text-3xl mb-2"></i>
+                                    <p>All required integrations are configured!</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        {# Installed Integrations #}
+                        <div class="glass-panel p-4">
+                            <h4 class="text-lg font-medium text-slate-900 dark:text-slate-100 mb-3">Installed Integrations</h4>
+                            <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">{{ integrations|length }} integrations installed</p>
+                            
+                            {% if integrations|length > 0 %}
+                                <div class="space-y-3">
+                                    {% for integration in integrations %}
+                                        <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                                            <div class="flex items-center gap-3">
+                                                <div class="w-8 h-8 rounded-full bg-secondary/10 dark:bg-secondary/20 flex items-center justify-center">
+                                                    <i class="ph ph-plug text-secondary text-sm"></i>
+                                                </div>
+                                                <div>
+                                                    <div class="font-medium text-slate-900 dark:text-slate-100">{{ integration.name }}</div>
+                                                    <div class="text-xs text-slate-500 dark:text-slate-400">{{ integration.type }}:{{ integration.identifier }}</div>
+                                                </div>
+                                            </div>
+                                            <div class="flex items-center gap-2">
+                                                {% if integration.isReady %}
+                                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                                    <span class="text-xs text-emerald-600 dark:text-emerald-400">Ready</span>
+                                                {% elseif integration.isConfigured %}
+                                                    <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                                                    <span class="text-xs text-amber-600 dark:text-amber-400">Configured</span>
+                                                {% else %}
+                                                    <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+                                                    <span class="text-xs text-slate-500 dark:text-slate-400">Not Ready</span>
+                                                {% endif %}
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="text-center text-slate-500 dark:text-slate-400 py-4">
+                                    <i class="ph ph-plug text-3xl mb-2"></i>
+                                    <p>No integrations installed yet</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-700 mt-6">
+                        <a href="{{ path('onboarding_dashboard') }}" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                            Skip
+                        </a>
+                        <a href="{{ path('onboarding_permission_setup') }}" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                            Continue
+                        </a>
+                    </div>
+                </div>
+            
+            {% elseif currentStep == 'permission_setup' %}
+                {# Permission Setup Step #}
+                <div>
+                    <h3 class="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">Configure Permissions</h3>
+                    <p class="text-slate-600 dark:text-slate-400 mb-6">
+                        Some capabilities require specific permissions to function properly. Review and grant the necessary permissions.
+                    </p>
+                    
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        {# Required Permissions #}
+                        <div class="glass-panel p-4">
+                            <h4 class="text-lg font-medium text-slate-900 dark:text-slate-100 mb-3">Required Permissions</h4>
+                            <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">{{ requirements.required|length }} permissions required</p>
+                            
+                            {% if requirements.required|length > 0 %}
+                                <div class="space-y-3">
+                                    {% for permission in requirements.required %}
+                                        <div class="p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                                            <div class="flex justify-between items-start mb-1">
+                                                <div>
+                                                    <div class="font-medium text-slate-900 dark:text-slate-100">{{ permission.permission }}</div>
+                                                    <div class="text-xs text-slate-500 dark:text-slate-400">{{ permission.description }}</div>
+                                                </div>
+                                                <span class="evie-badge evie-badge-error">Required</span>
+                                            </div>
+                                            <div class="text-xs text-slate-500 dark:text-slate-400">
+                                                Required by: {{ permission.capability }}
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="text-center text-emerald-600 dark:text-emerald-400 py-4">
+                                    <i class="ph ph-check-circle text-3xl mb-2"></i>
+                                    <p>All required permissions are granted!</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                        
+                        {# Granted Permissions #}
+                        <div class="glass-panel p-4">
+                            <h4 class="text-lg font-medium text-slate-900 dark:text-slate-100 mb-3">Granted Permissions</h4>
+                            <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">{{ requirements.granted|length }} permissions granted</p>
+                            
+                            {% if requirements.granted|length > 0 %}
+                                <div class="space-y-3">
+                                    {% for permission in requirements.granted %}
+                                        <div class="p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                                            <div class="flex justify-between items-start mb-1">
+                                                <div>
+                                                    <div class="font-medium text-slate-900 dark:text-slate-100">{{ permission.permission }}</div>
+                                                    <div class="text-xs text-slate-500 dark:text-slate-400">{{ permission.description }}</div>
+                                                </div>
+                                                <span class="evie-badge evie-badge-success">Granted</span>
+                                            </div>
+                                            <div class="text-xs text-slate-500 dark:text-slate-400">
+                                                Required by: {{ permission.capability }}
+                                            </div>
+                                        </div>
+                                    {% endfor %}
+                                </div>
+                            {% else %}
+                                <div class="text-center text-slate-500 dark:text-slate-400 py-4">
+                                    <i class="ph ph-shield-check text-3xl mb-2"></i>
+                                    <p>No permissions granted yet</p>
+                                </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <div class="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-700 mt-6">
+                        <a href="{{ path('onboarding_dashboard') }}" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                            Skip
+                        </a>
+                        <a href="{{ path('onboarding_first_agent_test') }}" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                            Continue
+                        </a>
+                    </div>
+                </div>
+            
+            {% elseif currentStep == 'first_agent_test' %}
+                {# First Agent Test Step #}
+                <div class="text-center">
+                    <i class="ph ph-robot text-6xl text-primary mb-4"></i>
+                    <h3 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Test Your First Agent</h3>
+                    <p class="text-slate-600 dark:text-slate-400 mb-6 max-w-2xl mx-auto">
+                        Let's test your setup by running a simple agent. This will verify that everything is configured correctly.
+                    </p>
+                    
+                    <div class="glass-panel p-6 max-w-2xl mx-auto mb-6">
+                        <h4 class="text-lg font-medium text-slate-900 dark:text-slate-100 mb-3">What to expect:</h4>
+                        <div class="space-y-3 text-left">
+                            <div class="flex items-start gap-3">
+                                <i class="ph ph-check-circle text-emerald-500 text-xl mt-0.5"></i>
+                                <div>
+                                    <h5 class="font-semibold text-slate-900 dark:text-slate-100">Conversation created</h5>
+                                    <p class="text-sm text-slate-600 dark:text-slate-400">A new conversation will be created for testing</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-3">
+                                <i class="ph ph-check-circle text-emerald-500 text-xl mt-0.5"></i>
+                                <div>
+                                    <h5 class="font-semibold text-slate-900 dark:text-slate-100">Test message sent</h5>
+                                    <p class="text-sm text-slate-600 dark:text-slate-400">A test message will be sent to the agent</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-3">
+                                <i class="ph ph-check-circle text-emerald-500 text-xl mt-0.5"></i>
+                                <div>
+                                    <h5 class="font-semibold text-slate-900 dark:text-slate-100">Agent responds</h5>
+                                    <p class="text-sm text-slate-600 dark:text-slate-400">The agent will respond to your test message</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-3">
+                                <i class="ph ph-check-circle text-emerald-500 text-xl mt-0.5"></i>
+                                <div>
+                                    <h5 class="font-semibold text-slate-900 dark:text-slate-100">Summary generated</h5>
+                                    <p class="text-sm text-slate-600 dark:text-slate-400">A summary of the conversation will be generated</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <form method="post" class="space-y-4">
+                        <button type="submit" class="px-8 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-lg">
+                            <i class="ph ph-play-circle text-xl mr-2"></i>
+                            Run First Agent Test
+                        </button>
+                    </form>
+                </div>
+            
+            {% elseif currentStep == 'ready' %}
+                {# Ready Step #}
+                <div class="text-center">
+                    <i class="ph ph-check-circle text-6xl text-emerald-500 mb-4"></i>
+                    <h3 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Onboarding Complete!</h3>
+                    <p class="text-slate-600 dark:text-slate-400 mb-6 max-w-2xl mx-auto">
+                        You've successfully completed the onboarding process. Your EVIE platform is now ready to use!
+                    </p>
+                    
+                    <div class="glass-panel p-6 max-w-2xl mx-auto mb-6">
+                        <h4 class="text-lg font-medium text-slate-900 dark:text-slate-100 mb-3">What's next?</h4>
+                        <div class="space-y-3 text-left">
+                            <div class="flex items-start gap-3">
+                                <i class="ph ph-rocket-launch text-primary text-xl mt-0.5"></i>
+                                <div>
+                                    <h5 class="font-semibold text-slate-900 dark:text-slate-100">Start a conversation</h5>
+                                    <p class="text-sm text-slate-600 dark:text-slate-400">Click "New Chat" to start interacting with your AI agents</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-3">
+                                <i class="ph ph-cog text-secondary text-xl mt-0.5"></i>
+                                <div>
+                                    <h5 class="font-semibold text-slate-900 dark:text-slate-100">Configure more integrations</h5>
+                                    <p class="text-sm text-slate-600 dark:text-slate-400">Add more integrations from the Admin panel</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-3">
+                                <i class="ph ph-puzzle-piece text-accent text-xl mt-0.5"></i>
+                                <div>
+                                    <h5 class="font-semibold text-slate-900 dark:text-slate-100">Install more capabilities</h5>
+                                    <p class="text-sm text-slate-600 dark:text-slate-400">Add more capabilities to enable additional features</p>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-3">
+                                <i class="ph ph-users text-xl mt-0.5"></i>
+                                <div>
+                                    <h5 class="font-semibold text-slate-900 dark:text-slate-100">Invite team members</h5>
+                                    <p class="text-sm text-slate-600 dark:text-slate-400">Add other users to your tenant</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <a href="{{ path('agent_dashboard') }}" class="px-8 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-lg inline-flex items-center gap-2">
+                        <span>Go to Dashboard</span>
+                        <i class="ph ph-arrow-right"></i>
+                    </a>
+                </div>
+            {% else %}
+                {# Unknown Step #}
+                <div class="text-center py-8">
+                    <i class="ph ph-warning-circle text-6xl text-amber-500 mb-4"></i>
+                    <h3 class="text-xl font-bold text-slate-900 dark:text-slate-100 mb-2">Unknown Step</h3>
+                    <p class="text-slate-600 dark:text-slate-400">This onboarding step is not recognized.</p>
+                    <div class="mt-6">
+                        <a href="{{ path('onboarding_dashboard') }}" class="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                            Back to Onboarding
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<style>
+    .evie-onboarding-progress {
+        display: flex;
+        justify-content: space-between;
+        position: relative;
+    }
+    
+    .evie-onboarding-progress::before {
+        content: '';
+        position: absolute;
+        top: 2rem;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background-color: #dee2e6;
+        z-index: 1;
+    }
+    
+    .evie-onboarding-progress .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+        z-index: 2;
+        flex: 1;
+    }
+    
+    .evie-onboarding-progress .circle {
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 50%;
+        background-color: #dee2e6;
+        color: #6c757d;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+        transition: all 0.3s ease;
+    }
+    
+    .evie-onboarding-progress .label {
+        font-size: 0.875rem;
+        color: #6c757d;
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+    
+    .evie-onboarding-progress .step.completed .circle {
+        background-color: #2185d0;
+        color: white;
+    }
+    
+    .evie-onboarding-progress .step.active .circle {
+        background-color: #2185d0;
+        color: white;
+    }
+    
+    .evie-onboarding-progress .step.completed .label,
+    .evie-onboarding-progress .step.active .label {
+        color: #2185d0;
+        font-weight: 500;
+    }
+    
+    .evie-onboarding-progress .step.completed::after {
+        background-color: #2185d0;
+    }
+</style>
+
+{% block javascripts %}
+<script>
+    // Initialize onboarding functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        // Close dropdowns when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('.agent-dropdown')) {
+                document.querySelectorAll('.agent-dropdown').forEach(function(dropdown) {
+                    dropdown.classList.remove('open');
+                });
+            }
+        });
+    });
+</script>
+{% endblock %}
+{% endblock %}
