@@ -1,0 +1,101 @@
+# Integration Services Configuration
+# This file configures services for third-party integrations
+
+services:
+  # MCP Registry
+  App\Service\Integration\McpRegistry:
+    arguments:
+      $mcpServerRepository: '@App\Repository\Integration\McpServerRepository'
+      $entityManager: '@doctrine.orm.entity_manager'
+      $logger: '@logger'
+    tags:
+      - { name: 'container.hot_path' }
+
+  # MCP Server Repository
+  App\Repository\Integration\McpServerRepository:
+    factory: ['@doctrine.orm.entity_manager', 'getRepository']
+    arguments:
+      - App\Entity\Integration\McpServer
+
+  # Integration Repository
+  App\Repository\Integration\IntegrationRepository:
+    factory: ['@doctrine.orm.entity_manager', 'getRepository']
+    arguments:
+      - App\Entity\Integration\Integration
+
+  # Integration Service (base service)
+  App\Service\Integration\IntegrationService:
+    arguments:
+      $integrationRepository: '@App\Repository\Integration\IntegrationRepository'
+      $secretManager: '@App\Service\Security\SecretManager'
+      $mcpRegistry: '@App\Service\Integration\McpRegistry'
+      $entityManager: '@doctrine.orm.entity_manager'
+      $logger: '@logger'
+    tags:
+      - { name: 'container.hot_path' }
+
+  # Microsoft Integration Service
+  App\Service\Integration\MicrosoftIntegrationService:
+    arguments:
+      $integrationService: '@App\Service\Integration\IntegrationService'
+      $secretManager: '@App\Service\Security\SecretManager'
+      $entityManager: '@doctrine.orm.entity_manager'
+      $logger: '@logger'
+      $httpClient: '@http_client'
+    tags:
+      - { name: 'container.hot_path' }
+
+  # Google Integration Service
+  App\Service\Integration\GoogleIntegrationService:
+    arguments:
+      $integrationService: '@App\Service\Integration\IntegrationService'
+      $secretManager: '@App\Service\Security\SecretManager'
+      $entityManager: '@doctrine.orm.entity_manager'
+      $logger: '@logger'
+      $httpClient: '@http_client'
+    tags:
+      - { name: 'container.hot_path' }
+
+  # GitHub Integration Service
+  App\Service\Integration\GitHubIntegrationService:
+    arguments:
+      $integrationService: '@App\Service\Integration\IntegrationService'
+      $secretManager: '@App\Service\Security\SecretManager'
+      $entityManager: '@doctrine.orm.entity_manager'
+      $logger: '@logger'
+      $httpClient: '@http_client'
+    tags:
+      - { name: 'container.hot_path' }
+
+  # Browser Integration Service
+  App\Service\Integration\BrowserIntegrationService:
+    arguments:
+      $integrationService: '@App\Service\Integration\IntegrationService'
+      $secretManager: '@App\Service\Security\SecretManager'
+      $mcpRegistry: '@App\Service\Integration\McpRegistry'
+      $messageBus: '@message_bus'
+      $entityManager: '@doctrine.orm.entity_manager'
+      $logger: '@logger'
+      $httpClient: '@http_client'
+    tags:
+      - { name: 'container.hot_path' }
+
+  # HTTP Client for integration services
+  http_client:
+    class: GuzzleHttp\Client
+    arguments:
+      - timeout: 30
+        headers:
+          User-Agent: 'EVIE-AI/1.0'
+
+  # Integration Manager (facade for all integrations)
+  App\Service\Integration\IntegrationManager:
+    arguments:
+      $integrationService: '@App\Service\Integration\IntegrationService'
+      $microsoftIntegration: '@App\Service\Integration\MicrosoftIntegrationService'
+      $googleIntegration: '@App\Service\Integration\GoogleIntegrationService'
+      $githubIntegration: '@App\Service\Integration\GitHubIntegrationService'
+      $browserIntegration: '@App\Service\Integration\BrowserIntegrationService'
+      $logger: '@logger'
+    tags:
+      - { name: 'container.hot_path' }
