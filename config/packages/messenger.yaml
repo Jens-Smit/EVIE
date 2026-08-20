@@ -1,40 +1,141 @@
 # Symfony Messenger Configuration for EVIE
-# This configuration enables async message processing for Sub-Agent execution
+# This file configures async message handling for agent execution
 
 framework:
+  messenger:
+    # Serializer for messages
+    serializer:
+      default_serializer: messenger.transport.json_serializer
+      symfony_serializer:
+        format: json
+        context: {}
+
+    # Default bus configuration
+    default_bus: messenger.bus.async
+
+    # Bus configurations
+    buses:
+      # Async bus for agent execution
+      messenger.bus.async:
+        middleware:
+          - doctrine_transaction
+          - doctrine_ping_connection
+          - validation
+          - handle_message
+
+      # Sync bus for immediate execution
+      messenger.bus.sync:
+        middleware:
+          - validation
+          - handle_message
+
+    # Transport configurations
+    transports:
+      # Async transport for agent execution (Doctrine)
+      async:
+        dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+        serializer: messenger.transport.json_serializer
+        options:
+          table_name: messenger_messages
+          queue_name: agent_execution
+        retry_strategy:
+          max_retries: 3
+          delay: 1000
+          multiplier: 2
+          max_delay: 60000
+
+      # Sync transport (immediate execution)
+      sync: 'sync://'
+
+      # Dead letter queue for failed messages
+      dead_letter:
+        dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+        serializer: messenger.transport.json_serializer
+        options:
+          table_name: messenger_messages
+          queue_name: dead_letter
+
+      # Scheduled tasks transport
+      scheduled_tasks:
+        dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+        serializer: messenger.transport.json_serializer
+        options:
+          table_name: messenger_messages
+          queue_name: scheduled_tasks
+        retry_strategy:
+          max_retries: 3
+          delay: 5000
+          multiplier: 2
+          max_delay: 300000 # 5 minutes
+
+      # Legacy: Async transport for Sub-Agent execution (from existing config)
+      sub_agent_async:
+        dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+        serializer: messenger.transport.json_serializer
+        retry_strategy:
+          max_retries: 3
+          delay: 1000
+          multiplier: 2
+          max_delay: 0
+
+      # Legacy: Failed messages transport
+      failed:
+        dsn: 'doctrine://default?queue_name=failed'
+
+    # Routing configuration
+    routing:
+      # Agent execution messages
+      'App\Message\ExecuteAgentMessage': async
+      
+      # Legacy: Sub-Agent messages (from existing config)
+      'App\Message\ExecuteSubAgentMessage': sub_agent_async
+      'App\Message\SubAgentResultMessage': sync
+
+# Additional configuration for production
+when@prod:
+  framework:
     messenger:
-        # Serializer configuration
-        serializer:
-            default_serializer: messenger.transport.serializer
-            symfony_serializer:
-                format: json
-                context: {}
+      transports:
+        async:
+          dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+          options:
+            connection: messenger
+            auto_setup: true
 
-        # Transport configuration
-        transports:
-            # Async transport for Sub-Agent execution
-            async:
-                dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
-                serializer: messenger.transport.serializer
-                retry_strategy:
-                    max_retries: 3
-                    delay: 1000
-                    multiplier: 2
-                    max_delay: 0
+        dead_letter:
+          dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+          options:
+            connection: messenger
+            auto_setup: true
 
-            # Sync transport for immediate processing
-            sync: 'sync://'
+        scheduled_tasks:
+          dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+          options:
+            connection: messenger
+            auto_setup: true
 
-        # Routing configuration
-        routing:
-            # Route ExecuteSubAgentMessage to async transport
-            'App\Message\ExecuteSubAgentMessage': async
-            
-            # Route SubAgentResultMessage to sync transport (immediate processing)
-            'App\Message\SubAgentResultMessage': sync
+        sub_agent_async:
+          dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+          options:
+            auto_setup: true
 
-        # Failure transport (for failed messages)
-        failure_transport: failed
+        failed:
+          dsn: 'doctrine://default?queue_name=failed'
+          options:
+            auto_setup: true
 
-        transports:
-            failed: 'doctrine://default?queue_name=failed'
+# Additional configuration for test environment
+when@test:
+  framework:
+    messenger:
+      transports:
+        async:
+          dsn: 'in-memory://'
+        dead_letter:
+          dsn: 'in-memory://'
+        scheduled_tasks:
+          dsn: 'in-memory://'
+        sub_agent_async:
+          dsn: 'in-memory://'
+        failed:
+          dsn: 'in-memory://'
