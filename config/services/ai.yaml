@@ -58,6 +58,39 @@ services:
     tags:
       - { name: 'container.hot_path' }
 
+  # Capability Registry
+  App\Service\AI\CapabilityRegistry:
+    arguments:
+      $capabilityRepository: '@App\Repository\AI\CapabilityRepository'
+      $entityManager: '@doctrine.orm.entity_manager'
+      $secretManager: '@App\Service\Security\SecretManager'
+      $logger: '@logger'
+      $defaultProvider: '%env(default:evie:CAPABILITY_DEFAULT_PROVIDER)%'
+    tags:
+      - { name: 'container.hot_path' }
+
+  # Capability Resolver
+  App\Service\AI\CapabilityResolver:
+    arguments:
+      $capabilityRegistry: '@App\Service\AI\CapabilityRegistry'
+      $secretManager: '@App\Service\Security\SecretManager'
+      $schedulerService: '@App\Service\Automation\SchedulerService'
+      $entityManager: '@doctrine.orm.entity_manager'
+      $logger: '@logger'
+    tags:
+      - { name: 'container.hot_path' }
+
+  # Capability Service (facade for capability operations)
+  App\Service\AI\CapabilityService:
+    arguments:
+      $capabilityRegistry: '@App\Service\AI\CapabilityRegistry'
+      $capabilityResolver: '@App\Service\AI\CapabilityResolver'
+      $secretManager: '@App\Service\Security\SecretManager'
+      $entityManager: '@doctrine.orm.entity_manager'
+      $logger: '@logger'
+    tags:
+      - { name: 'container.hot_path' }
+
   # Agent Service (will be implemented in later phases)
   # App\Service\AI\AgentService:
   #   arguments:
