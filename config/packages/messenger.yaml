@@ -87,6 +87,9 @@ framework:
       # Agent execution messages
       'App\Message\ExecuteAgentMessage': async
       
+      # Dead letter messages
+      'App\Message\DeadLetterMessage': dead_letter
+      
       # Legacy: Sub-Agent messages (from existing config)
       'App\Message\ExecuteSubAgentMessage': sub_agent_async
       'App\Message\SubAgentResultMessage': sync
