@@ -1,0 +1,231 @@
+{# templates/admin/user_detail.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ user.fullName ?? user.email }} - EVIE Admin{% endblock %}
+
+{% block body %}
+<div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    {# Header #}
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-slate-900 dark:text-slate-100">{{ user.fullName ?? user.email }}</h1>
+            <p class="text-slate-600 dark:text-slate-400 mt-1">{{ user.email }}</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{{ path('admin_users') }}" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                <i class="ph ph-arrow-left"></i>
+                Back to Users
+            </a>
+        </div>
+    </div>
+
+    {# User Information #}
+    <div class="glass-panel p-6 mb-6">
+        <div class="flex items-center gap-6 mb-6">
+            <div class="w-20 h-20 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
+                <i class="ph ph-user text-primary text-3xl"></i>
+            </div>
+            <div>
+                <h2 class="text-xl font-semibold text-slate-900 dark:text-slate-100">{{ user.fullName ?? user.email }}</h2>
+                <div class="flex items-center gap-2 mt-2">
+                    <span class="px-2 py-1 rounded-full text-xs font-medium {% if user.isActive %}bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300{% else %}bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300{% endif %}">
+                        {{ user.isActive ? 'Active' : 'Inactive' }}
+                    </span>
+                    {% for role in user.roles %}
+                        <span class="px-2 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300">{{ role }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <div class="space-y-4">
+                    <div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Email</div>
+                        <div class="font-medium text-slate-900 dark:text-slate-100">{{ user.email }}</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Full Name</div>
+                        <div class="font-medium text-slate-900 dark:text-slate-100">{{ user.fullName ?? 'N/A' }}</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Created At</div>
+                        <div class="text-slate-800 dark:text-slate-200">{{ user.createdAt|date('M d, Y H:i') }}</div>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div class="space-y-4">
+                    <div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Last Login</div>
+                        <div class="font-medium text-slate-900 dark:text-slate-100">{{ user.lastLogin ? user.lastLogin|date('M d, Y H:i') : 'Never' }}</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Tenant</div>
+                        <div class="font-medium text-slate-900 dark:text-slate-100">{{ tenant.name }}</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Preferences</div>
+                        <div class="text-slate-800 dark:text-slate-200">Theme: {{ user.preferences.theme|default('System')|title }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Statistics #}
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="glass-panel p-4 text-center">
+            <div class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ llmConfigs|length }}</div>
+            <div class="text-sm text-slate-500 dark:text-slate-400">LLM Configurations</div>
+        </div>
+        <div class="glass-panel p-4 text-center">
+            <div class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ conversations|length }}</div>
+            <div class="text-sm text-slate-500 dark:text-slate-400">Conversations</div>
+        </div>
+        <div class="glass-panel p-4 text-center">
+            <div class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ executions|length }}</div>
+            <div class="text-sm text-slate-500 dark:text-slate-400">Executions</div>
+        </div>
+        <div class="glass-panel p-4 text-center">
+            <div class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ user.tokenCount ?? 0 }}</div>
+            <div class="text-sm text-slate-500 dark:text-slate-400">Total Tokens</div>
+        </div>
+    </div>
+
+    {# LLM Configurations #}
+    <div class="glass-panel p-6 mb-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">LLM Configurations</h2>
+            <a href="{{ path('agent_llm_configurations') }}?user={{ user.id }}" class="text-sm text-primary hover:underline">Manage configurations</a>
+        </div>
+        
+        {% if llmConfigs|length > 0 %}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {% for config in llmConfigs %}
+                    <div class="p-4 bg-slate-50 dark:bg-slate-900/30 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
+                                    <i class="ph ph-cpu text-primary text-sm"></i>
+                                </div>
+                                <div>
+                                    <div class="font-medium text-slate-900 dark:text-slate-100">{{ config.provider }}:{{ config.model }}</div>
+                                    <div class="text-xs text-slate-500 dark:text-slate-400">
+                                        {% if config.isDefault %}
+                                            <span class="text-amber-600 dark:text-amber-400">Default</span>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                {% if config.isConfigured %}
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                    <span class="text-xs text-emerald-600 dark:text-emerald-400">Configured</span>
+                                {% else %}
+                                    <span class="w-2 h-2 rounded-full bg-amber-500"></span>
+                                    <span class="text-xs text-amber-600 dark:text-amber-400">Needs Config</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-4 text-slate-500 dark:text-slate-400">
+                <i class="ph ph-cpu text-2xl mb-2"></i>
+                <p>No LLM configurations found</p>
+            </div>
+        {% endif %}
+    </div>
+
+    {# Recent Conversations #}
+    <div class="glass-panel p-6 mb-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Recent Conversations</h2>
+            <a href="{{ path('agent_conversations') }}?user={{ user.id }}" class="text-sm text-primary hover:underline">View all conversations</a>
+        </div>
+        
+        {% if conversations|length > 0 %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for conversation in conversations|slice(0, 6) %}
+                    <a href="{{ path('agent_conversation_view', {'id': conversation.id}) }}" class="block p-4 bg-slate-50 dark:bg-slate-900/30 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors group">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-medium text-slate-900 dark:text-slate-100 group-hover:text-primary transition-colors">{{ conversation.title }}</h3>
+                            <span class="px-2 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300">
+                                {{ conversation.messageCount }} messages
+                            </span>
+                        </div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400">
+                            {{ conversation.updatedAt|date('M d, H:i') }}
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-8 text-slate-500 dark:text-slate-400">
+                <i class="ph ph-chats-circle text-4xl mb-2"></i>
+                <p>No conversations found for this user</p>
+            </div>
+        {% endif %}
+    </div>
+
+    {# Recent Executions #}
+    <div class="glass-panel p-6 mb-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Recent Executions</h2>
+            <a href="{{ path('agent_executions') }}?user={{ user.id }}" class="text-sm text-primary hover:underline">View all executions</a>
+        </div>
+        
+        {% if executions|length > 0 %}
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
+                        <tr>
+                            <th class="pb-2 pr-4">ID</th>
+                            <th class="pb-2 pr-4">Agent</th>
+                            <th class="pb-2 pr-4">Status</th>
+                            <th class="pb-2 pr-4">Duration</th>
+                            <th class="pb-2">Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for execution in executions|slice(0, 5) %}
+                            <tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/50">
+                                <td class="py-2 pr-4">
+                                    <code class="text-xs">{{ execution.id|slice(0, 8) }}</code>
+                                </td>
+                                <td class="py-2 pr-4 font-medium text-slate-900 dark:text-slate-100">{{ execution.agent }}</td>
+                                <td class="py-2 pr-4">
+                                    <span class="px-2 py-1 rounded-full text-xs font-medium {% if execution.status == 'completed' %}bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300{% elseif execution.status == 'failed' %}bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300{% else %}bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300{% endif %}">
+                                        {{ execution.status }}
+                                    </span>
+                                </td>
+                                <td class="py-2 pr-4">
+                                    {% if execution.duration %}
+                                        {{ execution.duration }}s
+                                    {% else %}
+                                        <span class="text-slate-400 dark:text-slate-500">-</span>
+                                    {% endif %}
+                                </td>
+                                <td class="py-2 text-slate-500 dark:text-slate-400">
+                                    {{ execution.createdAt|date('M d, H:i') }}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-8 text-slate-500 dark:text-slate-400">
+                <i class="ph ph-clipboard text-4xl mb-2"></i>
+                <p>No executions found for this user</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% block javascripts %}
+{% endblock %}
+{% endblock %}
