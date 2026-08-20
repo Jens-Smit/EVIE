@@ -1,0 +1,166 @@
+{# templates/admin/policies.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Policies - EVIE Admin{% endblock %}
+
+{% block body %}
+<div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6" x-data="{
+    typeFilter: '{{ typeFilter }}',
+    effectFilter: '{{ effectFilter }}',
+    searchQuery: '{{ searchFilter }}',
+    
+    getEffectColor(effect) {
+        const colors = {
+            'allow': 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
+            'deny': 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
+            'ask': 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300'
+        };
+        return colors[effect] || 'bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300';
+    },
+    
+    getTypeIcon(type) {
+        const icons = {
+            'action': 'ph-target',
+            'resource': 'ph-folder',
+            'access': 'ph-lock',
+            'custom': 'ph-gear'
+        };
+        return icons[type] || 'ph-file-text';
+    }
+}">
+    {# Header #}
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-slate-900 dark:text-slate-100">Policies</h1>
+            <p class="text-slate-600 dark:text-slate-400 mt-1">Manage security policies</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{{ path('security_policy_new') }}" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                <i class="ph ph-plus"></i>
+                New Policy
+            </a>
+        </div>
+    </div>
+
+    {# Filters #}
+    <div class="flex flex-col md:flex-row gap-4 mb-6">
+        <div class="flex items-center gap-2">
+            <span class="text-sm text-slate-600 dark:text-slate-400">Type:</span>
+            <select x-model="typeFilter" @change="window.location.href = '{{ path('admin_policies') }}?type=' + $event.target.value + '&effect=' + effectFilter + '&search=' + searchQuery" class="px-3 py-2 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                <option value="">All Types</option>
+                {% for type in policyTypes %}
+                    <option value="{{ type }}">{{ type|title }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="text-sm text-slate-600 dark:text-slate-400">Effect:</span>
+            <select x-model="effectFilter" @change="window.location.href = '{{ path('admin_policies') }}?type=' + typeFilter + '&effect=' + $event.target.value + '&search=' + searchQuery" class="px-3 py-2 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                <option value="">All Effects</option>
+                {% for effect in ['allow', 'deny', 'ask'] %}
+                    <option value="{{ effect }}">{{ effect|title }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="flex-1">
+            <div class="relative">
+                <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"></i>
+                <input 
+                    type="text" 
+                    x-model="searchQuery" 
+                    @input.debounce.500="window.location.href = '{{ path('admin_policies') }}?type=' + typeFilter + '&effect=' + effectFilter + '&search=' + $event.target.value"
+                    placeholder="Search policies..."
+                    class="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                >
+            </div>
+        </div>
+    </div>
+
+    {# Policies Table #}
+    <div class="glass-panel">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
+                    <tr>
+                        <th class="pb-3 pr-4">Name</th>
+                        <th class="pb-3 pr-4">Identifier</th>
+                        <th class="pb-3 pr-4">Type</th>
+                        <th class="pb-3 pr-4">Effect</th>
+                        <th class="pb-3 pr-4">Priority</th>
+                        <th class="pb-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for policy in policies %}
+                        <tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/50">
+                            <td class="py-3 pr-4">
+                                <div class="font-medium text-slate-900 dark:text-slate-100">{{ policy.name }}</div>
+                            </td>
+                            <td class="py-3 pr-4 text-slate-600 dark:text-slate-400">
+                                <code>{{ policy.identifier }}</code>
+                            </td>
+                            <td class="py-3 pr-4">
+                                <span class="flex items-center gap-1">
+                                    <i class="{{ getTypeIcon(policy.policyType) }} text-slate-400 dark:text-slate-500 text-sm"></i>
+                                    <span>{{ policy.policyType|title }}</span>
+                                </span>
+                            </td>
+                            <td class="py-3 pr-4">
+                                <span class="px-2 py-1 rounded-full text-xs font-medium {{ getEffectColor(policy.effect) }}">
+                                    {{ policy.effect|title }}
+                                </span>
+                            </td>
+                            <td class="py-3 pr-4">
+                                <span class="px-2 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300">
+                                    {{ policy.priority }}
+                                </span>
+                            </td>
+                            <td class="py-3">
+                                <div class="flex items-center gap-2">
+                                    <a href="{{ path('admin_policy_detail', {'id': policy.id}) }}" class="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-sm">
+                                        <i class="ph ph-eye"></i>
+                                        View
+                                    </a>
+                                    {% if policy.isEnabled %}
+                                        <a href="{{ path('security_policy_disable', {'id': policy.id}) }}" class="px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-lg hover:bg-amber-200 dark:hover:bg-amber-800/50 transition-colors text-sm" onclick="return confirm('Disable this policy?')">
+                                            <i class="ph ph-eye-closed"></i>
+                                            Disable
+                                        </a>
+                                    {% else %}
+                                        <a href="{{ path('security_policy_enable', {'id': policy.id}) }}" class="px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-lg hover:bg-emerald-200 dark:hover:bg-emerald-800/50 transition-colors text-sm">
+                                            <i class="ph ph-eye"></i>
+                                            Enable
+                                        </a>
+                                    {% endif %}
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        {% if policies|length == 0 %}
+            <div class="text-center py-8 text-slate-500 dark:text-slate-400">
+                <i class="ph ph-file-text text-4xl mb-2"></i>
+                <p>No policies found</p>
+                <a href="{{ path('security_policy_new') }}" class="text-primary hover:underline mt-2 inline-block">Create your first policy</a>
+            </div>
+        {% endif %}
+    </div>
+
+    {# Policy Actions #}
+    <div class="mt-6 flex justify-end gap-2">
+        <a href="{{ path('security_policy_register_defaults') }}" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors" onclick="return confirm('Register default policies?')">
+            <i class="ph ph-download"></i>
+            Register Defaults
+        </a>
+    </div>
+</div>
+
+{% block javascripts %}
+<script>
+    // Additional JavaScript for policies
+</script>
+{% endblock %}
+{% endblock %}
