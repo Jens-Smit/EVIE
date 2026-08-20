@@ -1,0 +1,99 @@
+# Admin Routes
+# These routes are for the admin dashboard and management interfaces
+
+admin_dashboard:
+  path: /admin
+  controller: App\Controller\Admin\AdminController::dashboard
+  methods: GET
+
+admin_tenants:
+  path: /admin/tenants
+  controller: App\Controller\Admin\AdminController::tenants
+  methods: GET
+
+admin_tenant_detail:
+  path: /admin/tenants/{id}
+  controller: App\Controller\Admin\AdminController::tenantDetail
+  methods: GET
+  requirements:
+    id: '[a-f0-9]{26}'
+
+admin_users:
+  path: /admin/users
+  controller: App\Controller\Admin\AdminController::users
+  methods: GET
+
+admin_user_detail:
+  path: /admin/users/{id}
+  controller: App\Controller\Admin\AdminController::userDetail
+  methods: GET
+  requirements:
+    id: '[a-f0-9]{26}'
+
+admin_executions:
+  path: /admin/executions
+  controller: App\Controller\Admin\AdminController::executions
+  methods: GET
+
+admin_execution_detail:
+  path: /admin/executions/{id}
+  controller: App\Controller\Admin\AdminController::executionDetail
+  methods: GET
+  requirements:
+    id: '[a-f0-9]{26}'
+
+admin_conversations:
+  path: /admin/conversations
+  controller: App\Controller\Admin\AdminController::conversations
+  methods: GET
+
+admin_conversation_detail:
+  path: /admin/conversations/{id}
+  controller: App\Controller\Admin\AdminController::conversationDetail
+  methods: GET
+  requirements:
+    id: '[a-f0-9]{26}'
+
+admin_integrations:
+  path: /admin/integrations
+  controller: App\Controller\Admin\AdminController::integrations
+  methods: GET
+
+admin_integration_detail:
+  path: /admin/integrations/{id}
+  controller: App\Controller\Admin\AdminController::integrationDetail
+  methods: GET
+  requirements:
+    id: '[a-f0-9]{26}'
+
+admin_mcp_servers:
+  path: /admin/mcp-servers
+  controller: App\Controller\Admin\AdminController::mcpServers
+  methods: GET
+
+admin_capabilities:
+  path: /admin/capabilities
+  controller: App\Controller\Admin\AdminController::capabilities
+  methods: GET
+
+admin_policies:
+  path: /admin/policies
+  controller: App\Controller\Admin\AdminController::policies
+  methods: GET
+
+admin_policy_detail:
+  path: /admin/policies/{id}
+  controller: App\Controller\Admin\AdminController::policyDetail
+  methods: GET
+  requirements:
+    id: '[a-f0-9]{26}'
+
+admin_scheduler:
+  path: /admin/scheduler
+  controller: App\Controller\Admin\AdminController::scheduler
+  methods: GET
+
+admin_health:
+  path: /admin/health
+  controller: App\Controller\Admin\AdminController::health
+  methods: GET
