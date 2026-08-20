@@ -1,0 +1,163 @@
+{# templates/admin/users.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Users - {{ tenant.name }} - EVIE Admin{% endblock %}
+
+{% block body %}
+<div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6" x-data="{
+    searchQuery: '',
+    
+    filteredUsers() {
+        if (!this.searchQuery) return {{ users|map(u => {id: u.id, email: u.email, fullName: u.fullName, roles: u.roles, isActive: u.isActive, lastLogin: u.lastLogin ? u.lastLogin.format('c') : null, createdAt: u.createdAt.format('c')})|json_encode|raw }};
+        return {{ users|map(u => {id: u.id, email: u.email, fullName: u.fullName, roles: u.roles, isActive: u.isActive, lastLogin: u.lastLogin ? u.lastLogin.format('c') : null, createdAt: u.createdAt.format('c')})|json_encode|raw }}.filter(user => 
+            user.email.toLowerCase().includes(this.searchQuery.toLowerCase()) ||
+            (user.fullName && user.fullName.toLowerCase().includes(this.searchQuery.toLowerCase()))
+        );
+    }
+}">
+    {# Header #}
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-slate-900 dark:text-slate-100">Users</h1>
+            <p class="text-slate-600 dark:text-slate-400 mt-1">Manage users for {{ tenant.name }}</p>
+        </div>
+    </div>
+
+    {# Search & Actions #}
+    <div class="flex flex-col md:flex-row gap-4 mb-6">
+        <div class="flex-1">
+            <div class="relative">
+                <i class="ph ph-magnifying-glass absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500"></i>
+                <input 
+                    type="text" 
+                    x-model="searchQuery" 
+                    placeholder="Search users..."
+                    class="w-full pl-10 pr-4 py-2 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                >
+            </div>
+        </div>
+    </div>
+
+    {# Users Table #}
+    <div class="glass-panel">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
+                    <tr>
+                        <th class="pb-3 pr-4">User</th>
+                        <th class="pb-3 pr-4">Email</th>
+                        <th class="pb-3 pr-4">Roles</th>
+                        <th class="pb-3 pr-4">Status</th>
+                        <th class="pb-3 pr-4">Last Login</th>
+                        <th class="pb-3">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <template x-for="user in filteredUsers()" :key="user.id">
+                        <tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/50">
+                            <td class="py-3 pr-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
+                                        <i class="ph ph-user text-primary text-sm"></i>
+                                    </div>
+                                    <div>
+                                        <div class="font-medium text-slate-900 dark:text-slate-100" x-text="user.fullName || user.email"></div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-3 pr-4 text-slate-600 dark:text-slate-400" x-text="user.email"></td>
+                            <td class="py-3 pr-4">
+                                <div class="flex flex-wrap gap-1">
+                                    <template x-for="role in user.roles" :key="role">
+                                        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300" x-text="role"></span>
+                                    </template>
+                                </div>
+                            </td>
+                            <td class="py-3 pr-4">
+                                <span class="px-2 py-1 rounded-full text-xs font-medium" :class="user.isActive ? 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300' : 'bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300'" x-text="user.isActive ? 'Active' : 'Inactive'"></span>
+                            </td>
+                            <td class="py-3 pr-4 text-slate-500 dark:text-slate-400">
+                                <template x-if="user.lastLogin">
+                                    <span x-text="new Date(user.lastLogin).toLocaleString()"></span>
+                                </template>
+                                <template x-if="!user.lastLogin">
+                                    <span class="text-slate-400 dark:text-slate-500">Never</span>
+                                </template>
+                            </td>
+                            <td class="py-3">
+                                <div class="flex items-center gap-2">
+                                    <a :href="'{{ path('admin_user_detail', {'id': 'USER_ID'}) }}'.replace('USER_ID', user.id)" class="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-sm">
+                                        <i class="ph ph-eye"></i>
+                                        View
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    </template>
+                    
+                    {% for user in users %}
+                        <tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/50" style="display: none;">
+                            <td class="py-3 pr-4">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
+                                        <i class="ph ph-user text-primary text-sm"></i>
+                                    </div>
+                                    <div>
+                                        <div class="font-medium text-slate-900 dark:text-slate-100">{{ user.fullName ?? user.email }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-3 pr-4 text-slate-600 dark:text-slate-400">{{ user.email }}</td>
+                            <td class="py-3 pr-4">
+                                <div class="flex flex-wrap gap-1">
+                                    {% for role in user.roles %}
+                                        <span class="px-2 py-0.5 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300">{{ role }}</span>
+                                    {% endfor %}
+                                </div>
+                            </td>
+                            <td class="py-3 pr-4">
+                                <span class="px-2 py-1 rounded-full text-xs font-medium {% if user.isActive %}bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300{% else %}bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300{% endif %}">
+                                    {{ user.isActive ? 'Active' : 'Inactive' }}
+                                </span>
+                            </td>
+                            <td class="py-3 pr-4 text-slate-500 dark:text-slate-400">
+                                {% if user.lastLogin %}
+                                    {{ user.lastLogin|date('M d, Y H:i') }}
+                                {% else %}
+                                    <span class="text-slate-400 dark:text-slate-500">Never</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3">
+                                <div class="flex items-center gap-2">
+                                    <a href="{{ path('admin_user_detail', {'id': user.id}) }}" class="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-sm">
+                                        <i class="ph ph-eye"></i>
+                                        View
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        {% if users|length == 0 %}
+            <div class="text-center py-8 text-slate-500 dark:text-slate-400">
+                <i class="ph ph-users text-4xl mb-2"></i>
+                <p>No users found</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% block javascripts %}
+<script>
+    // Fallback for browsers without Alpine.js
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('tr[style="display: none;"]').forEach(function(row) {
+            row.style.display = 'table-row';
+        });
+    });
+</script>
+{% endblock %}
+{% endblock %}
