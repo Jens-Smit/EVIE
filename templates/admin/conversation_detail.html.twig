@@ -1,0 +1,188 @@
+{# templates/admin/conversation_detail.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ conversation.title }} - EVIE Admin{% endblock %}
+
+{% block body %}
+<div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    {# Header #}
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-slate-900 dark:text-slate-100">{{ conversation.title }}</h1>
+            <p class="text-slate-600 dark:text-slate-400 mt-1">{{ conversation.id|slice(0, 8) }}</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{{ path('admin_conversations') }}" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                <i class="ph ph-arrow-left"></i>
+                Back to Conversations
+            </a>
+        </div>
+    </div>
+
+    {# Conversation Statistics #}
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="glass-panel p-4 text-center">
+            <div class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ conversation.messageCount }}</div>
+            <div class="text-sm text-slate-500 dark:text-slate-400">Messages</div>
+        </div>
+        <div class="glass-panel p-4 text-center">
+            <div class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ conversation.tokenCount }}</div>
+            <div class="text-sm text-slate-500 dark:text-slate-400">Tokens</div>
+        </div>
+        <div class="glass-panel p-4 text-center">
+            <div class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ conversation.user.fullName ?? conversation.user.email|slice(0, 15) }}</div>
+            <div class="text-sm text-slate-500 dark:text-slate-400">User</div>
+        </div>
+        <div class="glass-panel p-4 text-center">
+            <div class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ conversation.updatedAt|date('M d') }}</div>
+            <div class="text-sm text-slate-500 dark:text-slate-400">Last Updated</div>
+        </div>
+    </div>
+
+    {# Conversation Information #}
+    <div class="glass-panel p-6 mb-6">
+        <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Conversation Information</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <div class="space-y-4">
+                    <div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Conversation ID</div>
+                        <code class="text-slate-800 dark:text-slate-200">{{ conversation.id }}</code>
+                    </div>
+                    <div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Title</div>
+                        <div class="font-medium text-slate-900 dark:text-slate-100">{{ conversation.title }}</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Status</div>
+                        <span class="px-2 py-1 rounded-full text-xs font-medium {% if conversation.status == 'active' %}bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300{% else %}bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300{% endif %}">
+                            {{ conversation.status|title }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div class="space-y-4">
+                    <div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Created At</div>
+                        <div class="text-slate-800 dark:text-slate-200">{{ conversation.createdAt|date('M d, Y H:i') }}</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Updated At</div>
+                        <div class="text-slate-800 dark:text-slate-200">{{ conversation.updatedAt|date('M d, Y H:i') }}</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Message Count</div>
+                        <div class="font-medium text-slate-900 dark:text-slate-100">{{ conversation.messageCount }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# User Information #}
+    <div class="glass-panel p-6 mb-6">
+        <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">User Information</h2>
+        <div class="flex items-center gap-6">
+            <div class="w-16 h-16 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
+                <i class="ph ph-user text-primary text-2xl"></i>
+            </div>
+            <div>
+                <div class="font-medium text-slate-900 dark:text-slate-100">{{ conversation.user.fullName ?? conversation.user.email }}</div>
+                <div class="text-sm text-slate-500 dark:text-slate-400">{{ conversation.user.email }}</div>
+                <div class="flex items-center gap-2 mt-2">
+                    <span class="px-2 py-1 rounded-full text-xs font-medium {% if conversation.user.isActive %}bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300{% else %}bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300{% endif %}">
+                        {{ conversation.user.isActive ? 'Active' : 'Inactive' }}
+                    </span>
+                    {% for role in conversation.user.roles %}
+                        <span class="px-2 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300">{{ role }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Tags #}
+    {% if tags|length > 0 %}
+        <div class="glass-panel p-6 mb-6">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Tags</h2>
+            <div class="flex flex-wrap gap-2">
+                {% for tag in tags %}
+                    <span class="px-3 py-1 bg-primary/10 dark:bg-primary/20 text-primary dark:text-white rounded-full text-sm">{{ tag }}</span>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    {# Summary #}
+    {% if summary %}
+        <div class="glass-panel p-6 mb-6">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Summary</h2>
+            <div class="p-4 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                <p class="text-slate-800 dark:text-slate-200 whitespace-pre-wrap">{{ summary }}</p>
+            </div>
+        </div>
+    {% endif %}
+
+    {# Context #}
+    {% if context|length > 0 %}
+        <div class="glass-panel p-6 mb-6">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Context</h2>
+            <div class="p-4 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                <pre class="text-xs text-slate-700 dark:text-slate-300 overflow-x-auto evie-code">{{ context|json_encode(4)|raw }}</pre>
+            </div>
+        </div>
+    {% endif %}
+
+    {# Messages #}
+    <div class="glass-panel p-6 mb-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Messages ({{ messages|length }})</h2>
+        </div>
+        <div class="space-y-4 max-h-96 overflow-y-auto">
+            {% for message in messages %}
+                <div class="p-4 bg-slate-50 dark:bg-slate-900/30 rounded-lg border border-slate-200 dark:border-slate-700">
+                    <div class="flex justify-between items-start mb-2">
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium {% if message.role == 'user' %}bg-primary/10 dark:bg-primary/20 text-primary{% elseif message.role == 'assistant' %}bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300{% elseif message.role == 'system' %}bg-slate-200 dark:bg-slate-700/30 text-slate-600 dark:text-slate-400{% else %}bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300{% endif %}">
+                                {{ message.role }}
+                            </span>
+                            <span class="text-xs text-slate-400 dark:text-slate-500">{{ message.createdAt|date('M d, H:i:s') }}</span>
+                        </div>
+                        {% if message.tokenCount %}
+                            <span class="text-xs text-slate-400 dark:text-slate-500">{{ message.tokenCount }} tokens</span>
+                        {% endif %}
+                    </div>
+                    <div class="text-slate-800 dark:text-slate-200 whitespace-pre-wrap evie-code">{{ message.content }}</div>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    {# Statistics #}
+    <div class="glass-panel p-6">
+        <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Statistics</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="text-center p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                <div class="text-xl font-bold text-slate-900 dark:text-slate-100">{{ statistics.userMessages ?? 0 }}</div>
+                <div class="text-sm text-slate-500 dark:text-slate-400">User Messages</div>
+            </div>
+            <div class="text-center p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                <div class="text-xl font-bold text-slate-900 dark:text-slate-100">{{ statistics.assistantMessages ?? 0 }}</div>
+                <div class="text-sm text-slate-500 dark:text-slate-400">Assistant Messages</div>
+            </div>
+            <div class="text-center p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                <div class="text-xl font-bold text-slate-900 dark:text-slate-100">{{ statistics.systemMessages ?? 0 }}</div>
+                <div class="text-sm text-slate-500 dark:text-slate-400">System Messages</div>
+            </div>
+            <div class="text-center p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                <div class="text-xl font-bold text-slate-900 dark:text-slate-100">{{ statistics.totalTokens ?? 0 }}</div>
+                <div class="text-sm text-slate-500 dark:text-slate-400">Total Tokens</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block javascripts %}
+{% endblock %}
+{% endblock %}
