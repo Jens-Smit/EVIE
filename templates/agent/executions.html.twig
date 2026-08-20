@@ -1,0 +1,127 @@
+{# templates/agent/executions.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Executions - EVIE{% endblock %}
+
+{% block body %}
+<div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6" x-data="{
+    statusFilter: '{{ statusFilter }}',
+    
+    getStatusColor(status) {
+        const colors = {
+            'queued': 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
+            'running': 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
+            'completed': 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
+            'failed': 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
+            'cancelled': 'bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300'
+        };
+        return colors[status] || 'bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300';
+    }
+}">
+    {# Header #}
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-slate-900 dark:text-slate-100">Executions</h1>
+            <p class="text-slate-600 dark:text-slate-400 mt-1">View your agent execution history</p>
+        </div>
+    </div>
+
+    {# Filters #}
+    <div class="flex flex-col md:flex-row gap-4 mb-6">
+        <div class="flex items-center gap-2">
+            <span class="text-sm text-slate-600 dark:text-slate-400">Status:</span>
+            <select x-model="statusFilter" @change="window.location.href = '{{ path('agent_executions') }}?status=' + $event.target.value" class="px-3 py-2 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                <option value="">All Statuses</option>
+                <option value="queued">Queued</option>
+                <option value="running">Running</option>
+                <option value="completed">Completed</option>
+                <option value="failed">Failed</option>
+                <option value="cancelled">Cancelled</option>
+            </select>
+        </div>
+        <div class="flex-1"></div>
+        <div class="flex items-center gap-2">
+            <button @click="window.location.reload()" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-sm">
+                <i class="ph ph-arrow-clockwise"></i>
+                Refresh
+            </button>
+        </div>
+    </div>
+
+    {# Executions Table #}
+    <div class="glass-panel">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
+                    <tr>
+                        <th class="pb-3 pr-4">ID</th>
+                        <th class="pb-3 pr-4">Agent</th>
+                        <th class="pb-3 pr-4">Status</th>
+                        <th class="pb-3 pr-4">Duration</th>
+                        <th class="pb-3 pr-4">Tokens</th>
+                        <th class="pb-3">Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for execution in executions %}
+                        <tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/50">
+                            <td class="py-3 pr-4">
+                                <code class="text-xs">{{ execution.id|slice(0, 8) }}</code>
+                            </td>
+                            <td class="py-3 pr-4">
+                                <div class="font-medium text-slate-900 dark:text-slate-100">{{ execution.agent }}</div>
+                                {% if execution.conversation %}
+                                    <div class="text-xs text-slate-500 dark:text-slate-400">
+                                        Conversation: {{ execution.conversation.title|slice(0, 30) }}
+                                    </div>
+                                {% endif %}
+                            </td>
+                            <td class="py-3 pr-4">
+                                <span class="px-2 py-1 rounded-full text-xs font-medium {{ getStatusColor(execution.status) }}">
+                                    {{ execution.status|title }}
+                                </span>
+                            </td>
+                            <td class="py-3 pr-4">
+                                {% if execution.duration %}
+                                    {{ execution.duration }}s
+                                {% else %}
+                                    <span class="text-slate-400 dark:text-slate-500">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3 pr-4">
+                                {% if execution.tokenCount %}
+                                    {{ execution.tokenCount }}
+                                {% else %}
+                                    <span class="text-slate-400 dark:text-slate-500">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="py-3 text-slate-500 dark:text-slate-400">
+                                {{ execution.createdAt|date('M d, H:i') }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        {% if executions|length == 0 %}
+            <div class="text-center py-8 text-slate-500 dark:text-slate-400">
+                <i class="ph ph-clipboard text-4xl mb-2"></i>
+                <p>No executions found</p>
+                <a href="{{ path('agent_conversation_new') }}" class="text-primary hover:underline mt-2 inline-block">Start a new conversation</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% block javascripts %}
+<script>
+    // Auto-refresh every 30 seconds
+    document.addEventListener('DOMContentLoaded', function() {
+        setInterval(function() {
+            window.location.reload();
+        }, 30000);
+    });
+</script>
+{% endblock %}
+{% endblock %}
