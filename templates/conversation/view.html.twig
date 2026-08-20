@@ -1,0 +1,384 @@
+{# templates/conversation/view.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ conversation.title }} - EVIE{% endblock %}
+
+{% block body %}
+<div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6" x-data="{
+    messages: {{ messages|map(m => {
+        id: m.id,
+        role: m.role,
+        content: m.content,
+        createdAt: m.createdAt.format('c')
+    })|json_encode|raw }},
+    newMessage: '',
+    selectedAgent: '',
+    isLoading: false,
+    autoScroll: true,
+    
+    scrollToBottom() {
+        const container = document.getElementById('chat-container');
+        if (container && this.autoScroll) {
+            setTimeout(() => {
+                container.scrollTop = container.scrollHeight;
+            }, 100);
+        }
+    },
+    
+    sendMessage() {
+        if (!this.newMessage.trim() || this.isLoading) return;
+        
+        this.isLoading = true;
+        const message = this.newMessage;
+        this.newMessage = '';
+        
+        // Add user message to UI
+        this.messages.push({
+            id: 'temp-' + Date.now(),
+            role: 'user',
+            content: message,
+            createdAt: new Date().toISOString()
+        });
+        this.scrollToBottom();
+        
+        // Send to server
+        fetch('{{ path('chat_send', {'id': conversation.id}) }}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: new URLSearchParams({
+                content: message,
+                agent_name: this.selectedAgent
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.status === 'success') {
+                // Message was already added, just update with server data
+                const index = this.messages.findIndex(m => m.id === 'temp-' + Date.now());
+                if (index !== -1) {
+                    this.messages[index] = {
+                        id: data.messageId,
+                        role: 'user',
+                        content: message,
+                        createdAt: new Date().toISOString()
+                    };
+                }
+                
+                // If there's an execution, we'll get updates via polling
+                if (data.executionId) {
+                    this.pollExecution(data.executionId);
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Failed to send message', 'error');
+        })
+        .finally(() => {
+            this.isLoading = false;
+        });
+    },
+    
+    pollExecution(executionId) {
+        const interval = setInterval(() => {
+            fetch('{{ path('agent_execution_status', {'id': 'EXECUTION_ID'}) }}'.replace('EXECUTION_ID', executionId))
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'completed' || data.status === 'failed') {
+                    clearInterval(interval);
+                    // Refresh messages
+                    this.loadMessages();
+                }
+            })
+            .catch(error => {
+                console.error('Error polling:', error);
+            });
+        }, 2000);
+        
+        // Clear interval after 30 seconds
+        setTimeout(() => clearInterval(interval), 30000);
+    },
+    
+    loadMessages() {
+        fetch('{{ path('chat_view', {'id': conversation.id}) }}')
+        .then(response => response.text())
+        .then(html => {
+            // This is a simplified approach - in production you would use HTMX or similar
+        })
+        .catch(error => {
+            console.error('Error loading messages:', error);
+        });
+    },
+    
+    selectAgent(agent) {
+        this.selectedAgent = agent;
+        // Close dropdown if open
+        const dropdown = document.querySelector('.agent-dropdown');
+        if (dropdown) {
+            dropdown.classList.remove('open');
+        }
+    },
+    
+    toggleAgentDropdown() {
+        const dropdown = document.querySelector('.agent-dropdown');
+        if (dropdown) {
+            dropdown.classList.toggle('open');
+        }
+    },
+    
+    clearChat() {
+        if (confirm('Are you sure you want to clear this conversation?')) {
+            fetch('{{ path('chat_clear', {'id': conversation.id}) }}', {
+                method: 'POST',
+                headers: {
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: new URLSearchParams({
+                    keep_messages: 10
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    showToast('Conversation cleared', 'success');
+                    // Reload page
+                    window.location.reload();
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('Failed to clear conversation', 'error');
+            });
+        }
+    },
+    
+    renameConversation() {
+        const newTitle = prompt('Enter new title:', '{{ conversation.title }}');
+        if (newTitle && newTitle.trim()) {
+            fetch('{{ path('chat_rename', {'id': conversation.id}) }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: new URLSearchParams({
+                    title: newTitle.trim()
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    document.querySelector('h1').textContent = newTitle.trim();
+                    showToast('Conversation renamed', 'success');
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                showToast('Failed to rename conversation', 'error');
+            });
+        }
+    }
+}" @init="scrollToBottom()">
+    {# Header #}
+    <div class="flex justify-between items-center mb-6">
+        <div class="flex items-center gap-4">
+            <a href="{{ path('agent_conversations') }}" class="text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
+                <i class="ph ph-arrow-left text-xl"></i>
+            </a>
+            <div>
+                <h1 class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ conversation.title }}</h1>
+                <div class="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400 mt-1">
+                    <span class="flex items-center gap-1">
+                        <i class="ph ph-chat-circle-dots text-xs"></i>
+                        {{ conversation.messageCount }} messages
+                    </span>
+                    <span class="flex items-center gap-1">
+                        <i class="ph ph-hash text-xs"></i>
+                        {{ conversation.tokenCount }} tokens
+                    </span>
+                    <span class="flex items-center gap-1">
+                        <i class="ph ph-clock text-xs"></i>
+                        Updated: {{ conversation.updatedAt|date('M d, H:i') }}
+                    </span>
+                </div>
+            </div>
+        </div>
+        <div class="flex items-center gap-2">
+            {# Action Buttons #}
+            <div class="relative agent-dropdown">
+                <button @click="toggleAgentDropdown()" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center gap-2">
+                    {% if selectedAgent %}
+                        <i class="ph ph-robot"></i>
+                        <span>{{ selectedAgent }}</span>
+                    {% else %}
+                        <i class="ph ph-robot"></i>
+                        <span>Select Agent</span>
+                    {% endif %}
+                    <i class="ph ph-caret-down text-xs"></i>
+                </button>
+                <div class="absolute top-full mt-2 right-0 w-64 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg p-2 z-50 hidden">
+                    <div class="text-sm font-medium text-slate-500 dark:text-slate-400 mb-2">Available Agents</div>
+                    {% for agent in availableAgents %}
+                        <button @click="selectAgent('{{ agent.name }}')" class="w-full text-left px-3 py-2 rounded-md text-sm text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center gap-2">
+                            <i class="ph {{ agent.icon|default('ph-robot') }} text-xs"></i>
+                            <span>{{ agent.displayName }}</span>
+                        </button>
+                    {% endfor %}
+                </div>
+            </div>
+            <button @click="renameConversation()" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors" title="Rename conversation">
+                <i class="ph ph-pencil-simple"></i>
+            </button>
+            <button @click="clearChat()" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors" title="Clear conversation">
+                <i class="ph ph-trash"></i>
+            </button>
+        </div>
+    </div>
+
+    {# Chat Container #}
+    <div id="chat-container" class="flex-1 overflow-y-auto pr-4" style="max-height: calc(100vh - 200px);">
+        <div class="space-y-4">
+            {% for message in messages %}
+                <div class="flex {% if message.role == 'user' %}justify-end{% else %}justify-start{% endif %}" x-init="scrollToBottom()">
+                    <div class="max-w-[80%] rounded-2xl px-4 py-3 {% if message.role == 'user' %}bg-primary text-white{% elseif message.role == 'assistant' %}bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200{% elseif message.role == 'system' %}bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-400 text-sm{% else %}bg-amber-50 dark:bg-amber-900/30 text-amber-800 dark:text-amber-200{% endif %}">
+                        <div class="flex items-center gap-2 mb-1">
+                            {% if message.role == 'user' %}
+                                <i class="ph ph-user-circle text-lg"></i>
+                            {% elseif message.role == 'assistant' %}
+                                <i class="ph ph-robot text-lg"></i>
+                            {% elseif message.role == 'system' %}
+                                <i class="ph ph-gear text-lg"></i>
+                            {% else %}
+                                <i class="ph ph-toolbox text-lg"></i>
+                            {% endif %}
+                            <span class="font-medium text-xs uppercase tracking-wide opacity-70">{{ message.role }}</span>
+                        </div>
+                        <div class="whitespace-pre-wrap break-words evie-code">
+                            {{ message.content }}
+                        </div>
+                        <div class="flex justify-between items-center mt-2 text-xs opacity-50">
+                            <span>{{ message.createdAt|date('H:i') }}</span>
+                            {% if message.tokenCount %}
+                                <span>{{ message.tokenCount }} tokens</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+            {% endfor %}
+            
+            {# Loading indicator #}
+            <div x-show="isLoading" class="flex justify-start">
+                <div class="bg-slate-100 dark:bg-slate-800 rounded-2xl px-4 py-3">
+                    <div class="flex items-center gap-2">
+                        <i class="ph ph-robot text-lg"></i>
+                        <span class="font-medium text-xs uppercase tracking-wide opacity-70">Assistant</span>
+                    </div>
+                    <div class="flex gap-1 mt-2">
+                        <div class="w-2 h-2 rounded-full bg-slate-400 dark:bg-slate-500 animate-bounce"></div>
+                        <div class="w-2 h-2 rounded-full bg-slate-400 dark:bg-slate-500 animate-bounce" style="animation-delay: 0.2s"></div>
+                        <div class="w-2 h-2 rounded-full bg-slate-400 dark:bg-slate-500 animate-bounce" style="animation-delay: 0.4s"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Chat Input #}
+    <div class="mt-6 border-t border-slate-200 dark:border-slate-700 pt-6">
+        <form @submit.prevent="sendMessage" class="flex gap-2">
+            <div class="flex-1 relative">
+                <textarea 
+                    x-model="newMessage" 
+                    placeholder="Type your message here... (Press Ctrl+Enter to send)"
+                    class="w-full resize-none border border-slate-200 dark:border-slate-700 rounded-xl px-4 py-3 text-slate-800 dark:text-slate-200 bg-white dark:bg-slate-900/50 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-transparent"
+                    rows="1"
+                    @keydown="if (event.key === 'Enter' && !event.ctrlKey && !event.shiftKey) { event.preventDefault(); sendMessage(); }"
+                    @keydown.ctrl.enter="sendMessage"
+                    @input="if ($event.target.scrollHeight > 120) { $event.target.style.height = $event.target.scrollHeight + 'px'; } else { $event.target.style.height = ''; }"
+                ></textarea>
+                <div class="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-2">
+                    <button type="button" class="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-400 transition-colors" title="Clear">
+                        <i class="ph ph-x-circle text-lg"></i>
+                    </button>
+                </div>
+            </div>
+            <button 
+                type="submit" 
+                :disabled="!newMessage.trim() || isLoading"
+                class="px-6 py-3 bg-primary text-white rounded-xl hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center gap-2"
+            >
+                <i class="ph ph-paper-plane-tilt"></i>
+                <span>Send</span>
+            </button>
+        </form>
+        <div class="text-center text-xs text-slate-400 dark:text-slate-500 mt-2">
+            Press Ctrl+Enter to send, Shift+Enter for new line
+        </div>
+    </div>
+
+    {# Context Information #}
+    <div class="mt-6 glass-panel p-4" x-show="{{ context.messages|length > 0 }}" x-transition>
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="font-semibold text-slate-900 dark:text-slate-100">Context Information</h3>
+            <button @click="$el.parentElement.style.display = 'none'" class="text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-400">
+                <i class="ph ph-x"></i>
+            </button>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+            <div>
+                <div class="text-slate-500 dark:text-slate-400 mb-1">Messages in context</div>
+                <div class="font-medium text-slate-900 dark:text-slate-100">{{ context.messageCount }}</div>
+            </div>
+            <div>
+                <div class="text-slate-500 dark:text-slate-400 mb-1">Tokens used</div>
+                <div class="font-medium text-slate-900 dark:text-slate-100">{{ context.tokenCount }}</div>
+            </div>
+            <div>
+                <div class="text-slate-500 dark:text-slate-400 mb-1">Window size</div>
+                <div class="font-medium text-slate-900 dark:text-slate-100">{{ context.windowSize|default(10) }}</div>
+            </div>
+            <div>
+                <div class="text-slate-500 dark:text-slate-400 mb-1">Max tokens</div>
+                <div class="font-medium text-slate-900 dark:text-slate-100">{{ context.maxTokens|default(4096) }}</div>
+            </div>
+        </div>
+        {% if summary %}
+            <div class="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                <div class="text-slate-500 dark:text-slate-400 mb-2">Summary</div>
+                <div class="text-slate-800 dark:text-slate-200">{{ summary }}</div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<style>
+    .agent-dropdown.open > div {
+        display: block;
+    }
+    
+    .agent-dropdown > div {
+        display: none;
+    }
+    
+    textarea {
+        min-height: 44px;
+        max-height: 200px;
+    }
+</style>
+
+{% block javascripts %}
+<script>
+    // Initialize chat functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        // Auto-focus the textarea
+        const textarea = document.querySelector('textarea');
+        if (textarea) {
+            textarea.focus();
+        }
+    });
+</script>
+{% endblock %}
+{% endblock %}
