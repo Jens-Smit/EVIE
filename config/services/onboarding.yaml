@@ -1,0 +1,35 @@
+# Onboarding Services Configuration
+# This file configures services for the onboarding process
+
+services:
+  # Onboarding Service
+  App\Service\Onboarding\OnboardingService:
+    arguments:
+      $capabilityRegistry: '@App\Service\AI\CapabilityRegistry'
+      $secretManager: '@App\Service\Security\SecretManager'
+      $conversationService: '@App\Service\AI\ConversationService'
+      $capabilityRepository: '@App\Repository\AI\CapabilityRepository'
+      $llmConfigurationRepository: '@App\Repository\AI\LLMConfigurationRepository'
+      $conversationRepository: '@App\Repository\AI\ConversationRepository'
+      $tenantRepository: '@App\Repository\Tenant\TenantRepository'
+      $userRepository: '@App\Repository\Tenant\UserRepository'
+      $organizationRepository: '@App\Repository\Tenant\OrganizationRepository'
+      $entityManager: '@doctrine.orm.entity_manager'
+      $logger: '@logger'
+    tags:
+      - { name: 'container.hot_path' }
+
+  # Onboarding Controller (will be implemented in later phases)
+  # App\Controller\OnboardingController:
+  #   arguments:
+  #     $onboardingService: '@App\Service\Onboarding\OnboardingService'
+  #   tags:
+  #     - { name: 'controller.service_arguments' }
+
+  # Onboarding State Manager (for session management)
+  # App\Service\Onboarding\OnboardingStateManager:
+  #   arguments:
+  #     $session: '@session'
+  #     $entityManager: '@doctrine.orm.entity_manager'
+  #   tags:
+  #     - { name: 'container.hot_path' }
