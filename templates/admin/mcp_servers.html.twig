@@ -1,0 +1,154 @@
+{# templates/admin/mcp_servers.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}MCP Servers - EVIE Admin{% endblock %}
+
+{% block body %}
+<div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6" x-data="{
+    statusFilter: '{{ statusFilter }}',
+    
+    getStatusColor(status) {
+        const colors = {
+            'connected': 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
+            'disconnected': 'bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300',
+            'disabled': 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+        };
+        return colors[status] || 'bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300';
+    }
+}">
+    {# Header #}
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-slate-900 dark:text-slate-100">MCP Servers</h1>
+            <p class="text-slate-600 dark:text-slate-400 mt-1">Manage Model Context Protocol servers</p>
+        </div>
+    </div>
+
+    {# Statistics #}
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="glass-panel p-4 text-center">
+            <div class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ mcpServers|length }}</div>
+            <div class="text-sm text-slate-500 dark:text-slate-400">Total Servers</div>
+        </div>
+        <div class="glass-panel p-4 text-center">
+            <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ allTools|length }}</div>
+            <div class="text-sm text-slate-500 dark:text-slate-400">Total Tools</div>
+        </div>
+        <div class="glass-panel p-4 text-center">
+            <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ allResources|length }}</div>
+            <div class="text-sm text-slate-500 dark:text-slate-400">Total Resources</div>
+        </div>
+        <div class="glass-panel p-4 text-center">
+            <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ mcpServers|filter(s => s.isConnected)|length }}</div>
+            <div class="text-sm text-slate-500 dark:text-slate-400">Connected</div>
+        </div>
+    </div>
+
+    {# Filters #}
+    <div class="flex flex-col md:flex-row gap-4 mb-6">
+        <div class="flex items-center gap-2">
+            <span class="text-sm text-slate-600 dark:text-slate-400">Status:</span>
+            <select x-model="statusFilter" @change="window.location.href = '{{ path('admin_mcp_servers') }}?status=' + $event.target.value" class="px-3 py-2 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                <option value="">All Statuses</option>
+                <option value="connected">Connected</option>
+                <option value="disconnected">Disconnected</option>
+                <option value="disabled">Disabled</option>
+            </select>
+        </div>
+        <div class="flex-1"></div>
+        <div class="flex items-center gap-2">
+            <button @click="window.location.reload()" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-sm">
+                <i class="ph ph-arrow-clockwise"></i>
+                Refresh
+            </button>
+        </div>
+    </div>
+
+    {# MCP Servers Grid #}
+    <div class="glass-panel">
+        {% if mcpServers|length > 0 %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for server in mcpServers %}
+                    <a href="#" class="block p-4 bg-slate-50 dark:bg-slate-900/30 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors group">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-secondary/10 dark:bg-secondary/20 flex items-center justify-center">
+                                    <i class="ph ph-server text-secondary text-lg"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-medium text-slate-900 dark:text-slate-100 group-hover:text-primary transition-colors">{{ server.name }}</h3>
+                                    <div class="text-xs text-slate-500 dark:text-slate-400">{{ server.identifier }}</div>
+                                </div>
+                            </div>
+                            <span class="px-2 py-1 rounded-full text-xs font-medium {{ getStatusColor(server.getConnectionStatus()) }}">
+                                {{ server.getConnectionStatus()|title }}
+                            </span>
+                        </div>
+                        <div class="text-sm text-slate-600 dark:text-slate-400 mb-2 line-clamp-2">
+                            {{ server.description }}
+                        </div>
+                        <div class="flex items-center gap-2 text-sm">
+                            <span class="evie-badge evie-badge-info">{{ server.type|title }}</span>
+                            {% if server.isEnabled %}
+                                <span class="evie-badge evie-badge-success">Enabled</span>
+                            {% else %}
+                                <span class="evie-badge evie-badge-error">Disabled</span>
+                            {% endif %}
+                        </div>
+                        <div class="text-xs text-slate-400 dark:text-slate-500 mt-2">
+                            <span>{{ server.tools|length }} tools</span>
+                            {% if server.resources %}
+                                <span class="mx-2">|</span>
+                                <span>{{ server.resources|length }} resources</span>
+                            {% endif %}
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-8 text-slate-500 dark:text-slate-400">
+                <i class="ph ph-server text-4xl mb-2"></i>
+                <p>No MCP servers found</p>
+            </div>
+        {% endif %}
+    </div>
+
+    {# Tools Overview #}
+    <div class="glass-panel mt-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Available Tools</h2>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+            {% for tool in allTools %}
+                <div class="flex items-center gap-2 p-2 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                    <i class="ph ph-toolbox text-slate-400 dark:text-slate-500 text-sm"></i>
+                    <span class="text-sm text-slate-700 dark:text-slate-300">{{ tool.name }}</span>
+                    <span class="text-xs text-slate-400 dark:text-slate-500">({{ tool.serverName }})</span>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    {# Resources Overview #}
+    <div class="glass-panel mt-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Available Resources</h2>
+        </div>
+        <div class="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+            {% for resource in allResources %}
+                <div class="flex items-center gap-2 p-2 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                    <i class="ph ph-folder text-slate-400 dark:text-slate-500 text-sm"></i>
+                    <span class="text-sm text-slate-700 dark:text-slate-300">{{ resource.name }}</span>
+                    <span class="text-xs text-slate-400 dark:text-slate-500">({{ resource.serverName }})</span>
+                </div>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{% block javascripts %}
+<script>
+    // Additional JavaScript for MCP servers
+</script>
+{% endblock %}
+{% endblock %}
