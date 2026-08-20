@@ -87,6 +87,9 @@ framework:
       # Agent execution messages
       'App\Message\ExecuteAgentMessage': async
       
+      # Scheduled task messages
+      'App\Message\ExecuteScheduledTaskMessage': scheduled_tasks
+      
       # Dead letter messages
       'App\Message\DeadLetterMessage': dead_letter
       
