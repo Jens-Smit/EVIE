@@ -1,0 +1,218 @@
+{# templates/onboarding/system_discovery.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}System Discovery - Onboarding - EVIE{% endblock %}
+
+{% block body %}
+<div class="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    {# Onboarding Header #}
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-slate-900 dark:text-slate-100">Discovering Your System</h1>
+        <p class="text-slate-600 dark:text-slate-400 mt-2">Based on your goals, we've identified capabilities that would be useful</p>
+    </div>
+
+    {# Progress #}
+    <div class="evie-onboarding-progress mb-12">
+        {% for step in steps %}
+            <div class="step {% if step == 'system_discovery' %}active{% elseif steps|indexOf(step) < steps|indexOf('system_discovery') %}completed{% endif %}">
+                <div class="circle">
+                    {% if step == 'system_discovery' %}
+                        3
+                    {% elseif steps|indexOf(step) < steps|indexOf('system_discovery') %}
+                        <i class="ph ph-check text-white"></i>
+                    {% else %}
+                        {{ steps|indexOf(step) + 1 }}
+                    {% endif %}
+                </div>
+                <div class="label">{{ step|replace({'_', '-'}, {'_': ' ', '-': ' '})|title }}</div>
+            </div>
+        {% endfor %}
+    </div>
+
+    {# Content #}
+    <div class="glass-panel p-8">
+        {# User Goals #}
+        {% if goals|length > 0 %}
+            <div class="mb-8">
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-3">Your Goals</h2>
+                <div class="flex flex-wrap gap-2">
+                    {% for goal in goals %}
+                        <span class="px-3 py-1 bg-primary/10 dark:bg-primary/20 text-primary dark:text-white rounded-full text-sm">{{ goal }}</span>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        {# Discovery Results #}
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            {# Discovered Capabilities #}
+            <div class="glass-panel p-4">
+                <h3 class="text-lg font-medium text-slate-900 dark:text-slate-100 mb-3">Discovered Capabilities</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">{{ discoveredCapabilities|length }} capabilities available</p>
+                
+                {% if discoveredCapabilities|length > 0 %}
+                    <div class="space-y-3 max-h-64 overflow-y-auto">
+                        {% for capability in discoveredCapabilities %}
+                            <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                                <div>
+                                    <div class="font-medium text-slate-900 dark:text-slate-100">{{ capability.name }}</div>
+                                    <div class="text-xs text-slate-500 dark:text-slate-400">{{ capability.description }}</div>
+                                </div>
+                                <span class="text-xs text-slate-500 dark:text-slate-400">{{ capability.category }}</span>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center text-slate-500 dark:text-slate-400 py-4">
+                        <i class="ph ph-magnifying-glass text-2xl mb-2"></i>
+                        <p>No new capabilities discovered</p>
+                    </div>
+                {% endif %}
+            </div>
+
+            {# Recommended Capabilities #}
+            <div class="glass-panel p-4">
+                <h3 class="text-lg font-medium text-slate-900 dark:text-slate-100 mb-3">Recommended Capabilities</h3>
+                <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">Based on your goals</p>
+                
+                {% if recommendedCapabilities|length > 0 %}
+                    <form method="post" class="space-y-3">
+                        {% for capability in recommendedCapabilities %}
+                            <label class="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors cursor-pointer">
+                                <input type="checkbox" name="capabilities[]" value="{{ capability.identifier }}" class="w-5 h-5 text-primary border-slate-300 dark:border-slate-600 rounded focus:ring-primary/50">
+                                <div class="flex-1 min-w-0">
+                                    <div class="font-medium text-slate-900 dark:text-slate-100">{{ capability.name }}</div>
+                                    <div class="text-xs text-slate-500 dark:text-slate-400 truncate">{{ capability.description }}</div>
+                                </div>
+                                <span class="text-xs text-slate-500 dark:text-slate-400">{{ capability.category }}</span>
+                            </label>
+                        {% endfor %}
+                        
+                        <div class="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-700">
+                            <button type="button" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-sm">
+                                Select All
+                            </button>
+                            <button type="submit" class="px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                                Install Selected
+                                <i class="ph ph-arrow-right"></i>
+                            </button>
+                        </div>
+                    </form>
+                {% else %}
+                    <div class="text-center text-slate-500 dark:text-slate-400 py-4">
+                        <i class="ph ph-star text-2xl mb-2"></i>
+                        <p>No recommendations based on your goals</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+
+        {# Already Installed #}
+        {% if installedCapabilities|length > 0 %}
+            <div class="glass-panel p-4 mb-8">
+                <h3 class="text-lg font-medium text-slate-900 dark:text-slate-100 mb-3">Already Installed</h3>
+                <div class="flex flex-wrap gap-2">
+                    {% for capability in installedCapabilities %}
+                        <span class="px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-full text-sm">
+                            {{ capability.name }}
+                        </span>
+                    {% endfor %}
+                </div>
+            </div>
+        {% endif %}
+
+        {# Navigation #}
+        <div class="flex justify-between gap-2 pt-4 border-t border-slate-200 dark:border-slate-700">
+            <a href="{{ path('onboarding_user_goals') }}" class="px-6 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                <i class="ph ph-arrow-left"></i>
+                Back
+            </a>
+            <a href="{{ path('onboarding_llm_selection') }}" class="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                Skip
+                <i class="ph ph-arrow-right"></i>
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .evie-onboarding-progress {
+        display: flex;
+        justify-content: space-between;
+        position: relative;
+    }
+    
+    .evie-onboarding-progress::before {
+        content: '';
+        position: absolute;
+        top: 2rem;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background-color: #dee2e6;
+        z-index: 1;
+    }
+    
+    .evie-onboarding-progress .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+        z-index: 2;
+        flex: 1;
+    }
+    
+    .evie-onboarding-progress .circle {
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 50%;
+        background-color: #dee2e6;
+        color: #6c757d;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+        transition: all 0.3s ease;
+    }
+    
+    .evie-onboarding-progress .label {
+        font-size: 0.875rem;
+        color: #6c757d;
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+    
+    .evie-onboarding-progress .step.completed .circle {
+        background-color: #2185d0;
+        color: white;
+    }
+    
+    .evie-onboarding-progress .step.active .circle {
+        background-color: #2185d0;
+        color: white;
+    }
+    
+    .evie-onboarding-progress .step.completed .label,
+    .evie-onboarding-progress .step.active .label {
+        color: #2185d0;
+        font-weight: 500;
+    }
+</style>
+
+{% block javascripts %}
+<script>
+    // Select all functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        const selectAllBtn = document.querySelector('button:has(> span:contains("Select All"))');
+        if (selectAllBtn) {
+            selectAllBtn.addEventListener('click', function() {
+                document.querySelectorAll('input[name="capabilities[]"]').forEach(function(checkbox) {
+                    checkbox.checked = true;
+                });
+            });
+        }
+    });
+</script>
+{% endblock %}
+{% endblock %}
