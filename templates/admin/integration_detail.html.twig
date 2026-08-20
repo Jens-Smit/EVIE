@@ -1,0 +1,209 @@
+{# templates/admin/integration_detail.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}{{ integration.name }} - EVIE Admin{% endblock %}
+
+{% block body %}
+<div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    {# Header #}
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-slate-900 dark:text-slate-100">{{ integration.name }}</h1>
+            <p class="text-slate-600 dark:text-slate-400 mt-1">{{ integration.type }}:{{ integration.identifier }}</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{{ path('admin_integrations') }}" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                <i class="ph ph-arrow-left"></i>
+                Back to Integrations
+            </a>
+        </div>
+    </div>
+
+    {# Integration Status #}
+    <div class="mb-6 p-4 rounded-lg {% if integration.isReady %}bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800/30{% elseif integration.isConnected %}bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/30{% else %}bg-slate-50 dark:bg-slate-900/10 border border-slate-200 dark:border-slate-800/30{% endif %}">
+        <div class="flex items-center gap-3">
+            <span class="px-2 py-1 rounded-full text-xs font-medium {% if integration.isReady %}bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300{% elseif integration.isConnected %}bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300{% else %}bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300{% endif %}">
+                {{ integration.getConnectionStatus()|title }}
+            </span>
+            <span class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ integration.name }}</span>
+        </div>
+        {% if not integration.isReady %}
+            <div class="mt-2 text-amber-600 dark:text-amber-400 text-sm">
+                <i class="ph ph-warning-circle"></i>
+                {% if not integration.isConnected %}
+                    This integration is not connected
+                {% elseif not integration.isConfigured %}
+                    This integration needs configuration
+                {% elseif not integration.isEnabled %}
+                    This integration is disabled
+                {% endif %}
+            </div>
+        {% endif %}
+    </div>
+
+    {# Integration Information #}
+    <div class="glass-panel p-6 mb-6">
+        <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Integration Information</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <div class="space-y-4">
+                    <div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Name</div>
+                        <div class="font-medium text-slate-900 dark:text-slate-100">{{ integration.name }}</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Type</div>
+                        <div class="flex items-center gap-2">
+                            <span class="px-2 py-1 rounded-full text-xs font-medium bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300">{{ integration.type }}</span>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Identifier</div>
+                        <code class="text-slate-800 dark:text-slate-200">{{ integration.identifier }}</code>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div class="space-y-4">
+                    <div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Tenant</div>
+                        <div class="font-medium text-slate-900 dark:text-slate-100">{{ tenant.name }}</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Created At</div>
+                        <div class="text-slate-800 dark:text-slate-200">{{ integration.createdAt|date('M d, Y H:i') }}</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Updated At</div>
+                        <div class="text-slate-800 dark:text-slate-200">{{ integration.updatedAt|date('M d, Y H:i') }}</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Status Flags #}
+    <div class="glass-panel p-6 mb-6">
+        <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Status</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="text-center p-4 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Enabled</div>
+                <div class="text-xl">
+                    {% if integration.isEnabled %}
+                        <i class="ph ph-check-circle text-emerald-600 dark:text-emerald-400"></i>
+                    {% else %}
+                        <i class="ph ph-x-circle text-red-600 dark:text-red-400"></i>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="text-center p-4 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Configured</div>
+                <div class="text-xl">
+                    {% if integration.isConfigured %}
+                        <i class="ph ph-check-circle text-emerald-600 dark:text-emerald-400"></i>
+                    {% else %}
+                        <i class="ph ph-x-circle text-red-600 dark:text-red-400"></i>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="text-center p-4 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Connected</div>
+                <div class="text-xl">
+                    {% if integration.isConnected %}
+                        <i class="ph ph-check-circle text-emerald-600 dark:text-emerald-400"></i>
+                    {% else %}
+                        <i class="ph ph-x-circle text-red-600 dark:text-red-400"></i>
+                    {% endif %}
+                </div>
+            </div>
+            <div class="text-center p-4 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Ready</div>
+                <div class="text-xl">
+                    {% if integration.isReady %}
+                        <i class="ph ph-check-circle text-emerald-600 dark:text-emerald-400"></i>
+                    {% else %}
+                        <i class="ph ph-x-circle text-red-600 dark:text-red-400"></i>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Description #}
+    {% if integration.description %}
+        <div class="glass-panel p-6 mb-6">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Description</h2>
+            <div class="p-4 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                <p class="text-slate-800 dark:text-slate-200">{{ integration.description }}</p>
+            </div>
+        </div>
+    {% endif %}
+
+    {# Configuration #}
+    {% if integration.configuration|length > 0 %}
+        <div class="glass-panel p-6 mb-6">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Configuration</h2>
+            <div class="p-4 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                <pre class="text-xs text-slate-700 dark:text-slate-300 overflow-x-auto evie-code">{{ integration.configuration|json_encode(4)|raw }}</pre>
+            </div>
+        </div>
+    {% endif %}
+
+    {# Capabilities #}
+    {% if capabilities|length > 0 %}
+        <div class="glass-panel p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Capabilities</h2>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for capability in capabilities %}
+                    <div class="p-4 bg-slate-50 dark:bg-slate-900/30 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
+                                    <i class="ph ph-puzzle-piece text-primary text-sm"></i>
+                                </div>
+                                <div>
+                                    <div class="font-medium text-slate-900 dark:text-slate-100">{{ capability.name }}</div>
+                                    <div class="text-xs text-slate-500 dark:text-slate-400">{{ capability.identifier }}</div>
+                                </div>
+                            </div>
+                            <span class="px-2 py-1 rounded-full text-xs font-medium {% if capability.isReady %}bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300{% else %}bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300{% endif %}">
+                                {{ capability.isReady ? 'Ready' : 'Not Ready' }}
+                            </span>
+                        </div>
+                        <div class="text-sm text-slate-600 dark:text-slate-400 line-clamp-2">
+                            {{ capability.description }}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    {# Scopes #}
+    {% if scopes|length > 0 %}
+        <div class="glass-panel p-6 mb-6">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Scopes</h2>
+            <div class="flex flex-wrap gap-2">
+                {% for scope in scopes %}
+                    <span class="px-3 py-1 bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300 rounded-full text-sm">{{ scope }}</span>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    {# Metadata #}
+    {% if integration.metadata|length > 0 %}
+        <div class="glass-panel p-6">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Metadata</h2>
+            <div class="p-4 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                <pre class="text-xs text-slate-700 dark:text-slate-300 overflow-x-auto evie-code">{{ integration.metadata|json_encode(4)|raw }}</pre>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+{% block javascripts %}
+{% endblock %}
+{% endblock %}
