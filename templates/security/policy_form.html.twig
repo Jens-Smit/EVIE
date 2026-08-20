@@ -1,0 +1,204 @@
+{# templates/security/policy_form.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}{% if policy.id %}Edit{% else %}New{% endif %} Policy - EVIE Security{% endblock %}
+
+{% block body %}
+<div class="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    {# Header #}
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-slate-900 dark:text-slate-100">
+                {% if policy.id %}Edit{% else %}New{% endif %} Policy
+            </h1>
+            <p class="text-slate-600 dark:text-slate-400 mt-1">Configure security policy settings</p>
+        </div>
+    </div>
+
+    {# Form #}
+    <div class="glass-panel p-8">
+        <form method="post" class="space-y-6">
+            {# Basic Information #}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                    <label for="policy_identifier" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Identifier *</label>
+                    <input 
+                        type="text" 
+                        id="policy_identifier" 
+                        name="policy[identifier]" 
+                        value="{{ policy.identifier }}" 
+                        placeholder="e.g., email_send, file_delete"
+                        class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        required
+                    >
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Unique identifier for this policy</p>
+                </div>
+                <div>
+                    <label for="policy_name" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Name *</label>
+                    <input 
+                        type="text" 
+                        id="policy_name" 
+                        name="policy[name]" 
+                        value="{{ policy.name }}" 
+                        placeholder="e.g., Email Send Policy"
+                        class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        required
+                    >
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Human-readable name</p>
+                </div>
+            </div>
+
+            <div>
+                <label for="policy_description" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Description</label>
+                <textarea 
+                    id="policy_description" 
+                    name="policy[description]" 
+                    rows="3"
+                    placeholder="e.g., Controls sending of emails"
+                    class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                >{{ policy.description }}</textarea>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Description of what this policy does</p>
+            </div>
+
+            {# Policy Settings #}
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <label for="policy_policyType" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Policy Type *</label>
+                    <select 
+                        id="policy_policyType" 
+                        name="policy[policyType]" 
+                        class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        required
+                    >
+                        <option value="">Select type</option>
+                        <option value="action" {% if policy.policyType == 'action' %}selected{% endif %}>Action</option>
+                        <option value="resource" {% if policy.policyType == 'resource' %}selected{% endif %}>Resource</option>
+                        <option value="access" {% if policy.policyType == 'access' %}selected{% endif %}>Access</option>
+                        <option value="custom" {% if policy.policyType == 'custom' %}selected{% endif %}>Custom</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="policy_effect" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Effect *</label>
+                    <select 
+                        id="policy_effect" 
+                        name="policy[effect]" 
+                        class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                        required
+                    >
+                        <option value="">Select effect</option>
+                        <option value="allow" {% if policy.effect == 'allow' %}selected{% endif %}>Allow</option>
+                        <option value="deny" {% if policy.effect == 'deny' %}selected{% endif %}>Deny</option>
+                        <option value="ask" {% if policy.effect == 'ask' %}selected{% endif %}>Ask (HITL)</option>
+                    </select>
+                </div>
+                <div>
+                    <label for="policy_priority" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Priority</label>
+                    <input 
+                        type="number" 
+                        id="policy_priority" 
+                        name="policy[priority]" 
+                        value="{{ policy.priority }}" 
+                        min="0" 
+                        class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    >
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Higher number = higher priority</p>
+                </div>
+            </div>
+
+            {# Actions, Resources, Conditions #}
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Actions (comma-separated)</label>
+                    <input 
+                        type="text" 
+                        name="actions" 
+                        value="{% if policy.actions is defined %}{{ policy.actions|join(',') }}{% endif %}"
+                        placeholder="e.g., email:send,email:read"
+                        class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    >
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Use * for all actions</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Resources (comma-separated)</label>
+                    <input 
+                        type="text" 
+                        name="resources" 
+                        value="{% if policy.resources is defined %}{{ policy.resources|join(',') }}{% endif %}"
+                        placeholder="e.g., email,file"
+                        class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                    >
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Leave empty for all resources</p>
+                </div>
+                <div>
+                    <label for="policy_conditions" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Conditions (JSON)</label>
+                    <textarea 
+                        id="policy_conditions" 
+                        name="policy[conditions]" 
+                        rows="3"
+                        placeholder='e.g., {"userType": "admin"}'
+                        class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                    >{{ policy.conditions|json_encode|raw }}</textarea>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Conditions that must be met</p>
+                </div>
+            </div>
+
+            {# Exceptions #}
+            <div>
+                <label for="policy_exceptions" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Exceptions (JSON)</label>
+                <textarea 
+                    id="policy_exceptions" 
+                    name="policy[exceptions]" 
+                    rows="3"
+                    placeholder='e.g., [{"conditions": {"userId": "admin"}, "effect": "allow"}]'
+                    class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                >{{ policy.exceptions|json_encode|raw }}</textarea>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Exception objects that override the policy</p>
+            </div>
+
+            {# Metadata #}
+            <div>
+                <label for="policy_metadata" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Metadata (JSON)</label>
+                <textarea 
+                    id="policy_metadata" 
+                    name="policy[metadata]" 
+                    rows="3"
+                    placeholder='e.g., {"category": "email"}'
+                    class="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                >{{ policy.metadata|json_encode|raw }}</textarea>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Additional metadata</p>
+            </div>
+
+            {# Enabled #}
+            <div class="flex items-center gap-4">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input 
+                        type="checkbox" 
+                        name="policy[isEnabled]" 
+                        value="1" 
+                        class="w-5 h-5 text-primary border-slate-300 dark:border-slate-600 rounded focus:ring-primary/50"
+                        {% if policy.isEnabled %}checked{% endif %}
+                    >
+                    <span class="text-slate-700 dark:text-slate-300">Policy is enabled</span>
+                </label>
+            </div>
+
+            {# Submit #}
+            <div class="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-700">
+                <a href="{{ path('security_policies') }}" class="px-6 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                    Cancel
+                </a>
+                <button type="submit" class="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                    <i class="ph ph-check"></i>
+                    {% if policy.id %}Update{% else %}Create{% endif %} Policy
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{% block javascripts %}
+<script>
+    // Additional JavaScript for policy form
+</script>
+{% endblock %}
+{% endblock %}
