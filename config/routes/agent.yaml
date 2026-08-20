@@ -1,0 +1,136 @@
+# Agent Routes
+# These routes are for agent configuration and execution
+
+agent_dashboard:
+  path: /agents
+  controller: App\Controller\Agent\AgentController::dashboard
+  methods: GET
+
+agent_llm_configurations:
+  path: /agents/llm
+  controller: App\Controller\Agent\AgentController::llmConfigurations
+  methods: GET
+
+agent_llm_save:
+  path: /agents/llm/save
+  controller: App\Controller\Agent\AgentController::saveLlmConfiguration
+  methods: POST
+
+agent_llm_delete:
+  path: /agents/llm/{id}/delete
+  controller: App\Controller\Agent\AgentController::deleteLlmConfiguration
+  methods: POST
+  requirements:
+    id: '[a-f0-9]{26}'
+
+agent_llm_set_default:
+  path: /agents/llm/{id}/set-default
+  controller: App\Controller\Agent\AgentController::setDefaultLlmConfiguration
+  methods: POST
+  requirements:
+    id: '[a-f0-9]{26}'
+
+agent_capabilities:
+  path: /agents/capabilities
+  controller: App\Controller\Agent\AgentController::capabilities
+  methods: GET
+
+agent_capability_install:
+  path: /agents/capabilities/{identifier}/install
+  controller: App\Controller\Agent\AgentController::installCapability
+  methods: POST
+
+agent_capability_uninstall:
+  path: /agents/capabilities/{id}/uninstall
+  controller: App\Controller\Agent\AgentController::uninstallCapability
+  methods: POST
+  requirements:
+    id: '[a-f0-9]{26}'
+
+agent_capability_enable:
+  path: /agents/capabilities/{id}/enable
+  controller: App\Controller\Agent\AgentController::enableCapability
+  methods: POST
+  requirements:
+    id: '[a-f0-9]{26}'
+
+agent_capability_disable:
+  path: /agents/capabilities/{id}/disable
+  controller: App\Controller\Agent\AgentController::disableCapability
+  methods: POST
+  requirements:
+    id: '[a-f0-9]{26}'
+
+agent_execute:
+  path: /agents/execute
+  controller: App\Controller\Agent\AgentController::executeAgent
+  methods: POST
+
+agent_execute_sync:
+  path: /agents/execute-sync
+  controller: App\Controller\Agent\AgentController::executeAgentSync
+  methods: POST
+
+agent_execution_status:
+  path: /agents/executions/{id}/status
+  controller: App\Controller\Agent\AgentController::executionStatus
+  methods: GET
+  requirements:
+    id: '[a-f0-9]{26}'
+
+agent_executions:
+  path: /agents/executions
+  controller: App\Controller\Agent\AgentController::executions
+  methods: GET
+
+agent_conversation_new:
+  path: /agents/conversations/new
+  controller: App\Controller\Agent\AgentController::newConversation
+  methods: [GET, POST]
+
+agent_conversation_view:
+  path: /agents/conversations/{id}
+  controller: App\Controller\Agent\AgentController::viewConversation
+  methods: GET
+  requirements:
+    id: '[a-f0-9]{26}'
+
+agent_conversation_send:
+  path: /agents/conversations/{id}/send
+  controller: App\Controller\Agent\AgentController::sendMessage
+  methods: POST
+  requirements:
+    id: '[a-f0-9]{26}'
+
+agent_conversations:
+  path: /agents/conversations
+  controller: App\Controller\Agent\AgentController::conversations
+  methods: GET
+
+agent_conversation_delete:
+  path: /agents/conversations/{id}/delete
+  controller: App\Controller\Agent\AgentController::deleteConversation
+  methods: POST
+  requirements:
+    id: '[a-f0-9]{26}'
+
+agent_conversation_rename:
+  path: /agents/conversations/{id}/rename
+  controller: App\Controller\Agent\AgentController::renameConversation
+  methods: POST
+  requirements:
+    id: '[a-f0-9]{26}'
+
+agent_conversation_tag:
+  path: /agents/conversations/{id}/tag
+  controller: App\Controller\Agent\AgentController::tagConversation
+  methods: POST
+  requirements:
+    id: '[a-f0-9]{26}'
+
+agent_conversation_untag:
+  path: /agents/conversations/{id}/untag
+  controller: App\Controller\Agent\AgentController::untagConversation
+  methods: POST
+  requirements:
+    id: '[a-f0-9]{26}'
