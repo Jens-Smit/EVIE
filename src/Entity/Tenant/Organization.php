@@ -2,6 +2,7 @@
 
 namespace App\Entity\Tenant;
 
+use App\Entity\AI\LLMConfiguration;
 use App\Repository\Tenant\OrganizationRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -46,12 +47,16 @@ class Organization
     #[ORM\OneToMany(mappedBy: 'organization', targetEntity: User::class)]
     private Collection $users;
 
+    #[ORM\OneToMany(mappedBy: 'organization', targetEntity: LLMConfiguration::class, orphanRemoval: true)]
+    private Collection $llmConfigurations;
+
     public function __construct()
     {
         $this->id = Ulid::generate();
         $this->createdAt = new \DateTimeImmutable();
         $this->updatedAt = new \DateTimeImmutable();
         $this->users = new ArrayCollection();
+        $this->llmConfigurations = new ArrayCollection();
     }
 
     // --- Getters and Setters ---
@@ -174,6 +179,36 @@ class Organization
             // set the owning side to null (unless already changed)
             if ($user->getOrganization() === $this) {
                 $user->setOrganization(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, LLMConfiguration>
+     */
+    public function getLlmConfigurations(): Collection
+    {
+        return $this->llmConfigurations;
+    }
+
+    public function addLlmConfiguration(LLMConfiguration $llmConfiguration): static
+    {
+        if (!$this->llmConfigurations->contains($llmConfiguration)) {
+            $this->llmConfigurations->add($llmConfiguration);
+            $llmConfiguration->setOrganization($this);
+        }
+
+        return $this;
+    }
+
+    public function removeLlmConfiguration(LLMConfiguration $llmConfiguration): static
+    {
+        if ($this->llmConfigurations->removeElement($llmConfiguration)) {
+            // set the owning side to null (unless already changed)
+            if ($llmConfiguration->getOrganization() === $this) {
+                $llmConfiguration->setOrganization(null);
             }
         }
 
