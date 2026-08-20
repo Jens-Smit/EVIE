@@ -2,6 +2,7 @@
 
 namespace App\Entity\Tenant;
 
+use App\Entity\AI\Conversation;
 use App\Entity\AI\LLMConfiguration;
 use App\Entity\Security\UserSecret;
 use App\Repository\Tenant\UserRepository;
@@ -60,6 +61,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToMany(mappedBy: 'user', targetEntity: LLMConfiguration::class, orphanRemoval: true)]
     private Collection $llmConfigurations;
 
+    #[ORM\OneToMany(mappedBy: 'user', targetEntity: Conversation::class, orphanRemoval: true)]
+    private Collection $conversations;
+
     #[ORM\ManyToOne(targetEntity: Organization::class, inversedBy: 'users')]
     #[ORM\JoinColumn(name: 'organization_id', referencedColumnName: 'id')]
     private ?Organization $organization = null;
@@ -71,6 +75,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->updatedAt = new \DateTimeImmutable();
         $this->secrets = new ArrayCollection();
         $this->llmConfigurations = new ArrayCollection();
+        $this->conversations = new ArrayCollection();
     }
 
     // --- Getters and Setters ---
@@ -300,6 +305,36 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
+    /**
+     * @return Collection<int, Conversation>
+     */
+    public function getConversations(): Collection
+    {
+        return $this->conversations;
+    }
+
+    public function addConversation(Conversation $conversation): static
+    {
+        if (!$this->conversations->contains($conversation)) {
+            $this->conversations->add($conversation);
+            $conversation->setUser($this);
+        }
+
+        return $this;
+    }
+
+    public function removeConversation(Conversation $conversation): static
+    {
+        if ($this->conversations->removeElement($conversation)) {
+            // set the owning side to null (unless already changed)
+            if ($conversation->getUser() === $this) {
+                $conversation->setUser(null);
+            }
+        }
+
+        return $this;
+    }
+
     public function getOrganization(): ?Organization
     {
         return $this->organization;
@@ -335,6 +370,42 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
             return false;
         }
         return $this->organization->getId() === $organizationId;
+    }
+
+    /**
+     * Get the default LLM configuration for this user.
+     */
+    public function getDefaultLlmConfiguration(): ?LLMConfiguration
+    {
+        foreach ($this->llmConfigurations as $config) {
+            if ($config->isDefault()) {
+                return $config;
+            }
+        }
+        return null;
+    }
+
+    /**
+     * Get the last active conversation for this user.
+     */
+    public function getLastConversation(): ?Conversation
+    {
+        if ($this->conversations->isEmpty()) {
+            return null;
+        }
+
+        $conversations = $this->conversations->toArray();
+        usort($conversations, function(Conversation $a, Conversation $b) {
+            return $b->getUpdatedAt() <=> $a->getUpdatedAt();
+        });
+
+        foreach ($conversations as $conversation) {
+            if ($conversation->isActive()) {
+                return $conversation;
+            }
+        }
+
+        return $conversations[0] ?? null;
     }
 
     /**
