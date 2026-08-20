@@ -2,6 +2,7 @@
 
 namespace App\Entity\Tenant;
 
+use App\Entity\AI\LLMConfiguration;
 use App\Entity\Security\UserSecret;
 use App\Repository\Tenant\UserRepository;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -56,6 +57,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToMany(mappedBy: 'user', targetEntity: UserSecret::class, orphanRemoval: true, cascade: ['persist'])]
     private Collection $secrets;
 
+    #[ORM\OneToMany(mappedBy: 'user', targetEntity: LLMConfiguration::class, orphanRemoval: true)]
+    private Collection $llmConfigurations;
+
     #[ORM\ManyToOne(targetEntity: Organization::class, inversedBy: 'users')]
     #[ORM\JoinColumn(name: 'organization_id', referencedColumnName: 'id')]
     private ?Organization $organization = null;
@@ -66,6 +70,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->createdAt = new \DateTimeImmutable();
         $this->updatedAt = new \DateTimeImmutable();
         $this->secrets = new ArrayCollection();
+        $this->llmConfigurations = new ArrayCollection();
     }
 
     // --- Getters and Setters ---
@@ -259,6 +264,36 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
             // set the owning side to null (unless already changed)
             if ($secret->getUser() === $this) {
                 $secret->setUser(null);
+            }
+        }
+
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, LLMConfiguration>
+     */
+    public function getLlmConfigurations(): Collection
+    {
+        return $this->llmConfigurations;
+    }
+
+    public function addLlmConfiguration(LLMConfiguration $llmConfiguration): static
+    {
+        if (!$this->llmConfigurations->contains($llmConfiguration)) {
+            $this->llmConfigurations->add($llmConfiguration);
+            $llmConfiguration->setUser($this);
+        }
+
+        return $this;
+    }
+
+    public function removeLlmConfiguration(LLMConfiguration $llmConfiguration): static
+    {
+        if ($this->llmConfigurations->removeElement($llmConfiguration)) {
+            // set the owning side to null (unless already changed)
+            if ($llmConfiguration->getUser() === $this) {
+                $llmConfiguration->setUser(null);
             }
         }
 
