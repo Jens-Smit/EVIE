@@ -1,0 +1,157 @@
+{# templates/admin/integrations.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Integrations - EVIE Admin{% endblock %}
+
+{% block body %}
+<div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6" x-data="{
+    typeFilter: '{{ typeFilter }}',
+    statusFilter: '{{ statusFilter }}',
+    
+    getStatusColor(status) {
+        const colors = {
+            'connected': 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
+            'disconnected': 'bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300',
+            'unconfigured': 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
+            'disabled': 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+        };
+        return colors[status] || 'bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300';
+    },
+    
+    getTypeIcon(type) {
+        const icons = {
+            'microsoft': 'ph-microsoft-logo',
+            'google': 'ph-google-logo',
+            'github': 'ph-github-logo',
+            'browser': 'ph-globe',
+            'database': 'ph-database',
+            'notion': 'ph-notion-logo',
+            'slack': 'ph-slack-logo',
+            'discord': 'ph-discord-logo'
+        };
+        return icons[type] || 'ph-plug';
+    }
+}">
+    {# Header #}
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-slate-900 dark:text-slate-100">Integrations</h1>
+            <p class="text-slate-600 dark:text-slate-400 mt-1">Manage third-party service integrations</p>
+        </div>
+    </div>
+
+    {# Statistics #}
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="glass-panel p-4 text-center">
+            <div class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ integrations|length }}</div>
+            <div class="text-sm text-slate-500 dark:text-slate-400">Total</div>
+        </div>
+        <div class="glass-panel p-4 text-center">
+            <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ integrationTypes|length }}</div>
+            <div class="text-sm text-slate-500 dark:text-slate-400">Types</div>
+        </div>
+        <div class="glass-panel p-4 text-center">
+            <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ stats.enabled ?? 0 }}</div>
+            <div class="text-sm text-slate-500 dark:text-slate-400">Enabled</div>
+        </div>
+        <div class="glass-panel p-4 text-center">
+            <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ stats.ready ?? 0 }}</div>
+            <div class="text-sm text-slate-500 dark:text-slate-400">Ready</div>
+        </div>
+    </div>
+
+    {# Filters #}
+    <div class="flex flex-col md:flex-row gap-4 mb-6">
+        <div class="flex items-center gap-2">
+            <span class="text-sm text-slate-600 dark:text-slate-400">Type:</span>
+            <select x-model="typeFilter" @change="window.location.href = '{{ path('admin_integrations') }}?type=' + $event.target.value" class="px-3 py-2 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                <option value="">All Types</option>
+                {% for type in integrationTypes %}
+                    <option value="{{ type }}">{{ type|title }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="text-sm text-slate-600 dark:text-slate-400">Status:</span>
+            <select x-model="statusFilter" @change="window.location.href = '{{ path('admin_integrations') }}?status=' + $event.target.value" class="px-3 py-2 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                <option value="">All Statuses</option>
+                <option value="connected">Connected</option>
+                <option value="disconnected">Disconnected</option>
+                <option value="unconfigured">Unconfigured</option>
+                <option value="disabled">Disabled</option>
+            </select>
+        </div>
+        <div class="flex-1"></div>
+    </div>
+
+    {# Integrations Grid #}
+    <div class="glass-panel">
+        {% if integrations|length > 0 %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for integration in integrations %}
+                    <a href="{{ path('admin_integration_detail', {'id': integration.id}) }}" class="block p-4 bg-slate-50 dark:bg-slate-900/30 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors group">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-secondary/10 dark:bg-secondary/20 flex items-center justify-center">
+                                    <i class="{{ getTypeIcon(integration.type) }} text-secondary text-lg"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-medium text-slate-900 dark:text-slate-100 group-hover:text-primary transition-colors">{{ integration.name }}</h3>
+                                    <div class="text-xs text-slate-500 dark:text-slate-400">{{ integration.type }}:{{ integration.identifier }}</div>
+                                </div>
+                            </div>
+                            <span class="px-2 py-1 rounded-full text-xs font-medium {{ getStatusColor(integration.getConnectionStatus()) }}">
+                                {{ integration.getConnectionStatus()|title }}
+                            </span>
+                        </div>
+                        <div class="text-sm text-slate-600 dark:text-slate-400 mb-2 line-clamp-2">
+                            {{ integration.description }}
+                        </div>
+                        <div class="flex items-center gap-2 text-sm">
+                            {% if integration.isConfigured %}
+                                <span class="evie-badge evie-badge-success">Configured</span>
+                            {% endif %}
+                            {% if integration.isConnected %}
+                                <span class="evie-badge evie-badge-success">Connected</span>
+                            {% endif %}
+                            {% if integration.isEnabled %}
+                                <span class="evie-badge evie-badge-info">Enabled</span>
+                            {% else %}
+                                <span class="evie-badge evie-badge-error">Disabled</span>
+                            {% endif %}
+                        </div>
+                        <div class="text-xs text-slate-400 dark:text-slate-500 mt-2">
+                            Capabilities: {{ integration.capabilities|length }}
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-8 text-slate-500 dark:text-slate-400">
+                <i class="ph ph-plug text-4xl mb-2"></i>
+                <p>No integrations found</p>
+            </div>
+        {% endif %}
+    </div>
+
+    {# Available Capabilities #}
+    <div class="glass-panel mt-6">
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Available Capabilities</h2>
+        </div>
+        <div class="flex flex-wrap gap-2">
+            {% for capability in allCapabilities %}
+                <span class="px-3 py-1 bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300 rounded-full text-sm">
+                    {{ capability }}
+                </span>
+            {% endfor %}
+        </div>
+    </div>
+</div>
+
+{% block javascripts %}
+<script>
+    // Additional JavaScript for integrations
+</script>
+{% endblock %}
+{% endblock %}
