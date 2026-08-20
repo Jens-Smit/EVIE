@@ -1,7 +1,26 @@
 # Automation Services Configuration
-# This file configures services for async execution, retry, and idempotency
+# This file configures services for async execution, retry, idempotency, and scheduling
 
 services:
+  # Scheduler Service
+  App\Service\Automation\SchedulerService:
+    arguments:
+      $taskRepository: '@App\Repository\Automation\ScheduledTaskRepository'
+      $entityManager: '@doctrine.orm.entity_manager'
+      $messageBus: '@message_bus'
+      $logger: '@logger'
+      $defaultTimezone: '%env(default:UTC:SCHEDULER_DEFAULT_TIMEZONE)%'
+    tags:
+      - { name: 'container.hot_path' }
+
+  # Schedule Validator
+  App\Service\Automation\ScheduleValidator:
+    arguments:
+      $validator: '@validator'
+      $defaultTimezone: '%env(default:UTC:SCHEDULER_DEFAULT_TIMEZONE)%'
+    tags:
+      - { name: 'container.hot_path' }
+
   # Idempotency Service
   App\Service\Automation\IdempotencyService:
     arguments:
@@ -29,11 +48,10 @@ services:
   #   tags:
   #     - { name: 'container.hot_path' }
 
-  # Scheduler Service (will be implemented in Sprint 3)
-  # App\Service\Automation\SchedulerService:
+  # Task Execution Service (for direct task execution)
+  # App\Service\Automation\TaskExecutionService:
   #   arguments:
-  #     $taskRepository: '@App\Repository\Automation\ScheduledTaskRepository'
+  #     $schedulerService: '@App\Service\Automation\SchedulerService'
   #     $messageBus: '@message_bus'
-  #     $entityManager: '@doctrine.orm.entity_manager'
   #   tags:
   #     - { name: 'container.hot_path' }
