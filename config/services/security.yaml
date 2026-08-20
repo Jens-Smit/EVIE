@@ -1,0 +1,52 @@
+# Security Services Configuration
+# This file configures services for the EVIE security layer
+
+services:
+  # Encryption Service
+  App\Service\Security\EncryptionService:
+    arguments:
+      $masterKey: '%env(SECRET_ENCRYPTION_KEY)%'
+      $currentVersion: '%env(default:AES-256-GCM-v1:SECRET_ENCRYPTION_VERSION)%'
+    tags:
+      - { name: 'container.hot_path' }
+
+  # Secret Manager
+  App\Service\Security\SecretManager:
+    arguments:
+      $encryptionService: '@App\Service\Security\EncryptionService'
+      $secretRepository: '@App\Repository\Security\UserSecretRepository'
+      $entityManager: '@doctrine.orm.entity_manager'
+      $currentKeyVersion: '%env(default:KEY_V1:SECRET_KEY_VERSION)%'
+    tags:
+      - { name: 'container.hot_path' }
+
+  # Security Guard (will be implemented in later phases)
+  # App\Service\Security\SecurityGuard:
+  #   arguments:
+  #     $policyEngine: '@App\Service\Security\PolicyEngine'
+  #     $secretManager: '@App\Service\Security\SecretManager'
+  #   tags:
+  #     - { name: 'container.hot_path' }
+
+  # Policy Engine (will be implemented in later phases)
+  # App\Service\Security\PolicyEngine:
+  #   arguments:
+  #     $policies: '%env(json:array:SECURITY_POLICIES)%'
+  #   tags:
+  #     - { name: 'container.hot_path' }
+
+  # Human-in-the-Loop Service (will be implemented in later phases)
+  # App\Service\Security\HumanInTheLoopService:
+  #   arguments:
+  #     $entityManager: '@doctrine.orm.entity_manager'
+  #     $messenger: '@message_bus'
+  #   tags:
+  #     - { name: 'container.hot_path' }
+
+  # Audit Service (will be implemented in later phases)
+  # App\Service\Security\AuditService:
+  #   arguments:
+  #     $entityManager: '@doctrine.orm.entity_manager'
+  #     $secretManager: '@App\Service\Security\SecretManager'
+  #   tags:
+  #     - { name: 'container.hot_path' }
