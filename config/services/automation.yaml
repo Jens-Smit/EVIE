@@ -1,0 +1,39 @@
+# Automation Services Configuration
+# This file configures services for async execution, retry, and idempotency
+
+services:
+  # Idempotency Service
+  App\Service\Automation\IdempotencyService:
+    arguments:
+      $executionRepository: '@App\Repository\AI\AgentExecutionRepository'
+      $entityManager: '@doctrine.orm.entity_manager'
+    tags:
+      - { name: 'container.hot_path' }
+
+  # Retry Service
+  App\Service\Automation\RetryService:
+    arguments:
+      $executionRepository: '@App\Repository\AI\AgentExecutionRepository'
+      $entityManager: '@doctrine.orm.entity_manager'
+      $config: '%env(json:array:RETRY_CONFIG)%'
+    tags:
+      - { name: 'container.hot_path' }
+
+  # Agent Execution Service (will be implemented in later phases)
+  # App\Service\AI\AgentExecutionService:
+  #   arguments:
+  #     $executionRepository: '@App\Repository\AI\AgentExecutionRepository'
+  #     $idempotencyService: '@App\Service\Automation\IdempotencyService'
+  #     $retryService: '@App\Service\Automation\RetryService'
+  #     $messageBus: '@message_bus'
+  #   tags:
+  #     - { name: 'container.hot_path' }
+
+  # Scheduler Service (will be implemented in Sprint 3)
+  # App\Service\Automation\SchedulerService:
+  #   arguments:
+  #     $taskRepository: '@App\Repository\Automation\ScheduledTaskRepository'
+  #     $messageBus: '@message_bus'
+  #     $entityManager: '@doctrine.orm.entity_manager'
+  #   tags:
+  #     - { name: 'container.hot_path' }
