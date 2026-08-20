@@ -1,0 +1,271 @@
+{# templates/security/dashboard.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Security Dashboard - EVIE{% endblock %}
+
+{% block body %}
+<div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6" x-data="{
+    riskLevels: {{ riskLevels|keys|json_encode|raw }},
+    selectedRiskLevel: null,
+    
+    getRiskLevelColor(level) {
+        const colors = {
+            'low': 'text-emerald-600 dark:text-emerald-400',
+            'medium': 'text-amber-600 dark:text-amber-400',
+            'high': 'text-red-600 dark:text-red-400',
+            'critical': 'text-purple-600 dark:text-purple-400'
+        };
+        return colors[level] || 'text-slate-600 dark:text-slate-400';
+    },
+    
+    getRiskLevelBadge(level) {
+        const badges = {
+            'low': 'bg-emerald-100 dark:bg-emerald-900/30',
+            'medium': 'bg-amber-100 dark:bg-amber-900/30',
+            'high': 'bg-red-100 dark:bg-red-900/30',
+            'critical': 'bg-purple-100 dark:bg-purple-900/30'
+        };
+        return badges[level] || 'bg-slate-100 dark:bg-slate-800/30';
+    }
+}">
+    {# Header #}
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-slate-900 dark:text-slate-100">Security Dashboard</h1>
+            <p class="text-slate-600 dark:text-slate-400 mt-1">Manage security policies and monitor system access</p>
+        </div>
+    </div>
+
+    {# Statistics Cards #}
+    <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
+        <div class="glass-panel p-4 flex flex-col justify-between hover:scale-[1.02] transition-transform">
+            <div>
+                <i class="ph ph-file-text text-2xl text-slate-600 dark:text-slate-400"></i>
+                <span class="text-3xl font-bold text-slate-900 dark:text-slate-100 mt-2">{{ policies|length }}</span>
+            </div>
+            <div class="text-sm text-slate-600 dark:text-slate-400 mt-2">Total Policies</div>
+        </div>
+
+        <div class="glass-panel p-4 flex flex-col justify-between hover:scale-[1.02] transition-transform">
+            <div>
+                <i class="ph ph-check-circle text-2xl text-emerald-600 dark:text-emerald-400"></i>
+                <span class="text-3xl font-bold text-emerald-600 dark:text-emerald-400 mt-2">{{ enabledPolicies|length }}</span>
+            </div>
+            <div class="text-sm text-slate-600 dark:text-slate-400 mt-2">Enabled</div>
+        </div>
+
+        <div class="glass-panel p-4 flex flex-col justify-between hover:scale-[1.02] transition-transform">
+            <div>
+                <i class="ph ph-shield-check text-2xl text-slate-600 dark:text-slate-400"></i>
+                <span class="text-3xl font-bold text-slate-900 dark:text-slate-100 mt-2">{{ stats.allow_policies ?? 0 }}</span>
+            </div>
+            <div class="text-sm text-slate-600 dark:text-slate-400 mt-2">Allow Policies</div>
+        </div>
+
+        <div class="glass-panel p-4 flex flex-col justify-between hover:scale-[1.02] transition-transform">
+            <div>
+                <i class="ph ph-shield text-2xl text-red-600 dark:text-red-400"></i>
+                <span class="text-3xl font-bold text-red-600 dark:text-red-400 mt-2">{{ stats.deny_policies ?? 0 }}</span>
+            </div>
+            <div class="text-sm text-slate-600 dark:text-slate-400 mt-2">Deny Policies</div>
+        </div>
+
+        <div class="glass-panel p-4 flex flex-col justify-between hover:scale-[1.02] transition-transform">
+            <div>
+                <i class="ph ph-hand-paper text-2xl text-amber-600 dark:text-amber-400"></i>
+                <span class="text-3xl font-bold text-amber-600 dark:text-amber-400 mt-2">{{ stats.ask_policies ?? 0 }}</span>
+            </div>
+            <div class="text-sm text-slate-600 dark:text-slate-400 mt-2">Ask (HITL)</div>
+        </div>
+
+        <div class="glass-panel p-4 flex flex-col justify-between hover:scale-[1.02] transition-transform">
+            <div>
+                <i class="ph ph-bell text-2xl text-slate-600 dark:text-slate-400"></i>
+                <span class="text-3xl font-bold text-slate-900 dark:text-slate-100 mt-2">{{ recentApprovals|length }}</span>
+            </div>
+            <div class="text-sm text-slate-600 dark:text-slate-400 mt-2">Pending Approvals</div>
+        </div>
+    </div>
+
+    {# Main Content Grid #}
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {# Left Column - Policies #}
+        <div class="glass-panel">
+            <div class="flex justify-between items-center mb-4">
+                <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Policies</h2>
+                <div class="flex items-center gap-2">
+                    <a href="{{ path('security_policy_new') }}" class="px-4 py-2 bg-primary/10 dark:bg-primary/20 text-primary dark:text-white rounded-lg border border-primary/30 hover:bg-primary/20 dark:hover:bg-primary/30 transition-colors text-sm">
+                        <i class="ph ph-plus"></i>
+                        New Policy
+                    </a>
+                    <a href="{{ path('security_policies') }}" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-sm">
+                        View All
+                    </a>
+                </div>
+            </div>
+            
+            {% if policies|length > 0 %}
+                <div class="space-y-3">
+                    {% for policy in policies|slice(0, 5) %}
+                        <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
+                                    <i class="ph ph-file-text text-primary text-sm"></i>
+                                </div>
+                                <div>
+                                    <div class="font-medium text-slate-900 dark:text-slate-100">{{ policy.name }}</div>
+                                    <div class="text-xs text-slate-500 dark:text-slate-400">{{ policy.identifier }}</div>
+                                </div>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <span class="px-2 py-1 rounded-full text-xs font-medium {% if policy.effect == 'allow' %}bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300{% elseif policy.effect == 'deny' %}bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300{% else %}bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300{% endif %}">
+                                    {{ policy.effect|title }}
+                                </span>
+                                {% if policy.isEnabled %}
+                                    <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                                {% else %}
+                                    <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-8 text-slate-500 dark:text-slate-400">
+                    <i class="ph ph-file-text text-4xl mb-2"></i>
+                    <p>No policies found</p>
+                    <a href="{{ path('security_policy_new') }}" class="text-primary hover:underline mt-2 inline-block">Create your first policy</a>
+                </div>
+            {% endif %}
+        </div>
+
+        {# Right Column - Risk Levels & Approvals #}
+        <div class="space-y-6">
+            {# Risk Levels #}
+            <div class="glass-panel">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Risk Levels</h2>
+                </div>
+                
+                <div class="space-y-3">
+                    {% for level, name in riskLevels %}
+                        <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full flex items-center justify-center {% if level == 'low' %}bg-emerald-100 dark:bg-emerald-900/30{% elseif level == 'medium' %}bg-amber-100 dark:bg-amber-900/30{% elseif level == 'high' %}bg-red-100 dark:bg-red-900/30{% else %}bg-purple-100 dark:bg-purple-900/30{% endif %}">
+                                    <i class="ph ph-shield-{{ level }} text-lg {% if level == 'low' %}text-emerald-600 dark:text-emerald-400{% elseif level == 'medium' %}text-amber-600 dark:text-amber-400{% elseif level == 'high' %}text-red-600 dark:text-red-400{% else %}text-purple-600 dark:text-purple-400{% endif %}"></i>
+                                </div>
+                                <div>
+                                    <div class="font-medium text-slate-900 dark:text-slate-100">{{ name }}</div>
+                                    <div class="text-xs text-slate-500 dark:text-slate-400">{{ level }}</div>
+                                </div>
+                            </div>
+                            <i class="ph ph-info text-slate-400 dark:text-slate-500"></i>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            {# Recent Approvals #}
+            <div class="glass-panel">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100">Recent Approvals</h2>
+                    <a href="{{ path('security_approvals') }}" class="text-sm text-primary hover:underline">View All</a>
+                </div>
+                
+                {% if recentApprovals|length > 0 %}
+                    <div class="space-y-3">
+                        {% for approval in recentApprovals|slice(0, 5) %}
+                            <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                                <div class="flex items-center gap-3">
+                                    <div class="w-8 h-8 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                                        <i class="ph ph-hand-paper text-amber-600 dark:text-amber-400 text-sm"></i>
+                                    </div>
+                                    <div>
+                                        <div class="font-medium text-slate-900 dark:text-slate-100">{{ approval.action }}</div>
+                                        <div class="text-xs text-slate-500 dark:text-slate-400">{{ approval.requestedAt|date('M d, H:i') }}</div>
+                                    </div>
+                                </div>
+                                <div class="flex items-center gap-2">
+                                    <span class="px-2 py-1 rounded-full text-xs font-medium bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
+                                        {{ approval.status|title }}
+                                    </span>
+                                    <span class="evie-badge evie-badge-{{ getRiskLevelColor(approval.riskLevel)|replace('text-', '') }}">
+                                        {{ approval.riskLevel|title }}
+                                    </span>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    <div class="text-center py-8 text-slate-500 dark:text-slate-400">
+                        <i class="ph ph-bell text-4xl mb-2"></i>
+                        <p>No recent approval requests</p>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    {# Policy Actions #}
+    <div class="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+        <a href="{{ path('security_policies') }}" class="glass-panel p-4 text-center hover:scale-[1.02] transition-transform group">
+            <i class="ph ph-file-text text-3xl text-slate-600 dark:text-slate-400 mb-2"></i>
+            <div class="font-medium text-slate-900 dark:text-slate-100 group-hover:text-primary transition-colors">View All Policies</div>
+        </a>
+        <a href="{{ path('security_policy_new') }}" class="glass-panel p-4 text-center hover:scale-[1.02] transition-transform group">
+            <i class="ph ph-plus text-3xl text-slate-600 dark:text-slate-400 mb-2"></i>
+            <div class="font-medium text-slate-900 dark:text-slate-100 group-hover:text-primary transition-colors">Create Policy</div>
+        </a>
+        <a href="{{ path('security_policy_test') }}" class="glass-panel p-4 text-center hover:scale-[1.02] transition-transform group">
+            <i class="ph ph-flask text-3xl text-slate-600 dark:text-slate-400 mb-2"></i>
+            <div class="font-medium text-slate-900 dark:text-slate-100 group-hover:text-primary transition-colors">Test Policy</div>
+        </a>
+        <button @click="confirm('Are you sure you want to register default policies?') && window.location.href='{{ path('security_policy_register_defaults') }}'" class="glass-panel p-4 text-center hover:scale-[1.02] transition-transform group w-full">
+            <i class="ph ph-download text-3xl text-slate-600 dark:text-slate-400 mb-2"></i>
+            <div class="font-medium text-slate-900 dark:text-slate-100 group-hover:text-primary transition-colors">Register Defaults</div>
+        </button>
+    </div>
+
+    {# Quick Stats #}
+    <div class="mt-6 glass-panel p-4">
+        <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Policy Statistics</h2>
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <div class="text-center p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                <div class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ stats.total ?? 0 }}</div>
+                <div class="text-sm text-slate-500 dark:text-slate-400">Total Policies</div>
+            </div>
+            <div class="text-center p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ stats.enabled ?? 0 }}</div>
+                <div class="text-sm text-slate-500 dark:text-slate-400">Enabled</div>
+            </div>
+            <div class="text-center p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                <div class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ stats.action_policies ?? 0 }}</div>
+                <div class="text-sm text-slate-500 dark:text-slate-400">Action Policies</div>
+            </div>
+            <div class="text-center p-3 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                <div class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ stats.resource_policies ?? 0 }}</div>
+                <div class="text-sm text-slate-500 dark:text-slate-400">Resource Policies</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+    .evie-badge {
+        display: inline-block;
+        padding: 0.25rem 0.5rem;
+        border-radius: 0.25rem;
+        font-size: 0.75rem;
+        font-weight: 500;
+    }
+</style>
+
+{% block javascripts %}
+<script>
+    // Additional JavaScript for the security dashboard
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize any additional components
+    });
+</script>
+{% endblock %}
+{% endblock %}
