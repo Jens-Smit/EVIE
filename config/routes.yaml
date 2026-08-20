@@ -1,6 +1,14 @@
 # EVIE Routes
 # API Routes for EVIE
 
+# Import route files
+imports:
+    - { resource: routes/admin.yaml }
+    - { resource: routes/agent.yaml }
+    - { resource: routes/conversation.yaml }
+    - { resource: routes/onboarding.yaml }
+    - { resource: routes/security.yaml }
+
 # Controllers
 controllers:
     resource: ../src/Controller/
