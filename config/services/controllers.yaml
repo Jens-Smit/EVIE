@@ -1,0 +1,125 @@
+# Controller Services Configuration
+# This file configures services for all controllers
+
+services:
+  # Admin Controllers
+  App\Controller\Admin\AdminController:
+    arguments:
+      $tenantRepository: '@App\Repository\Tenant\TenantRepository'
+      $userRepository: '@App\Repository\Tenant\UserRepository'
+      $executionRepository: '@App\Repository\AI\AgentExecutionRepository'
+      $conversationRepository: '@App\Repository\AI\ConversationRepository'
+      $llmConfigurationRepository: '@App\Repository\AI\LLMConfigurationRepository'
+      $capabilityRepository: '@App\Repository\AI\CapabilityRepository'
+      $integrationRepository: '@App\Repository\Integration\IntegrationRepository'
+      $mcpServerRepository: '@App\Repository\Integration\McpServerRepository'
+      $policyRepository: '@App\Repository\Security\PolicyRepository'
+      $conversationService: '@App\Service\AI\ConversationService'
+      $capabilityRegistry: '@App\Service\AI\CapabilityRegistry'
+      $schedulerService: '@App\Service\Automation\SchedulerService'
+      $integrationManager: '@App\Service\Integration\IntegrationManager'
+      $securityGuard: '@App\Service\Security\SecurityGuard'
+    tags:
+      - { name: 'controller.service_arguments' }
+
+  # Agent Controllers
+  App\Controller\Agent\AgentController:
+    arguments:
+      $llmConfigurationRepository: '@App\Repository\AI\LLMConfigurationRepository'
+      $executionRepository: '@App\Repository\AI\AgentExecutionRepository'
+      $conversationRepository: '@App\Repository\AI\ConversationRepository'
+      $capabilityRepository: '@App\Repository\AI\CapabilityRepository'
+      $conversationService: '@App\Service\AI\ConversationService'
+      $capabilityRegistry: '@App\Service\AI\CapabilityRegistry'
+      $capabilityResolver: '@App\Service\AI\CapabilityResolver'
+      $securityGuard: '@App\Service\Security\SecurityGuard'
+      $messageBus: '@message_bus'
+    tags:
+      - { name: 'controller.service_arguments' }
+
+  # Conversation Controllers
+  App\Controller\Conversation\ConversationController:
+    arguments:
+      $conversationRepository: '@App\Repository\AI\ConversationRepository'
+      $messageRepository: '@App\Repository\AI\MessageRepository'
+      $conversationService: '@App\Service\AI\ConversationService'
+      $securityGuard: '@App\Service\Security\SecurityGuard'
+      $messageBus: '@message_bus'
+    tags:
+      - { name: 'controller.service_arguments' }
+
+  # Onboarding Controllers
+  App\Controller\Onboarding\OnboardingController:
+    arguments:
+      $onboardingService: '@App\Service\Onboarding\OnboardingService'
+      $capabilityRegistry: '@App\Service\AI\CapabilityRegistry'
+      $secretManager: '@App\Service\Security\SecretManager'
+      $llmConfigurationRepository: '@App\Repository\AI\LLMConfigurationRepository'
+      $capabilityRepository: '@App\Repository\AI\CapabilityRepository'
+      $tenantRepository: '@App\Repository\Tenant\TenantRepository'
+    tags:
+      - { name: 'controller.service_arguments' }
+
+  # Security Controllers
+  App\Controller\Security\SecurityController:
+    arguments:
+      $policyRepository: '@App\Repository\Security\PolicyRepository'
+      $securityGuard: '@App\Service\Security\SecurityGuard'
+    tags:
+      - { name: 'controller.service_arguments' }
+
+  # Form Types
+  App\Form\Security\PolicyType:
+    tags:
+      - { name: 'form.type' }
+
+  # Repository Services (for autowiring)
+  App\Repository\AI\AgentExecutionRepository:
+    factory: ['@doctrine.orm.entity_manager', 'getRepository']
+    arguments:
+      - App\Entity\AI\AgentExecution
+
+  App\Repository\AI\ConversationRepository:
+    factory: ['@doctrine.orm.entity_manager', 'getRepository']
+    arguments:
+      - App\Entity\AI\Conversation
+
+  App\Repository\AI\MessageRepository:
+    factory: ['@doctrine.orm.entity_manager', 'getRepository']
+    arguments:
+      - App\Entity\AI\Message
+
+  App\Repository\AI\LLMConfigurationRepository:
+    factory: ['@doctrine.orm.entity_manager', 'getRepository']
+    arguments:
+      - App\Entity\AI\LLMConfiguration
+
+  App\Repository\AI\CapabilityRepository:
+    factory: ['@doctrine.orm.entity_manager', 'getRepository']
+    arguments:
+      - App\Entity\AI\Capability
+
+  App\Repository\Integration\IntegrationRepository:
+    factory: ['@doctrine.orm.entity_manager', 'getRepository']
+    arguments:
+      - App\Entity\Integration\Integration
+
+  App\Repository\Integration\McpServerRepository:
+    factory: ['@doctrine.orm.entity_manager', 'getRepository']
+    arguments:
+      - App\Entity\Integration\McpServer
+
+  App\Repository\Security\PolicyRepository:
+    factory: ['@doctrine.orm.entity_manager', 'getRepository']
+    arguments:
+      - App\Entity\Security\Policy
+
+  App\Repository\Tenant\TenantRepository:
+    factory: ['@doctrine.orm.entity_manager', 'getRepository']
+    arguments:
+      - App\Entity\Tenant\Tenant
+
+  App\Repository\Tenant\UserRepository:
+    factory: ['@doctrine.orm.entity_manager', 'getRepository']
+    arguments:
+      - App\Entity\Tenant\User
