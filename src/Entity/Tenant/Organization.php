@@ -3,6 +3,7 @@
 namespace App\Entity\Tenant;
 
 use App\Entity\AI\LLMConfiguration;
+use App\Entity\Automation\ScheduledTask;
 use App\Repository\Tenant\OrganizationRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -50,6 +51,9 @@ class Organization
     #[ORM\OneToMany(mappedBy: 'organization', targetEntity: LLMConfiguration::class, orphanRemoval: true)]
     private Collection $llmConfigurations;
 
+    #[ORM\OneToMany(mappedBy: 'organization', targetEntity: ScheduledTask::class, orphanRemoval: true)]
+    private Collection $scheduledTasks;
+
     public function __construct()
     {
         $this->id = Ulid::generate();
@@ -57,6 +61,7 @@ class Organization
         $this->updatedAt = new \DateTimeImmutable();
         $this->users = new ArrayCollection();
         $this->llmConfigurations = new ArrayCollection();
+        $this->scheduledTasks = new ArrayCollection();
     }
 
     // --- Getters and Setters ---
@@ -215,6 +220,36 @@ class Organization
         return $this;
     }
 
+    /**
+     * @return Collection<int, ScheduledTask>
+     */
+    public function getScheduledTasks(): Collection
+    {
+        return $this->scheduledTasks;
+    }
+
+    public function addScheduledTask(ScheduledTask $scheduledTask): static
+    {
+        if (!$this->scheduledTasks->contains($scheduledTask)) {
+            $this->scheduledTasks->add($scheduledTask);
+            $scheduledTask->setOrganization($this);
+        }
+
+        return $this;
+    }
+
+    public function removeScheduledTask(ScheduledTask $scheduledTask): static
+    {
+        if ($this->scheduledTasks->removeElement($scheduledTask)) {
+            // set the owning side to null (unless already changed)
+            if ($scheduledTask->getOrganization() === $this) {
+                $scheduledTask->setOrganization(null);
+            }
+        }
+
+        return $this;
+    }
+
     // --- Custom Methods ---
 
     public function __toString(): string
@@ -228,5 +263,35 @@ class Organization
     public function belongsToTenant(string $tenantId): bool
     {
         return $this->tenant->getId() === $tenantId;
+    }
+
+    /**
+     * Get active scheduled tasks for this organization.
+     *
+     * @return ScheduledTask[]
+     */
+    public function getActiveScheduledTasks(): array
+    {
+        return array_filter(
+            $this->scheduledTasks->toArray(),
+            function(ScheduledTask $task) {
+                return $task->isActive();
+            }
+        );
+    }
+
+    /**
+     * Get due scheduled tasks for this organization.
+     *
+     * @return ScheduledTask[]
+     */
+    public function getDueScheduledTasks(): array
+    {
+        return array_filter(
+            $this->scheduledTasks->toArray(),
+            function(ScheduledTask $task) {
+                return $task->isActive() && $task->isDue();
+            }
+        );
     }
 }
