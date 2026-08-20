@@ -1,0 +1,82 @@
+# Conversation Routes
+# These routes are for the chat interface
+
+chat_index:
+  path: /chat
+  controller: App\Controller\Conversation\ConversationController::index
+  methods: GET
+
+chat_new:
+  path: /chat/new
+  controller: App\Controller\Conversation\ConversationController::newConversation
+  methods: [GET, POST]
+
+chat_view:
+  path: /chat/{id}
+  controller: App\Controller\Conversation\ConversationController::viewConversation
+  methods: GET
+  requirements:
+    id: '[a-f0-9]{26}'
+
+chat_send:
+  path: /chat/{id}/send
+  controller: App\Controller\Conversation\ConversationController::sendMessage
+  methods: POST
+  requirements:
+    id: '[a-f0-9]{26}'
+
+chat_stream:
+  path: /chat/{id}/stream
+  controller: App\Controller\Conversation\ConversationController::streamConversation
+  methods: GET
+  requirements:
+    id: '[a-f0-9]{26}'
+
+chat_context:
+  path: /chat/{id}/context
+  controller: App\Controller\Conversation\ConversationController::getContext
+  methods: GET
+  requirements:
+    id: '[a-f0-9]{26}'
+
+chat_summary:
+  path: /chat/{id}/summary
+  controller: App\Controller\Conversation\ConversationController::getSummary
+  methods: GET
+  requirements:
+    id: '[a-f0-9]{26}'
+
+chat_rename:
+  path: /chat/{id}/rename
+  controller: App\Controller\Conversation\ConversationController::renameConversation
+  methods: POST
+  requirements:
+    id: '[a-f0-9]{26}'
+
+chat_delete:
+  path: /chat/{id}/delete
+  controller: App\Controller\Conversation\ConversationController::deleteConversation
+  methods: POST
+  requirements:
+    id: '[a-f0-9]{26}'
+
+chat_clear:
+  path: /chat/{id}/clear
+  controller: App\Controller\Conversation\ConversationController::clearConversation
+  methods: POST
+  requirements:
+    id: '[a-f0-9]{26}'
+
+chat_tag:
+  path: /chat/{id}/tag
+  controller: App\Controller\Conversation\ConversationController::tagConversation
+  methods: POST
+  requirements:
+    id: '[a-f0-9]{26}'
+
+chat_untag:
+  path: /chat/{id}/untag
+  controller: App\Controller\Conversation\ConversationController::untagConversation
+  methods: POST
+  requirements:
+    id: '[a-f0-9]{26}'
