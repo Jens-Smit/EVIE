@@ -1,0 +1,211 @@
+{# templates/admin/execution_detail.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Execution {{ execution.id|slice(0, 8) }} - EVIE Admin{% endblock %}
+
+{% block body %}
+<div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+    {# Header #}
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-slate-900 dark:text-slate-100">Execution Details</h1>
+            <p class="text-slate-600 dark:text-slate-400 mt-1">{{ execution.id|slice(0, 8) }}</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{{ path('admin_executions') }}" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                <i class="ph ph-arrow-left"></i>
+                Back to Executions
+            </a>
+        </div>
+    </div>
+
+    {# Status Banner #}
+    <div class="mb-6 p-4 rounded-lg {% if execution.status == 'completed' %}bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-200 dark:border-emerald-800/30{% elseif execution.status == 'failed' %}bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30{% elseif execution.status == 'running' %}bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/30{% else %}bg-slate-50 dark:bg-slate-900/10 border border-slate-200 dark:border-slate-800/30{% endif %}">
+        <div class="flex items-center gap-3">
+            <span class="px-2 py-1 rounded-full text-xs font-medium {% if execution.status == 'completed' %}bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300{% elseif execution.status == 'failed' %}bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300{% elseif execution.status == 'running' %}bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300{% else %}bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300{% endif %}">
+                {{ execution.status|title }}
+            </span>
+            <span class="text-lg font-semibold text-slate-900 dark:text-slate-100">{{ execution.agent }}</span>
+        </div>
+        {% if execution.error %}
+            <div class="mt-2 text-red-600 dark:text-red-400 text-sm">
+                <i class="ph ph-warning-circle"></i>
+                Error: {{ execution.error }}
+            </div>
+        {% endif %}
+    </div>
+
+    {# Execution Information #}
+    <div class="glass-panel p-6 mb-6">
+        <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Execution Information</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <div class="space-y-4">
+                    <div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Execution ID</div>
+                        <code class="text-slate-800 dark:text-slate-200">{{ execution.id }}</code>
+                    </div>
+                    <div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Agent</div>
+                        <div class="font-medium text-slate-900 dark:text-slate-100">{{ execution.agent }}</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Agent Name</div>
+                        <div class="text-slate-800 dark:text-slate-200">{{ execution.agentName }}</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Status</div>
+                        <span class="px-2 py-1 rounded-full text-xs font-medium {% if execution.status == 'completed' %}bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300{% elseif execution.status == 'failed' %}bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300{% elseif execution.status == 'running' %}bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300{% else %}bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300{% endif %}">
+                            {{ execution.status|title }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div class="space-y-4">
+                    <div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Created At</div>
+                        <div class="text-slate-800 dark:text-slate-200">{{ execution.createdAt|date('M d, Y H:i:s') }}</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Started At</div>
+                        <div class="text-slate-800 dark:text-slate-200">{{ execution.startedAt ? execution.startedAt|date('M d, Y H:i:s') : 'N/A' }}</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Completed At</div>
+                        <div class="text-slate-800 dark:text-slate-200">{{ execution.completedAt ? execution.completedAt|date('M d, Y H:i:s') : 'N/A' }}</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Duration</div>
+                        <div class="font-medium text-slate-900 dark:text-slate-100">{{ execution.duration }} seconds</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# User & Tenant Information #}
+    <div class="glass-panel p-6 mb-6">
+        <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">User & Tenant</h2>
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <div class="space-y-4">
+                    <div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">User</div>
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
+                                <i class="ph ph-user text-primary text-sm"></i>
+                            </div>
+                            <div>
+                                <div class="font-medium text-slate-900 dark:text-slate-100">{{ execution.user.email }}</div>
+                                <div class="text-xs text-slate-500 dark:text-slate-400">{{ execution.user.fullName ?? 'N/A' }}</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">User ID</div>
+                        <code class="text-slate-800 dark:text-slate-200">{{ execution.userId }}</code>
+                    </div>
+                </div>
+            </div>
+            <div>
+                <div class="space-y-4">
+                    <div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Tenant</div>
+                        <div class="font-medium text-slate-900 dark:text-slate-100">{{ tenant.name }}</div>
+                    </div>
+                    <div>
+                        <div class="text-sm text-slate-500 dark:text-slate-400 mb-1">Tenant ID</div>
+                        <code class="text-slate-800 dark:text-slate-200">{{ execution.tenantId }}</code>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# Messages #}
+    {% if messages|length > 0 %}
+        <div class="glass-panel p-6 mb-6">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Messages ({{ messages|length }})</h2>
+            <div class="space-y-4 max-h-96 overflow-y-auto">
+                {% for message in messages %}
+                    <div class="p-4 bg-slate-50 dark:bg-slate-900/30 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="flex items-center gap-2">
+                                <span class="px-2 py-1 rounded-full text-xs font-medium {% if message.role == 'user' %}bg-primary/10 dark:bg-primary/20 text-primary{% elseif message.role == 'assistant' %}bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300{% elseif message.role == 'system' %}bg-slate-200 dark:bg-slate-700/30 text-slate-600 dark:text-slate-400{% else %}bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300{% endif %}">
+                                    {{ message.role }}
+                                </span>
+                                <span class="text-xs text-slate-400 dark:text-slate-500">{{ message.createdAt|date('H:i:s') }}</span>
+                            </div>
+                            {% if message.tokenCount %}
+                                <span class="text-xs text-slate-400 dark:text-slate-500">{{ message.tokenCount }} tokens</span>
+                            {% endif %}
+                        </div>
+                        <div class="text-slate-800 dark:text-slate-200 whitespace-pre-wrap evie-code">{{ message.content }}</div>
+                    </div>
+                {% endfor %}
+            </div>
+        </div>
+    {% endif %}
+
+    {# Results #}
+    {% if execution.results|length > 0 %}
+        <div class="glass-panel p-6 mb-6">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Results</h2>
+            <div class="p-4 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                <pre class="text-xs text-slate-700 dark:text-slate-300 overflow-x-auto evie-code">{{ execution.results|json_encode(4)|raw }}</pre>
+            </div>
+        </div>
+    {% endif %}
+
+    {# Metadata #}
+    {% if execution.metadata|length > 0 %}
+        <div class="glass-panel p-6 mb-6">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Metadata</h2>
+            <div class="p-4 bg-slate-50 dark:bg-slate-900/30 rounded-lg">
+                <pre class="text-xs text-slate-700 dark:text-slate-300 overflow-x-auto evie-code">{{ execution.metadata|json_encode(4)|raw }}</pre>
+            </div>
+        </div>
+    {% endif %}
+
+    {# Child Executions #}
+    {% if childExecutions|length > 0 %}
+        <div class="glass-panel p-6">
+            <h2 class="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-4">Child Executions ({{ childExecutions|length }})</h2>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
+                        <tr>
+                            <th class="pb-2 pr-4">ID</th>
+                            <th class="pb-2 pr-4">Agent</th>
+                            <th class="pb-2 pr-4">Status</th>
+                            <th class="pb-2">Time</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for child in childExecutions %}
+                            <tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/50">
+                                <td class="py-2 pr-4">
+                                    <code class="text-xs">{{ child.id|slice(0, 8) }}</code>
+                                </td>
+                                <td class="py-2 pr-4 font-medium text-slate-900 dark:text-slate-100">{{ child.agent }}</td>
+                                <td class="py-2 pr-4">
+                                    <span class="px-2 py-1 rounded-full text-xs font-medium {% if child.status == 'completed' %}bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300{% elseif child.status == 'failed' %}bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300{% else %}bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300{% endif %}">
+                                        {{ child.status }}
+                                    </span>
+                                </td>
+                                <td class="py-2 text-slate-500 dark:text-slate-400">
+                                    {{ child.createdAt|date('M d, H:i') }}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    {% endif %}
+</div>
+
+{% block javascripts %}
+{% endblock %}
+{% endblock %}
