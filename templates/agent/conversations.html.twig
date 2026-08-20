@@ -1,0 +1,103 @@
+{# templates/agent/conversations.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Conversations - EVIE{% endblock %}
+
+{% block body %}
+<div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6" x-data="{
+    statusFilter: '{{ statusFilter }}',
+    tagFilter: '{{ tagFilter }}',
+    
+    getStatusColor(status) {
+        const colors = {
+            'active': 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
+            'archived': 'bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300'
+        };
+        return colors[status] || 'bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300';
+    }
+}">
+    {# Header #}
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-slate-900 dark:text-slate-100">Conversations</h1>
+            <p class="text-slate-600 dark:text-slate-400 mt-1">Your conversation history</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="{{ path('agent_conversation_new') }}" class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                <i class="ph ph-plus"></i>
+                New Conversation
+            </a>
+        </div>
+    </div>
+
+    {# Filters #}
+    <div class="flex flex-col md:flex-row gap-4 mb-6">
+        <div class="flex items-center gap-2">
+            <span class="text-sm text-slate-600 dark:text-slate-400">Status:</span>
+            <select x-model="statusFilter" @change="window.location.href = '{{ path('agent_conversations') }}?status=' + $event.target.value + '&tag=' + tagFilter" class="px-3 py-2 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                <option value="">All Statuses</option>
+                <option value="active">Active</option>
+                <option value="archived">Archived</option>
+            </select>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="text-sm text-slate-600 dark:text-slate-400">Tag:</span>
+            <select x-model="tagFilter" @change="window.location.href = '{{ path('agent_conversations') }}?status=' + statusFilter + '&tag=' + $event.target.value" class="px-3 py-2 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                <option value="">All Tags</option>
+                {% for tag in allTags %}
+                    <option value="{{ tag }}">{{ tag }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="flex-1"></div>
+    </div>
+
+    {# Conversations Grid #}
+    <div class="glass-panel">
+        {% if conversations|length > 0 %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for conversation in conversations %}
+                    <a href="{{ path('agent_conversation_view', {'id': conversation.id}) }}" class="block p-4 bg-slate-50 dark:bg-slate-900/30 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800/50 transition-colors group">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-medium text-slate-900 dark:text-slate-100 group-hover:text-primary transition-colors">{{ conversation.title }}</h3>
+                            <span class="px-2 py-1 rounded-full text-xs font-medium {{ getStatusColor(conversation.status) }}">
+                                {{ conversation.status|title }}
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400 mb-2">
+                            <span class="flex items-center gap-1">
+                                <i class="ph ph-chat-circle-dots text-xs"></i>
+                                {{ conversation.messageCount }} messages
+                            </span>
+                            <span class="flex items-center gap-1">
+                                <i class="ph ph-hash text-xs"></i>
+                                {{ conversation.tokenCount }} tokens
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-2 text-sm mb-2">
+                            {% for tag in conversationService.retrieveTags(conversation) %}
+                                <span class="px-2 py-0.5 rounded-full bg-primary/10 dark:bg-primary/20 text-primary dark:text-white text-xs">{{ tag }}</span>
+                            {% endfor %}
+                        </div>
+                        <div class="text-xs text-slate-400 dark:text-slate-500">
+                            Updated: {{ conversation.updatedAt|date('M d, H:i') }}
+                        </div>
+                    </a>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-8 text-slate-500 dark:text-slate-400">
+                <i class="ph ph-chats-circle text-4xl mb-2"></i>
+                <p>No conversations found</p>
+                <a href="{{ path('agent_conversation_new') }}" class="text-primary hover:underline mt-2 inline-block">Start a new conversation</a>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% block javascripts %}
+<script>
+    // Additional JavaScript for conversations
+</script>
+{% endblock %}
+{% endblock %}
