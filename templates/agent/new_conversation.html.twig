@@ -1,0 +1,96 @@
+{# templates/agent/new_conversation.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}New Conversation - EVIE{% endblock %}
+
+{% block body %}
+<div class="w-full max-w-2xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+    <div class="glass-panel p-8">
+        {# Header #}
+        <div class="text-center mb-8">
+            <i class="ph ph-chat-circle-dots text-5xl text-primary mb-4"></i>
+            <h1 class="text-3xl font-bold text-slate-900 dark:text-slate-100">New Conversation</h1>
+            <p class="text-slate-600 dark:text-slate-400 mt-2">Start a new chat with an AI agent</p>
+        </div>
+
+        {# Form #}
+        <form method="post" class="space-y-6">
+            <div>
+                <label for="title" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Title (Optional)</label>
+                <input 
+                    type="text" 
+                    id="title" 
+                    name="title" 
+                    placeholder="e.g., Project Planning, Code Review, Research..."
+                    class="w-full px-4 py-3 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                >
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Leave empty to auto-generate a title from your first message</p>
+            </div>
+
+            <div>
+                <label for="first_message" class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">First Message (Optional)</label>
+                <textarea 
+                    id="first_message" 
+                    name="first_message" 
+                    placeholder="Start typing your message here..."
+                    rows="5"
+                    class="w-full px-4 py-3 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                ></textarea>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Start your conversation with an initial message</p>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">LLM Configuration</label>
+                <select name="llm_config_id" class="w-full px-4 py-3 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                    <option value="">Use Default Configuration</option>
+                    {% for config in llmConfigs %}
+                        <option value="{{ config.id }}" {% if config.isDefault %}selected{% endif %}>
+                            {{ config.provider }}:{{ config.model }}
+                            {% if config.isDefault %}(Default){% endif %}
+                        </option>
+                    {% endfor %}
+                </select>
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1">Select which LLM to use for this conversation</p>
+            </div>
+
+            <div class="flex justify-end gap-2 pt-4 border-t border-slate-200 dark:border-slate-700">
+                <a href="{{ path('agent_conversations') }}" class="px-6 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                    Cancel
+                </a>
+                <button type="submit" class="px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+                    <i class="ph ph-chat-circle-dots"></i>
+                    Start Conversation
+                </button>
+            </div>
+        </form>
+
+        {# Quick Start Options #}
+        <div class="mt-8 text-center">
+            <p class="text-sm text-slate-500 dark:text-slate-400 mb-4">or start with a template:</p>
+            <div class="flex flex-wrap justify-center gap-2">
+                <a href="{{ path('agent_conversation_new') }}?first_message=Explain+the+concept+of+AI+agents+to+a+beginner" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-sm">
+                    Explain AI
+                </a>
+                <a href="{{ path('agent_conversation_new') }}?first_message=Help+me+plan+a+new+project" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-sm">
+                    Plan Project
+                </a>
+                <a href="{{ path('agent_conversation_new') }}?first_message=Write+a+Python+function+to+sort+a+list" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-sm">
+                    Write Code
+                </a>
+                <a href="{{ path('agent_conversation_new') }}?first_message=Review+this+code:+def+sort_list(lst):+return+sorted(lst)" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-sm">
+                    Review Code
+                </a>
+                <a href="{{ path('agent_conversation_new') }}?first_message=What+are+the+latest+trends+in+AI?" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-sm">
+                    Research
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% block javascripts %}
+<script>
+    // Additional JavaScript for new conversation
+</script>
+{% endblock %}
+{% endblock %}
