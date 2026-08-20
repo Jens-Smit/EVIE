@@ -1,0 +1,146 @@
+{# templates/security/audit.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Audit Log - EVIE Security{% endblock %}
+
+{% block body %}
+<div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6" x-data="{
+    actionFilter: '{{ actionFilter }}',
+    userFilter: '{{ userFilter }}',
+    startDateFilter: '{{ startDateFilter }}',
+    endDateFilter: '{{ endDateFilter }}',
+    
+    getActionColor(action) {
+        const colors = {
+            'create': 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
+            'read': 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
+            'update': 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
+            'delete': 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+        };
+        const baseAction = action.split(':')[0];
+        return colors[baseAction] || 'bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300';
+    }
+}">
+    {# Header #}
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-slate-900 dark:text-slate-100">Audit Log</h1>
+            <p class="text-slate-600 dark:text-slate-400 mt-1">Track security events and actions</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <button @click="window.location.reload()" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-sm">
+                <i class="ph ph-arrow-clockwise"></i>
+                Refresh
+            </button>
+        </div>
+    </div>
+
+    {# Filters #}
+    <div class="glass-panel p-4 mb-6">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Action</label>
+                <select x-model="actionFilter" @change="window.location.href = '{{ path('security_audit') }}?action=' + $event.target.value + '&user=' + userFilter + '&start_date=' + startDateFilter + '&end_date=' + endDateFilter" class="w-full px-3 py-2 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                    <option value="">All Actions</option>
+                    <option value="create" {% if actionFilter == 'create' %}selected{% endif %}>Create</option>
+                    <option value="read" {% if actionFilter == 'read' %}selected{% endif %}>Read</option>
+                    <option value="update" {% if actionFilter == 'update' %}selected{% endif %}>Update</option>
+                    <option value="delete" {% if actionFilter == 'delete' %}selected{% endif %}>Delete</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">User</label>
+                <input 
+                    type="text" 
+                    x-model="userFilter" 
+                    @input.debounce.500="window.location.href = '{{ path('security_audit') }}?action=' + actionFilter + '&user=' + $event.target.value + '&start_date=' + startDateFilter + '&end_date=' + endDateFilter"
+                    placeholder="User email"
+                    value="{{ userFilter }}"
+                    class="w-full px-3 py-2 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                >
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Start Date</label>
+                <input 
+                    type="date" 
+                    x-model="startDateFilter" 
+                    @change="window.location.href = '{{ path('security_audit') }}?action=' + actionFilter + '&user=' + userFilter + '&start_date=' + $event.target.value + '&end_date=' + endDateFilter"
+                    value="{{ startDateFilter }}"
+                    class="w-full px-3 py-2 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                >
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">End Date</label>
+                <input 
+                    type="date" 
+                    x-model="endDateFilter" 
+                    @change="window.location.href = '{{ path('security_audit') }}?action=' + actionFilter + '&user=' + userFilter + '&start_date=' + startDateFilter + '&end_date=' + $event.target.value"
+                    value="{{ endDateFilter }}"
+                    class="w-full px-3 py-2 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50"
+                >
+            </div>
+        </div>
+    </div>
+
+    {# Audit Log Table #}
+    <div class="glass-panel">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
+                    <tr>
+                        <th class="pb-3 pr-4">Timestamp</th>
+                        <th class="pb-3 pr-4">Action</th>
+                        <th class="pb-3 pr-4">User</th>
+                        <th class="pb-3 pr-4">Resource</th>
+                        <th class="pb-3 pr-4">Details</th>
+                        <th class="pb-3">Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in auditLogs %}
+                        <tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/50">
+                            <td class="py-3 pr-4 text-slate-600 dark:text-slate-400">
+                                {{ log.timestamp|date('M d, H:i:s') }}
+                            </td>
+                            <td class="py-3 pr-4">
+                                <span class="px-2 py-1 rounded-full text-xs font-medium {{ getActionColor(log.action) }}">
+                                    {{ log.action }}
+                                </span>
+                            </td>
+                            <td class="py-3 pr-4">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+                                        <i class="ph ph-user text-slate-600 dark:text-slate-400 text-xs"></i>
+                                    </div>
+                                    <span class="text-slate-800 dark:text-slate-200">{{ log.user.email }}</span>
+                                </div>
+                            </td>
+                            <td class="py-3 pr-4 text-slate-600 dark:text-slate-400">
+                                {{ log.resource }}
+                            </td>
+                            <td class="py-3 pr-4">
+                                <code class="text-xs">{{ log.details|slice(0, 50) }}{% if log.details|length > 50 %}...{% endif %}</code>
+                            </td>
+                            <td class="py-3">
+                                <span class="px-2 py-1 rounded-full text-xs font-medium {% if log.status == 'success' %}bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300{% elseif log.status == 'failed' %}bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300{% else %}bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300{% endif %}">
+                                    {{ log.status|title }}
+                                </span>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        {% if auditLogs|length == 0 %}
+            <div class="text-center py-8 text-slate-500 dark:text-slate-400">
+                <i class="ph ph-file-text text-4xl mb-2"></i>
+                <p>No audit logs found</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% block javascripts %}
+{% endblock %}
+{% endblock %}
