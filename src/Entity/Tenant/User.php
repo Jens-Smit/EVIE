@@ -4,6 +4,7 @@ namespace App\Entity\Tenant;
 
 use App\Entity\AI\Conversation;
 use App\Entity\AI\LLMConfiguration;
+use App\Entity\Automation\ScheduledTask;
 use App\Entity\Security\UserSecret;
 use App\Repository\Tenant\UserRepository;
 use Doctrine\Common\Collections\ArrayCollection;
@@ -64,6 +65,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToMany(mappedBy: 'user', targetEntity: Conversation::class, orphanRemoval: true)]
     private Collection $conversations;
 
+    #[ORM\OneToMany(mappedBy: 'user', targetEntity: ScheduledTask::class, orphanRemoval: true)]
+    private Collection $scheduledTasks;
+
     #[ORM\ManyToOne(targetEntity: Organization::class, inversedBy: 'users')]
     #[ORM\JoinColumn(name: 'organization_id', referencedColumnName: 'id')]
     private ?Organization $organization = null;
@@ -76,6 +80,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->secrets = new ArrayCollection();
         $this->llmConfigurations = new ArrayCollection();
         $this->conversations = new ArrayCollection();
+        $this->scheduledTasks = new ArrayCollection();
     }
 
     // --- Getters and Setters ---
@@ -335,6 +340,36 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
+    /**
+     * @return Collection<int, ScheduledTask>
+     */
+    public function getScheduledTasks(): Collection
+    {
+        return $this->scheduledTasks;
+    }
+
+    public function addScheduledTask(ScheduledTask $scheduledTask): static
+    {
+        if (!$this->scheduledTasks->contains($scheduledTask)) {
+            $this->scheduledTasks->add($scheduledTask);
+            $scheduledTask->setUser($this);
+        }
+
+        return $this;
+    }
+
+    public function removeScheduledTask(ScheduledTask $scheduledTask): static
+    {
+        if ($this->scheduledTasks->removeElement($scheduledTask)) {
+            // set the owning side to null (unless already changed)
+            if ($scheduledTask->getUser() === $this) {
+                $scheduledTask->setUser(null);
+            }
+        }
+
+        return $this;
+    }
+
     public function getOrganization(): ?Organization
     {
         return $this->organization;
@@ -406,6 +441,36 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         }
 
         return $conversations[0] ?? null;
+    }
+
+    /**
+     * Get active scheduled tasks for this user.
+     *
+     * @return ScheduledTask[]
+     */
+    public function getActiveScheduledTasks(): array
+    {
+        return array_filter(
+            $this->scheduledTasks->toArray(),
+            function(ScheduledTask $task) {
+                return $task->isActive();
+            }
+        );
+    }
+
+    /**
+     * Get due scheduled tasks for this user.
+     *
+     * @return ScheduledTask[]
+     */
+    public function getDueScheduledTasks(): array
+    {
+        return array_filter(
+            $this->scheduledTasks->toArray(),
+            function(ScheduledTask $task) {
+                return $task->isActive() && $task->isDue();
+            }
+        );
     }
 
     /**
