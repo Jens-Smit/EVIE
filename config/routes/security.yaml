@@ -1,0 +1,87 @@
+# Security Routes
+# These routes are for security management
+
+security_dashboard:
+  path: /security
+  controller: App\Controller\Security\SecurityController::dashboard
+  methods: GET
+
+security_policies:
+  path: /security/policies
+  controller: App\Controller\Security\SecurityController::policies
+  methods: GET
+
+security_policy_new:
+  path: /security/policies/new
+  controller: App\Controller\Security\SecurityController::newPolicy
+  methods: [GET, POST]
+
+security_policy_edit:
+  path: /security/policies/{id}/edit
+  controller: App\Controller\Security\SecurityController::editPolicy
+  methods: [GET, POST]
+  requirements:
+    id: '[a-f0-9]{26}'
+
+security_policy_view:
+  path: /security/policies/{id}
+  controller: App\Controller\Security\SecurityController::viewPolicy
+  methods: GET
+  requirements:
+    id: '[a-f0-9]{26}'
+
+security_policy_delete:
+  path: /security/policies/{id}/delete
+  controller: App\Controller\Security\SecurityController::deletePolicy
+  methods: POST
+  requirements:
+    id: '[a-f0-9]{26}'
+
+security_policy_enable:
+  path: /security/policies/{id}/enable
+  controller: App\Controller\Security\SecurityController::enablePolicy
+  methods: POST
+  requirements:
+    id: '[a-f0-9]{26}'
+
+security_policy_disable:
+  path: /security/policies/{id}/disable
+  controller: App\Controller\Security\SecurityController::disablePolicy
+  methods: POST
+  requirements:
+    id: '[a-f0-9]{26}'
+
+security_policy_test:
+  path: /security/policies/test
+  controller: App\Controller\Security\SecurityController::testPolicy
+  methods: [GET, POST]
+
+security_approvals:
+  path: /security/approvals
+  controller: App\Controller\Security\SecurityController::approvals
+  methods: GET
+
+security_approval_view:
+  path: /security/approvals/{id}
+  controller: App\Controller\Security\SecurityController::viewApproval
+  methods: GET
+
+security_approval_approve:
+  path: /security/approvals/{id}/approve
+  controller: App\Controller\Security\SecurityController::approve
+  methods: POST
+
+security_approval_reject:
+  path: /security/approvals/{id}/reject
+  controller: App\Controller\Security\SecurityController::reject
+  methods: POST
+
+security_audit:
+  path: /security/audit
+  controller: App\Controller\Security\SecurityController::audit
+  methods: GET
+
+security_policy_register_defaults:
+  path: /security/policies/register-defaults
+  controller: App\Controller\Security\SecurityController::registerDefaultPolicies
+  methods: POST
