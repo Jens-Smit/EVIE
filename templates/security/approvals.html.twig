@@ -1,0 +1,133 @@
+{# templates/security/approvals.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Approval Requests - EVIE Security{% endblock %}
+
+{% block body %}
+<div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6" x-data="{
+    statusFilter: '{{ statusFilter }}',
+    
+    getStatusColor(status) {
+        const colors = {
+            'pending': 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
+            'approved': 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
+            'rejected': 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
+            'expired': 'bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300'
+        };
+        return colors[status] || 'bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300';
+    },
+    
+    getRiskLevelColor(level) {
+        const colors = {
+            'low': 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
+            'medium': 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
+            'high': 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300',
+            'critical': 'bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300'
+        };
+        return colors[level] || 'bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300';
+    }
+}">
+    {# Header #}
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-slate-900 dark:text-slate-100">Approval Requests</h1>
+            <p class="text-slate-600 dark:text-slate-400 mt-1">Manage Human-in-the-Loop approval requests</p>
+        </div>
+    </div>
+
+    {# Filters #}
+    <div class="flex flex-col md:flex-row gap-4 mb-6">
+        <div class="flex items-center gap-2">
+            <span class="text-sm text-slate-600 dark:text-slate-400">Status:</span>
+            <select x-model="statusFilter" @change="window.location.href = '{{ path('security_approvals') }}?status=' + $event.target.value" class="px-3 py-2 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                <option value="">All Statuses</option>
+                {% for status in statuses %}
+                    <option value="{{ status }}" {% if status == statusFilter %}selected{% endif %}>{{ status|title }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="flex-1"></div>
+        <div class="flex items-center gap-2">
+            <button @click="window.location.reload()" class="px-4 py-2 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors text-sm">
+                <i class="ph ph-arrow-clockwise"></i>
+                Refresh
+            </button>
+        </div>
+    </div>
+
+    {# Approvals Table #}
+    <div class="glass-panel">
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="text-left text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-700">
+                    <tr>
+                        <th class="pb-3 pr-4">ID</th>
+                        <th class="pb-3 pr-4">Action</th>
+                        <th class="pb-3 pr-4">Resource</th>
+                        <th class="pb-3 pr-4">Requested By</th>
+                        <th class="pb-3 pr-4">Risk Level</th>
+                        <th class="pb-3 pr-4">Status</th>
+                        <th class="pb-3">Time</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for approval in approvals %}
+                        <tr class="border-b border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-900/50">
+                            <td class="py-3 pr-4">
+                                <code class="text-xs">{{ approval.id|slice(0, 8) }}</code>
+                            </td>
+                            <td class="py-3 pr-4">
+                                <div class="font-medium text-slate-900 dark:text-slate-100">{{ approval.action }}</div>
+                            </td>
+                            <td class="py-3 pr-4 text-slate-600 dark:text-slate-400">
+                                {{ approval.resource }}
+                            </td>
+                            <td class="py-3 pr-4">
+                                <div class="flex items-center gap-2">
+                                    <div class="w-6 h-6 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+                                        <i class="ph ph-user text-slate-600 dark:text-slate-400 text-xs"></i>
+                                    </div>
+                                    <div>
+                                        <div class="font-medium text-slate-900 dark:text-slate-100">{{ approval.user.email }}</div>
+                                    </div>
+                                </div>
+                            </td>
+                            <td class="py-3 pr-4">
+                                <span class="px-2 py-1 rounded-full text-xs font-medium {{ getRiskLevelColor(approval.riskLevel) }}">
+                                    {{ approval.riskLevel|title }}
+                                </span>
+                            </td>
+                            <td class="py-3 pr-4">
+                                <span class="px-2 py-1 rounded-full text-xs font-medium {{ getStatusColor(approval.status) }}">
+                                    {{ approval.status|title }}
+                                </span>
+                            </td>
+                            <td class="py-3 text-slate-500 dark:text-slate-400">
+                                {{ approval.requestedAt|date('M d, H:i') }}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        {% if approvals|length == 0 %}
+            <div class="text-center py-8 text-slate-500 dark:text-slate-400">
+                <i class="ph ph-bell text-4xl mb-2"></i>
+                <p>No approval requests found</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% block javascripts %}
+<script>
+    // Auto-refresh every 15 seconds
+    document.addEventListener('DOMContentLoaded', function() {
+        setInterval(function() {
+            window.location.reload();
+        }, 15000);
+    });
+</script>
+{% endblock %}
+{% endblock %}
