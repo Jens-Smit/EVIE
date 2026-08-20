@@ -1,0 +1,180 @@
+{# templates/agent/capabilities.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Capabilities - EVIE{% endblock %}
+
+{% block body %}
+<div class="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6" x-data="{
+    categoryFilter: '{{ categoryFilter }}',
+    statusFilter: '{{ statusFilter }}',
+    
+    getStatusColor(status) {
+        const colors = {
+            'ready': 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
+            'installed': 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300',
+            'configured': 'bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300',
+            'enabled': 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300',
+            'disabled': 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+        };
+        return colors[status] || 'bg-slate-100 dark:bg-slate-800/30 text-slate-700 dark:text-slate-300';
+    }
+}">
+    {# Header #}
+    <div class="flex justify-between items-center mb-8">
+        <div>
+            <h1 class="text-3xl font-bold text-slate-900 dark:text-slate-100">Capabilities</h1>
+            <p class="text-slate-600 dark:text-slate-400 mt-1">Manage AI agent capabilities</p>
+        </div>
+    </div>
+
+    {# Statistics #}
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
+        <div class="glass-panel p-4 text-center">
+            <div class="text-2xl font-bold text-slate-900 dark:text-slate-100">{{ capabilities|length }}</div>
+            <div class="text-sm text-slate-500 dark:text-slate-400">Total</div>
+        </div>
+        <div class="glass-panel p-4 text-center">
+            <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ stats.installed ?? 0 }}</div>
+            <div class="text-sm text-slate-500 dark:text-slate-400">Installed</div>
+        </div>
+        <div class="glass-panel p-4 text-center">
+            <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ stats.configured ?? 0 }}</div>
+            <div class="text-sm text-slate-500 dark:text-slate-400">Configured</div>
+        </div>
+        <div class="glass-panel p-4 text-center">
+            <div class="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{{ stats.ready ?? 0 }}</div>
+            <div class="text-sm text-slate-500 dark:text-slate-400">Ready</div>
+        </div>
+    </div>
+
+    {# Filters #}
+    <div class="flex flex-col md:flex-row gap-4 mb-6">
+        <div class="flex items-center gap-2">
+            <span class="text-sm text-slate-600 dark:text-slate-400">Category:</span>
+            <select x-model="categoryFilter" @change="window.location.href = '{{ path('agent_capabilities') }}?category=' + $event.target.value + '&status=' + statusFilter" class="px-3 py-2 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                <option value="">All Categories</option>
+                {% for category in categories %}
+                    <option value="{{ category }}">{{ category|title }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="flex items-center gap-2">
+            <span class="text-sm text-slate-600 dark:text-slate-400">Status:</span>
+            <select x-model="statusFilter" @change="window.location.href = '{{ path('agent_capabilities') }}?category=' + categoryFilter + '&status=' + $event.target.value" class="px-3 py-2 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded-lg text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-2 focus:ring-primary/50">
+                <option value="">All Statuses</option>
+                <option value="ready">Ready</option>
+                <option value="installed">Installed</option>
+                <option value="configured">Configured</option>
+                <option value="enabled">Enabled</option>
+            </select>
+        </div>
+        <div class="flex-1"></div>
+    </div>
+
+    {# Capabilities Grid #}
+    <div class="glass-panel">
+        {% if capabilities|length > 0 %}
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {% for capability in capabilities %}
+                    <div class="p-4 bg-slate-50 dark:bg-slate-900/30 rounded-lg border border-slate-200 dark:border-slate-700">
+                        <div class="flex justify-between items-start mb-2">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
+                                    <i class="ph ph-puzzle-piece text-primary text-lg"></i>
+                                </div>
+                                <div>
+                                    <h3 class="font-medium text-slate-900 dark:text-slate-100">{{ capability.name }}</h3>
+                                    <div class="text-xs text-slate-500 dark:text-slate-400">{{ capability.identifier }}</div>
+                                </div>
+                            </div>
+                            <span class="px-2 py-1 rounded-full text-xs font-medium {{ getStatusColor(capability.status) }}">
+                                {{ capability.status|title }}
+                            </span>
+                        </div>
+                        <div class="text-sm text-slate-600 dark:text-slate-400 mb-2 line-clamp-2">
+                            {{ capability.description }}
+                        </div>
+                        <div class="flex items-center gap-2 text-sm mb-2">
+                            <span class="evie-badge evie-badge-info">{{ capability.category|title }}</span>
+                            {% if capability.isInstalled %}
+                                <span class="evie-badge evie-badge-success">Installed</span>
+                            {% endif %}
+                            {% if capability.isConfigured %}
+                                <span class="evie-badge evie-badge-success">Configured</span>
+                            {% endif %}
+                            {% if capability.isEnabled %}
+                                <span class="evie-badge evie-badge-success">Enabled</span>
+                            {% else %}
+                                <span class="evie-badge evie-badge-error">Disabled</span>
+                            {% endif %}
+                        </div>
+                        <div class="text-xs text-slate-400 dark:text-slate-500">
+                            {% if capability.requiredSecrets %}
+                                <div class="mb-1">
+                                    <span class="font-medium">Required Secrets:</span>
+                                    <span>{{ capability.requiredSecrets|join(', ') }}</span>
+                                </div>
+                            {% endif %}
+                            {% if capability.requiredIntegrations %}
+                                <div class="mb-1">
+                                    <span class="font-medium">Required Integrations:</span>
+                                    <span>{{ capability.requiredIntegrations|join(', ') }}</span>
+                                </div>
+                            {% endif %}
+                            {% if capability.requiredPermissions %}
+                                <div>
+                                    <span class="font-medium">Required Permissions:</span>
+                                    <span>{{ capability.requiredPermissions|join(', ') }}</span>
+                                </div>
+                            {% endif %}
+                        </div>
+                        <div class="flex justify-end gap-2 mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                            {% if not capability.isInstalled %}
+                                <form action="{{ path('agent_capability_install', {'identifier': capability.identifier}) }}" method="post" class="inline">
+                                    <button type="submit" class="px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-lg hover:bg-emerald-200 dark:hover:bg-emerald-800/50 transition-colors text-sm">
+                                        <i class="ph ph-download"></i>
+                                        Install
+                                    </button>
+                                </form>
+                            {% elseif not capability.isEnabled %}
+                                <form action="{{ path('agent_capability_enable', {'id': capability.id}) }}" method="post" class="inline">
+                                    <button type="submit" class="px-3 py-1 bg-emerald-100 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300 rounded-lg hover:bg-emerald-200 dark:hover:bg-emerald-800/50 transition-colors text-sm">
+                                        <i class="ph ph-play"></i>
+                                        Enable
+                                    </button>
+                                </form>
+                            {% else %}
+                                <form action="{{ path('agent_capability_disable', {'id': capability.id}) }}" method="post" class="inline">
+                                    <button type="submit" class="px-3 py-1 bg-amber-100 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300 rounded-lg hover:bg-amber-200 dark:hover:bg-amber-800/50 transition-colors text-sm">
+                                        <i class="ph ph-pause"></i>
+                                        Disable
+                                    </button>
+                                </form>
+                            {% endif %}
+                            {% if capability.isInstalled %}
+                                <form action="{{ path('agent_capability_uninstall', {'id': capability.id}) }}" method="post" class="inline" onclick="return confirm('Uninstall this capability?')">
+                                    <button type="submit" class="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300 rounded-lg hover:bg-red-200 dark:hover:bg-red-800/50 transition-colors text-sm">
+                                        <i class="ph ph-trash"></i>
+                                        Uninstall
+                                    </button>
+                                </form>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <div class="text-center py-8 text-slate-500 dark:text-slate-400">
+                <i class="ph ph-puzzle-piece text-4xl mb-2"></i>
+                <p>No capabilities found</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+{% block javascripts %}
+<script>
+    // Additional JavaScript for capabilities
+</script>
+{% endblock %}
+{% endblock %}
