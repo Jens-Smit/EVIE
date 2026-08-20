@@ -1,0 +1,170 @@
+{# templates/onboarding/first_agent_test.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}First Agent Test - Onboarding - EVIE{% endblock %}
+
+{% block body %}
+<div class="w-full max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    {# Onboarding Header #}
+    <div class="text-center mb-8">
+        <h1 class="text-3xl font-bold text-slate-900 dark:text-slate-100">Test Your First Agent</h1>
+        <p class="text-slate-600 dark:text-slate-400 mt-2">Let's test your setup by running a simple agent</p>
+    </div>
+
+    {# Progress #}
+    <div class="evie-onboarding-progress mb-12">
+        {% for step in steps %}
+            <div class="step {% if step == 'first_agent_test' %}active{% elseif steps|indexOf(step) < steps|indexOf('first_agent_test') %}completed{% endif %}">
+                <div class="circle">
+                    {% if step == 'first_agent_test' %}
+                        8
+                    {% elseif steps|indexOf(step) < steps|indexOf('first_agent_test') %}
+                        <i class="ph ph-check text-white"></i>
+                    {% else %}
+                        {{ steps|indexOf(step) + 1 }}
+                    {% endif %}
+                </div>
+                <div class="label">{{ step|replace({'_', '-'}, {'_': ' ', '-': ' '})|title }}</div>
+            </div>
+        {% endfor %}
+    </div>
+
+    {# Content #}
+    <div class="glass-panel p-8">
+        <div class="text-center mb-8">
+            <i class="ph ph-robot text-6xl text-primary mb-4"></i>
+            <h2 class="text-2xl font-bold text-slate-900 dark:text-slate-100 mb-2">Ready to Test!</h2>
+            <p class="text-slate-600 dark:text-slate-400">Your EVIE platform is configured. Let's run a test to make sure everything works.</p>
+        </div>
+
+        {# What to Expect #}
+        <div class="glass-panel p-6 mb-8">
+            <h3 class="text-lg font-medium text-slate-900 dark:text-slate-100 mb-4">What to expect:</h3>
+            <div class="space-y-4 text-left">
+                <div class="flex items-start gap-4">
+                    <div class="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
+                        <i class="ph ph-check-circle text-emerald-600 dark:text-emerald-400"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-slate-900 dark:text-slate-100">Conversation Created</h4>
+                        <p class="text-sm text-slate-600 dark:text-slate-400">A new conversation will be created for testing</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-4">
+                    <div class="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
+                        <i class="ph ph-check-circle text-emerald-600 dark:text-emerald-400"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-slate-900 dark:text-slate-100">Test Message Sent</h4>
+                        <p class="text-sm text-slate-600 dark:text-slate-400">A test message will be sent to the agent</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-4">
+                    <div class="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
+                        <i class="ph ph-check-circle text-emerald-600 dark:text-emerald-400"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-slate-900 dark:text-slate-100">Agent Responds</h4>
+                        <p class="text-sm text-slate-600 dark:text-slate-400">The agent will respond to your test message</p>
+                    </div>
+                </div>
+                <div class="flex items-start gap-4">
+                    <div class="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center flex-shrink-0">
+                        <i class="ph ph-check-circle text-emerald-600 dark:text-emerald-400"></i>
+                    </div>
+                    <div>
+                        <h4 class="font-semibold text-slate-900 dark:text-slate-100">Summary Generated</h4>
+                        <p class="text-sm text-slate-600 dark:text-slate-400">A summary of the conversation will be generated</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {# Test Button #}
+        <form method="post" class="text-center">
+            <button type="submit" class="px-8 py-4 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors text-lg inline-flex items-center gap-2">
+                <i class="ph ph-play-circle text-xl"></i>
+                Run First Agent Test
+            </button>
+        </form>
+
+        {# Skip Option #}
+        <div class="text-center mt-6">
+            <a href="{{ path('agent_dashboard') }}" class="text-sm text-slate-500 dark:text-slate-400 hover:text-primary transition-colors">
+                Skip test and go to dashboard
+            </a>
+        </div>
+    </div>
+</div>
+
+<style>
+    .evie-onboarding-progress {
+        display: flex;
+        justify-content: space-between;
+        position: relative;
+    }
+    
+    .evie-onboarding-progress::before {
+        content: '';
+        position: absolute;
+        top: 2rem;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background-color: #dee2e6;
+        z-index: 1;
+    }
+    
+    .evie-onboarding-progress .step {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        position: relative;
+        z-index: 2;
+        flex: 1;
+    }
+    
+    .evie-onboarding-progress .circle {
+        width: 2.5rem;
+        height: 2.5rem;
+        border-radius: 50%;
+        background-color: #dee2e6;
+        color: #6c757d;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: bold;
+        margin-bottom: 0.5rem;
+        transition: all 0.3s ease;
+    }
+    
+    .evie-onboarding-progress .label {
+        font-size: 0.875rem;
+        color: #6c757d;
+        text-align: center;
+        transition: all 0.3s ease;
+    }
+    
+    .evie-onboarding-progress .step.completed .circle {
+        background-color: #2185d0;
+        color: white;
+    }
+    
+    .evie-onboarding-progress .step.active .circle {
+        background-color: #2185d0;
+        color: white;
+    }
+    
+    .evie-onboarding-progress .step.completed .label,
+    .evie-onboarding-progress .step.active .label {
+        color: #2185d0;
+        font-weight: 500;
+    }
+</style>
+
+{% block javascripts %}
+<script>
+    // Additional JavaScript for first agent test
+</script>
+{% endblock %}
+{% endblock %}
