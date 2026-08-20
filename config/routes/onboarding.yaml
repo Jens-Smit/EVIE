@@ -1,0 +1,57 @@
+# Onboarding Routes
+# These routes are for the onboarding flow
+
+onboarding_dashboard:
+  path: /onboarding
+  controller: App\Controller\Onboarding\OnboardingController::dashboard
+  methods: GET
+
+onboarding_start:
+  path: /onboarding/start
+  controller: App\Controller\Onboarding\OnboardingController::startOnboarding
+  methods: GET
+
+onboarding_step:
+  path: /onboarding/step/{step}
+  controller: App\Controller\Onboarding\OnboardingController::stepHandler
+  methods: GET
+
+onboarding_user_goals:
+  path: /onboarding/user-goals
+  controller: App\Controller\Onboarding\OnboardingController::userGoals
+  methods: [GET, POST]
+
+onboarding_system_discovery:
+  path: /onboarding/system-discovery
+  controller: App\Controller\Onboarding\OnboardingController::systemDiscovery
+  methods: [GET, POST]
+
+onboarding_llm_selection:
+  path: /onboarding/llm-selection
+  controller: App\Controller\Onboarding\OnboardingController::llmSelection
+  methods: [GET, POST]
+
+onboarding_secret_setup:
+  path: /onboarding/secret-setup
+  controller: App\Controller\Onboarding\OnboardingController::secretSetup
+  methods: [GET, POST]
+
+onboarding_integration_setup:
+  path: /onboarding/integration-setup
+  controller: App\Controller\Onboarding\OnboardingController::integrationSetup
+  methods: [GET, POST]
+
+onboarding_permission_setup:
+  path: /onboarding/permission-setup
+  controller: App\Controller\Onboarding\OnboardingController::permissionSetup
+  methods: [GET, POST]
+
+onboarding_first_agent_test:
+  path: /onboarding/first-agent-test
+  controller: App\Controller\Onboarding\OnboardingController::firstAgentTest
+  methods: [GET, POST]
+
+onboarding_skip:
+  path: /onboarding/skip
+  controller: App\Controller\Onboarding\OnboardingController::skipOnboarding
+  methods: POST
