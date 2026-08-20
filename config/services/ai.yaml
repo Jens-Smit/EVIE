@@ -1,0 +1,77 @@
+# AI Services Configuration
+# This file configures services for the AI domain
+
+services:
+  # Context Manager
+  App\Service\AI\ContextManager:
+    arguments:
+      $conversationRepository: '@App\Repository\AI\ConversationRepository'
+      $messageRepository: '@App\Repository\AI\MessageRepository'
+      $entityManager: '@doctrine.orm.entity_manager'
+      $contextWindowSize: '%env(default:10:CONTEXT_WINDOW_SIZE)%'
+      $maxTokens: '%env(default:4096:CONTEXT_MAX_TOKENS)%'
+    tags:
+      - { name: 'container.hot_path' }
+
+  # Token Manager
+  App\Service\AI\TokenManager:
+    arguments:
+      $messageRepository: '@App\Repository\AI\MessageRepository'
+      $conversationRepository: '@App\Repository\AI\ConversationRepository'
+      $entityManager: '@doctrine.orm.entity_manager'
+      $contextManager: '@App\Service\AI\ContextManager'
+      $tokenBudget: '%env(default:100000:TOKEN_BUDGET)%'
+      $maxTokensPerMessage: '%env(default:4096:MAX_TOKENS_PER_MESSAGE)%'
+    tags:
+      - { name: 'container.hot_path' }
+
+  # Conversation Summary Service
+  App\Service\AI\ConversationSummaryService:
+    arguments:
+      $messageRepository: '@App\Repository\AI\MessageRepository'
+      $conversationRepository: '@App\Repository\AI\ConversationRepository'
+      $entityManager: '@doctrine.orm.entity_manager'
+      $contextManager: '@App\Service\AI\ContextManager'
+      $tokenManager: '@App\Service\AI\TokenManager'
+    tags:
+      - { name: 'container.hot_path' }
+
+  # Conversation Memory Service
+  App\Service\AI\ConversationMemoryService:
+    arguments:
+      $conversationRepository: '@App\Repository\AI\ConversationRepository'
+      $entityManager: '@doctrine.orm.entity_manager'
+      $contextManager: '@App\Service\AI\ContextManager'
+    tags:
+      - { name: 'container.hot_path' }
+
+  # Conversation Service (facade for conversation operations)
+  App\Service\AI\ConversationService:
+    arguments:
+      $conversationRepository: '@App\Repository\AI\ConversationRepository'
+      $messageRepository: '@App\Repository\AI\MessageRepository'
+      $entityManager: '@doctrine.orm.entity_manager'
+      $contextManager: '@App\Service\AI\ContextManager'
+      $tokenManager: '@App\Service\AI\TokenManager'
+      $summaryService: '@App\Service\AI\ConversationSummaryService'
+      $memoryService: '@App\Service\AI\ConversationMemoryService'
+    tags:
+      - { name: 'container.hot_path' }
+
+  # Agent Service (will be implemented in later phases)
+  # App\Service\AI\AgentService:
+  #   arguments:
+  #     $executionRepository: '@App\Repository\AI\AgentExecutionRepository'
+  #     $messageBus: '@message_bus'
+  #     $idempotencyService: '@App\Service\Automation\IdempotencyService'
+  #   tags:
+  #     - { name: 'container.hot_path' }
+
+  # LLM Service (will be implemented in later phases)
+  # App\Service\AI\LLMService:
+  #   arguments:
+  #     $configurationRepository: '@App\Repository\AI\LLMConfigurationRepository'
+  #     $secretManager: '@App\Service\Security\SecretManager'
+  #     $messageBus: '@message_bus'
+  #   tags:
+  #     - { name: 'container.hot_path' }
