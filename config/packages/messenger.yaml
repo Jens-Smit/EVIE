@@ -68,6 +68,14 @@ framework:
           multiplier: 2
           max_delay: 300000 # 5 minutes
 
+      # Approval requests transport (for HITL)
+      approval_requests:
+        dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+        serializer: messenger.transport.json_serializer
+        options:
+          table_name: messenger_messages
+          queue_name: approval_requests
+
       # Legacy: Async transport for Sub-Agent execution (from existing config)
       sub_agent_async:
         dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
@@ -92,6 +100,9 @@ framework:
       
       # Dead letter messages
       'App\Message\DeadLetterMessage': dead_letter
+      
+      # Approval request messages (for HITL)
+      'App\Message\ApprovalRequestMessage': approval_requests
       
       # Legacy: Sub-Agent messages (from existing config)
       'App\Message\ExecuteSubAgentMessage': sub_agent_async
@@ -120,6 +131,12 @@ when@prod:
             connection: messenger
             auto_setup: true
 
+        approval_requests:
+          dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
+          options:
+            connection: messenger
+            auto_setup: true
+
         sub_agent_async:
           dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
           options:
@@ -140,6 +157,8 @@ when@test:
         dead_letter:
           dsn: 'in-memory://'
         scheduled_tasks:
+          dsn: 'in-memory://'
+        approval_requests:
           dsn: 'in-memory://'
         sub_agent_async:
           dsn: 'in-memory://'
