@@ -23,6 +23,18 @@ class AgentHistory
     #[ORM\Column(type: Types::INTEGER, nullable: true, options: ['default' => 0])]
     private ?int $tokenUsage = 0;
 
+    #[ORM\Column(type: Types::INTEGER, nullable: true, options: ['default' => 0])]
+    private ?int $inputTokens = 0;
+
+    #[ORM\Column(type: Types::INTEGER, nullable: true, options: ['default' => 0])]
+    private ?int $outputTokens = 0;
+
+    #[ORM\Column(type: Types::FLOAT, nullable: true, options: ['default' => 0])]
+    private ?float $latencySeconds = 0.0;
+
+    #[ORM\Column(type: Types::STRING, length: 100, nullable: true)]
+    private ?string $model = null;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
@@ -82,6 +94,62 @@ class AgentHistory
     public function addTokenUsage(int $tokens): static
     {
         $this->tokenUsage = ($this->tokenUsage ?? 0) + $tokens;
+        return $this;
+    }
+
+    public function getInputTokens(): ?int
+    {
+        return $this->inputTokens;
+    }
+
+    public function setInputTokens(?int $inputTokens): static
+    {
+        $this->inputTokens = $inputTokens;
+        return $this;
+    }
+
+    public function addInputTokens(int $tokens): static
+    {
+        $this->inputTokens = ($this->inputTokens ?? 0) + $tokens;
+        return $this;
+    }
+
+    public function getOutputTokens(): ?int
+    {
+        return $this->outputTokens;
+    }
+
+    public function setOutputTokens(?int $outputTokens): static
+    {
+        $this->outputTokens = $outputTokens;
+        return $this;
+    }
+
+    public function addOutputTokens(int $tokens): static
+    {
+        $this->outputTokens = ($this->outputTokens ?? 0) + $tokens;
+        return $this;
+    }
+
+    public function getLatencySeconds(): ?float
+    {
+        return $this->latencySeconds;
+    }
+
+    public function setLatencySeconds(?float $latencySeconds): static
+    {
+        $this->latencySeconds = $latencySeconds;
+        return $this;
+    }
+
+    public function getModel(): ?string
+    {
+        return $this->model;
+    }
+
+    public function setModel(?string $model): static
+    {
+        $this->model = $model;
         return $this;
     }
 
