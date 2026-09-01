@@ -7,6 +7,7 @@ use App\Entity\ToolDefinition;
 use App\Entity\ToolCategory;
 use App\Repository\ToolDefinitionRepository;
 use App\Repository\ToolCategoryRepository;
+use App\Security\UserContext;
 use Symfony\AI\Agent\AgentInterface;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
@@ -26,7 +27,8 @@ class ToolDefinitionGenerator
         private ToolCategoryRepository $toolCategoryRepo,
         private PlatformInterface $platform,
         private AgentInterface $toolGeneratorAgent,
-        private LoggerInterface $logger
+        private LoggerInterface $logger,
+        private UserContext $userContext,
     ) {
     }
 
@@ -88,6 +90,12 @@ class ToolDefinitionGenerator
         $toolDefinition->setSecurityLevel($securityLevel);
         $toolDefinition->setRequiresHitl($hitlRequired);
         $toolDefinition->setStatus('pending');
+        
+        // P0-5 Tenant-Isolation: setze den User-Identifier
+        $userIdentifier = $this->userContext->getUserIdentifier();
+        if (null !== $userIdentifier) {
+            $toolDefinition->setUserIdentifier($userIdentifier);
+        }
 
         // 8. Metadaten für Wiederverwendung und Phase 3-Optimierung
         $toolDefinition->setMetadata([

@@ -21,6 +21,8 @@ services:
         public: true
     App\AI\Skills\ToolDefinitionGenerator:
         public: true
+        arguments:
+            $userContext: '@App\\Security\\UserContext'
     App\AI\Onboarding\OnboardingFlowManager:
         public: true
         arguments:

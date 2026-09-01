@@ -50,6 +50,7 @@ services:
     App\AI\Skills\ToolDefinitionGenerator:
         arguments:
             $toolGeneratorAgent: '@ai.agent.tool_generator'
+            $userContext: '@App\\Security\\UserContext'
 
     # OnboardingFlowManager benoetigt den expliziten onboarding-Agent, da
     # autowiring bei mehreren AgentInterface-Services nicht aufloesen kann.
