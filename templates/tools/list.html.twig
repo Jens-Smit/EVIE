@@ -13,6 +13,15 @@
             </p>
         </div>
         <div class="flex gap-2">
+            <a href="#" 
+               hx-get="{{ path('htmx_tools_form') }}"
+               hx-target="#tool-form-container"
+               hx-trigger="click"
+               hx-swap="innerHTML"
+               class="btn btn-primary px-4 py-2 text-sm">
+                <i class="ph ph-play-circle"></i>
+                Tool ausführen
+            </a>
             <span class="badge badge-approved">
                 <i class="ph ph-database text-sm mr-1"></i>
                 {{ databaseTools|length }} Datenbank-Tools
@@ -23,6 +32,9 @@
             </span>
         </div>
     </div>
+
+    {# HTMX Tool-Formular Container #}
+    <div id="tool-form-container" class="mb-6"></div>
 
     {# Übersichtskarten #}
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
