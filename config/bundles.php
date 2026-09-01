@@ -19,9 +19,6 @@ return [
     Symfony\UX\StimulusBundle\StimulusBundle::class => ['all' => true],
     Symfony\UX\TwigComponent\TwigComponentBundle::class => ['all' => true],
     
-    # OAuth2 Client Bundle fuer SSO/OIDC
-    KnpU\OAuth2ClientBundle\KnpUOAuth2ClientBundle::class => ['all' => true],
-    
     # Symfony AI Bundle
     Symfony\Bundle\AI\AIBundle::class => ['all' => true],
 ];
