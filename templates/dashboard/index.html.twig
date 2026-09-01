@@ -155,51 +155,64 @@
         <div class="lg:col-span-2 card">
             <h2 class="card-title flex items-center gap-2 mb-4">
                 <i class="ph ph-chart-line text-primary"></i>
-                Aktivitts-Diagramm
+                Aktivitts-Diagramm (letzte 24 Stunden)
             </h2>
-            <div class="h-64 bg-surface-muted rounded-xl flex items-center justify-center border border-border">
-                {# Aktivitts-Diagramm (SVG-basiert) #}
-                <svg viewBox="0 0 400 200" class="w-full h-full p-4">
-                    {# Y-Achse #}
-                    <line x1="40" y1="20" x2="40" y2="180" stroke="#e2e8f0" stroke-width="1"/>
-                    <line x1="40" y1="40" x2="380" y2="40" stroke="#e2e8f0" stroke-width="1"/>
-                    <line x1="40" y1="80" x2="380" y2="80" stroke="#e2e8f0" stroke-width="1"/>
-                    <line x1="40" y1="120" x2="380" y2="120" stroke="#e2e8f0" stroke-width="1"/>
-                    <line x1="40" y1="160" x2="380" y2="160" stroke="#e2e8f0" stroke-width="1"/>
-                    
-                    {# Datenlinie #}
-                    <polyline 
-                        fill="none" 
-                        stroke="#3b82f6" 
-                        stroke-width="2"
-                        points="
-                            40,160 
-                            80,140 
-                            120,120 
-                            160,100 
-                            200,80 
-                            240,110 
-                            280,90 
-                            320,70 
-                            360,60
-                        "/>
-                    
-                    {# Punkte #}
-                    <circle cx="40" cy="160" r="3" fill="#3b82f6"/>
-                    <circle cx="80" cy="140" r="3" fill="#3b82f6"/>
-                    <circle cx="120" cy="120" r="3" fill="#3b82f6"/>
-                    <circle cx="160" cy="100" r="3" fill="#3b82f6"/>
-                    <circle cx="200" cy="80" r="3" fill="#3b82f6"/>
-                    <circle cx="240" cy="110" r="3" fill="#3b82f6"/>
-                    <circle cx="280" cy="90" r="3" fill="#3b82f6"/>
-                    <circle cx="320" cy="70" r="3" fill="#3b82f6"/>
-                    <circle cx="360" cy="60" r="3" fill="#3b82f6"/>
-                    
-                    {# Hinweis #}
-                    <text x="200" y="190" text-anchor="middle" class="text-xs fill-current text-content-muted">
-                        Aktivitt der letzten 24 Stunden
-                    </text>
-                </svg>
+            <div class="h-64 bg-surface-muted rounded-xl p-4 border border-border">
+                {# Dynamisches SVG-Aktivittsdiagramm basierend auf echten Daten #}
+                {% if activityData|length > 0 %}
+                    <svg viewBox="0 0 800 200" class="w-full h-full" preserveAspectRatio="none">
+                        {# Y-Achse #}
+                        <line x1="40" y1="20" x2="40" y2="180" stroke="#e2e8f0" stroke-width="1"/>
+                        <line x1="40" y1="40" x2="780" y2="40" stroke="#e2e8f0" stroke-width="1"/>
+                        <line x1="40" y1="80" x2="780" y2="80" stroke="#e2e8f0" stroke-width="1"/>
+                        <line x1="40" y1="120" x2="780" y2="120" stroke="#e2e8f0" stroke-width="1"/>
+                        <line x1="40" y1="160" x2="780" y2="160" stroke="#e2e8f0" stroke-width="1"/>
+                        
+                        {# X-Achse Beschriftung #}
+                        <text x="40" y="195" text-anchor="middle" class="text-xs fill-current text-content-muted">00:00</text>
+                        <text x="200" y="195" text-anchor="middle" class="text-xs fill-current text-content-muted">06:00</text>
+                        <text x="360" y="195" text-anchor="middle" class="text-xs fill-current text-content-muted">12:00</text>
+                        <text x="520" y="195" text-anchor="middle" class="text-xs fill-current text-content-muted">18:00</text>
+                        <text x="760" y="195" text-anchor="middle" class="text-xs fill-current text-content-muted">24:00</text>
+                        
+                        {# Y-Achse Beschriftung #}
+                        <text x="30" y="160" text-anchor="end" class="text-xs fill-current text-content-muted">0</text>
+                        <text x="30" y="120" text-anchor="end" class="text-xs fill-current text-content-muted">5</text>
+                        <text x="30" y="80" text-anchor="end" class="text-xs fill-current text-content-muted">10</text>
+                        <text x="30" y="40" text-anchor="end" class="text-xs fill-current text-content-muted">15</text>
+                        
+                        {# Datenlinie - dynamisch aus activityData generiert #}
+                        {% set maxActions = activityData|length > 0 ? activityData|map(a => a.value)|max : 1 %}
+                        {% set scaleFactor = maxActions > 0 ? 140 / maxActions : 140 %}
+                        
+                        <polyline 
+                            fill="none" 
+                            stroke="#3b82f6" 
+                            stroke-width="2"
+                            points="
+                                {% for i in 0..activityData|length - 1 %}
+                                    {% set x = 40 + (i / (activityData|length - 1 > 0 ? activityData|length - 1 : 1)) * 740 %}
+                                    {% set y = 180 - (activityData[i].value * scaleFactor) - 20 %}
+                                    {{ x }},{{ y|round(0) }}{% if not loop.last %} {% endif %}
+                                {% endfor %}
+                            "/>
+                        
+                        {# Punkte #}
+                        {% for i in 0..activityData|length - 1 %}
+                            {% set x = 40 + (i / (activityData|length - 1 > 0 ? activityData|length - 1 : 1)) * 740 %}
+                            {% set y = 180 - (activityData[i].value * scaleFactor) - 20 %}
+                            <circle cx="{{ x }}" cy="{{ y|round(0) }}" r="3" fill="#3b82f6"/>
+                        {% endfor %}
+                        
+                        <text x="400" y="195" text-anchor="middle" class="text-xs fill-current text-content-muted">
+                            Aktivitt der letzten 24 Stunden
+                        </text>
+                    </svg>
+                {% else %}
+                    <div class="w-full h-full flex items-center justify-center">
+                        <p class="text-content-muted text-sm">Keine Aktivittsdaten verfgbar</p>
+                    </div>
+                {% endif %}
             </div>
         </div>
 

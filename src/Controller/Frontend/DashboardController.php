@@ -44,6 +44,9 @@ class DashboardController extends AbstractController
         $totalAgents = $subAgentRepository->count([]);
         $totalDocuments = $documentRepository->count([]);
         $totalActions = $agentHistoryRepository->count(['user' => $user]);
+        
+        // Daten für Aktivitäts-Diagramm (letzte 24 Stunden)
+        $activityData = $this->getActivityData($agentHistoryRepository, $user);
 
         return $this->render('dashboard/index.html.twig', [
             'recentActions' => $recentActions,
@@ -55,6 +58,37 @@ class DashboardController extends AbstractController
             'totalAgents' => $totalAgents,
             'totalDocuments' => $totalDocuments,
             'totalActions' => $totalActions,
+            'activityData' => $activityData,
         ]);
+    }
+
+    /**
+     * Extrahiere Aktivitäts-Daten für das Diagramm.
+     */
+    private function getActivityData(AgentHistoryRepository $agentHistoryRepo, User $user): array
+    {
+        $now = new \DateTimeImmutable();
+        $twentyFourHoursAgo = $now->sub(new \DateInterval('PT24H'));
+        
+        // Hole alle Aktionen der letzten 24 Stunden
+        $actions = $agentHistoryRepo->createQueryBuilder('ah')
+            ->where('ah.user = :user')
+            ->andWhere('ah.createdAt >= :twentyFourHoursAgo')
+            ->setParameter('user', $user)
+            ->setParameter('twentyFourHoursAgo', $twentyFourHoursAgo)
+            ->orderBy('ah.createdAt', 'ASC')
+            ->getQuery()
+            ->getResult();
+        
+        $dataPoints = [];
+        foreach ($actions as $action) {
+            $dataPoints[] = [
+                'timestamp' => $action->getCreatedAt()->getTimestamp(),
+                'action' => $action->getAction(),
+                'value' => 1, // Jede Aktion zählt als 1
+            ];
+        }
+        
+        return $dataPoints;
     }
 }
