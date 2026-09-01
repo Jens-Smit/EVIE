@@ -48,6 +48,15 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: 'boolean', options: ['default' => false])]
     private bool $onboardingComplete = false;
 
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $organizationId = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $ssoProvider = null;
+
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $ssoId = null;
+
     #[ORM\OneToOne(mappedBy: 'user', targetEntity: UserProfile::class, cascade: ['persist'])]
     private ?UserProfile $profile = null;
 
@@ -217,6 +226,41 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
             $profile->setUser($this);
         }
         $this->profile = $profile;
+        return $this;
+    }
+
+    // SSO/OIDC Felder (P2 - Multi-Org-Plattform)
+
+    public function getOrganizationId(): ?string
+    {
+        return $this->organizationId;
+    }
+
+    public function setOrganizationId(?string $organizationId): static
+    {
+        $this->organizationId = $organizationId;
+        return $this;
+    }
+
+    public function getSsoProvider(): ?string
+    {
+        return $this->ssoProvider;
+    }
+
+    public function setSsoProvider(?string $ssoProvider): static
+    {
+        $this->ssoProvider = $ssoProvider;
+        return $this;
+    }
+
+    public function getSsoId(): ?string
+    {
+        return $this->ssoId;
+    }
+
+    public function setSsoId(?string $ssoId): static
+    {
+        $this->ssoId = $ssoId;
         return $this;
     }
 
