@@ -118,7 +118,21 @@
             </a>
 
             <a href="{{ path('app_briefing') }}"
+            <a href="{{ path('app_strategy') }}"
+               class="nav-btn {% if app.request.attributes.get('_route') == 'app_strategy' %}active{% else %}inactive{% endif %}
+                      border w-full flex items-center gap-3 px-4 py-3 rounded-xl
+                      transition-all active:scale-95 font-medium">
+                <i class="ph ph-chart-line-up text-xl"></i>
+                <span>Strategie</span>
+            </a>
                class="nav-btn {% if app.request.attributes.get('_route') == 'app_briefing' %}active{% else %}inactive{% endif %}
+            <a href="{{ path('app_strategy') }}"
+               class="nav-btn {% if app.request.attributes.get('_route') == 'app_strategy' %}active{% else %}inactive{% endif %}
+                      border w-full flex items-center gap-3 px-4 py-3 rounded-xl
+                      transition-all active:scale-95 font-medium">
+                <i class="ph ph-chart-line-up text-xl"></i>
+                <span>Strategie</span>
+            </a>
                       border w-full flex items-center gap-3 px-4 py-3 rounded-xl
                       transition-all active:scale-95 font-medium">
                 <i class="ph ph-chart-bar text-xl"></i>

@@ -1,0 +1,120 @@
+{# templates/strategy/evaluation_detail.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Evaluation-Details - EVIE{% endblock %}
+
+{% block body %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl md:text-3xl font-bold text-content flex items-center gap-3">
+            <i class="ph ph-file-text text-primary"></i>
+            Evaluation-Details
+        </h1>
+        <a href="{{ path('app_strategy') }}" class="btn btn-ghost">
+            <i class="ph ph-caret-left"></i>
+            Zurück zur Übersicht
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="flex items-center gap-2 mb-4">
+            <i class="ph ph-target text-primary text-xl"></i>
+            <h2 class="card-title">Evaluation von: {{ evaluation.goal.title }}</h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div>
+                <h3 class="font-semibold text-content mb-3">Grundlegende Informationen</h3>
+                <div class="space-y-3">
+                    <div>
+                        <p class="text-sm text-content-muted">Ergebnis</p>
+                        <p class="text-content">
+                            {% if evaluation.success %}
+                                <span class="badge badge-approved">Erfolgreich</span>
+                            {% else %}
+                                <span class="badge badge-danger">Fehlgeschlagen</span>
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-content-muted">Score</p>
+                        <p class="text-content">
+                            {% if evaluation.score %}
+                                {{ "%.2f"|format(evaluation.score) }} / 1.0
+                            {% else %}
+                                Nicht bewertet
+                            {% endif %}
+                        </p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-content-muted">Evaluiert durch</p>
+                        <p class="text-content">{{ evaluation.evaluatedBy|default('System') }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-content-muted">Datum</p>
+                        <p class="text-content">{{ evaluation.createdAt|date('d.m.Y H:i:s') }}</p>
+                    </div>
+                </div>
+            </div>
+
+            <div>
+                <h3 class="font-semibold text-content mb-3">Ziel-Informationen</h3>
+                <div class="space-y-3">
+                    <div>
+                        <p class="text-sm text-content-muted">Ziel-ID</p>
+                        <p class="text-content">{{ evaluation.goal.id }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-content-muted">Ziel-Titel</p>
+                        <p class="text-content">{{ evaluation.goal.title }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-content-muted">Status</p>
+                        <p class="text-content">
+                            <span class="badge 
+                                  {% if evaluation.goal.status == 'active' %}badge-approved
+                                  {% elseif evaluation.goal.status == 'paused' %}badge-pending
+                                  {% else %}badge-completed{% endif %}">
+                                {{ evaluation.goal.status }}
+                            </span>
+                        </p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-content-muted">Ausführungen</p>
+                        <p class="text-content">{{ evaluation.goal.executionCount|default(0) }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        {% if evaluation.feedback %}
+            <div class="mt-6">
+                <h3 class="font-semibold text-content mb-3">Feedback</h3>
+                <div class="bg-surface-muted rounded-xl p-4 border border-border">
+                    <p class="text-content whitespace-pre-wrap">{{ evaluation.feedback }}</p>
+                </div>
+            </div>
+        {% endif %}
+
+        {% if evaluation.evaluationDetails %}
+            <div class="mt-6">
+                <h3 class="font-semibold text-content mb-3">Detaillierte Informationen</h3>
+                <div class="bg-surface-muted rounded-xl p-4 border border-border">
+                    <pre class="text-sm text-content-muted overflow-x-auto">{{ evaluation.evaluationDetails|json_encode|raw }}</pre>
+                </div>
+            </div>
+        {% endif %}
+
+        {% if evaluation.agentHistory %}
+            <div class="mt-6">
+                <h3 class="font-semibold text-content mb-3">Verknüpfte Ausführung</h3>
+                <div class="bg-surface-muted rounded-xl p-4 border border-border">
+                    <p class="text-sm text-content-muted">Ausführungs-ID: {{ evaluation.agentHistory.id }}</p>
+                    <p class="text-sm text-content-muted">Aktion: {{ evaluation.agentHistory.action }}</p>
+                    <p class="text-sm text-content-muted">Erstellt: {{ evaluation.agentHistory.createdAt|date('d.m.Y H:i:s') }}</p>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
