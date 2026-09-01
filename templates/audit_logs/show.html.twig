@@ -1,0 +1,134 @@
+{# templates/audit_logs/show.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Audit-Log Details{% endblock %}
+
+{% block content %}
+    <div class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
+        <div class="mb-6">
+            <a href="{{ path('app_audit_logs') }}"
+               class="inline-flex items-center gap-2 text-content-subtle hover:text-content transition-colors">
+                <i class="ph ph-caret-left"></i>
+                Zurck zu allen Audit-Logs
+            </a>
+        </div>
+
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-border overflow-hidden">
+            <div class="p-6 border-b border-border">
+                <h1 class="text-xl font-bold text-content">
+                    <i class="ph ph-file-text"></i>
+                    Audit-Log #{{ log.id }}
+                </h1>
+            </div>
+
+            <div class="p-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {# Aktion #}
+                    <div class="space-y-1">
+                        <label class="text-xs font-semibold text-content-subtle uppercase">Aktion</label>
+                        <div class="flex items-center gap-2">
+                            {% if log.action == 'tool_registration' %}
+                                <span class="w-2 h-2 rounded-full bg-blue-500"></span>
+                            {% elseif log.action == 'tool_execution' %}
+                                <span class="w-2 h-2 rounded-full bg-green-500"></span>
+                            {% elseif log.action == 'DENY' %}
+                                <span class="w-2 h-2 rounded-full bg-red-500"></span>
+                            {% elseif log.action == 'ALLOW' %}
+                                <span class="w-2 h-2 rounded-full bg-emerald-500"></span>
+                            {% else %}
+                                <span class="w-2 h-2 rounded-full bg-slate-400"></span>
+                            {% endif %}
+                            <code class="text-content font-mono">{{ log.action }}</code>
+                        </div>
+                    </div>
+
+                    {# Status #}
+                    <div class="space-y-1">
+                        <label class="text-xs font-semibold text-content-subtle uppercase">Status</label>
+                        <div>
+                            {% if log.status == 'success' %}
+                                <span class="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-sm font-medium rounded-full">
+                                    Erfolgreich
+                                </span>
+                            {% elseif log.status == 'failure' %}
+                                <span class="px-3 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-sm font-medium rounded-full">
+                                    Fehlgeschlagen
+                                </span>
+                            {% else %}
+                                <span class="px-3 py-1 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-300 text-sm font-medium rounded-full">
+                                    {{ log.status }}
+                                </span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    {# Entity #}
+                    <div class="space-y-1">
+                        <label class="text-xs font-semibold text-content-subtle uppercase">Entity</label>
+                        <div class="text-content">
+                            {{ log.entityType }}#{{ log.entityId }}
+                        </div>
+                    </div>
+
+                    {# User #}
+                    <div class="space-y-1">
+                        <label class="text-xs font-semibold text-content-subtle uppercase">Benutzer-ID</label>
+                        <div class="text-content">
+                            {{ log.userId }}
+                        </div>
+                    </div>
+
+                    {# IP-Adresse #}
+                    <div class="space-y-1">
+                        <label class="text-xs font-semibold text-content-subtle uppercase">IP-Adresse</label>
+                        <div class="text-content font-mono">
+                            {{ log.ipAddress ?? 'N/A' }}
+                        </div>
+                    </div>
+
+                    {# User-Agent #}
+                    <div class="space-y-1">
+                        <label class="text-xs font-semibold text-content-subtle uppercase">User-Agent</label>
+                        <div class="text-content text-sm max-w-xs truncate">
+                            {{ log.userAgent ?? 'N/A' }}
+                        </div>
+                    </div>
+
+                    {# Zeitstempel #}
+                    <div class="space-y-1">
+                        <label class="text-xs font-semibold text-content-subtle uppercase">Zeitstempel</label>
+                        <div class="text-content">
+                            {{ log.createdAt|date('d.m.Y H:i:s') }}
+                        </div>
+                    </div>
+                </div>
+
+                {# Details #}
+                {% if log.details %}
+                    <div class="mt-8">
+                        <h3 class="text-lg font-semibold text-content mb-3">
+                            <i class="ph ph-info"></i>
+                            Details
+                        </h3>
+                        <div class="bg-slate-50 dark:bg-slate-700 rounded-lg p-4">
+                            <pre class="text-sm text-content-subtle overflow-x-auto whitespace-pre-wrap">{{ log.details|json_encode|raw }}</pre>
+                        </div>
+                    </div>
+                {% endif %}
+
+                {# Kontext #}
+                {% if log.context %}
+                    <div class="mt-6">
+                        <h3 class="text-lg font-semibold text-content mb-3">
+                            <i class="ph ph-context"></i>
+                            Kontext
+                        </h3>
+                        <div class="bg-slate-50 dark:bg-slate-700 rounded-lg p-4">
+                            <pre class="text-sm text-content-subtle overflow-x-auto whitespace-pre-wrap">{{ log.context|json_encode(2)|raw }}</pre>
+                        </div>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+{% endblock %}
