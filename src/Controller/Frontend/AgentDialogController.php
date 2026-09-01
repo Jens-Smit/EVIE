@@ -7,12 +7,18 @@ use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Security\Http\Attribute\CurrentUser;
 
 class AgentDialogController extends AbstractController
 {
     #[Route('/dialog', name: 'frontend_agent_dialog', methods: ['GET'])]
-    public function dialog(Request $request): Response
+    public function dialog(#[CurrentUser] ?UserInterface $user = null): Response
     {
+        if (null === $user) {
+            return $this->redirectToRoute('app_login');
+        }
+        
         // Willkommensnachricht als strukturierte Nachricht
         $messages = [
             ['role' => 'system', 'content' => 'Willkommen beim EVIE-Agenten! Wie kann ich dir helfen?'],
@@ -22,30 +28,38 @@ class AgentDialogController extends AbstractController
             'messages' => $messages,
             'continuing_conversation' => false,
             'conversation_id' => null,
+            'userIdentifier' => $user->getUserIdentifier(),
         ]);
     }
 
     #[Route('/history', name: 'frontend_agent_history', methods: ['GET'])]
-    public function history(Request $request, AgentHistoryRepository $historyRepo): Response
+    public function history(
+        Request $request, 
+        AgentHistoryRepository $historyRepo,
+        #[CurrentUser] ?UserInterface $user = null
+    ): Response
     {
-        // Standardmäßig den Verlauf für 'default_user' laden
-        $userIdentifier = 'default_user';
+        if (null === $user) {
+            return $this->redirectToRoute('app_login');
+        }
         
-        // Hole alle Einträge für den Benutzer
+        $userIdentifier = $user->getUserIdentifier();
+        
+        // Hole alle Eintrge fr den Benutzer
         $entries = $historyRepo->findByUserIdentifier($userIdentifier);
         
-        // Sortiere die Einträge absteigend nach Datum (aktuellste zuerst)
+        // Sortiere die Eintrge absteigend nach Datum (aktuellste zuerst)
         usort($entries, function($a, $b) {
             return $b->getCreatedAt() <=> $a->getCreatedAt();
         });
         
-        // Konvertiere die Einträge in ein für das Template geeignetes Format
+        // Konvertiere die Eintrge in ein fr das Template geeignetes Format
         $history = [];
         foreach ($entries as $entry) {
-            // Erst Details prüfen (neues Format), dann action (altes Format)
+            // Erst Details prfen (neues Format), dann action (altes Format)
             $details = json_decode($entry->getDetails() ?? '{}', true) ?? [];
             if (empty($details)) {
-                // Altes Format: action enthält JSON wie {"type":"dialog"}
+                // Altes Format: action enthlt JSON wie {"type":"dialog"}
                 $action = json_decode($entry->getAction(), true);
                 if (is_array($action)) {
                     $details = $action;
@@ -74,8 +88,17 @@ class AgentDialogController extends AbstractController
     }
     
     #[Route('/history/continue/{id}', name: 'frontend_agent_history_continue', methods: ['GET'])]
-    public function continueConversation(int $id, Request $request, AgentHistoryRepository $historyRepo): Response
+    public function continueConversation(
+        int $id, 
+        Request $request, 
+        AgentHistoryRepository $historyRepo,
+        #[CurrentUser] ?UserInterface $user = null
+    ): Response
     {
+        if (null === $user) {
+            return $this->redirectToRoute('app_login');
+        }
+        
         // Hole den historischen Eintrag
         $entry = $historyRepo->find($id);
         
@@ -92,18 +115,18 @@ class AgentDialogController extends AbstractController
             }
         }
         
-        // Baue die Nachrichten für den Chat auf
+        // Baue die Nachrichten fr den Chat auf
         $messages = [];
         
-        // System-Nachricht hinzufügen
+        // System-Nachricht hinzufgen
         $messages[] = ['role' => 'system', 'content' => 'Fortsetzung der Konversation vom ' . $entry->getCreatedAt()->format('d.m.Y H:i:s')];
         
-        // User-Nachricht hinzufügen
+        // User-Nachricht hinzufgen
         if (isset($details['input']['message'])) {
             $messages[] = ['role' => 'user', 'content' => $details['input']['message']];
         }
         
-        // Agent-Antwort hinzufügen
+        // Agent-Antwort hinzufgen
         if (isset($details['output']['response'])) {
             $messages[] = ['role' => 'agent', 'content' => $details['output']['response']];
         } elseif (isset($details['output']['error'])) {

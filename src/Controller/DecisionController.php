@@ -30,8 +30,11 @@ class DecisionController extends AbstractController
     #[Route('/api/decisions/pending', name: 'api_decisions_pending', methods: ['GET'])]
     public function listPendingDecisions(#[CurrentUser] ?UserInterface $user = null): JsonResponse
     {
-        $userIdentifier = $user?->getUserIdentifier() ?? 'default_user';
-
+        if (null === $user) {
+            return $this->json(['error' => 'Authentifizierung erforderlich.'], 401);
+        }
+        
+        $userIdentifier = $user->getUserIdentifier();
         $decisions = $this->decisionManager->getPendingDecisions($userIdentifier);
 
         return $this->json([
@@ -49,8 +52,11 @@ class DecisionController extends AbstractController
         string $type,
         #[CurrentUser] ?UserInterface $user = null
     ): JsonResponse {
-        $userIdentifier = $user?->getUserIdentifier() ?? 'default_user';
-
+        if (null === $user) {
+            return $this->json(['error' => 'Authentifizierung erforderlich.'], 401);
+        }
+        
+        $userIdentifier = $user->getUserIdentifier();
         $decisions = $this->decisionManager->getDecisionsByType($type, $userIdentifier);
 
         return $this->json([
@@ -69,7 +75,11 @@ class DecisionController extends AbstractController
         Request $request,
         #[CurrentUser] ?UserInterface $user = null
     ): JsonResponse {
-        $userIdentifier = $user?->getUserIdentifier() ?? 'default_user';
+        if (null === $user) {
+            return $this->json(['error' => 'Authentifizierung erforderlich.'], 401);
+        }
+        
+        $userIdentifier = $user->getUserIdentifier();
         $limit = $request->query->getInt('limit', 10);
 
         $decisions = $this->decisionManager->getRecentDecisions($limit, $userIdentifier);
@@ -87,8 +97,11 @@ class DecisionController extends AbstractController
     #[Route('/api/decisions/statistics', name: 'api_decisions_statistics', methods: ['GET'])]
     public function decisionStatistics(#[CurrentUser] ?UserInterface $user = null): JsonResponse
     {
-        $userIdentifier = $user?->getUserIdentifier() ?? 'default_user';
-
+        if (null === $user) {
+            return $this->json(['error' => 'Authentifizierung erforderlich.'], 401);
+        }
+        
+        $userIdentifier = $user->getUserIdentifier();
         $statistics = $this->decisionManager->getDecisionStatistics($userIdentifier);
 
         return $this->json([
@@ -106,7 +119,11 @@ class DecisionController extends AbstractController
         Request $request,
         #[CurrentUser] ?UserInterface $user = null
     ): JsonResponse {
-        $userIdentifier = $user?->getUserIdentifier() ?? 'default_user';
+        if (null === $user) {
+            return $this->json(['error' => 'Authentifizierung erforderlich.'], 401);
+        }
+        
+        $userIdentifier = $user->getUserIdentifier();
         $decision = $this->decisionManager->getDecision($id);
 
         if (!$decision) {
@@ -141,7 +158,11 @@ class DecisionController extends AbstractController
         Request $request,
         #[CurrentUser] ?UserInterface $user = null
     ): JsonResponse {
-        $userIdentifier = $user?->getUserIdentifier() ?? 'default_user';
+        if (null === $user) {
+            return $this->json(['error' => 'Authentifizierung erforderlich.'], 401);
+        }
+        
+        $userIdentifier = $user->getUserIdentifier();
         $decision = $this->decisionManager->getDecision($id);
 
         if (!$decision) {
@@ -210,8 +231,11 @@ class DecisionController extends AbstractController
     #[Route('/api/decisions/check', name: 'api_decisions_check', methods: ['GET'])]
     public function checkPendingDecisions(#[CurrentUser] ?UserInterface $user = null): JsonResponse
     {
-        $userIdentifier = $user?->getUserIdentifier() ?? 'default_user';
-
+        if (null === $user) {
+            return $this->json(['error' => 'Authentifizierung erforderlich.'], 401);
+        }
+        
+        $userIdentifier = $user->getUserIdentifier();
         $hasPending = $this->decisionManager->hasPendingDecisions($userIdentifier);
         $count = $this->decisionManager->countPendingDecisions($userIdentifier);
 
@@ -228,8 +252,11 @@ class DecisionController extends AbstractController
     #[Route('/decisions', name: 'app_decisions', methods: ['GET'])]
     public function decisionsDashboard(#[CurrentUser] ?UserInterface $user = null): Response
     {
-        $userIdentifier = $user?->getUserIdentifier() ?? 'default_user';
-
+        if (null === $user) {
+            return $this->redirectToRoute('app_login');
+        }
+        
+        $userIdentifier = $user->getUserIdentifier();
         $pendingDecisions = $this->decisionManager->getPendingDecisions($userIdentifier);
         $recentDecisions = $this->decisionManager->getRecentDecisions(10, $userIdentifier);
         $statistics = $this->decisionManager->getDecisionStatistics($userIdentifier);

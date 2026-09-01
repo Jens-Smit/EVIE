@@ -75,10 +75,12 @@ final class AgentDialogController extends AbstractController
         if ($authenticatedUser instanceof UserInterface) {
             $userIdentifier = $authenticatedUser->getUserIdentifier();
         } else {
-            // Ohne Authentifizierung ist nur der explizite Default-Tenant
-            // erlaubt; ein ueber den Body mitgegebener Identifier wird
-            // bewusst ignoriert, um Tenant-Spoofing zu verhindern.
-            $userIdentifier = 'default_user';
+            // Ohne Authentifizierung: kein Default-Tenant, da dies die
+            // Tenant-Isolation brechen wuerde. Return 401 Unauthorized.
+            return new JsonResponse(
+                ['error' => 'Authentifizierung erforderlich.'],
+                Response::HTTP_UNAUTHORIZED
+            );
         }
 
         if (!$userMessage) {

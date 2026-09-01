@@ -28,8 +28,11 @@ class BriefingController extends AbstractController
     #[Route('/api/briefing/daily', name: 'api_briefing_daily', methods: ['GET'])]
     public function dailyBriefing(#[CurrentUser] ?UserInterface $user = null): JsonResponse
     {
-        $userIdentifier = $user?->getUserIdentifier() ?? 'default_user';
-
+        if (null === $user) {
+            return $this->json(['error' => 'Authentifizierung erforderlich.'], 401);
+        }
+        
+        $userIdentifier = $user->getUserIdentifier();
         $briefing = $this->briefingManager->createDailyBriefing($userIdentifier);
 
         return $this->json($briefing);
@@ -41,8 +44,11 @@ class BriefingController extends AbstractController
     #[Route('/api/briefing/weekly', name: 'api_briefing_weekly', methods: ['GET'])]
     public function weeklyBriefing(#[CurrentUser] ?UserInterface $user = null): JsonResponse
     {
-        $userIdentifier = $user?->getUserIdentifier() ?? 'default_user';
-
+        if (null === $user) {
+            return $this->json(['error' => 'Authentifizierung erforderlich.'], 401);
+        }
+        
+        $userIdentifier = $user->getUserIdentifier();
         $briefing = $this->briefingManager->createWeeklyStrategyBriefing($userIdentifier);
 
         return $this->json($briefing);
@@ -54,8 +60,11 @@ class BriefingController extends AbstractController
     #[Route('/briefing', name: 'app_briefing', methods: ['GET'])]
     public function briefingDashboard(#[CurrentUser] ?UserInterface $user = null): Response
     {
-        $userIdentifier = $user?->getUserIdentifier() ?? 'default_user';
-
+        if (null === $user) {
+            return $this->redirectToRoute('app_login');
+        }
+        
+        $userIdentifier = $user->getUserIdentifier();
         $dailyBriefing = $this->briefingManager->createDailyBriefing($userIdentifier);
         $weeklyBriefing = $this->briefingManager->createWeeklyStrategyBriefing($userIdentifier);
 
@@ -74,8 +83,11 @@ class BriefingController extends AbstractController
         string $section,
         #[CurrentUser] ?UserInterface $user = null
     ): JsonResponse {
-        $userIdentifier = $user?->getUserIdentifier() ?? 'default_user';
-
+        if (null === $user) {
+            return $this->json(['error' => 'Authentifizierung erforderlich.'], 401);
+        }
+        
+        $userIdentifier = $user->getUserIdentifier();
         $briefing = $this->briefingManager->createDailyBriefing($userIdentifier);
 
         if (!isset($briefing['sections'][$section])) {
@@ -91,8 +103,11 @@ class BriefingController extends AbstractController
     #[Route('/api/briefing/statistics', name: 'api_briefing_statistics', methods: ['GET'])]
     public function briefingStatistics(#[CurrentUser] ?UserInterface $user = null): JsonResponse
     {
-        $userIdentifier = $user?->getUserIdentifier() ?? 'default_user';
-
+        if (null === $user) {
+            return $this->json(['error' => 'Authentifizierung erforderlich.'], 401);
+        }
+        
+        $userIdentifier = $user->getUserIdentifier();
         $briefing = $this->briefingManager->createDailyBriefing($userIdentifier);
 
         return $this->json($briefing['sections']['tool_statistics']);

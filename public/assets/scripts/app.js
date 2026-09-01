@@ -160,7 +160,12 @@ function initChatForm() {
 
         const formData = new FormData(chatForm);
         const prompt = formData.get('prompt');
-        const userIdentifier = formData.get('user_identifier') || 'default_user';
+        const userIdentifier = formData.get('user_identifier');
+        
+        if (!userIdentifier) {
+            console.error('Kein User-Identifier vorhanden. Bitte melden Sie sich an.');
+            return;
+        }
         
         if (!prompt) {
             console.error('Keine Nachricht eingegeben.');
