@@ -91,7 +91,7 @@
                           placeholder="Was möchtest du den Agenten fragen?"
                           rows="3" required></textarea>
             </div>
-            <input type="hidden" name="user_identifier" value="default_user">
+            <input type="hidden" name="user_identifier" value="{{ app.user ? app.user.userIdentifier : 'default_user' }}">
             {% if conversation_id is defined and conversation_id is not empty %}
                 <input type="hidden" name="conversation_id" value="{{ conversation_id }}">
             {% endif %}
@@ -171,7 +171,7 @@
                         },
                         body: JSON.stringify({
                             message: message,
-                            user_identifier: 'default_user'
+                            user_identifier: form.querySelector('input[name="user_identifier"]').value
                         })
                     });
 

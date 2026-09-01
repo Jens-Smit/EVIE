@@ -117,3 +117,9 @@ services:
                 allow_redirects: false
                 max_redirects: 0
 
+    # Secrets-Store Service (Issue #10)
+    App\Service\SecretService:
+        arguments:
+            $secretRepository: '@App\Repository\SecretRepository'
+            $kernelSecret: '%kernel.secret%'
+
