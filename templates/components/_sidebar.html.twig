@@ -29,6 +29,7 @@
         
         {# Navigation Menu #}
         <nav class="mt-2 px-3 md:px-4 space-y-1.5" id="nav-menu">
+            {# Dashboard #}
             <a href="{{ path('app_dashboard') }}"
                class="nav-btn {% if app.request.attributes.get('_route') == 'app_dashboard' %}active{% else %}inactive{% endif %}
                       border w-full flex items-center gap-3 px-4 py-3 rounded-xl
@@ -37,6 +38,7 @@
                 <span>Dashboard</span>
             </a>
 
+            {# Agent Chat #}
             <a href="{{ path('frontend_agent_dialog') }}"
                class="nav-btn {% if app.request.attributes.get('_route') == 'frontend_agent_dialog' %}active{% else %}inactive{% endif %}
                       border w-full flex items-center gap-3 px-4 py-3 rounded-xl
@@ -49,26 +51,41 @@
                 {% endif %}
             </a>
 
-            <a href="{{ path('app_subagents_list') }}"
-               class="nav-btn {% if app.request.attributes.get('_route') == 'app_subagents_list' %}active{% else %}inactive{% endif %}
+            {# Sub-Agenten #}
+            <a href="{{ path('app_subagents') }}"
+               class="nav-btn {% if app.request.attributes.get('_route') == 'app_subagents' %}active{% else %}inactive{% endif %}
                       border w-full flex items-center gap-3 px-4 py-3 rounded-xl
                       transition-all active:scale-95 font-medium">
                 <i class="ph ph-users-three text-xl"></i>
                 <span>Sub-Agenten</span>
             </a>
 
+            {# Streaming Sessions #}
+            <a href="{{ path('app_streaming_sessions') }}"
+               class="nav-btn {% if app.request.attributes.get('_route') == 'app_streaming_sessions' %}active{% else %}inactive{% endif %}
+                      border w-full flex items-center gap-3 px-4 py-3 rounded-xl
+                      transition-all active:scale-95 font-medium">
+                <i class="ph ph-rainbow text-xl"></i>
+                <span>Streaming</span>
+            </a>
+
+            {# Freigaben #}
             <a href="{{ path('app_tool_pending_list') }}"
                class="nav-btn {% if app.request.attributes.get('_route') == 'app_tool_pending_list' %}active{% else %}inactive{% endif %}
                       border w-full flex items-center gap-3 px-4 py-3 rounded-xl
                       transition-all active:scale-95 font-medium">
                 <i class="ph ph-check-square-offset text-xl"></i>
                 <span>Freigaben</span>
-                {% if pending_tools_count is defined and pending_tools_count > 0 %}
-                    <span class="ml-auto bg-warning-soft text-warning
-                             text-[10px] font-bold px-2 py-0.5 rounded-full">{{ pending_tools_count }}</span>
-                {% endif %}
+                <span id="sidebar-pending-count"
+                      hx-get="{{ path('app_pending_tools_count') }}"
+                      hx-trigger="every 30s"
+                      hx-swap="innerHTML"
+                      class="ml-auto bg-warning-soft text-warning text-[10px] font-bold px-2 py-0.5 rounded-full">
+                    0
+                </span>
             </a>
 
+            {# Dokumente #}
             <a href="{{ path('app_documents') }}"
                class="nav-btn {% if app.request.attributes.get('_route') == 'app_documents' %}active{% else %}inactive{% endif %}
                       border w-full flex items-center gap-3 px-4 py-3 rounded-xl
@@ -77,6 +94,7 @@
                 <span>Dokumente</span>
             </a>
 
+            {# Tools #}
             <a href="{{ path('app_tools_list') }}"
                class="nav-btn {% if app.request.attributes.get('_route') == 'app_tools_list' %}active{% else %}inactive{% endif %}
                       border w-full flex items-center gap-3 px-4 py-3 rounded-xl
@@ -85,6 +103,7 @@
                 <span>F&auml;higkeiten</span>
             </a>
 
+            {# MCP-Server #}
             <a href="{{ path('mcp_servers_list') }}"
                class="nav-btn {% if app.request.attributes.get('_route') starts with 'mcp_' %}active{% else %}inactive{% endif %}
                       border w-full flex items-center gap-3 px-4 py-3 rounded-xl
@@ -93,22 +112,16 @@
                 <span>MCP-Server</span>
             </a>
 
+            {# Agent History #}
             <a href="{{ path('frontend_agent_history') }}"
                class="nav-btn {% if app.request.attributes.get('_route') == 'frontend_agent_history' %}active{% else %}inactive{% endif %}
                       border w-full flex items-center gap-3 px-4 py-3 rounded-xl
                       transition-all active:scale-95 font-medium">
-            <a href="{{ path('app_agent_goals') }}"
-               class="nav-btn {% if app.request.attributes.get('_route') == 'app_agent_goals' %}active{% else %}inactive{% endif %}
-                      border w-full flex items-center gap-3 px-4 py-3 rounded-xl
-                      transition-all active:scale-95 font-medium">
-                <i class="ph ph-rocket-launch text-xl"></i>
-                <span>Autonome Ziele</span>
-            </a>
                 <i class="ph ph-clock-counter-clockwise text-xl"></i>
                 <span>Verlauf</span>
             </a>
 
-            {# P1-1: Decision-Log und Briefing im Frontend verlinken (Audit Zyklus 6) #}
+            {# Entscheidungen #}
             <a href="{{ path('app_decisions') }}"
                class="nav-btn {% if app.request.attributes.get('_route') == 'app_decisions' %}active{% else %}inactive{% endif %}
                       border w-full flex items-center gap-3 px-4 py-3 rounded-xl
@@ -117,26 +130,40 @@
                 <span>Entscheidungen</span>
             </a>
 
+            {# Briefing #}
             <a href="{{ path('app_briefing') }}"
-            <a href="{{ path('app_strategy') }}"
-               class="nav-btn {% if app.request.attributes.get('_route') == 'app_strategy' %}active{% else %}inactive{% endif %}
-                      border w-full flex items-center gap-3 px-4 py-3 rounded-xl
-                      transition-all active:scale-95 font-medium">
-                <i class="ph ph-chart-line-up text-xl"></i>
-                <span>Strategie</span>
-            </a>
                class="nav-btn {% if app.request.attributes.get('_route') == 'app_briefing' %}active{% else %}inactive{% endif %}
-            <a href="{{ path('app_strategy') }}"
-               class="nav-btn {% if app.request.attributes.get('_route') == 'app_strategy' %}active{% else %}inactive{% endif %}
-                      border w-full flex items-center gap-3 px-4 py-3 rounded-xl
-                      transition-all active:scale-95 font-medium">
-                <i class="ph ph-chart-line-up text-xl"></i>
-                <span>Strategie</span>
-            </a>
                       border w-full flex items-center gap-3 px-4 py-3 rounded-xl
                       transition-all active:scale-95 font-medium">
                 <i class="ph ph-chart-bar text-xl"></i>
                 <span>Briefing</span>
+            </a>
+
+            {# Strategie #}
+            <a href="{{ path('app_strategy') }}"
+               class="nav-btn {% if app.request.attributes.get('_route') == 'app_strategy' %}active{% else %}inactive{% endif %}
+                      border w-full flex items-center gap-3 px-4 py-3 rounded-xl
+                      transition-all active:scale-95 font-medium">
+                <i class="ph ph-chart-line-up text-xl"></i>
+                <span>Strategie</span>
+            </a>
+
+            {# Audit Logs #}
+            <a href="{{ path('app_audit_logs') }}"
+               class="nav-btn {% if app.request.attributes.get('_route') == 'app_audit_logs' %}active{% else %}inactive{% endif %}
+                      border w-full flex items-center gap-3 px-4 py-3 rounded-xl
+                      transition-all active:scale-95 font-medium">
+                <i class="ph ph-file-text text-xl"></i>
+                <span>Audit-Logs</span>
+            </a>
+
+            {# Quota #}
+            <a href="{{ path('app_settings_quota') }}"
+               class="nav-btn {% if app.request.attributes.get('_route') == 'app_settings_quota' %}active{% else %}inactive{% endif %}
+                      border w-full flex items-center gap-3 px-4 py-3 rounded-xl
+                      transition-all active:scale-95 font-medium">
+                <i class="ph ph-coins text-xl"></i>
+                <span>Quota</span>
             </a>
         </nav>
     </div>
