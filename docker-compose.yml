@@ -68,7 +68,7 @@ services:
     environment:
       POSTGRES_DB: evie
       POSTGRES_USER: evie
-      POSTGRES_PASSWORD: evie_password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-evie_password}
     ports:
       - "5432:5432"
     volumes:
