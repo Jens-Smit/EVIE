@@ -108,6 +108,40 @@ class UserProfile
         return $this;
     }
 
+    /**
+     * Get the preferred LLM provider (e.g., 'mistral', 'gemini')
+     */
+    public function getPreferredLlmProvider(): ?string
+    {
+        return $this->preferences['llm_provider'] ?? null;
+    }
+
+    /**
+     * Set the preferred LLM provider
+     */
+    public function setPreferredLlmProvider(?string $provider): static
+    {
+        $this->preferences = array_merge($this->preferences ?? [], ['llm_provider' => $provider]);
+        return $this;
+    }
+
+    /**
+     * Get the preferred LLM model
+     */
+    public function getPreferredLlmModel(): ?string
+    {
+        return $this->preferences['llm_model'] ?? null;
+    }
+
+    /**
+     * Set the preferred LLM model
+     */
+    public function setPreferredLlmModel(?string $model): static
+    {
+        $this->preferences = array_merge($this->preferences ?? [], ['llm_model' => $model]);
+        return $this;
+    }
+
     public function getUserType(): ?string
     {
         return $this->userType;

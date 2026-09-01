@@ -76,6 +76,46 @@
     </div>
 
     <!-- Onboarding -->
+
+    <!-- LLM-Anbieter & Modell -->
+    <div class="card">
+        <div class="flex items-center gap-2 mb-4">
+            <i class="ph ph-brain text-primary text-xl"></i>
+            <h2 class="card-title">LLM-Anbieter & Modell</h2>
+        </div>
+        <form method="post" action="{{ path('app_settings_llm_preferences') }}" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-content mb-1" for="llm_provider">
+                        LLM-Anbieter
+                    </label>
+                    <select id="llm_provider" name="llm_provider"
+                            class="w-full px-3 py-2 bg-surface-muted border border-border rounded-xl text-content focus:ring-2 focus:ring-primary focus:border-transparent" required>
+                        <option value="mistral" {% if user.profile?.preferredLlmProvider == 'mistral' %}selected{% endif %}>Mistral AI</option>
+                        <option value="gemini" {% if user.profile?.preferredLlmProvider == 'gemini' %}selected{% endif %}>Google Gemini</option>
+                    </select>
+                    <p class="text-xs text-content-muted mt-1">Wählen Sie Ihren bevorzugten LLM-Anbieter</p>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-content mb-1" for="llm_model">
+                        Modell
+                    </label>
+                    <select id="llm_model" name="llm_model"
+                            class="w-full px-3 py-2 bg-surface-muted border border-border rounded-xl text-content focus:ring-2 focus:ring-primary focus:border-transparent" required>
+                        <option value="mistral-small-latest" {% if user.profile?.preferredLlmModel == 'mistral-small-latest' %}selected{% endif %}>Mistral Small (Latest)</option>
+                        <option value="mistral-large-latest" {% if user.profile?.preferredLlmModel == 'mistral-large-latest' %}selected{% endif %}>Mistral Large (Latest)</option>
+                        <option value="gemini-1.5-flash-latest" {% if user.profile?.preferredLlmModel == 'gemini-1.5-flash-latest' %}selected{% endif %}>Gemini 1.5 Flash</option>
+                        <option value="gemini-1.5-pro-latest" {% if user.profile?.preferredLlmModel == 'gemini-1.5-pro-latest' %}selected{% endif %}>Gemini 1.5 Pro</option>
+                    </select>
+                    <p class="text-xs text-content-muted mt-1">Wählen Sie das Modell für Ihre Anfragen</p>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="ph ph-floppy-disk"></i>
+                LLM-Präferenzen speichern
+            </button>
+        </form>
+    </div>
     <div class="card">
         <div class="flex items-center gap-2 mb-4">
             <i class="ph ph-rocket text-primary text-xl"></i>

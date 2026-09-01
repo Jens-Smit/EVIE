@@ -155,3 +155,45 @@ class SettingsController extends AbstractController
         return $this->redirectToRoute('app_home');
     }
 }
+
+    #[Route('/settings/llm-preferences', name: 'app_settings_llm_preferences', methods: ['POST'])]
+    public function updateLlmPreferences(Request $request): Response
+    {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            throw $this->createAccessDeniedException('Authentifizierung erforderlich.');
+        }
+
+        $provider = (string) $request->request->get('llm_provider');
+        $model = (string) $request->request->get('llm_model');
+
+        // Validierung
+        $validProviders = ['mistral', 'gemini'];
+        if (!in_array($provider, $validProviders)) {
+            $this->addFlash('error', 'Ungültiger Anbieter ausgewählt.');
+            return $this->redirectToRoute('app_settings');
+        }
+
+        // Hole oder erstelle UserProfile
+        $profile = $user->getProfile();
+        if (!$profile) {
+            $profile = new \App\Entity\UserProfile();
+            $profile->setUserIdentifier($user->getUserIdentifier());
+            $profile->setName($user->getFullName());
+            $profile->setEmail($user->getEmail());
+            $profile->setUser($user);
+            $this->entityManager->persist($profile);
+        }
+
+        $profile->setPreferredLlmProvider($provider);
+        $profile->setPreferredLlmModel($model);
+        $profile->setUpdatedAt(new \DateTimeImmutable());
+
+        $this->entityManager->persist($profile);
+        $this->entityManager->flush();
+
+        $this->addFlash('success', 'LLM-Präferenzen wurden aktualisiert.');
+
+        return $this->redirectToRoute('app_settings');
+    }
+}

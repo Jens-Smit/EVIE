@@ -35,6 +35,7 @@ class SubAgentFactory implements SubAgentFactoryInterface
     private ContainerInterface $container;
     private SubAgentDefinitionRepository $subAgentDefinitionRepo;
     private ParameterBagInterface $params;
+    private ?string $userIdentifier = null;
 
     public function __construct(
         PlatformInterface $platform,
@@ -42,7 +43,8 @@ class SubAgentFactory implements SubAgentFactoryInterface
         LoggerInterface $logger,
         ContainerInterface $container,
         SubAgentDefinitionRepository $subAgentDefinitionRepo,
-        ParameterBagInterface $params
+        ParameterBagInterface $params,
+        ?string $userIdentifier = null
     ) {
         $this->platform = $platform;
         $this->toolDefinitionRepo = $toolDefinitionRepo;
@@ -50,6 +52,7 @@ class SubAgentFactory implements SubAgentFactoryInterface
         $this->container = $container;
         $this->subAgentDefinitionRepo = $subAgentDefinitionRepo;
         $this->params = $params;
+        $this->userIdentifier = $userIdentifier;
     }
 
     /**

@@ -123,3 +123,15 @@ services:
             $secretRepository: '@App\Repository\SecretRepository'
             $kernelSecret: '%kernel.secret%'
 
+
+    # LLM Platform/Provider Choice (Issue #11)
+    App\AI\Platform\PlatformResolver:
+        arguments:
+            $userProfileRepository: '@App\Repository\UserProfileRepository'
+            $mistralPlatform: '@ai.platform.mistral'
+            $geminiPlatform: '@ai.platform.gemini'
+
+    App\AI\Platform\ModelResolver:
+        arguments:
+            $userProfileRepository: '@App\Repository\UserProfileRepository'
+            $platformResolver: '@App\AI\Platform\PlatformResolver'
