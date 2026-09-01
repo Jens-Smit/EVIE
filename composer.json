@@ -42,7 +42,11 @@
         "symfony/twig-bundle": "^7.4",
         "symfony/validator": "^7.4",
         "symfony/web-link": "^7.4",
-        "symfony/yaml": "^7.4"
+        "symfony/yaml": "^7.4",
+        "knpu/oauth2-client-bundle": "^2.0",
+        "league/oauth2-client": "^2.0",
+        "league/oauth2-google": "^3.0",
+        "league/oauth2-github": "^3.0"
     },
     "require-dev": {
         "phpstan/phpstan": "^1.10",

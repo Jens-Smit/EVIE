@@ -8,6 +8,12 @@ security:
             entity:
                 class: App\Entity\User
                 property: email
+        
+        # OAuth User Provider - laedt Benutzer aus der Datenbank
+        oauth_user_provider:
+            entity:
+                class: App\Entity\User
+                property: email
 
     firewalls:
         dev:
@@ -19,6 +25,7 @@ security:
             provider: app_user_provider
             custom_authenticators:
                 - App\Security\Authenticator\LoginFormAuthenticator
+                - App\Security\Authenticator\OAuthAuthenticator
             entry_point: App\Security\Authenticator\LoginEntryPoint
 
             logout:
@@ -36,6 +43,14 @@ security:
         - { path: ^/datenschutz, roles: PUBLIC_ACCESS }
         - { path: ^/impressum, roles: PUBLIC_ACCESS }
         - { path: ^/logout$, roles: PUBLIC_ACCESS }
+        
+        # OAuth Routes - muessen oeffentlich zugaenglich sein
+        - { path: ^/oauth/check, roles: PUBLIC_ACCESS }
+        - { path: ^/oauth/check_google, roles: PUBLIC_ACCESS }
+        - { path: ^/oauth/check_github, roles: PUBLIC_ACCESS }
+        - { path: ^/oauth/check_azure, roles: PUBLIC_ACCESS }
+        - { path: ^/oauth/check_gitlab, roles: PUBLIC_ACCESS }
+        
         - { path: ^/api/tools, roles: ROLE_ADMIN }
         - { path: ^/admin, roles: ROLE_ADMIN }
         - { path: ^/, roles: ROLE_USER }
