@@ -1,0 +1,200 @@
+{# templates/agent/goals.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Autonome Agent-Ziele - EVIE{% endblock %}
+
+{% block body %}
+<div class="max-w-6xl mx-auto space-y-6">
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl md:text-3xl font-bold text-content flex items-center gap-3">
+            <i class="ph ph-rocket-launch text-primary"></i>
+            Autonome Agent-Ziele
+        </h1>
+        <a href="{{ path('app_settings') }}" class="btn btn-ghost">
+            <i class="ph ph-caret-left"></i>
+            Zurück
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="flex items-center gap-2 mb-4">
+            <i class="ph ph-info text-primary text-xl"></i>
+            <h2 class="card-title">Hinweis</h2>
+        </div>
+        <p class="text-content-muted text-sm">
+            Autonome Ziele ermöglichen es EVIE, Aufgaben im Hintergrund auszuführen, ohne dass Sie manuell einen Prompt eingeben müssen. 
+            <strong>HITL (Human-in-the-Loop) ist standardmäßig aktiviert:</strong> Jedes neue Ziel muss von Ihnen genehmigt werden, bevor es aktiviert werden kann.
+        </p>
+    </div>
+
+    {% for label, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="rounded-xl px-4 py-3 border flex items-center gap-2
+                        {% if label == 'success' %}bg-success-soft border-success/20 text-success
+                        {% elseif label == 'warning' %}bg-warning-soft border-warning/20 text-warning
+                        {% else %}bg-danger-soft border-danger/20 text-danger{% endif %}">
+                <i class="ph {% if label == 'success' %}ph-check-circle{% elseif label == 'warning' %}ph-warning-circle{% else %}ph-x-circle{% endif %} text-lg"></i>
+                <span>{{ message }}</span>
+            </div>
+        {% endfor %}
+    {% endfor %}
+
+    <!-- Neues Ziel erstellen -->
+    <div class="card">
+        <div class="flex items-center gap-2 mb-4">
+            <i class="ph ph-plus-circle text-primary text-xl"></i>
+            <h2 class="card-title">Neues autonomes Ziel erstellen</h2>
+        </div>
+        <form method="post" action="{{ path('app_agent_goals_create') }}" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-content mb-1" for="title">
+                        Titel *
+                    </label>
+                    <input type="text" id="title" name="title" required
+                           placeholder="z.B. Tägliche Datenanalyse"
+                           class="w-full px-3 py-2 bg-surface-muted border border-border rounded-xl text-content focus:ring-2 focus:ring-primary focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-content mb-1" for="cron_expression">
+                        Zeitplan (Cron-Expression)
+                        <span class="text-xs text-content-muted">(optional, z.B. 0 8 * * * für täglich 8 Uhr)</span>
+                    </label>
+                    <input type="text" id="cron_expression" name="cron_expression"
+                           placeholder="0 8 * * *"
+                           class="w-full px-3 py-2 bg-surface-muted border border-border rounded-xl text-content focus:ring-2 focus:ring-primary focus:border-transparent">
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-content mb-1" for="description">
+                    Beschreibung
+                </label>
+                <textarea id="description" name="description" rows="3"
+                          placeholder="Beschreiben Sie, was das Ziel erreichen soll..."
+                          class="w-full px-3 py-2 bg-surface-muted border border-border rounded-xl text-content focus:ring-2 focus:ring-primary focus:border-transparent"></textarea>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-content mb-2">
+                    Fähigkeits-Einschränkungen (optional)
+                </label>
+                <div class="space-y-2">
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" name="capability_constraints[]" value="read_only" class="rounded">
+                        <span class="text-sm text-content">Nur Lese-Zugriff</span>
+                    </label>
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" name="capability_constraints[]" value="no_network" class="rounded">
+                        <span class="text-sm text-content">Kein Netzwerk-Zugriff ohne Freigabe</span>
+                    </label>
+                    <label class="flex items-center gap-2">
+                        <input type="checkbox" name="capability_constraints[]" value="no_tool_execution" class="rounded">
+                        <span class="text-sm text-content">Keine Tool-Ausführung</span>
+                    </label>
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="ph ph-plus"></i>
+                Ziel erstellen
+            </button>
+        </form>
+    </div>
+
+    <!-- Bestehende Ziele -->
+    <div class="card">
+        <div class="flex items-center gap-2 mb-4">
+            <i class="ph ph-target text-primary text-xl"></i>
+            <h2 class="card-title">Ihre autonomen Ziele</h2>
+        </div>
+
+        {% if goals|length > 0 %}
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-border text-left">
+                            <th class="pb-3 text-sm font-medium text-content">Titel</th>
+                            <th class="pb-3 text-sm font-medium text-content">Status</th>
+                            <th class="pb-3 text-sm font-medium text-content">Nächster Lauf</th>
+                            <th class="pb-3 text-sm font-medium text-content">Ausführungen</th>
+                            <th class="pb-3 text-sm font-medium text-content">Aktionen</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-border">
+                        {% for goal in goals %}
+                            <tr class="{% if goal.isActiveAndDue() %}bg-primary-soft/10{% endif %}">
+                                <td class="py-3 text-content">
+                                    <strong>{{ goal.title }}</strong>
+                                    {% if goal.description %}
+                                        <div class="text-sm text-content-muted truncate max-w-xs">{{ goal.description }}</div>
+                                    {% endif %}
+                                </td>
+                                <td class="py-3">
+                                    {% if goal.status == 'active' %}
+                                        <span class="badge badge-approved">Aktiv</span>
+                                    {% elseif goal.status == 'paused' %}
+                                        <span class="badge badge-pending">Pausiert</span>
+                                    {% else %}
+                                        <span class="badge badge-completed">Abgeschlossen</span>
+                                    {% endif %}
+                                    {% if not goal.isApproved %}
+                                        <span class="badge badge-warning ml-1">Genehmigung ausstehend</span>
+                                    {% endif %}
+                                </td>
+                                <td class="py-3 text-sm text-content-muted">
+                                    {% if goal.nextRunAt %}
+                                        {{ goal.nextRunAt|date('Y-m-d H:i') }}
+                                    {% else %}
+                                        -
+                                    {% endif %}
+                                </td>
+                                <td class="py-3 text-sm text-content-muted">
+                                    {{ goal.executionCount ?? 0 }}
+                                </td>
+                                <td class="py-3">
+                                    <div class="flex gap-2">
+                                        {% if goal.status == 'paused' and goal.isApproved %}
+                                            <form method="post" action="{{ path('app_agent_goals_activate', {'id': goal.id}) }}">
+                                                <button type="submit" class="btn btn-primary btn-sm">
+                                                    <i class="ph ph-play-circle"></i>
+                                                    Aktivieren
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                        {% if goal.status == 'active' %}
+                                            <form method="post" action="{{ path('app_agent_goals_pause', {'id': goal.id}) }}">
+                                                <button type="submit" class="btn btn-ghost btn-sm">
+                                                    <i class="ph ph-pause-circle"></i>
+                                                    Pausieren
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                        {% if not goal.isApproved %}
+                                            <form method="post" action="{{ path('app_agent_goals_approve', {'id': goal.id}) }}">
+                                                <button type="submit" class="btn btn-success btn-sm">
+                                                    <i class="ph ph-check"></i>
+                                                    Genehmigen
+                                                </button>
+                                            </form>
+                                        {% endif %}
+                                        <form method="post" action="{{ path('app_agent_goals_delete', {'id': goal.id}) }}"
+                                              onsubmit="return confirm('Sind Sie sicher, dass Sie dieses Ziel löschen möchten?')">
+                                            <button type="submit" class="btn btn-ghost btn-sm text-danger">
+                                                <i class="ph ph-trash"></i>
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="text-center py-8 text-content-muted">
+                <i class="ph ph-target text-4xl mb-2"></i>
+                <p>Keine autonomen Ziele vorhanden.</p>
+                <p class="text-sm mt-1">Erstellen Sie oben ein neues Ziel.</p>
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
