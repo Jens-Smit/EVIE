@@ -20,6 +20,9 @@ class AgentHistory
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $details = null;
 
+    #[ORM\Column(type: Types::INTEGER, nullable: true, options: ['default' => 0])]
+    private ?int $tokenUsage = 0;
+
     #[ORM\Column(type: Types::DATETIME_IMMUTABLE)]
     private \DateTimeImmutable $createdAt;
 
@@ -65,6 +68,23 @@ class AgentHistory
         return $this;
     }
 
+    public function getTokenUsage(): ?int
+    {
+        return $this->tokenUsage;
+    }
+
+    public function setTokenUsage(?int $tokenUsage): static
+    {
+        $this->tokenUsage = $tokenUsage;
+        return $this;
+    }
+
+    public function addTokenUsage(int $tokens): static
+    {
+        $this->tokenUsage = ($this->tokenUsage ?? 0) + $tokens;
+        return $this;
+    }
+
     public function getCreatedAt(): \DateTimeImmutable
     {
         return $this->createdAt;
@@ -105,7 +125,10 @@ class AgentHistory
 
     public function addDocument(Document $document): static
     {
-        if (!$this->documents->contains($document)) {
+        if (!isset($this->documents)) {
+            $this->documents = [];
+        }
+        if (!in_array($document, $this->documents, true)) {
             $this->documents[] = $document;
             $document->setAgentHistory($this);
         }
@@ -114,7 +137,11 @@ class AgentHistory
 
     public function removeDocument(Document $document): static
     {
-        if ($this->documents->removeElement($document)) {
+        if (!isset($this->documents)) {
+            return $this;
+        }
+        if (false !== $key = array_search($document, $this->documents, true)) {
+            unset($this->documents[$key]);
             if ($document->getAgentHistory() === $this) {
                 $document->setAgentHistory(null);
             }

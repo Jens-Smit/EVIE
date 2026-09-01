@@ -135,3 +135,16 @@ services:
         arguments:
             $userProfileRepository: '@App\Repository\UserProfileRepository'
             $platformResolver: '@App\AI\Platform\PlatformResolver'
+
+    # Token Quota Service (Issue #16)
+    App\Service\QuotaService:
+        arguments:
+            $quotaRepo: '@App\Repository\TenantQuotaRepository'
+
+    # Quota Decorator
+    App\AI\Platform\QuotaDecorator:
+        arguments:
+            $innerPlatform: '@ai.platform.mistral'
+            $quotaRepo: '@App\Repository\TenantQuotaRepository'
+            $auditLogger: '@App\AI\Security\AuditLogger'
+            $logger: '@logger'

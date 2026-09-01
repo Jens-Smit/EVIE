@@ -1,0 +1,148 @@
+{# templates/settings/quota.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Token-Quota - EVIE{% endblock %}
+
+{% block body %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl md:text-3xl font-bold text-content flex items-center gap-3">
+            <i class="ph ph-coins text-primary"></i>
+            Token-Quota & Kosten-Deckel
+        </h1>
+        <a href="{{ path('app_settings') }}" class="btn btn-ghost">
+            <i class="ph ph-caret-left"></i>
+            Zurück zu Einstellungen
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="flex items-center gap-2 mb-4">
+            <i class="ph ph-info text-primary text-xl"></i>
+            <h2 class="card-title">Hinweis</h2>
+        </div>
+        <p class="text-content-muted text-sm">
+            Hier sehen Sie Ihren aktuellen Token- und Request-Verbrauch. 
+            Die Quotas werden täglich (00:00 UTC) bzw. stündlich zurückgesetzt.
+        </p>
+    </div>
+
+    {% for label, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="rounded-xl px-4 py-3 border flex items-center gap-2
+                        {% if label == 'success' %}bg-success-soft border-success/20 text-success
+                        {% elseif label == 'warning' %}bg-warning-soft border-warning/20 text-warning
+                        {% else %}bg-danger-soft border-danger/20 text-danger{% endif %}">
+                <i class="ph {% if label == 'success' %}ph-check-circle{% elseif label == 'warning' %}ph-warning-circle{% else %}ph-x-circle{% endif %} text-lg"></i>
+                <span>{{ message }}</span>
+            </div>
+        {% endfor %}
+    {% endfor %}
+
+    <!-- Verbrauchsübersicht -->
+    <div class="card">
+        <div class="flex items-center gap-2 mb-4">
+            <i class="ph ph-chart-pie text-primary text-xl"></i>
+            <h2 class="card-title">Ihr aktueller Verbrauch</h2>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <!-- Täglicher Token-Verbrauch -->
+            <div class="bg-surface-muted rounded-xl p-4 border border-border">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <p class="text-sm text-content-muted">Täglicher Token-Verbrauch</p>
+                        <p class="text-2xl font-bold text-content">{{ quotaUsage.current_day_usage|default(0) }}</p>
+                        <p class="text-xs text-content-muted">von {{ quotaUsage.max_tokens_per_day|default(100000) }} Tokens</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm font-medium text-content">{{ "%.1f"|format(quotaUsage.daily_usage_percentage|default(0)) }}%</p>
+                        <p class="text-xs text-content-muted">verbraucht</p>
+                    </div>
+                </div>
+                <div class="w-full bg-surface-elevated rounded-full h-2">
+                    <div class="bg-primary h-2 rounded-full" style="width: {{ quotaUsage.daily_usage_percentage|default(0) }}%"></div>
+                </div>
+                <p class="text-xs text-content-muted mt-2">
+                    Verbleibend: {{ quotaUsage.remaining_daily_tokens|default(0) }} Tokens
+                </p>
+            </div>
+
+            <!-- Stündlicher Request-Verbrauch -->
+            <div class="bg-surface-muted rounded-xl p-4 border border-border">
+                <div class="flex justify-between items-start mb-2">
+                    <div>
+                        <p class="text-sm text-content-muted">Stündlicher Request-Verbrauch</p>
+                        <p class="text-2xl font-bold text-content">{{ quotaUsage.current_hour_usage|default(0) }}</p>
+                        <p class="text-xs text-content-muted">von {{ quotaUsage.max_requests_per_hour|default(1000) }} Requests</p>
+                    </div>
+                    <div class="text-right">
+                        <p class="text-sm font-medium text-content">{{ "%.1f"|format(quotaUsage.hourly_usage_percentage|default(0)) }}%</p>
+                        <p class="text-xs text-content-muted">verbraucht</p>
+                    </div>
+                </div>
+                <div class="w-full bg-surface-elevated rounded-full h-2">
+                    <div class="bg-secondary h-2 rounded-full" style="width: {{ quotaUsage.hourly_usage_percentage|default(0) }}%"></div>
+                </div>
+                <p class="text-xs text-content-muted mt-2">
+                    Verbleibend: {{ quotaUsage.remaining_hourly_requests|default(0) }} Requests
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Warnungen -->
+    {% if quotaUsage.daily_usage_percentage|default(0) >= 80 %}
+        <div class="card bg-warning-soft border border-warning/30">
+            <div class="flex items-center gap-2">
+                <i class="ph ph-warning text-warning text-xl"></i>
+                <h3 class="font-semibold text-warning">Warnung: Hoher Token-Verbrauch</h3>
+            </div>
+            <p class="text-sm text-warning mt-2">
+                Sie haben bereits {{ "%.1f"|format(quotaUsage.daily_usage_percentage|default(0)) }}% Ihres täglichen Token-Quotas verbraucht. 
+                Bitte beachten Sie, dass bei Erreichen des Limits keine weiteren LLM-Anfragen möglich sind.
+            </p>
+        </div>
+    {% endif %}
+
+    {% if quotaUsage.hourly_usage_percentage|default(0) >= 80 %}
+        <div class="card bg-warning-soft border border-warning/30">
+            <div class="flex items-center gap-2">
+                <i class="ph ph-warning text-warning text-xl"></i>
+                <h3 class="font-semibold text-warning">Warnung: Hoher Request-Verbrauch</h3>
+            </div>
+            <p class="text-sm text-warning mt-2">
+                Sie haben bereits {{ "%.1f"|format(quotaUsage.hourly_usage_percentage|default(0)) }}% Ihres stündlichen Request-Quotas verbraucht.
+            </p>
+        </div>
+    {% endif %}
+
+    <!-- Quota-Einstellungen -->
+    <div class="card">
+        <div class="flex items-center gap-2 mb-4">
+            <i class="ph ph-gear text-primary text-xl"></i>
+            <h2 class="card-title">Ihre Quota-Einstellungen</h2>
+        </div>
+
+        <div class="space-y-4">
+            <div class="flex justify-between">
+                <span class="text-content">Maximale Tokens pro Tag</span>
+                <span class="text-content font-medium">{{ quotaUsage.max_tokens_per_day|default(100000) }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-content">Maximale Requests pro Stunde</span>
+                <span class="text-content font-medium">{{ quotaUsage.max_requests_per_hour|default(1000) }}</span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-content">Maximale gleichzeitige Requests</span>
+                <span class="text-content font-medium">{{ quotaUsage.max_concurrent_requests|default(100) }}</span>
+            </div>
+        </div>
+
+        <p class="text-xs text-content-muted mt-4">
+            Diese Einstellungen können vom Administrator angepasst werden. 
+            Bitte kontaktieren Sie den Support, wenn Sie höhere Quotas benötigen.
+        </p>
+    </div>
+</div>
+{% endblock %}
