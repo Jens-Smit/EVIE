@@ -8,11 +8,13 @@ use App\AI\Decision\DecisionManager;
 use App\AI\Workflow\HitlWorkflowManager;
 use App\Entity\AgentHistory;
 use App\Repository\AgentHistoryRepository;
+use App\Repository\SubAgentRepository;
+use App\Repository\ToolDefinitionRepository;
 use Psr\Log\LoggerInterface;
 
 /**
  * Erstellt regelmäßige Briefings für den User.
- * Faßt den aktuellen Stand aller Aktivitäten zusammen und gibt Empfehlungen.
+ * Faß den aktuellen Stand aller Aktivitäten zusammen und gibt Empfehlungen.
  *
  * P3-D Konsolidierung: Die Abhängigkeit von WorkflowOrchestrator wurde
  * aufgelöst. getActiveWorkflows() nutzt jetzt HitlWorkflowManager direkt
@@ -26,7 +28,9 @@ class BriefingManager
         private AgentHistoryRepository $historyRepo,
         private DecisionManager $decisionManager,
         private HitlWorkflowManager $hitlWorkflowManager,
-        private LoggerInterface $logger
+        private LoggerInterface $logger,
+        private ToolDefinitionRepository $toolDefinitionRepo,
+        private SubAgentRepository $subAgentRepo,
     ) {
     }
 
@@ -156,15 +160,53 @@ class BriefingManager
     }
 
     /**
-     * Gibt Tool-Statistiken zurück
+     * Gibt Tool-Statistiken zurück (datenbasiert aus ToolDefinitionRepository)
      */
     private function getToolStatistics(string $userIdentifier): array
     {
+        $total = 0;
+        $approved = 0;
+        $pending = 0;
+        $rejected = 0;
+
+        // Zähle alle Tools für den Tenant
+        $tenantTools = $this->toolDefinitionRepo->findBy([
+            'userIdentifier' => $userIdentifier
+        ]);
+        
+        foreach ($tenantTools as $tool) {
+            $status = $tool->getStatus();
+            $total++;
+            
+            if ($status === 'approved') {
+                $approved++;
+            } elseif ($status === 'pending') {
+                $pending++;
+            } elseif ($status === 'rejected') {
+                $rejected++;
+            }
+        }
+        
+        // Füge System-Tools (userIdentifier = NULL) hinzu
+        $systemTools = $this->toolDefinitionRepo->findBy(['userIdentifier' => null]);
+        foreach ($systemTools as $tool) {
+            $status = $tool->getStatus();
+            $total++;
+            
+            if ($status === 'approved') {
+                $approved++;
+            } elseif ($status === 'pending') {
+                $pending++;
+            } elseif ($status === 'rejected') {
+                $rejected++;
+            }
+        }
+        
         return [
-            'total_tools' => 15,
-            'approved_tools' => 12,
-            'pending_tools' => 3,
-            'rejected_tools' => 0,
+            'total_tools' => $total,
+            'approved_tools' => $approved,
+            'pending_tools' => $pending,
+            'rejected_tools' => $rejected,
         ];
     }
 
@@ -206,64 +248,206 @@ class BriefingManager
     }
 
     /**
-     * Generiert strategische Analysen
+     * Generiert strategische Analysen (datenbasiert aus AgentHistory)
      */
     private function generateStrategicAnalysis(string $userIdentifier): array
     {
+        $oneWeekAgo = new \DateTimeImmutable('-7 days');
+        
+        // Hole AgentHistory für den Tenant
+        $history = $this->historyRepo->createQueryBuilder('h')
+            ->join('h.user', 'u')
+            ->where('u.userIdentifier = :user')
+            ->andWhere('h.createdAt >= :date')
+            ->setParameter('user', $userIdentifier)
+            ->setParameter('date', $oneWeekAgo)
+            ->orderBy('h.createdAt', 'DESC')
+            ->getQuery()
+            ->getResult();
+
+        if (empty($history)) {
+            return [
+                'trends' => ['Noch nicht genug Daten für eine Analyse'],
+                'opportunities' => ['Nutzen Sie den Agenten, um Daten zu sammeln'],
+                'risks' => [],
+            ];
+        }
+
+        // Analysiere die häufigsten Tools/Aktionen
+        $toolUsage = [];
+        $taskPatterns = [];
+        
+        foreach ($history as $entry) {
+            $details = json_decode($entry->getDetails() ?? '{}', true) ?? [];
+            
+            // Tools extrahieren
+            if (isset($details['tool_name'])) {
+                $toolName = $details['tool_name'];
+                $toolUsage[$toolName] = ($toolUsage[$toolName] ?? 0) + 1;
+            }
+            
+            // Aufgabenmuster extrahieren
+            if (isset($details['input']['message'])) {
+                $message = $details['input']['message'];
+                $taskPatterns[$message] = ($taskPatterns[$message] ?? 0) + 1;
+            }
+        }
+
+        // Sortiere nach Häufigkeit
+        arsort($toolUsage);
+        arsort($taskPatterns);
+
+        // Baue Trends
+        $trends = [];
+        if (!empty($toolUsage)) {
+            $topTools = array_slice($toolUsage, 0, 3, true);
+            foreach ($topTools as $tool => $count) {
+                $trends[] = sprintf('Tool %s wurde %d mal verwendet', $tool, $count);
+            }
+        }
+        
+        if (!empty($taskPatterns)) {
+            $topPatterns = array_slice($taskPatterns, 0, 3, true);
+            foreach ($topPatterns as $pattern => $count) {
+                $trends[] = sprintf('Aufgabenmuster: %s (%d mal)', substr($pattern, 0, 50), $count);
+            }
+        }
+
+        if (empty($trends)) {
+            $trends[] = 'Noch nicht genug Daten für Trendanalyse';
+        }
+
+        // Opportunities
+        $opportunities = [];
+        if (count($toolUsage) > 5) {
+            $opportunities[] = 'Mehrere Tools werden regelmäßig verwendet - Automatisierungspotenzial prüfen';
+        }
+        if (count($history) > 20) {
+            $opportunities[] = 'Hohe Nutzungsfrequenz - Integration mit weiteren Systemen prüfen';
+        }
+        if (empty($opportunities)) {
+            $opportunities[] = 'Nutzen Sie den Agenten häufiger, um mehr Möglichkeiten zu entdecken';
+        }
+
+        // Risks
+        $risks = [];
+        $pendingCount = $this->decisionManager->countPendingDecisions($userIdentifier);
+        if ($pendingCount > 0) {
+            $risks[] = sprintf('%d ausstehende Entscheidungen könnten Workflows blockieren', $pendingCount);
+        }
+        
+        if (empty($risks)) {
+            $risks[] = 'Keine kritischen Risiken erkannt';
+        }
+
         return [
-            'trends' => [
-                'Most used tools this week',
-                'Frequent task patterns',
-                'Increasing automation adoption',
-            ],
-            'opportunities' => [
-                'Automation potential for repetitive tasks',
-                'Integration with new APIs',
-                'Expand tool capabilities',
-            ],
-            'risks' => [
-                'Pending decisions may block workflows',
-                'Unused tools could be archived',
-                'High-risk operations need review',
-            ],
+            'trends' => $trends,
+            'opportunities' => $opportunities,
+            'risks' => $risks,
         ];
     }
 
     /**
-     * Gibt anstehende Aufgaben zurück
+     * Gibt anstehende Aufgaben zurück (datenbasiert aus DecisionLog)
      */
     private function getUpcomingTasks(string $userIdentifier): array
     {
-        return [
-            [
-                'description' => 'Wöchentliche Tool-Review durchführen',
-                'due_date' => (new \DateTimeImmutable('+3 days'))->format('Y-m-d'),
-                'priority' => 'medium',
-            ],
-            [
-                'description' => 'Neue API-Integration testen',
-                'due_date' => (new \DateTimeImmutable('+7 days'))->format('Y-m-d'),
-                'priority' => 'high',
-            ],
-        ];
+        // Hole offene Entscheidungen mit Fälligkeit
+        $pendingDecisions = $this->decisionManager->getPendingDecisions($userIdentifier);
+        
+        $tasks = [];
+        
+        foreach ($pendingDecisions as $decision) {
+            if (isset($decision['due_date'])) {
+                $tasks[] = [
+                    'description' => sprintf('Entscheidung treffen: %s', $decision['description']),
+                    'due_date' => $decision['due_date'],
+                    'priority' => 'high',
+                ];
+            }
+        }
+
+        // Falls keine Aufgaben mit Fälligkeit, leere Liste zurückgeben
+        // (keine Fake-Daten mehr)
+        if (empty($tasks)) {
+            return [];
+        }
+
+        // Sortiere nach Fälligkeit
+        usort($tasks, function($a, $b) {
+            return strtotime($a['due_date']) <=> strtotime($b['due_date']);
+        });
+
+        return array_slice($tasks, 0, 5);
     }
 
     /**
-     * Analysiert die Ressourcenverteilung
+     * Analysiert die Ressourcenverteilung (datenbasiert aus AgentHistory und SubAgent)
      */
     private function analyzeResourceAllocation(string $userIdentifier): array
     {
+        // Hole alle Sub-Agenten für den Tenant
+        $subAgents = $this->subAgentRepo->createQueryBuilder('sa')
+            ->join('sa.user', 'u')
+            ->where('u.userIdentifier = :user')
+            ->setParameter('user', $userIdentifier)
+            ->getQuery()
+            ->getResult();
+
+        if (empty($subAgents)) {
+            return [
+                'sub_agents' => [],
+                'recommendations' => ['Noch keine Sub-Agenten für diesen Tenant'],
+            ];
+        }
+
+        // Hole AgentHistory für Sub-Agent-Nutzung
+        $oneMonthAgo = new \DateTimeImmutable('-30 days');
+        $history = $this->historyRepo->createQueryBuilder('h')
+            ->join('h.user', 'u')
+            ->where('u.userIdentifier = :user')
+            ->andWhere('h.createdAt >= :date')
+            ->setParameter('user', $userIdentifier)
+            ->setParameter('date', $oneMonthAgo)
+            ->getQuery()
+            ->getResult();
+
+        // Zähle Nutzung pro Sub-Agent
+        $subAgentUsage = [];
+        foreach ($subAgents as $agent) {
+            $subAgentUsage[$agent->getName()] = [
+                'name' => $agent->getName(),
+                'usage' => 0,
+                'capacity' => 100,
+            ];
+        }
+
+        foreach ($history as $entry) {
+            $details = json_decode($entry->getDetails() ?? '{}', true) ?? [];
+            if (isset($details['sub_agent']) && isset($subAgentUsage[$details['sub_agent']])) {
+                $subAgentUsage[$details['sub_agent']]['usage']++;
+            }
+        }
+
+        // Baue Empfehlungen
+        $recommendations = [];
+        foreach ($subAgentUsage as $name => $data) {
+            $usagePercent = ($data['usage'] / $data['capacity']) * 100;
+            
+            if ($usagePercent > 80) {
+                $recommendations[] = sprintf('Kapazität für %s erhöhen (Auslastung: %d%%)', $name, $usagePercent);
+            } elseif ($usagePercent < 10) {
+                $recommendations[] = sprintf('%s wird selten verwendet - prüfen ob nötig', $name);
+            }
+        }
+
+        if (empty($recommendations)) {
+            $recommendations[] = 'Ressourcenverteilung ist ausgewogen';
+        }
+
         return [
-            'sub_agents' => [
-                ['name' => 'website_researcher', 'usage' => 45, 'capacity' => 100],
-                ['name' => 'data_analyst', 'usage' => 30, 'capacity' => 100],
-                ['name' => 'code_assistant', 'usage' => 20, 'capacity' => 100],
-                ['name' => 'communication_manager', 'usage' => 5, 'capacity' => 100],
-            ],
-            'recommendations' => [
-                'Increase capacity for website_researcher',
-                'Review underutilized agents',
-            ],
+            'sub_agents' => array_values($subAgentUsage),
+            'recommendations' => $recommendations,
         ];
     }
 
