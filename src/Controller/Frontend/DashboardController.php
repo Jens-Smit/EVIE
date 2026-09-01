@@ -38,12 +38,23 @@ class DashboardController extends AbstractController
         );
 
         $recentDocuments = $documentRepository->findRecent(5);
+        
+        // Statistiken fuer Dashboard
+        $totalTools = $toolDefinitionRepository->count(['status' => 'approved']);
+        $totalAgents = $subAgentRepository->count([]);
+        $totalDocuments = $documentRepository->count([]);
+        $totalActions = $agentHistoryRepository->count(['user' => $user]);
 
         return $this->render('dashboard/index.html.twig', [
             'recentActions' => $recentActions,
             'pendingTools' => $pendingTools,
             'recentDocuments' => $recentDocuments,
-            'subAgents' => $subAgents
+            'subAgents' => $subAgents,
+            'pendingToolsCount' => count($pendingTools),
+            'totalTools' => $totalTools,
+            'totalAgents' => $totalAgents,
+            'totalDocuments' => $totalDocuments,
+            'totalActions' => $totalActions,
         ]);
     }
 }

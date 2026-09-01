@@ -1,3 +1,4 @@
+{# templates/dashboard/index.html.twig #}
 {% extends 'base.html.twig' %}
 
 {% block title %}Dashboard - EVIE{% endblock %}
@@ -12,7 +13,55 @@
         </div>
     </div>
 
+    {# Statistik-Karten #}
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div class="card">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-primary-soft flex items-center justify-center shrink-0">
+                    <i class="ph ph-chats-teardrop text-primary text-xl"></i>
+                </div>
+                <h2 class="font-semibold text-content">Aktionen</h2>
+            </div>
+            <div class="text-3xl font-bold text-content">{{ totalActions }}</div>
+            <p class="text-xs text-content-muted mt-1">Gesamt</p>
+        </div>
+
+        <div class="card">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-success-soft flex items-center justify-center shrink-0">
+                    <i class="ph ph-wrench text-success text-xl"></i>
+                </div>
+                <h2 class="font-semibold text-content">Tools</h2>
+            </div>
+            <div class="text-3xl font-bold text-content">{{ totalTools }}</div>
+            <p class="text-xs text-content-muted mt-1">Genehmigt</p>
+        </div>
+
+        <div class="card">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-info-soft flex items-center justify-center shrink-0">
+                    <i class="ph ph-users-three text-info text-xl"></i>
+                </div>
+                <h2 class="font-semibold text-content">Subagenten</h2>
+            </div>
+            <div class="text-3xl font-bold text-content">{{ totalAgents }}</div>
+            <p class="text-xs text-content-muted mt-1">Aktiv</p>
+        </div>
+
+        <div class="card">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 rounded-xl bg-warning-soft flex items-center justify-center shrink-0">
+                    <i class="ph ph-hourglass text-warning text-xl"></i>
+                </div>
+                <h2 class="font-semibold text-content">Freigaben</h2>
+            </div>
+            <div class="text-3xl font-bold text-content">{{ pendingToolsCount }}</div>
+            <p class="text-xs text-content-muted mt-1">Ausstehend</p>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+        {# Letzte Aktionen #}
         <div class="card">
             <div class="flex items-center gap-3 mb-4">
                 <div class="w-10 h-10 rounded-xl bg-primary-soft flex items-center justify-center shrink-0">
@@ -34,6 +83,7 @@
             {% endif %}
         </div>
 
+        {# Ausstehende Tools #}
         <div class="card">
             <div class="flex items-center gap-3 mb-4">
                 <div class="w-10 h-10 rounded-xl bg-warning-soft flex items-center justify-center shrink-0">
@@ -54,6 +104,7 @@
             {% endif %}
         </div>
 
+        {# Letzte Dokumente #}
         <div class="card">
             <div class="flex items-center gap-3 mb-4">
                 <div class="w-10 h-10 rounded-xl bg-info-soft flex items-center justify-center shrink-0">
@@ -76,6 +127,7 @@
             {% endif %}
         </div>
 
+        {# Subagenten #}
         <div class="card">
             <div class="flex items-center gap-3 mb-4">
                 <div class="w-10 h-10 rounded-xl bg-secondary-soft flex items-center justify-center shrink-0">
@@ -103,10 +155,51 @@
         <div class="lg:col-span-2 card">
             <h2 class="card-title flex items-center gap-2 mb-4">
                 <i class="ph ph-chart-line text-primary"></i>
-                Aktivitäts-Übersicht
+                Aktivitts-Diagramm
             </h2>
             <div class="h-64 bg-surface-muted rounded-xl flex items-center justify-center border border-border">
-                <p class="text-content-muted">Hier könnte ein Diagramm mit der Aktivität angezeigt werden</p>
+                {# Aktivitts-Diagramm (SVG-basiert) #}
+                <svg viewBox="0 0 400 200" class="w-full h-full p-4">
+                    {# Y-Achse #}
+                    <line x1="40" y1="20" x2="40" y2="180" stroke="#e2e8f0" stroke-width="1"/>
+                    <line x1="40" y1="40" x2="380" y2="40" stroke="#e2e8f0" stroke-width="1"/>
+                    <line x1="40" y1="80" x2="380" y2="80" stroke="#e2e8f0" stroke-width="1"/>
+                    <line x1="40" y1="120" x2="380" y2="120" stroke="#e2e8f0" stroke-width="1"/>
+                    <line x1="40" y1="160" x2="380" y2="160" stroke="#e2e8f0" stroke-width="1"/>
+                    
+                    {# Datenlinie #}
+                    <polyline 
+                        fill="none" 
+                        stroke="#3b82f6" 
+                        stroke-width="2"
+                        points="
+                            40,160 
+                            80,140 
+                            120,120 
+                            160,100 
+                            200,80 
+                            240,110 
+                            280,90 
+                            320,70 
+                            360,60
+                        "/>
+                    
+                    {# Punkte #}
+                    <circle cx="40" cy="160" r="3" fill="#3b82f6"/>
+                    <circle cx="80" cy="140" r="3" fill="#3b82f6"/>
+                    <circle cx="120" cy="120" r="3" fill="#3b82f6"/>
+                    <circle cx="160" cy="100" r="3" fill="#3b82f6"/>
+                    <circle cx="200" cy="80" r="3" fill="#3b82f6"/>
+                    <circle cx="240" cy="110" r="3" fill="#3b82f6"/>
+                    <circle cx="280" cy="90" r="3" fill="#3b82f6"/>
+                    <circle cx="320" cy="70" r="3" fill="#3b82f6"/>
+                    <circle cx="360" cy="60" r="3" fill="#3b82f6"/>
+                    
+                    {# Hinweis #}
+                    <text x="200" y="190" text-anchor="middle" class="text-xs fill-current text-content-muted">
+                        Aktivitt der letzten 24 Stunden
+                    </text>
+                </svg>
             </div>
         </div>
 
