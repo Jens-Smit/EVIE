@@ -29,6 +29,7 @@ services:
     # Security Services
     App\Security\UserProvider: ~
     App\Security\UserContext: ~
+    App\Security\OrganizationContext: ~
     # SecurityGuard erhaelt die OutboundRequestPolicy als ergaenzende,
     # DNS-basierte SSRF-Pruefung (Defense-in-Depth in isUrlSafe()).
     App\AI\Security\SecurityGuard:
