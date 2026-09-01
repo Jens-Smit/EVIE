@@ -27,6 +27,7 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
  *  - Freigaben        (app_tool_pending_list)   /tools/pending
  *  - Dokumente        (app_documents)           /documents
  *  - Faehigkeiten     (app_tools_list)          /tools/list
+ *  - MCP-Server       (mcp_servers_list)        /mcp/servers
  *  - Verlauf          (frontend_agent_history)  /history
  *  - Profil           (app_profile)             /profile
  *
@@ -140,6 +141,17 @@ class NavigationPagesTest extends WebTestCase
 
         $this->assertResponseIsSuccessful();
         $this->assertSelectorTextContains('#content-area h1', 'Agenten-Verlauf');
+        $this->assertSidebarPresent();
+    }
+
+    public function testMcpServersPageLoads(): void
+    {
+        $this->createUserAndLogin('mcp@beispiel.de', 'McpPass123', ['ROLE_ADMIN']);
+
+        $this->client->request('GET', '/mcp/servers');
+
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorTextContains('#content-area h1', 'MCP-Server');
         $this->assertSidebarPresent();
     }
 
