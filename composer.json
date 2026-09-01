@@ -2,7 +2,7 @@
     "name": "jens-smit/evie",
     "description": "Self-evolving AI Agent Platform",
     "type": "project",
-    "license": "MIT",
+    "license": "AGPL-3.0",
     "require": {
         "php": "^8.2",
         "ext-json": "*",

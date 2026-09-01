@@ -1,5 +1,6 @@
 # Dependencies
 /vendor/
+node_modules/
 
 # IDE
 .idea/
@@ -28,12 +29,12 @@ Thumbs.db
 # Docker
 .docker/
 
-# Composer
-composer.lock
+# Test
+.phpunit.cache/
+/build/
 
 # Local configuration
-phpunit.xml
-phpunit.xml.dist
+config/reference.php
 
 # IDE specific
 .phpstorm.meta.php
@@ -42,8 +43,6 @@ phpunit.xml.dist
 *.pem
 *.key
 *.crt
+
 # Test artifacts
 /var/test.db
-/.phpunit.cache/
-/build/
-config/reference.php
