@@ -24,7 +24,7 @@ use Symfony\Component\DependencyInjection\Reference;
 final class RegisterDynamicToolboxDecoratorPass implements CompilerPassInterface
 {
     public const TOOLBOX_SERVICE_ID = 'ai.toolbox.orchestrator';
-    public const DECORATOR_SERVICE_ID = 'App\\AI\\Skills\\DynamicToolbox';
+    public const DECORATOR_SERVICE_ID = 'App\AI\Skills\DynamicToolbox';
 
     public function process(ContainerBuilder $container): void
     {
@@ -41,8 +41,8 @@ final class RegisterDynamicToolboxDecoratorPass implements CompilerPassInterface
             : new Definition(DynamicToolbox::class);
         $decorator->setArguments([
             new Reference(self::DECORATOR_SERVICE_ID.'.inner'),
-            new Reference('App\\Repository\\ToolDefinitionRepository'),
-            new Reference('App\\Security\\UserContext'),
+            new Reference('App\Repository\ToolDefinitionRepository'),
+            new Reference('App\Security\UserContext'),
         ]);
         // Höhere Priorität als die FaultTolerantToolbox (-1024), damit die
         // DynamicToolbox die äußerste Schicht bildet (Tools mergen vor der

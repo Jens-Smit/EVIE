@@ -4,7 +4,7 @@ framework:
     csrf_protection: true
     http_method_override: false
     trusted_proxies: '%env(json:TRUSTED_PROXIES)%'
-    trusted_hosts: '%env(json:TRUSTED_HOSTS)%'
+    trusted_hosts: '%env(TRUSTED_HOSTS)%'
 
     # Form support: registers form.factory, form.registry and related services.
     # Required by AbstractController::createForm() used in SecurityController

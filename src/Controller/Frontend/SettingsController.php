@@ -12,7 +12,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
-use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Routing\Attribute\Route;
 
 /**
  * SettingsController - Einstellungsseite fuer den Nutzer.
@@ -154,7 +154,7 @@ class SettingsController extends AbstractController
 
         return $this->redirectToRoute('app_home');
     }
-}
+
 
     #[Route('/settings/llm-preferences', name: 'app_settings_llm_preferences', methods: ['POST'])]
     public function updateLlmPreferences(Request $request): Response

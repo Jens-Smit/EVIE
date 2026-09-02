@@ -6,13 +6,14 @@ use App\Entity\AuditLog;
 use App\Repository\AuditLogRepository;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Security\Core\User\UserInterface;
-
+ 
 /**
  * AuditLogger - Logging für alle kritischen Aktionen
  */
 class AuditLogger
 {
     public function __construct(
+        
         private AuditLogRepository $auditLogRepository,
         private RequestStack $requestStack
     ) {

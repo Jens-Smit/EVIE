@@ -63,12 +63,12 @@ services:
     restart: unless-stopped
 
   postgres:
-    image: postgres:15-alpine
+    image: ankane/pgvector:latest
     container_name: evie-db
     environment:
       POSTGRES_DB: evie
       POSTGRES_USER: evie
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-evie_password}
+      POSTGRES_PASSWORD: evie_password
     ports:
       - "5432:5432"
     volumes:
