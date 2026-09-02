@@ -8,6 +8,9 @@ use App\Repository\TenantQuotaRepository;
 use Psr\Log\LoggerInterface;
 use Symfony\AI\Platform\PlatformInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\AI\Platform\ModelCatalog\ModelCatalogInterface;
+use Symfony\AI\Platform\Model\Model;
+use Symfony\AI\Platform\Result\DeferredResult;
 
 /**
  * Decorator für PlatformInterface, der Token-Quotas pro Tenant durchsetzt.
