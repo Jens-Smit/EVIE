@@ -10,13 +10,13 @@ RUN apk add --no-cache \
         && docker-php-ext-enable opcache
 
 # OPcache für Production
-RUN echo "[opcache]\n\
-opcache.enable=1\n\
-opcache.memory_consumption=256\n\
-opcache.max_accelerated_files=20000\n\
-opcache.validate_timestamps=0\n\
-opcache.preload=/var/www/html/config/preload.php\n\
-opcache.preload_user=www-data" > /usr/local/etc/php/conf.d/opcache-recommended.ini
+RUN echo "[opcache]" > /usr/local/etc/php/conf.d/opcache-recommended.ini && \
+    echo "opcache.enable=1" >> /usr/local/etc/php/conf.d/opcache-recommended.ini && \
+    echo "opcache.memory_consumption=256" >> /usr/local/etc/php/conf.d/opcache-recommended.ini && \
+    echo "opcache.max_accelerated_files=20000" >> /usr/local/etc/php/conf.d/opcache-recommended.ini && \
+    echo "opcache.validate_timestamps=0" >> /usr/local/etc/php/conf.d/opcache-recommended.ini && \
+    echo "opcache.preload=/var/www/html/config/preload.php" >> /usr/local/etc/php/conf.d/opcache-recommended.ini && \
+    echo "opcache.preload_user=www-data" >> /usr/local/etc/php/conf.d/opcache-recommended.ini
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
