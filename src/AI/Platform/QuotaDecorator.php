@@ -316,14 +316,14 @@ class QuotaDecorator implements PlatformInterface
     /**
      * @inheritDoc
      */
-    public function invoke(array $options = []): object
+    public function invoke(Symfony\AI\Platform\Model|string $model, object|array|string $input, array $options = []): Symfony\AI\Platform\Result\DeferredResult
     {
         if (!$this->checkQuota()) {
             throw new \RuntimeException('Token-Quota für diesen Tenant überschritten. Bitte kontaktieren Sie den Administrator.');
         }
 
         $this->recordRequestUsage();
-        return $this->innerPlatform->invoke($options);
+        return $this->innerPlatform->invoke($model, $input, $options);
     }
 
     /**
