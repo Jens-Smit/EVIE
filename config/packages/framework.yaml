@@ -3,6 +3,8 @@ framework:
     secret: '%env(APP_SECRET)%'
     csrf_protection: true
     http_method_override: false
+    trusted_proxies: '%env(json:TRUSTED_PROXIES)%'
+    trusted_hosts: '%env(json:TRUSTED_HOSTS)%'
 
     # Form support: registers form.factory, form.registry and related services.
     # Required by AbstractController::createForm() used in SecurityController
@@ -15,7 +17,7 @@ framework:
     # Remove or comment this section to explicitly disable session support.
     session:
         handler_id: null
-        cookie_secure: auto
+        cookie_secure: false
         cookie_samesite: lax
         # Session-Fixation-Schutz (Audit-Finding #8): Symfony wendet nach
         # erfolgreicher Authentifizierung die SessionAuthenticationStrategy
