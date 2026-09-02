@@ -8,9 +8,9 @@ use App\Repository\TenantQuotaRepository;
 use Psr\Log\LoggerInterface;
 use Symfony\AI\Platform\PlatformInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
-use Symfony\AI\Platform\ModelCatalog\ModelCatalogInterface;
-use Symfony\AI\Platform\Model\Model;
-use Symfony\AI\Platform\Result\DeferredResult;
+use Symfony\AI\Core\ModelCatalog\ModelCatalogInterface;
+use Symfony\AI\Core\Model\Model;
+use Symfony\AI\Core\Result\DeferredResult;
 
 /**
  * Decorator für PlatformInterface, der Token-Quotas pro Tenant durchsetzt.
@@ -319,7 +319,7 @@ class QuotaDecorator implements PlatformInterface
     /**
      * @inheritDoc
      */
-    public function invoke(Symfony\AI\Platform\Model|string $model, object|array|string $input, array $options = []): Symfony\AI\Platform\Result\DeferredResult
+    public function invoke(Symfony\AI\Core\Model|string $model, object|array|string $input, array $options = []): Symfony\AI\Core\Result\DeferredResult
     {
         if (!$this->checkQuota()) {
             throw new \RuntimeException('Token-Quota für diesen Tenant überschritten. Bitte kontaktieren Sie den Administrator.');
@@ -332,7 +332,7 @@ class QuotaDecorator implements PlatformInterface
     /**
      * @inheritDoc
      */
-    public function getModelCatalog(): Symfony\AI\Platform\ModelCatalog\ModelCatalogInterface
+    public function getModelCatalog(): Symfony\AI\Core\ModelCatalog\ModelCatalogInterface
     {
         return $this->innerPlatform->getModelCatalog();
     }
