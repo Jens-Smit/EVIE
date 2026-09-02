@@ -329,7 +329,7 @@ class QuotaDecorator implements PlatformInterface
     /**
      * @inheritDoc
      */
-    public function getModelCatalog(): array
+    public function getModelCatalog(): Symfony\AI\Platform\ModelCatalog\ModelCatalogInterface
     {
         return $this->innerPlatform->getModelCatalog();
     }
