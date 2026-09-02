@@ -4,6 +4,7 @@ services:
         autowire: true
         autoconfigure: true
 
+    App\Service\AuditLogger: '@App\AI\Security\AuditLogger'
     # makes classes in src/ available to be used as services
     App\:
         resource: '../src/'
@@ -51,7 +52,7 @@ services:
     App\AI\Skills\ToolDefinitionGenerator:
         arguments:
             $toolGeneratorAgent: '@ai.agent.tool_generator'
-            $userContext: '@App\\Security\\UserContext'
+            $userContext: '@App\Security\UserContext'
 
     # OnboardingFlowManager benoetigt den expliziten onboarding-Agent, da
     # autowiring bei mehreren AgentInterface-Services nicht aufloesen kann.

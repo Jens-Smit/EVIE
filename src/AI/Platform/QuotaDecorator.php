@@ -8,6 +8,9 @@ use App\Repository\TenantQuotaRepository;
 use Psr\Log\LoggerInterface;
 use Symfony\AI\Platform\PlatformInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\AI\Platform\Model;
+use Symfony\AI\Platform\Result\DeferredResult;
+use Symfony\AI\Platform\ModelCatalog\ModelCatalogInterface;
 
 /**
  * Decorator für PlatformInterface, der Token-Quotas pro Tenant durchsetzt.
@@ -25,6 +28,37 @@ class QuotaDecorator implements PlatformInterface
         private AuditLogger $auditLogger,
         private LoggerInterface $logger,
     ) {
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function invoke(Model|string $model, object|array|string $input, array $options = []): DeferredResult
+    {
+        if (!$this->checkQuota()) {
+            throw new \RuntimeException('Token-Quota für diesen Tenant überschritten. Bitte kontaktieren Sie den Administrator.');
+        }
+
+        // Invoke the inner platform and get the DeferredResult
+        $result = $this->innerPlatform->invoke($model, $input, $options);
+
+        // Record request usage
+        $this->recordRequestUsage();
+
+        // Estimate token usage based on input
+        $inputLength = is_string($input) ? strlen($input) : (is_array($input) ? strlen(json_encode($input)) : 0);
+        $estimatedTokens = ceil($inputLength / 4);
+        $this->recordTokenUsage($estimatedTokens);
+
+        return $result;
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function getModelCatalog(): ModelCatalogInterface
+    {
+        return $this->innerPlatform->getModelCatalog();
     }
 
     /**
