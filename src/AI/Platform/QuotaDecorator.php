@@ -312,4 +312,25 @@ class QuotaDecorator implements PlatformInterface
     {
         return $this->innerPlatform->getMetadata();
     }
+
+    /**
+     * @inheritDoc
+     */
+    public function invoke(array $options = []): object
+    {
+        if (!$this->checkQuota()) {
+            throw new \RuntimeException('Token-Quota für diesen Tenant überschritten. Bitte kontaktieren Sie den Administrator.');
+        }
+
+        $this->recordRequestUsage();
+        return $this->innerPlatform->invoke($options);
+    }
+
+    /**
+     * @inheritDoc
+     */
+    public function getModelCatalog(): array
+    {
+        return $this->innerPlatform->getModelCatalog();
+    }
 }
