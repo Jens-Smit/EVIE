@@ -80,6 +80,7 @@
                       hx-get="{{ path('app_pending_tools_count') }}"
                       hx-trigger="every 30s"
                       hx-swap="innerHTML"
+                      hx-headers='{"Accept": "application/json"}'
                       class="ml-auto bg-warning-soft text-warning text-[10px] font-bold px-2 py-0.5 rounded-full">
                     0
                 </span>

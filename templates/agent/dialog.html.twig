@@ -290,7 +290,13 @@
 
             async function refreshPendingToolsBadge() {
                 try {
-                    const res = await fetch('{{ path('app_pending_tools_count') }}');
+                    const res = await fetch('{{ path('app_pending_tools_count') }}', {
+                        credentials: 'include',
+                        headers: {
+                            'Accept': 'application/json',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        }
+                    });
                     const data = await res.json();
                     const count = data.count || 0;
                     const badge = document.getElementById('pending-tools-badge');
