@@ -18,7 +18,7 @@ use Psr\Log\LoggerInterface;
  * Generiert Tool-Definitionen basierend auf User-Anforderungen.
  * NUTZT LLM mit optimiertem Prompt aus Phase 3, um intelligente, wiederverwendbare Tool-Schemata zu erstellen.
  * 
- * @see ROADMAP_PHASE3.md Maßnahme 8: LLM-Prompt-Optimierung
+ * @see ROADMAP_PHASE3.md Massnahme 8: LLM-Prompt-Optimierung
  */
 class ToolDefinitionGenerator
 {
@@ -38,7 +38,7 @@ class ToolDefinitionGenerator
      * 
      * @param string $toolName Der Name des neuen Tools
      * @param string $description Beschreibung des Tools
-     * @param array $context Zusätzlicher Kontext (z.B. ursprüngliche User-Anfrage)
+     * @param array $context Zusaetzlicher Kontext (z.B. urspruengliche User-Anfrage)
      * @return ToolDefinition Die generierte Tool-Definition
      */
     public function generateToolDefinition(
@@ -51,7 +51,7 @@ class ToolDefinitionGenerator
             'description' => substr($description, 0, 100),
         ]);
 
-        // 1. Prüfe, ob ein ähnliches Tool bereits existiert
+        // 1. Pruefe, ob ein aehnliches Tool bereits existiert
         $similarTool = $this->findSimilarTool($description);
         if ($similarTool) {
             $this->logger->info('Wiederverwendung eines existierenden Tools', [
@@ -67,13 +67,13 @@ class ToolDefinitionGenerator
         // 3. Kategorie bestimmen
         $category = $this->determineCategory($description);
 
-        // 4. Komplexität bestimmen
+        // 4. Komplexitaet bestimmen
         $complexity = $this->determineComplexity($schema);
 
-        // 5. Abhängigkeiten bestimmen
+        // 5. Abhaengigkeiten bestimmen
         $dependencies = $this->determineDependencies($description);
 
-        // 6. Sicherheitslevel aus Schema extrahieren oder standardmäßig setzen
+        // 6. Sicherheitslevel aus Schema extrahieren oder standardmaessig setzen
         $securityLevel = $this->extractSecurityLevel($schema);
         $hitlRequired = $this->extractHitlRequirement($schema);
 
@@ -82,8 +82,6 @@ class ToolDefinitionGenerator
         $toolDefinition->setName($this->sanitizeToolName($toolName));
         $toolDefinition->setDescription($description);
         $toolDefinition->setSchema($schema);
-        // Parameter sind im Schema enthalten; ToolDefinition hat kein separates
-        // parameters-Feld (setParameters existiert nicht auf der Entity).
         $toolDefinition->setCategory($category);
         $toolDefinition->setComplexity($complexity);
         $toolDefinition->setDependencies($dependencies);
@@ -97,7 +95,7 @@ class ToolDefinitionGenerator
             $toolDefinition->setUserIdentifier($userIdentifier);
         }
 
-        // 8. Metadaten für Wiederverwendung und Phase 3-Optimierung
+        // 8. Metadaten fuer Wiederverwendung und Phase 3-Optimierung
         $toolDefinition->setMetadata([
             'generated_by' => 'llm',
             'generation_method' => 'tool_generator_agent',
@@ -128,7 +126,7 @@ class ToolDefinitionGenerator
      * 
      * @param string $toolName Name des Tools
      * @param string $description Beschreibung des Tools
-     * @param array $context Zusätzlicher Kontext
+     * @param array $context Zusaetzlicher Kontext
      * @return array Das generierte JSON-Schema
      */
     private function generateSchemaWithToolGeneratorAgent(
@@ -138,7 +136,7 @@ class ToolDefinitionGenerator
     ): array {
         $userMessage = $context['original_request'] ?? $description;
         
-        // Erstelle eine strukturierte Anfrage für den tool_generator-Agent
+        // Erstelle eine strukturierte Anfrage fuer den tool_generator-Agent
         $requestData = [
             'tool_name' => $toolName,
             'description' => $description,
@@ -170,7 +168,7 @@ class ToolDefinitionGenerator
             // abgelehnt, statt stillschweigend geladen zu werden.
             $this->validateSchema($schema, $toolName);
 
-            // Füge Metadaten hinzu, falls nicht vorhanden
+            // Fuege Metadaten hinzu, falls nicht vorhanden
             $schema = $this->ensureSchemaMetadata($schema);
 
             $this->logger->debug('Tool-Schema erfolgreich generiert', [
@@ -192,7 +190,7 @@ class ToolDefinitionGenerator
     }
 
     /**
-     * Stell sicher, dass das Schema alle benötigten Metadaten enthält
+     * Stell sicher, dass das Schema alle benoetigten Metadaten enthaelt
      */
     private function ensureSchemaMetadata(array $schema): array
     {
@@ -203,7 +201,7 @@ class ToolDefinitionGenerator
 
         // Standard HITL-Anforderung
         if (!isset($schema['hitl_required'])) {
-            $schema['hitl_required'] = true; // Standardmäßig HITL für neue Tools
+            $schema['hitl_required'] = true; // Standardmaessig HITL fuer neue Tools
         }
 
         // Standard Sub-Agent
@@ -259,7 +257,7 @@ class ToolDefinitionGenerator
     }
 
     /**
-     * Sucht nach ähnlichen Tools für Wiederverwendung
+     * Sucht nach aehnlichen Tools fuer Wiederverwendung
      */
     private function findSimilarTool(string $description): ?ToolDefinition
     {
@@ -270,7 +268,7 @@ class ToolDefinitionGenerator
             $toolKeywords = $this->extractKeywords($tool->getDescription());
             $matchScore = $this->calculateSimilarityScore($keywords, $toolKeywords);
 
-            if ($matchScore > 0.7) { // 70% Ähnlichkeit
+            if ($matchScore > 0.7) { // 70% Aehnlichkeit
                 return $tool;
             }
         }
@@ -293,7 +291,7 @@ class ToolDefinitionGenerator
     }
 
     /**
-     * Berechnet die Ähnlichkeit zwischen zwei Keyword-Listen (Jaccard-Index)
+     * Berechnet die Aehnlichkeit zwischen zwei Keyword-Listen (Jaccard-Index)
      */
     private function calculateSimilarityScore(array $keywords1, array $keywords2): float
     {
@@ -304,7 +302,7 @@ class ToolDefinitionGenerator
     }
 
     /**
-     * LLM generiert ein JSON-Schema für das Tool (Fallback-Methode)
+     * LLM generiert ein JSON-Schema fuer das Tool (Fallback-Methode)
      * 
      * @deprecated Wird durch generateSchemaWithToolGeneratorAgent ersetzt
      */
@@ -314,57 +312,7 @@ class ToolDefinitionGenerator
         array $context = []
     ): array {
         $userMessage = $context['original_request'] ?? $description;
-
-        $prompt = <<<PROMPT
-Du bist ein Experte für die Erstellung von Tool-Definitionen für AI-Agenten.
-Erstelle ein **JSON-Schema** für ein Tool mit folgendem Namen und Beschreibung:
-
-**Tool-Name:** {$toolName}
-**Beschreibung:** {$description}
-**User-Anfrage:** {$userMessage}
-
-**Anforderungen an das Schema:**
-1. Das Schema muss **wiederverwendbar** sein
-2. Definiere **klare Parameter** mit:
-   - type (string, integer, boolean, array, object)
-   - description (klare Beschreibung auf Deutsch)
-   - required (boolean, falls Pflichtfeld)
-   - default (Standardwert, falls sinnvoll)
-   - enum (mögliche Werte, falls begrenzt)
-   - pattern (Regex für Strings, falls Validation nötig)
-   - minLength/maxLength (für Strings)
-   - minimum/maximum (für Zahlen)
-3. Nutze **sinnvolle Standardwerte** wo möglich
-4. Das Tool sollte **modular** sein
-5. Berücksichtige **Sicherheitsaspekte** (keine gefährlichen Operationen)
-6. Füge **Sicherheitsmetadaten** hinzu:
-   - security_level: "low"|"medium"|"high"
-   - hitl_required: true|false
-7. Antworte **NUR mit dem JSON-Schema** in gültigem JSON-Format, ohne zusätzliche Erklärungen!
-
-**Beispiel für ein gutes Schema:**
-{
-    "type": "object",
-    "security_level": "medium",
-    "hitl_required": true,
-    "properties": {
-        "url": {
-            "type": "string",
-            "description": "Die URL der Webseite, die analysiert werden soll",
-            "format": "uri",
-            "pattern": "^https?:\\/\\/[^\\s]+$"
-        },
-        "depth": {
-            "type": "integer",
-            "description": "Wie tief die Analyse gehen soll (1-5)",
-            "minimum": 1,
-            "maximum": 5,
-            "default": 2
-        }
-    },
-    "required": ["url"]
-}
-PROMPT;
+        $prompt = $this->buildToolSchemaPrompt($toolName, $description, $userMessage);
 
         try {
             $messages = new MessageBag(Message::ofUser($prompt));
@@ -376,7 +324,7 @@ PROMPT;
             // P0-2: strikte Schema-Validierung im LLM-Fallback-Pfad.
             $this->validateSchema($schema, $toolName);
 
-            // Füge fehlende Metadaten hinzu
+            // Fuege fehlende Metadaten hinzu
             return $this->ensureSchemaMetadata($schema);
 
         } catch (\Exception $e) {
@@ -390,8 +338,27 @@ PROMPT;
         }
     }
 
+    private function buildToolSchemaPrompt(string $toolName, string $description, string $userMessage): string
+    {
+        return 'Du bist ein Experte fuer die Erstellung von Tool-Definitionen fuer AI-Agenten.' . PHP_EOL .
+            'Erstelle ein JSON-Schema fuer ein Tool mit folgendem Namen und Beschreibung:' . PHP_EOL . PHP_EOL .
+            'Tool-Name: ' . $toolName . PHP_EOL .
+            'Beschreibung: ' . $description . PHP_EOL .
+            'User-Anfrage: ' . $userMessage . PHP_EOL . PHP_EOL .
+            'Anforderungen an das Schema:' . PHP_EOL .
+            '1. Das Schema muss wiederverwendbar sein' . PHP_EOL .
+            '2. Definiere klare Parameter mit type, description, required, default, enum, pattern, minLength/maxLength, minimum/maximum' . PHP_EOL .
+            '3. Nutze sinnvolle Standardwerte wo moeglich' . PHP_EOL .
+            '4. Das Tool sollte modular sein' . PHP_EOL .
+            '5. Beruecksichtige Sicherheitsaspekte (keine gefaehrlichen Operationen)' . PHP_EOL .
+            '6. Fuege Sicherheitsmetadaten hinzu: security_level (low|medium|high), hitl_required (true|false)' . PHP_EOL .
+            '7. Antworte NUR mit dem JSON-Schema in gueltigem JSON-Format, ohne zusaetzliche Erklaerungen!' . PHP_EOL . PHP_EOL .
+            'Beispiel fuer ein gutes Schema:' . PHP_EOL .
+            '{"type": "object", "security_level": "medium", "hitl_required": true, "properties": {"url": {"type": "string", "description": "Die URL der Webseite, die analysiert werden soll", "format": "uri", "pattern": "^https?:\\\\/\\\\/[^\\\\s]+$"}}, "required": ["url"]}';
+    }
+
     /**
-     * Erstellt ein Fallback-Schema, falls LLM fehlschlägt
+     * Erstellt ein Fallback-Schema, falls LLM fehlschlaegt
      */
     private function createFallbackSchema(string $toolName, string $description): array
     {
@@ -402,7 +369,7 @@ PROMPT;
             'properties' => [
                 'input' => [
                     'type' => 'string',
-                    'description' => 'Eingabedaten für das Tool: ' . substr($description, 0, 100),
+                    'description' => 'Eingabedaten fuer das Tool: ' . substr($description, 0, 100),
                 ],
             ],
             'required' => ['input'],
@@ -414,76 +381,89 @@ PROMPT;
      */
     private function determineCategory(string $description): ?ToolCategory
     {
-        $descriptionLower = strtolower($description);
-
-        $categoryMappings = [
-            'web_scraping' => ['web', 'seite', 'url', 'html', 'scrapi', 'recherche', 'durchsuchen', 'zusammenfassen'],
-            'data_analysis' => ['daten', 'analyse', 'statistik', 'auswertung', 'zahl', 'diagramm', 'muster'],
-            'communication' => ['mail', 'email', 'nachricht', 'kommunikation', 'linkedin', 'slack', 'twilio'],
-            'api_integration' => ['api', 'oauth', 'auth', 'zugang', 'rest', 'graphql', 'endpoint'],
-            'document_processing' => ['datei', 'pdf', 'excel', 'dokument', 'verarbeiten', 'lesen', 'extrahieren'],
-            'code_generation' => ['code', 'programm', 'skript', 'funktion', 'klasse', 'php', 'symfony', 'entwickeln'],
-            'project_management' => ['projekt', 'aufgabe', 'termin', 'ressource', 'planung'],
+        $categoryNames = [
+            'Web Research' => ['web', 'website', 'online', 'url', 'scrape', 'crawl', 'html', 'http'],
+            'Data Analysis' => ['data', 'analyse', 'statistik', 'daten', 'chart', 'diagramm', 'excel', 'csv'],
+            'Code Development' => ['code', 'programm', 'php', 'javascript', 'python', 'git', 'debug', 'refactor'],
+            'Document Processing' => ['dokument', 'pdf', 'text', 'verarbeitung', 'extraktion', 'parse'],
+            'Communication' => ['email', 'mail', 'linkedin', 'slack', 'nachricht', 'kommunikation'],
+            'API Integration' => ['api', 'rest', 'graphql', 'oauth', 'anbindung', 'integration'],
+            'Project Management' => ['projekt', 'aufgabe', 'task', 'management', 'planung', 'zeiterfassung'],
+            'Finance' => ['finanz', 'buchhaltung', 'rechnung', 'geld', 'kosten', 'budget'],
+            'HR Management' => ['personal', 'mitarbeiter', 'bewerbung', 'gehaltsabrechnung', 'urlaub'],
+            'Marketing' => ['marketing', 'kampagne', 'werbung', 'social media', 'analyse', 'kunden'],
+            'CEO Assistant' => ['strategie', 'planung', 'entscheidung', 'management', 'fuehrung', 'analyse'],
         ];
 
-        foreach ($categoryMappings as $categoryName => $keywords) {
+        $descriptionLower = strtolower($description);
+
+        foreach ($categoryNames as $categoryName => $keywords) {
             foreach ($keywords as $keyword) {
                 if (str_contains($descriptionLower, $keyword)) {
-                    return $this->toolCategoryRepo->findOneByName($categoryName);
+                    $category = $this->toolCategoryRepo->findOneBy(['name' => $categoryName]);
+                    if ($category) {
+                        return $category;
+                    }
+                    // Falls Kategorie nicht existiert, erstelle eine Standard-Kategorie
+                    break;
                 }
             }
         }
 
-        return $this->toolCategoryRepo->findOneByName('general');
+        // Standard-Kategorie
+        $defaultCategory = $this->toolCategoryRepo->findOneBy(['name' => 'General']);
+        if ($defaultCategory) {
+            return $defaultCategory;
+        }
+
+        // Erstelle eine neue Standard-Kategorie
+        $newCategory = new ToolCategory();
+        $newCategory->setName('General');
+        $newCategory->setDescription('Allgemeine Tools ohne spezifische Kategorie');
+        $this->toolCategoryRepo->save($newCategory, true);
+
+        return $newCategory;
     }
 
     /**
-     * Bestimmt die Komplexität des Tools
+     * Bestimmt die Komplexitaet des Tools
      */
-    private function determineComplexity(array $schema): int
+    private function determineComplexity(array $schema): string
     {
         $propertyCount = count($schema['properties'] ?? []);
         $requiredCount = count($schema['required'] ?? []);
 
-        if ($propertyCount >= 5 || $requiredCount >= 3) {
-            return 2; // high
+        if ($propertyCount >= 5 || $requiredCount >= 4) {
+            return 'high';
+        } elseif ($propertyCount >= 3 || $requiredCount >= 2) {
+            return 'medium';
         }
-        if ($propertyCount >= 3 || $requiredCount >= 2) {
-            return 1; // medium
-        }
-        return 0; // low
+
+        return 'low';
     }
 
     /**
-     * Bestimmt Abhängigkeiten des Tools
+     * Bestimmt die Abhaengigkeiten des Tools
      */
     private function determineDependencies(string $description): array
     {
         $dependencies = [];
         $descriptionLower = strtolower($description);
 
-        $dependencyMappings = [
-            'http_client' => ['web', 'seite', 'url', 'api', 'rest', 'graphql'],
-            'firecrawl' => ['web', 'seite', 'scraping', 'crawl'],
-            'mailer' => ['mail', 'email', 'nachricht'],
-            'imap' => ['mail', 'email', 'empfangen', 'lesen'],
-            'linkedin_api' => ['linkedin'],
-            'slack_api' => ['slack'],
-            'oauth' => ['oauth', 'auth', 'authentifizierung'],
-            'filesystem' => ['datei', 'pdf', 'excel', 'dokument'],
-            'php_spreadsheet' => ['excel', 'spreadsheet'],
-        ];
-
-        foreach ($dependencyMappings as $dependency => $keywords) {
-            foreach ($keywords as $keyword) {
-                if (str_contains($descriptionLower, $keyword)) {
-                    $dependencies[] = $dependency;
-                    break;
-                }
-            }
+        if (str_contains($descriptionLower, 'api') || str_contains($descriptionLower, 'anbindung')) {
+            $dependencies[] = 'API Access';
+        }
+        if (str_contains($descriptionLower, 'datenbank') || str_contains($descriptionLower, 'database')) {
+            $dependencies[] = 'Database';
+        }
+        if (str_contains($descriptionLower, 'datei') || str_contains($descriptionLower, 'file')) {
+            $dependencies[] = 'File System';
+        }
+        if (str_contains($descriptionLower, 'netzwerk') || str_contains($descriptionLower, 'network') || str_contains($descriptionLower, 'http')) {
+            $dependencies[] = 'Network';
         }
 
-        return array_unique($dependencies);
+        return $dependencies;
     }
 
     /**
@@ -491,133 +471,38 @@ PROMPT;
      */
     private function sanitizeToolName(string $name): string
     {
-        // Ersetze Sonderzeichen
-        $name = preg_replace('/[^a-zA-Z0-9_\-]/', '_', $name);
-        // Bereinige doppelte Unterstriche
-        $name = preg_replace('/_+/', '_', $name);
+        // Ersetze Sonderzeichen und Leerzeichen
+        $name = preg_replace('/[^a-zA-Z0-9_]/', '_', $name);
+        
         // Entferne führende/trailing Unterstriche
         $name = trim($name, '_');
-        // Kleinschreibung
-        $name = strtolower($name);
-
-        if (empty($name)) {
-            $name = 'custom_tool';
+        
+        // Begrenze die Länge
+        if (strlen($name) > 50) {
+            $name = substr($name, 0, 50);
         }
-
+        
+        // Stelle sicher, dass der Name nicht leer ist
+        if (empty($name)) {
+            $name = 'unnamed_tool';
+        }
+        
         return $name;
     }
+}
 
-    /**
-     * Genehmigt ein Tool
-     */
-    public function approveTool(ToolDefinition $toolDefinition): void
+class ToolRegistrationException extends \RuntimeException
+{
+    private array $context;
+
+    public function __construct(string $message, ?\Throwable $previous = null, array $context = [])
     {
-        $toolDefinition->setStatus('approved');
-        $toolDefinition->setUpdatedAt(new \DateTimeImmutable());
-        $this->toolDefinitionRepo->save($toolDefinition, true);
-
-        $this->logger->info('Tool genehmigt', [
-            'tool_id' => $toolDefinition->getId(),
-            'tool_name' => $toolDefinition->getName(),
-        ]);
+        parent::__construct($message, 0, $previous);
+        $this->context = $context;
     }
 
-    /**
-     * Lehnt ein Tool ab
-     */
-    public function rejectTool(ToolDefinition $toolDefinition, string $reason = null): void
+    public function getContext(): array
     {
-        $toolDefinition->setStatus('rejected');
-        $toolDefinition->setUpdatedAt(new \DateTimeImmutable());
-        
-        $metadata = $toolDefinition->getMetadata() ?? [];
-        $metadata['rejection_reason'] = $reason;
-        $metadata['rejected_at'] = (new \DateTimeImmutable())->format(DATE_ATOM);
-        $toolDefinition->setMetadata($metadata);
-
-        $this->toolDefinitionRepo->save($toolDefinition, true);
-
-        $this->logger->info('Tool abgelehnt', [
-            'tool_id' => $toolDefinition->getId(),
-            'tool_name' => $toolDefinition->getName(),
-            'reason' => $reason,
-        ]);
-    }
-
-    /**
-     * Gibt alle ausstehenden Tools zurück
-     */
-    public function getPendingTools(): array
-    {
-        return $this->toolDefinitionRepo->findBy(['status' => 'pending']);
-    }
-
-    /**
-     * Gibt alle genehmigten Tools zurück
-     */
-    public function getApprovedTools(): array
-    {
-        return $this->toolDefinitionRepo->findBy(['status' => 'approved']);
-    }
-
-    /**
-     * Gibt alle Tools einer Kategorie zurück
-     */
-    public function getToolsByCategory(ToolCategory $category): array
-    {
-        return $this->toolDefinitionRepo->findBy(['category' => $category]);
-    }
-
-    /**
-     * Generiert eine Tool-Definition direkt aus einer User-Anfrage (für den Orchestrator)
-     * 
-     * @param string $userRequest Die ursprüngliche User-Anfrage
-     * @return ToolDefinition Die generierte Tool-Definition
-     */
-    public function generateFromUserRequest(string $userRequest): ToolDefinition
-    {
-        // Extrahiere Tool-Name und Beschreibung aus der Anfrage
-        $toolName = $this->extractToolNameFromRequest($userRequest);
-        $description = $this->extractDescriptionFromRequest($userRequest);
-
-        return $this->generateToolDefinition($toolName, $description, [
-            'original_request' => $userRequest,
-            'source' => 'user_request',
-        ]);
-    }
-
-    /**
-     * Extrahiere Tool-Name aus einer User-Anfrage
-     */
-    private function extractToolNameFromRequest(string $request): string
-    {
-        // Versuche, einen Tool-Namen zu extrahieren
-        $requestLower = strtolower($request);
-        
-        // Muster für "Erstelle ein Tool für..."
-        if (preg_match('/(erstelle|erzeuge|mache|baue|entwickle)\s+(ein|einen|eine)?\s*(tool|funktion|werkzeug|feature)\s+(für|zum|zur)?\s+(.+)/i', $request, $matches)) {
-            $baseName = $matches[5] ?? $request;
-            return $this->sanitizeToolName($baseName);
-        }
-
-        // Muster für "Ich brauche ein Tool, das..."
-        if (preg_match('/(brauche|benötige|möchte|will)\s+(ein|einen|eine)?\s*(tool|funktion|werkzeug)\s+(.+)/i', $request, $matches)) {
-            $baseName = $matches[4] ?? $request;
-            return $this->sanitizeToolName($baseName);
-        }
-
-        // Standard: Nutze die ersten Wörter der Anfrage
-        $words = preg_split('/\s+/', $request);
-        $firstWords = array_slice($words, 0, 3);
-        return $this->sanitizeToolName(implode('_', $firstWords));
-    }
-
-    /**
-     * Extrahiere Beschreibung aus einer User-Anfrage
-     */
-    private function extractDescriptionFromRequest(string $request): string
-    {
-        // Die gesamte Anfrage als Beschreibung nutzen
-        return $request;
+        return $this->context;
     }
 }

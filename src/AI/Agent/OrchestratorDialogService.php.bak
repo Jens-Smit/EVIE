@@ -176,12 +176,24 @@ final readonly class OrchestratorDialogService
     /**
      * Nutzt LLM, um zu klassifizieren, ob ein Tool fehlt.
      */
-    private function classifyWithLLM(string $response): bool
-    {
-        try {
-            $prompt = $this->buildClassificationPrompt($response);
-
-            $messages = new MessageBag(Message::ofUser($prompt));
+REPLACE_ME
+REPLACE_ME
+REPLACE_ME
+REPLACE_ME
+REPLACE_ME
+REPLACE_ME
+REPLACE_ME
+REPLACE_ME
+REPLACE_ME
+REPLACE_ME
+REPLACE_ME
+REPLACE_ME
+REPLACE_ME
+REPLACE_ME
+REPLACE_ME
+REPLACE_ME
+REPLACE_ME
+REPLACE_ME
             $result = $this->platform->invoke('mistral-small-latest', $messages)->asText();
             
             return trim($result) === 'YES';
