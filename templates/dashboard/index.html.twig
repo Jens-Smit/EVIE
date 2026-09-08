@@ -182,7 +182,7 @@
                         <text x="30" y="40" text-anchor="end" class="text-xs fill-current text-content-muted">15</text>
                         
                         {# Datenlinie - dynamisch aus activityData generiert #}
-                        {% set maxActions = activityData|length > 0 ? activityData|map(a => a.value)|max : 1 %}
+                        {% set maxActions = activityData|length > 0 ? activityData|map(a => a.value)|reduce((carry, value) => carry > value ? carry : value, 0) : 1 %}
                         {% set scaleFactor = maxActions > 0 ? 140 / maxActions : 140 %}
                         
                         <polyline 
