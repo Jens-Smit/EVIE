@@ -1,7 +1,7 @@
 {
   "name": "evie",
   "version": "1.0.0",
-  "description": "EVIE ist ein selbst-evolvierendes AI-Agenten-System, das auf Symfony und dem Symfony AI Bundle basiert. Es ermoeglicht die Interaktion mit einem KI-Agenten, speichert Dialogverlaeufe in einer Datenbank und unterstuetzt Tools mit Human-in-the-Loop (HITL) Freigabe.",
+  "description": "EVIE ist ein selbst-evolvierendes AI-Agenten-System, das auf Symfony und dem Symfony AI Bundle basiert.",
   "main": "index.js",
   "directories": {
     "test": "tests"
@@ -9,13 +9,17 @@
   "scripts": {
     "build:css": "node build-tailwind.js",
     "watch:css": "node build-tailwind.js",
-    "build": "npm run build:css"
+    "build": "npm run build:css",
+    "e2e:playwright": "npx playwright test",
+    "e2e:playwright:ui": "npx playwright test --ui",
+    "e2e:playwright:headed": "npx playwright test --headed",
+    "e2e:playwright:report": "npx playwright show-report"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Jens-Smit/EVIE.git"
   },
-  "keywords": ["ai", "agent", "symfony", "php", "artificial-intelligence"],
+  "keywords": ["ai", "agent", "symfony", "php", "artificial-intelligence", "playwright"],
   "author": "Jens Smit",
   "license": "AGPL-3.0",
   "type": "commonjs",
@@ -24,6 +28,7 @@
   },
   "homepage": "https://github.com/Jens-Smit/EVIE#readme",
   "devDependencies": {
+    "@playwright/test": "^1.48.0",
     "@tailwindcss/postcss": "^4.3.3",
     "autoprefixer": "^10.5.4",
     "postcss": "^8.5.26",
