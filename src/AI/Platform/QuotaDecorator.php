@@ -6,9 +6,7 @@ use App\AI\Security\AuditLogger;
 use App\Entity\User;
 use App\Repository\TenantQuotaRepository;
 use Psr\Log\LoggerInterface;
-use Symfony\AI\Core\Model;
-use Symfony\AI\Core\ModelCatalog\ModelCatalogInterface;
-use Symfony\AI\Core\Result\DeferredResult;
+
 use Symfony\AI\Platform\PlatformInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\AI\Platform\Model;
@@ -36,7 +34,7 @@ class QuotaDecorator implements PlatformInterface
     /**
      * {@inheritdoc}
      */
-    public function invoke(Model|string $model, object|array|string $input, array $options = []): DeferredResult
+    public function __invoke(Model|string $model, object|array|string $input, array $options = []): DeferredResult
     {
         if (!$this->checkQuota()) {
             throw new \RuntimeException('Token-Quota für diesen Tenant überschritten. Bitte kontaktieren Sie den Administrator.');
@@ -59,7 +57,7 @@ class QuotaDecorator implements PlatformInterface
     /**
      * {@inheritdoc}
      */
-    public function getModelCatalog(): ModelCatalogInterface
+    public function __getModelCatalog(): ModelCatalogInterface
     {
         return $this->innerPlatform->getModelCatalog();
     }
