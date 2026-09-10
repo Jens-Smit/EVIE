@@ -35,11 +35,11 @@ class AuditLogger
             $userId,
             $entityId,
             $entityType,
-            array_merge($context, [
+            array_merge([
                 'user_email' => $user?->getUserIdentifier(),
                 'ip_address' => $ipAddress,
-                'user_agent' => $userAgent
-            ]),
+                'user_agent' => $userAgent,
+            ], $context),
             $status,
             $details
         );
