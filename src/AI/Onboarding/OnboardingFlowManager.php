@@ -63,6 +63,7 @@ class OnboardingFlowManager
                 'prompt_version' => '1.0',
             ];
         }
+        $context['onboarding_data']['current_step'] = $this->currentStep;
         
         // Speichere den Kontext
         $this->contextStore->saveContext($userIdentifier, $context);
@@ -90,6 +91,11 @@ class OnboardingFlowManager
                 'phase_3_optimized' => true,
             ];
         }
+        
+        // Stelle den Schrittzähler aus dem persistenten Kontext wieder her, da
+        // der Service pro HTTP-Request neu instanziiert wird und currentStep
+        // sonst immer 0 ist (Endlosschleife: gleicher Schritt wird erneut gestellt).
+        $this->currentStep = $context['onboarding_data']['current_step'] ?? 0;
         
         // Speichere die aktuelle Antwort
         $context['onboarding_data']['step_' . $this->currentStep] = [
@@ -129,8 +135,11 @@ class OnboardingFlowManager
             // Speichere den aktualisierten Kontext
             $this->contextStore->saveContext($userIdentifier, $context);
             
-            // Erhöhe den Schrittzähler
+            // Erhöhe den Schrittzähler und persistiere ihn, damit der nächste
+            // HTTP-Request an der richtigen Stelle weitermacht.
             $this->currentStep++;
+            $context['onboarding_data']['current_step'] = $this->currentStep;
+            $this->contextStore->saveContext($userIdentifier, $context);
             
             // Prüfe, ob das Onboarding abgeschlossen ist
             if (($stepData['status'] ?? '') === 'completed' || ($stepData['next_step'] ?? null) === null) {
@@ -219,6 +228,9 @@ class OnboardingFlowManager
     public function getNextStep(string $userIdentifier, array $additionalContext = []): array
     {
         $context = $this->contextStore->loadContext($userIdentifier);
+        
+        // Stelle den Schrittzähler aus dem persistenten Kontext wieder her.
+        $this->currentStep = $context['onboarding_data']['current_step'] ?? 0;
         
         // Erstelle eine Anfrage für den onboarding-Agent
         $agentRequest = [
@@ -543,8 +555,10 @@ class OnboardingFlowManager
 
         $this->contextStore->saveContext($userIdentifier, $context);
 
-        // Move to the next step
+        // Move to the next step and persist it for the next HTTP request.
         $this->currentStep++;
+        $context['onboarding_data']['current_step'] = $this->currentStep;
+        $this->contextStore->saveContext($userIdentifier, $context);
 
         // Check if there are more steps
         if ($this->currentStep >= count($this->getLegacySteps())) {

@@ -4,7 +4,7 @@
 {% block title %}Onboarding - EVIE{% endblock %}
 
 {% block body %}
-<div class="max-w-2xl mx-auto" x-data="onboardingFlow()" x-init="init()">
+<div class="max-w-2xl mx-auto" x-data="onboardingFlow" x-init="init()">
     <div class="card p-8">
         <!-- Header -->
         <div class="flex items-center gap-4 mb-6">
@@ -91,8 +91,7 @@
 
 {% block javascripts %}
 <script>
-function onboardingFlow() {
-    return {
+    const factory = () => ({
         loading: true,
         completed: false,
         currentStep: 0,
@@ -167,12 +166,13 @@ function onboardingFlow() {
             this.currentQuestion = data.question ?? 'Wie können wir dir helfen?';
             this.currentType = data.type ?? 'multiple_choice';
             this.currentOptions = data.options ?? [];
-            if (data.fallback) {
-                // Fallback-Modus: nur Legacy-Schritte durchlaufen
-            }
         }
+    });
+    if (typeof Alpine !== 'undefined') {
+        Alpine.data('onboardingFlow', factory);
+    } else {
+        document.addEventListener('alpine:init', () => Alpine.data('onboardingFlow', factory));
     }
-}
 </script>
 {% endblock %}
 {% endblock %}
