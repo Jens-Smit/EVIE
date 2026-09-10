@@ -3,8 +3,13 @@ framework:
     secret: '%env(APP_SECRET)%'
     csrf_protection: true
     http_method_override: false
-    trusted_proxies: '%env(json:TRUSTED_PROXIES)%'
-    trusted_hosts: '%env(TRUSTED_HOSTS)%'
+    # trusted_proxies is consumed as a JSON array via %env(json:...)%; the
+    # "default:" prefix makes the var optional (falls back to empty when the
+    # env var is unset), so deployments that don't define TRUSTED_PROXIES still
+    # boot. .env.dist ships a valid JSON value; a non-JSON value (e.g. the old
+    # comma-separated form) still throws at runtime on purpose.
+    trusted_proxies: '%env(default::json:TRUSTED_PROXIES)%'
+    trusted_hosts: '%env(default::TRUSTED_HOSTS)%'
 
     # Form support: registers form.factory, form.registry and related services.
     # Required by AbstractController::createForm() used in SecurityController
