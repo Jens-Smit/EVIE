@@ -11,6 +11,10 @@ use Doctrine\DBAL\DriverManager;
 
 $conn = DriverManager::getConnection(['url' => getenv('DATABASE_URL')]);
 
+// pgvector-Extension sicherstellen: die findSimilar-Query castet auf den
+// pgvector 'vector'-Typ. Die Extension muss in der Test-DB aktiv sein.
+$conn->executeStatement('CREATE EXTENSION IF NOT EXISTS vector');
+
 // Testdaten einfuegen. Doctrine legt die id-Spalte als INT NOT NULL ohne
 // DEFAULT an (IdentityGenerator nutzt die Sequenz serverseitig beim
 // ORM-Persist). Der manuelle INSERT nutzt daher direkt die von der
