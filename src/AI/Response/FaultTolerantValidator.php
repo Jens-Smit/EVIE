@@ -287,7 +287,8 @@ class FaultTolerantValidator
         $content = trim($content);
 
         // Entferne unerwünschte Zeichen
-        $content = preg_replace('/[^\p{L}\p{N}\s.,;:!?\-()\[\]"\'\/]/u', '', $content);
+        $cleaned = preg_replace('/[^\p{L}\p{N}\s.,;:!?\-()\[\]"\'\/]/u', '', $content);
+        $content = $cleaned ?? '';
 
         // Kürze sehr lange Inhalte
         if (strlen($content) > 1000) {
