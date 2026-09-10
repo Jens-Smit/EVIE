@@ -150,10 +150,13 @@ final class EvolutionGoldenPathTest extends WebTestCase
             'Ein pending Tool darf nicht in der Toolbox verfügbar sein.',
         );
 
-        // 6. HITL-Freigabe über HTTP POST /api/tools/{id}/approve.
+        // 6. HITL-Freigabe ueber HTTP POST /tools/pending/{id}/approve
+        //    (ToolApprovalController::approveTool, ROLE_USER).
         $toolId = $persisted->getId();
-        $this->client->request('POST', "/api/tools/{$toolId}/approve");
-        
+        $this->client->request('POST', "/tools/pending/{$toolId}/approve", [], [], [
+            'HTTP_X-Requested-With' => 'XMLHttpRequest',
+        ]);
+
         self::assertTrue(
             $this->client->getResponse()->isSuccessful(),
             sprintf(

@@ -8,11 +8,14 @@ use App\AI\Skills\ToolDefinitionGenerator;
 use App\Entity\ToolCategory;
 use App\Repository\ToolCategoryRepository;
 use App\Repository\ToolDefinitionRepository;
+use App\Security\UserContext;
 use App\Tests\Stub\StubAgent;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use Symfony\AI\Platform\PlatformInterface;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
  * Unit-Tests fuer den ToolDefinitionGenerator (Blueprint §4.B / §5, Phase 3 M8).
@@ -147,7 +150,7 @@ final class ToolDefinitionGeneratorTest extends TestCase
     public function testCategoryDeterminedFromDescription(): void
     {
         $category = new ToolCategory();
-        $category->setName('data_analysis');
+        $category->setName('Data Analysis');
 
         $schema = json_encode([
             'type' => 'object',
@@ -157,7 +160,12 @@ final class ToolDefinitionGeneratorTest extends TestCase
         $agent = new StubAgent($schema);
         $this->toolDefinitionRepo->method('findAll')->willReturn([]);
         $this->toolDefinitionRepo->method('save');
-        $this->toolCategoryRepo->method('findOneByName')->willReturn($category);
+        // determineCategory() nutzt findOneBy(['name' => ...]) und matched das
+        // Keyword 'data' in der Beschreibung -> Kategorie 'Data Analysis'.
+        $this->toolCategoryRepo->method('findOneBy')
+            ->willReturnCallback(function (array $criteria) use ($category): ?ToolCategory {
+                return ($criteria['name'] ?? null) === 'Data Analysis' ? $category : null;
+            });
 
         $generator = $this->buildGenerator($agent);
         $definition = $generator->generateToolDefinition(
@@ -196,12 +204,20 @@ final class ToolDefinitionGeneratorTest extends TestCase
 
     private function buildGenerator(StubAgent $agent): ToolDefinitionGenerator
     {
+        $requestStack = new RequestStack();
+        $requestStack->push(new Request());
+        $userContext = new UserContext(
+            $requestStack,
+            $this->createMock(\Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface::class)
+        );
+
         return new ToolDefinitionGenerator(
             $this->toolDefinitionRepo,
             $this->toolCategoryRepo,
             $this->platform,
             $agent,
-            new NullLogger()
+            new NullLogger(),
+            $userContext
         );
     }
 

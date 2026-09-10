@@ -40,7 +40,7 @@ class McpServerController extends AbstractController
      * Listet alle MCP-Server auf.
      */
     #[Route('/mcp/servers', name: 'mcp_servers_list', methods: ['GET'])]
-    #[IsGranted('ROLE_USER')]
+    #[IsGranted('ROLE_ADMIN')]
     public function listServers(Request $request): Response
     {
         $definitions = $this->mcpServerDefinitionRepo->findAllActive();
@@ -55,7 +55,7 @@ class McpServerController extends AbstractController
      * Zeigt die Details eines MCP-Servers an.
      */
     #[Route('/mcp/servers/{name}', name: 'mcp_server_show', methods: ['GET'])]
-    #[IsGranted('ROLE_USER')]
+    #[IsGranted('ROLE_ADMIN')]
     public function showServer(string $name): Response
     {
         $definition = $this->mcpServerDefinitionRepo->findOneByName($name);

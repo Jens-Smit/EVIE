@@ -114,7 +114,14 @@ class StreamToolResponseMessageTest extends TestCase
         $this->assertEquals('test_tool', $message->getToolName());
         $this->assertEquals('progress', $message->getChunkType());
         $this->assertFalse($message->isFinal());
-        $this->assertEquals(['type' => 'progress', 'progress' => 50.5, 'message' => 'Processing...'], $message->getChunk());
+        // createProgress() fuegt dem chunk-Array einen 'timestamp' hinzu. Die
+        // Kernfelder werden einzeln verglichen, damit der Test nicht von der
+        // dynamischen Zeitstempel-Erzeugung abhaengt.
+        $chunk = $message->getChunk();
+        $this->assertSame('progress', $chunk['type']);
+        $this->assertSame(50.5, $chunk['progress']);
+        $this->assertSame('Processing...', $chunk['message']);
+        $this->assertArrayHasKey('timestamp', $chunk);
     }
 
     public function testCreatePartialResult(): void
@@ -164,11 +171,13 @@ class StreamToolResponseMessageTest extends TestCase
         $this->assertEquals('test_tool', $message->getToolName());
         $this->assertEquals('error', $message->getChunkType());
         $this->assertTrue($message->isFinal());
-        $this->assertEquals([
-            'type' => 'error',
-            'error' => 'Test error',
-            'details' => ['code' => 500],
-        ], $message->getChunk());
+        // createError() fuegt dem chunk-Array einen 'timestamp' hinzu. Die
+        // Kernfelder werden einzeln verglichen.
+        $chunk = $message->getChunk();
+        $this->assertSame('error', $chunk['type']);
+        $this->assertSame('Test error', $chunk['error']);
+        $this->assertSame(['code' => 500], $chunk['details']);
+        $this->assertArrayHasKey('timestamp', $chunk);
     }
 
     public function testToArray(): void

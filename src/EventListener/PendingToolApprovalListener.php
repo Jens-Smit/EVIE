@@ -40,8 +40,11 @@ final readonly class PendingToolApprovalListener
             'tool_id' => $toolDefinition->getId(),
         ]);
 
-        // 1. Benachrichtigung per Chat/Notifier senden
-        $this->sendNotification($toolDefinition, $userIdentifier);
+        // 1. Benachrichtigung per Chat/Notifier senden (nur wenn ein Tenant-
+        //    Identifier vorhanden ist; im CLI/Worker ohne Token wird uebersprungen).
+        if (null !== $userIdentifier) {
+            $this->sendNotification($toolDefinition, $userIdentifier);
+        }
 
         // Die native DynamicToolbox liest approved Tools live aus der Datenbank
         // (Blueprint §4.B) — ein Registry-Update ist nicht erforderlich.

@@ -426,20 +426,21 @@ class ToolDefinitionGenerator
     }
 
     /**
-     * Bestimmt die Komplexitaet des Tools
+     * Bestimmt die Komplexitaet des Tools als Integer-Score (1=low, 2=medium, 3=high).
+     * Der Wert entspricht dem int-Feld ToolDefinition.complexity (DB-Schema: INT DEFAULT 1).
      */
-    private function determineComplexity(array $schema): string
+    private function determineComplexity(array $schema): int
     {
         $propertyCount = count($schema['properties'] ?? []);
         $requiredCount = count($schema['required'] ?? []);
 
         if ($propertyCount >= 5 || $requiredCount >= 4) {
-            return 'high';
+            return 3;
         } elseif ($propertyCount >= 3 || $requiredCount >= 2) {
-            return 'medium';
+            return 2;
         }
 
-        return 'low';
+        return 1;
     }
 
     /**

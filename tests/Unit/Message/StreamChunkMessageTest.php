@@ -94,10 +94,10 @@ class StreamChunkMessageTest extends TestCase
         $this->assertEquals('session_123', $message->getSessionId());
         $this->assertEquals('test_tool', $message->getToolName());
         $this->assertEquals('log', $message->getType());
-        $this->assertEquals([
-            'level' => 'info',
-            'message' => 'Log message',
-        ], $message->getData());
+        // createLog() fuegt dem data-Array zusaetzlich einen 'timestamp' hinzu.
+        // Die Kernfelder level/message werden ohne timestamp verglichen.
+        $this->assertSame('info', $message->getData()['level']);
+        $this->assertSame('Log message', $message->getData()['message']);
         $this->assertArrayHasKey('timestamp', $message->getData());
         $this->assertEquals(3, $message->getSequenceNumber());
     }
