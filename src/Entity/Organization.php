@@ -34,7 +34,10 @@ class Organization
     #[ORM\Column(type: 'datetime_immutable', nullable: true)]
     private ?DateTimeImmutable $updatedAt = null;
 
-    #[ORM\OneToMany(mappedBy: 'organization', targetEntity: User::class)]
+    #[ORM\JoinTable(name: 'organization_users')]
+    #[ORM\JoinColumn(name: 'organization_id', referencedColumnName: 'id')]
+    #[ORM\InverseJoinColumn(name: 'user_id', referencedColumnName: 'id', unique: true)]
+    #[ORM\ManyToMany(targetEntity: User::class)]
     private Collection $users;
 
     #[ORM\Column(type: 'json', nullable: true)]
@@ -172,7 +175,7 @@ class Organization
     }
 
     /**
-     * Prft, ob der Benutzer eine bestimmte Rolle in dieser Organisation hat.
+     * Prüft, ob der Benutzer eine bestimmte Rolle in dieser Organisation hat.
      */
     public function hasUserWithRole(string $userIdentifier, string $role): bool
     {
@@ -185,7 +188,7 @@ class Organization
     }
 
     /**
-     * Prft, ob der Benutzer eine bestimmte Berechtigung hat.
+     * Prüft, ob der Benutzer eine bestimmte Berechtigung hat.
      */
     public function hasUserPermission(string $userIdentifier, string $permission): bool
     {
