@@ -318,6 +318,17 @@
                 evt.detail.elt.classList.remove('opacity-0');
                 evt.detail.elt.classList.add('opacity-100');
             });
+
+            // HTMX After Settle - Initialize Alpine.js components inserted by
+            // boosted navigation. Alpine only walks the DOM once on load; new
+            // x-data elements swapped in afterwards must be initialized
+            // explicitly, otherwise their reactive properties stay undefined
+            // (ReferenceError: currentStep, loading, ...).
+            document.addEventListener('htmx:afterSettle', function(evt) {
+                if (typeof Alpine !== 'undefined') {
+                    Alpine.initTree(evt.detail.target);
+                }
+            });
         });
     </script>
     
