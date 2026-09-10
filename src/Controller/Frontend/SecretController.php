@@ -3,7 +3,7 @@
 namespace App\Controller\Frontend;
 
 use App\Entity\User;
-use App\Service\AuditLogger;
+use App\AI\Security\AuditLogger;
 use App\Service\SecretService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
