@@ -6,7 +6,6 @@ namespace App\Security;
 
 use App\Entity\Organization;
 use App\Repository\OrganizationRepository;
-use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
@@ -19,7 +18,6 @@ use Symfony\Component\Security\Core\User\UserInterface;
 final class OrganizationContext
 {
     public function __construct(
-        private readonly RequestStack $requestStack,
         private readonly TokenStorageInterface $tokenStorage,
         private readonly OrganizationRepository $organizationRepository,
     ) {

@@ -97,7 +97,7 @@ class RunAgentGoalHandler
             $this->updateGoalAfterExecution($goal);
 
             // Audit-Log
-            $this->auditLogger->log('agent_goal_execution', $userProfile, $goalId, 'AgentGoal', [
+            $this->auditLogger->log('agent_goal_execution', $userProfile->getUser(), $goalId, 'AgentGoal', [
                 'goal_title' => $goalTitle,
                 'result_length' => strlen($result),
             ], 'success', 'Autonome Ziel-Ausführung erfolgreich');

@@ -2,7 +2,6 @@
 
 namespace App\Controller\Frontend;
 
-use App\AI\Strategy\EvaluationService;
 use App\AI\Strategy\StrategyManager;
 use App\Entity\User;
 use App\Repository\GoalEvaluationRepository;
@@ -18,7 +17,6 @@ class StrategyController extends AbstractController
 {
     public function __construct(
         private StrategyManager $strategyManager,
-        private EvaluationService $evaluationService,
         private GoalEvaluationRepository $evaluationRepo,
     ) {
     }

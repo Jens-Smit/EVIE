@@ -236,9 +236,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this->organizationId;
     }
 
-    public function setOrganizationId(?string $organizationId): static
+    public function setOrganizationId(int|string|null $organizationId): static
     {
-        $this->organizationId = $organizationId;
+        $this->organizationId = $organizationId === null ? null : (string) $organizationId;
         return $this;
     }
 

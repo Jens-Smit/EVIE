@@ -5,11 +5,11 @@ namespace App\AI\Strategy;
 use App\AI\Agent\OrchestratorDialogService;
 use App\AI\Decision\DecisionManager;
 use App\Entity\AgentGoal;
+use App\Entity\DecisionLog;
 use App\Entity\GoalEvaluation;
 use App\Entity\UserProfile;
 use App\Repository\AgentGoalRepository;
 use App\Repository\GoalEvaluationRepository;
-use App\Repository\UserProfileRepository;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -23,7 +23,6 @@ class StrategyManager
     public function __construct(
         private AgentGoalRepository $goalRepo,
         private GoalEvaluationRepository $evaluationRepo,
-        private UserProfileRepository $userProfileRepo,
         private DecisionManager $decisionManager,
         private OrchestratorDialogService $orchestratorDialogService,
         private LoggerInterface $logger,
@@ -255,7 +254,7 @@ class StrategyManager
         string $title,
         string $description,
         array $context
-    ): array {
+    ): DecisionLog {
         return $this->decisionManager->createDecision(
             $userIdentifier,
             'strategy_adjustment',

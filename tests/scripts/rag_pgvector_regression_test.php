@@ -11,9 +11,12 @@ use Doctrine\DBAL\DriverManager;
 
 $conn = DriverManager::getConnection(['url' => getenv('DATABASE_URL')]);
 
-// Testdaten einfuegen (nextval fuer SERIAL, da Doctrine DROP DEFAULT)
+// Testdaten einfuegen. Doctrine legt die id-Spalte als INT NOT NULL ohne
+// DEFAULT an (IdentityGenerator nutzt die Sequenz serverseitig beim
+// ORM-Persist). Der manuelle INSERT nutzt daher direkt die von der
+// Baseline-Migration erstellte Sequenz 'embeddings_id_seq'.
 $sql = "INSERT INTO embeddings (id, content_hash, content, content_type, source, metadata, vector, created_at) "
-    . "VALUES (nextval(pg_get_serial_sequence('embeddings', 'id')), :hash, :content, :type, :source, :meta, :vec, NOW())";
+    . "VALUES (nextval('embeddings_id_seq'), :hash, :content, :type, :source, :meta, :vec, NOW())";
 
 $conn->executeStatement($sql, [
     'hash' => 'rag_regression_test',

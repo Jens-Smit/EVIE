@@ -22,6 +22,33 @@ class DecisionManager
     /**
      * Protokolliert eine Entscheidung zur Freigabe
      */
+    public function createDecision(
+        string $userIdentifier,
+        string $decisionType,
+        string $title,
+        string $description,
+        array $context = []
+    ): DecisionLog {
+        $decisionLog = new DecisionLog();
+        $decisionLog->setDecisionType($decisionType);
+        $decisionLog->setDescription($title . ': ' . $description);
+        $decisionLog->setContext(array_merge($context, ['user_identifier' => $userIdentifier]));
+        $decisionLog->setStatus('pending');
+        $decisionLog->setMetadata(['user_identifier' => $userIdentifier]);
+
+        $this->decisionLogRepo->save($decisionLog, true);
+
+        $this->logger->info('Entscheidung erstellt', [
+            'decision_id' => $decisionLog->getId(),
+            'decision_type' => $decisionType,
+        ]);
+
+        return $decisionLog;
+    }
+
+    /**
+     * Protokolliert eine Entscheidung zur Freigabe
+     */
     public function logDecision(
         string $decisionType,
         string $description,

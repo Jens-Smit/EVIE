@@ -21,7 +21,6 @@ class EvaluationService
     public function __construct(
         private GoalEvaluationRepository $evaluationRepo,
         private AgentGoalRepository $goalRepo,
-        private AgentHistoryRepository $historyRepo,
         private OrchestratorDialogService $orchestratorDialogService,
         private LoggerInterface $logger,
     ) {
@@ -159,7 +158,7 @@ class EvaluationService
      */
     private function buildEvaluationPrompt(AgentGoal $goal, string $result, string $successMetric): string
     {
-        $prompt = sprintf("Evaluiere das folgende Ergebnis gegen die Erfolgsmetrik:\n\n", $successMetric);
+        $prompt = sprintf("Evaluiere das folgende Ergebnis gegen die Erfolgsmetrik: %s\n\n", $successMetric);
         $prompt .= sprintf("Ziel: %s\n", $goal->getTitle());
         $prompt .= sprintf("Erfolgsmetrik: %s\n\n", $successMetric);
         $prompt .= sprintf("Ergebnis:\n%s\n\n", $result);

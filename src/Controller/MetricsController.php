@@ -3,7 +3,6 @@
 
 namespace App\Controller;
 
-use App\AI\Security\AuditLogger;
 use App\Repository\AgentHistoryRepository;
 use App\Repository\AuditLogRepository;
 use App\Repository\ToolDefinitionRepository;
@@ -25,8 +24,7 @@ class MetricsController extends AbstractController
         private AuditLogRepository $auditLogRepository,
         private AgentHistoryRepository $agentHistoryRepository,
         private ToolDefinitionRepository $toolDefinitionRepository,
-        private StreamingSessionRepository $streamingSessionRepository,
-        private AuditLogger $auditLogger
+        private StreamingSessionRepository $streamingSessionRepository
     ) {
     }
 

@@ -112,13 +112,20 @@ class ToolDefinitionGenerator
         $this->logger->info('Neues Tool mit optimiertem Prompt erstellt (Phase 3)', [
             'tool_id' => $toolDefinition->getId(),
             'tool_name' => $toolDefinition->getName(),
-            'category' => $category?->getName(),
+            'category' => $category->getName(),
             'complexity' => $complexity,
             'security_level' => $securityLevel,
             'hitl_required' => $hitlRequired,
         ]);
 
         return $toolDefinition;
+    }
+
+    public function approveTool(ToolDefinition $toolDefinition): void
+    {
+        $toolDefinition->setStatus('approved');
+        $toolDefinition->setApprovedAt(new \DateTimeImmutable());
+        $this->toolDefinitionRepo->save($toolDefinition, true);
     }
 
     /**

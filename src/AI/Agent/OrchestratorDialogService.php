@@ -191,6 +191,11 @@ final readonly class OrchestratorDialogService
         }
     }
 
+    private function buildClassificationPrompt(string $response): string
+    {
+        return "Antworte mit 'YES', wenn die folgende Assistenten-Antwort darauf hindeutet, dass ein passendes Werkzeug fehlt, um die Anfrage zu erfuellen. Andernfalls antworte mit 'NO'.\n\n" . $response;
+    }
+
     /**
      * Prüft, ob der Orchestrator einen Sub-Agenten vorschlägt.
      */

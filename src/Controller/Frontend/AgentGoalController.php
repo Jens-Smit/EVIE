@@ -57,7 +57,7 @@ class AgentGoalController extends AbstractController
         $title = trim((string) $request->request->get('title'));
         $description = trim((string) $request->request->get('description', ''));
         $cronExpression = trim((string) $request->request->get('cron_expression', ''));
-        $capabilityConstraints = $request->request->all('capability_constraints', []);
+        $capabilityConstraints = $request->request->all('capability_constraints') ?? [];
 
         // Validierung
         if (empty($title)) {
