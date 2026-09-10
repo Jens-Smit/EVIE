@@ -10,10 +10,12 @@
             <i class="ph ph-server text-primary"></i>
             MCP-Server Verwaltung
         </h1>
+        {% if is_granted('ROLE_ADMIN') %}
         <a href="{{ path('mcp_server_new') }}" class="btn btn-primary">
             <i class="ph ph-plus"></i>
             Neuer MCP-Server
         </a>
+        {% endif %}
     </div>
 
     {% for label, messages in app.flashes %}
@@ -67,19 +69,20 @@
                         </td>
                         <td class="py-3 px-2 text-content-muted">{{ server.type }}</td>
                         <td class="py-3 px-2">
-                            {% if server.isEnabled %}
+                            {% if server.active %}
                                 <span class="badge badge-approved">Aktiv</span>
                             {% else %}
                                 <span class="badge badge-rejected">Inaktiv</span>
                             {% endif %}
                         </td>
-                        <td class="py-3 px-2 text-content">{{ server.toolsCount|default(0) }}</td>
+                        <td class="py-3 px-2 text-content">{{ server.allowedTools|length }}</td>
                         <td class="py-3 px-2">
                             <div class="flex items-center gap-2">
                                 <a href="{{ path('mcp_server_show', {'name': server.name}) }}"
                                    class="text-primary hover:text-primary-hover" title="Anzeigen">
                                     <i class="ph ph-eye text-lg"></i>
                                 </a>
+                                {% if is_granted('ROLE_ADMIN') %}
                                 <a href="{{ path('mcp_server_edit', {'name': server.name}) }}"
                                    class="text-content-muted hover:text-primary" title="Bearbeiten">
                                     <i class="ph ph-pencil-simple text-lg"></i>
@@ -90,6 +93,7 @@
                                         <i class="ph ph-power text-lg"></i>
                                     </button>
                                 </form>
+                                {% endif %}
                             </div>
                         </td>
                     </tr>
@@ -105,11 +109,16 @@
         {% endif %}
     </div>
 
+    {% if is_granted('ROLE_ADMIN') %}
     <div class="card">
-        <a href="{{ path('mcp_servers_reload') }}" class="btn btn-ghost">
-            <i class="ph ph-arrow-clockwise"></i>
-            MCP-Server neu laden
-        </a>
+        <form method="post" action="{{ path('mcp_servers_reload') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token('reload_servers') }}">
+            <button type="submit" class="btn btn-ghost">
+                <i class="ph ph-arrow-clockwise"></i>
+                MCP-Server neu laden
+            </button>
+        </form>
     </div>
+    {% endif %}
 </div>
 {% endblock %}

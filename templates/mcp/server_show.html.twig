@@ -11,10 +11,12 @@
             {{ server.name }}
         </h1>
         <div class="flex items-center gap-2">
+            {% if is_granted('ROLE_ADMIN') %}
             <a href="{{ path('mcp_server_edit', {'name': server.name}) }}" class="btn btn-secondary">
                 <i class="ph ph-pencil-simple"></i>
                 Bearbeiten
             </a>
+            {% endif %}
             <a href="{{ path('mcp_servers_list') }}" class="btn btn-ghost">
                 <i class="ph ph-list"></i>
                 Zurück zur Liste
@@ -51,7 +53,7 @@
                 <div class="flex justify-between">
                     <dt class="text-content-muted text-sm">Status:</dt>
                     <dd>
-                        {% if server.isEnabled %}
+                        {% if server.active %}
                             <span class="badge badge-approved">Aktiv</span>
                         {% else %}
                             <span class="badge badge-rejected">Inaktiv</span>
@@ -112,6 +114,7 @@
         </div>
     </div>
 
+    {% if is_granted('ROLE_ADMIN') %}
     <div class="card">
         <div class="flex items-center justify-between">
             <div class="flex items-center gap-2">
@@ -120,12 +123,13 @@
             </div>
             <form method="post" action="{{ path('mcp_server_toggle', {'name': server.name}) }}">
                 <input type="hidden" name="_token" value="{{ csrf_token('toggle' ~ server.name) }}">
-                <button type="submit" class="btn {% if server.isEnabled %}btn-ghost{% else %}btn-primary{% endif %}">
+                <button type="submit" class="btn {% if server.active %}btn-ghost{% else %}btn-primary{% endif %}">
                     <i class="ph ph-power"></i>
-                    {% if server.isEnabled %}Deaktivieren{% else %}Aktivieren{% endif %}
+                    {% if server.active %}Deaktivieren{% else %}Aktivieren{% endif %}
                 </button>
             </form>
         </div>
     </div>
+    {% endif %}
 </div>
 {% endblock %}
