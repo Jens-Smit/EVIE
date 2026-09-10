@@ -112,7 +112,7 @@ class AuditLogger
     /**
      * Logge Authentifizierungsversuch
      */
-    public function logAuthenticationAttempt(?UserInterface $user, bool $success, ?string $error = null, string $ipAddress = null): AuditLog
+    public function logAuthenticationAttempt(?UserInterface $user, bool $success, ?string $error = null, ?string $ipAddress = null): AuditLog
     {
         return $this->log(
             'authentication',

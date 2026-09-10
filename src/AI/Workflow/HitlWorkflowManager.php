@@ -120,9 +120,15 @@ class HitlWorkflowManager
                 'error' => $e->getMessage()
             ]);
 
+            try {
+                $toolName = $pendingExecution->getTool()->getName();
+            } catch (\Throwable) {
+                $toolName = 'unbekannt';
+            }
+
             $this->auditLogger->logHitlDecision(
                 0,
-                $pendingExecution->getTool()->getName(),
+                $toolName,
                 $approver,
                 'rejected',
                 'Execution fehlgeschlagen: ' . $e->getMessage()
