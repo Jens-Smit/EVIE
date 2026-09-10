@@ -379,7 +379,7 @@ class ToolDefinitionGenerator
     /**
      * Bestimmt die Kategorie des Tools
      */
-    private function determineCategory(string $description): ?ToolCategory
+    private function determineCategory(string $description): ToolCategory
     {
         $categoryNames = [
             'Web Research' => ['web', 'website', 'online', 'url', 'scrape', 'crawl', 'html', 'http'],
