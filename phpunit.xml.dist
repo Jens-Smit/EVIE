@@ -26,7 +26,7 @@
 
         <!-- EVIE AI Komponenten Tests -->
         <testsuite name="EVIE AI Unit Tests">
-            <directory>tests/Unit/AI</directory>
+            <directory>tests/Unit</directory>
         </testsuite>
 
         <testsuite name="EVIE AI Integration Tests">
