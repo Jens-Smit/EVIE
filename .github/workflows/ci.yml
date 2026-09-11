@@ -61,7 +61,7 @@ jobs:
         env:
           APP_SECRET: test-secret-for-evie-1234567890abcdef
           DATABASE_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_test?serverVersion=15&charset=utf8'
-        run: vendor/bin/phpunit --testsuite="E2E Tests"
+        run: vendor/bin/phpunit --testsuite="E2E Tests" --coverage-clover=coverage-e2e-test.xml
 
       - name: E2E tests (dev env)
         env:
@@ -71,7 +71,7 @@ jobs:
           DATABASE_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_test?serverVersion=15&charset=utf8'
           MISTRAL_API_KEY: test
           GEMINI_API_KEY: test
-        run: vendor/bin/phpunit --testsuite="E2E Tests"
+        run: vendor/bin/phpunit --testsuite="E2E Tests" --coverage-clover=coverage-e2e-dev.xml
 
       - name: E2E tests (prod env)
         env:
@@ -83,7 +83,7 @@ jobs:
           GEMINI_API_KEY: test
         run: |
           php bin/console cache:warmup --env=prod
-          vendor/bin/phpunit --testsuite="E2E Tests"
+          vendor/bin/phpunit --testsuite="E2E Tests" --coverage-clover=coverage-e2e-prod.xml
 
       # -+
       # E2E Smoke-Tests: Agent/Tool/RAG/HITL/Audit (Blueprint §17)
@@ -96,7 +96,7 @@ jobs:
           DATABASE_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_test?serverVersion=15&charset=utf8'
           MISTRAL_API_KEY: test
           GEMINI_API_KEY: test
-        run: vendor/bin/phpunit --testsuite="E2E Smoke Tests"
+        run: vendor/bin/phpunit --testsuite="E2E Smoke Tests" --coverage-clover=coverage-e2e-smoke.xml
 
       # -+
       # Unit + Integration Tests (Blueprint §7.1/§7.2)
@@ -106,34 +106,24 @@ jobs:
           APP_SECRET: test-secret-for-evie-1234567890abcdef
           DATABASE_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_test?serverVersion=15&charset=utf8'
         run: vendor/bin/phpunit --testsuite="EVIE AI Unit Tests" --coverage-clover=coverage-unit.xml
-      # ------------------------------------------------------------------
-      # Coverage-Reporting (Phase 3 / Audit CI/CD): generiert Clover-Reports
-      # und laedt sie als Artefakt hoch.
-      # ------------------------------------------------------------------
-      - name: Upload coverage report
-        uses: actions/upload-artifact@v4
-        with:
-          name: coverage-report
-          path: coverage-*.xml
-          retention-days: 14
 
       - name: Security tests
         env:
           APP_SECRET: test-secret-for-evie-1234567890abcdef
           DATABASE_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_test?serverVersion=15&charset=utf8'
-        run: vendor/bin/phpunit --testsuite="EVIE AI Security Tests"
+        run: vendor/bin/phpunit --testsuite="EVIE AI Security Tests" --coverage-clover=coverage-security.xml
 
       - name: Skills tests
         env:
           APP_SECRET: test-secret-for-evie-1234567890abcdef
           DATABASE_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_test?serverVersion=15&charset=utf8'
-        run: vendor/bin/phpunit --testsuite="EVIE AI Skills Tests"
+        run: vendor/bin/phpunit --testsuite="EVIE AI Skills Tests" --coverage-clover=coverage-skills.xml
 
       - name: Agent tests
         env:
           APP_SECRET: test-secret-for-evie-1234567890abcdef
           DATABASE_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_test?serverVersion=15&charset=utf8'
-        run: vendor/bin/phpunit --testsuite="EVIE AI Agent Tests"
+        run: vendor/bin/phpunit --testsuite="EVIE AI Agent Tests" --coverage-clover=coverage-agent.xml
 
       # -+
       # Functional Tests: kritische Aktionen mit echtem Kernel + LLM-Stub (Blueprint §4.A/§5)
@@ -145,13 +135,33 @@ jobs:
           MISTRAL_API_KEY: test
           GEMINI_API_KEY: test
           TAVILY_API_KEY: test
-        run: vendor/bin/phpunit --testsuite="EVIE AI Functional Tests"
+        run: vendor/bin/phpunit --testsuite="EVIE AI Functional Tests" --coverage-clover=coverage-functional.xml
 
       - name: Integration tests
         env:
           APP_SECRET: test-secret-for-evie-1234567890abcdef
           DATABASE_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_test?serverVersion=15&charset=utf8'
-        run: vendor/bin/phpunit --testsuite="EVIE AI Integration Tests"
+        run: vendor/bin/phpunit --testsuite="EVIE AI Integration Tests" --coverage-clover=coverage-integration.xml
+
+      # ------------------------------------------------------------------
+      # Coverage-Reporting (Blueprint: Unit + Integration + E2E-Abdeckung).
+      # Jede Suite schreibt ihren eigenen Clover-Report; dieser Schritt
+      # fuehrt alle coverage-*.xml zu einem Gesamt-Report coverage-merged.xml
+      # zusammen, in den jede Suite (Unit/Integration/Functional/E2E/Smoke/
+      # Security/Skills/Agent) einfliesst. pcov ist oben aktiviert.
+      # ------------------------------------------------------------------
+      - name: Merge coverage reports
+        run: php tests/scripts/merge_clover_coverage.php
+
+      - name: Coverage summary
+        run: php tests/scripts/merge_clover_coverage.php --summary coverage-merged.xml
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-report
+          path: coverage-*.xml
+          retention-days: 14
 
       - name: Composer validate
         run: composer validate --strict --no-check-publish 
