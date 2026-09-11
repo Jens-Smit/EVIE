@@ -239,6 +239,47 @@ final class StrategyManagerTest extends TestCase
         return $goal;
     }
 
+    public function testAnalyzeAndSuggestAdjustmentsIncreaseFrequencySuggestion(): void
+    {
+        $goal = $this->createGoal(1, 'Top Goal', 'active');
+        $evaluation = new GoalEvaluation();
+        $reflection = new \ReflectionClass(GoalEvaluation::class);
+        $prop = $reflection->getProperty('createdAt');
+        $prop->setValue($evaluation, new \DateTimeImmutable());
+        $reflection->getMethod('setSuccess')->invoke($evaluation, true);
+
+        $this->goalRepo->method('findByUser')->willReturn([$goal]);
+        $this->evaluationRepo->method('createQueryBuilder')->willReturn($this->createQueryBuilderMock(array_fill(0, 9, $evaluation)));
+        $this->evaluationRepo->method('getAverageScoreForGoal')->willReturn(0.95);
+        $this->evaluationRepo->method('getSuccessRateForGoal')->willReturn(95.0);
+
+        $result = $this->manager->analyzeAndSuggestAdjustments('tenant1');
+
+        $types = array_column($result['suggestions'], 'type');
+        self::assertContains('increase_frequency', $types);
+        self::assertContains('new_goal_suggestion', $types);
+    }
+
+    public function testAnalyzeAndSuggestAdjustmentsStrategyReviewWhenManyExecutions(): void
+    {
+        $goal = $this->createGoal(1, 'Busy Goal', 'active');
+        $evaluation = new GoalEvaluation();
+        $reflection = new \ReflectionClass(GoalEvaluation::class);
+        $prop = $reflection->getProperty('createdAt');
+        $prop->setValue($evaluation, new \DateTimeImmutable());
+        $reflection->getMethod('setSuccess')->invoke($evaluation, true);
+
+        $this->goalRepo->method('findByUser')->willReturn([$goal]);
+        $this->evaluationRepo->method('createQueryBuilder')->willReturn($this->createQueryBuilderMock(array_fill(0, 10, $evaluation)));
+        $this->evaluationRepo->method('getAverageScoreForGoal')->willReturn(0.9);
+        $this->evaluationRepo->method('getSuccessRateForGoal')->willReturn(100.0);
+
+        $result = $this->manager->analyzeAndSuggestAdjustments('tenant1');
+
+        $types = array_column($result['suggestions'], 'type');
+        self::assertContains('strategy_review', $types);
+    }
+
     private function createQueryBuilderMock(array $result): object
     {
         $qb = $this->createMock(\Doctrine\ORM\QueryBuilder::class);
