@@ -8,8 +8,8 @@ use Symfony\Component\Console\Attribute\AsCommand;
 use Symfony\Component\Console\Command\Command;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Output\OutputInterface;
+use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\Console\Style\SymfonyStyle;
-use Symfony\Contracts\Cache\CacheInterface;
 
 #[AsCommand(
     name: 'evie:subagents:warmup-cache',
@@ -18,11 +18,11 @@ use Symfony\Contracts\Cache\CacheInterface;
 class WarmupSubAgentsCacheCommand extends Command
 {
     private SubAgentDefinitionRepository $subAgentDefinitionRepo;
-    private CacheInterface $cache;
+    private CacheItemPoolInterface $cache;
 
     public function __construct(
         SubAgentDefinitionRepository $subAgentDefinitionRepo,
-        CacheInterface $cache
+        CacheItemPoolInterface $cache
     ) {
         $this->subAgentDefinitionRepo = $subAgentDefinitionRepo;
         $this->cache = $cache;
@@ -44,7 +44,9 @@ class WarmupSubAgentsCacheCommand extends Command
         }
 
         // 2. Speichere die Definitionen im Cache für den CompilerPass
-        $this->cache->set('ai.sub_agent.definitions', $definitions);
+        $item = $this->cache->getItem('ai.sub_agent.definitions');
+        $item->set($definitions);
+        $this->cache->save($item);
 
         $io->section('Gefundene Sub-Agenten-Definitionen:');
         foreach ($definitions as $definition) {
