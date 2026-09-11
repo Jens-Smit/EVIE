@@ -74,6 +74,12 @@ final class SecurityGuardTest extends TestCase
         self::assertTrue($this->guard->isUrlSafe('https://api.example.com/data'));
     }
 
+    public function testIsUrlSafeExpandsShortFormLargeOctetToPublic(): void
+    {
+        // 1.2130706433 (2 Oktetts, letztes > 255) expandiert via while-loop zu 1.1.0.0 (public).
+        self::assertTrue($this->guard->isUrlSafe('http://1.2130706433/x'));
+    }
+
     // ========================================================================
     // isPathSafe() — Pfad-Sandbox
     // ========================================================================
