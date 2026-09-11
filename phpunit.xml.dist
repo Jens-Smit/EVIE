@@ -86,7 +86,7 @@
         <ini name="error_reporting" value="-1" />
         <server name="APP_ENV" value="test" force="false" />
         <server name="APP_SECRET" value="test-secret-for-evie-1234567890abcdef" force="false" />
-        <server name="DATABASE_URL" value="sqlite:///%kernel.project_dir%/var/test.db" force="false" />
+        <server name="DATABASE_URL" value="postgresql://evie:evie@127.0.0.1:5432/evie_test?serverVersion=15&amp;charset=utf8" force="false" />
         <server name="MAILER_DSN" value="null://null" force="false" />
         <server name="MAILER_FROM" value="no-reply@evie.test" force="false" />
         <server name="KERNEL_CLASS" value="App\Kernel" force="false" />

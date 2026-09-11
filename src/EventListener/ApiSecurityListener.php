@@ -9,6 +9,7 @@ use Symfony\Component\HttpKernel\Event\ControllerEvent;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 use Symfony\Component\HttpKernel\KernelEvents;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
+use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 
 
@@ -23,7 +24,8 @@ class ApiSecurityListener
 
     public function __construct(
         private SecurityGuard $securityGuard,
-        private AuditLogger $auditLogger
+        private AuditLogger $auditLogger,
+        private TokenStorageInterface $tokenStorage,
     ) {
     }
 
@@ -44,8 +46,19 @@ class ApiSecurityListener
 
     private function checkApiAccess($request, string $path): void
     {
-        $user = $request->getUser();
-        
+        // Bugfix: Request::getUser() liefert nur den HTTP-Basic-User als
+        // String, nie ein UserInterface. Der authentifizierte User muss aus
+        // dem TokenStorage bezogen werden, sonst wird jede geschuetzte API-
+        // Route (auch fuer eingeloggte User) mit AccessDenied abgelehnt.
+        $user = null;
+        $token = $this->tokenStorage->getToken();
+        if (null !== $token) {
+            $tokenUser = $token->getUser();
+            if ($tokenUser instanceof UserInterface) {
+                $user = $tokenUser;
+            }
+        }
+
         // Prüfe ob User authentifiziert ist
         if (!$user instanceof UserInterface) {
             throw new AccessDeniedHttpException('Zugriff verweigert: Authentifizierung erforderlich');

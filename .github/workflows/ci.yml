@@ -53,9 +53,14 @@ jobs:
       # so no real external services (Mercure, Mistral) are required, yet
       # the full security/form/controller stack of each env is exercised.
       # ------------------------------------------------------------------
+      # Alle Test-Schritte laufen gegen die PostgreSQL-Service-Instanz
+      # (pgvector/pgvector:pg15) — keine SQLite-Ausnahmen mehr. So wird
+      # PostgreSQL-eigenes Verhalten (z.B. Strict-Typen, SERIAL, pgvector)
+      # in der CI genauso geprueft wie in Produktion.
       - name: E2E tests (test env)
         env:
           APP_SECRET: test-secret-for-evie-1234567890abcdef
+          DATABASE_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_test?serverVersion=15&charset=utf8'
         run: vendor/bin/phpunit --testsuite="E2E Tests"
 
       - name: E2E tests (dev env)
@@ -63,7 +68,7 @@ jobs:
           E2E_TESTING: '1'
           APP_ENV: dev
           APP_SECRET: test-secret-for-evie-1234567890abcdef
-          DATABASE_URL: 'sqlite:///:memory:'
+          DATABASE_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_test?serverVersion=15&charset=utf8'
           MISTRAL_API_KEY: test
           GEMINI_API_KEY: test
         run: vendor/bin/phpunit --testsuite="E2E Tests"
@@ -73,7 +78,7 @@ jobs:
           E2E_TESTING: '1'
           APP_ENV: prod
           APP_SECRET: test-secret-for-evie-1234567890abcdef
-          DATABASE_URL: 'sqlite:///:memory:'
+          DATABASE_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_test?serverVersion=15&charset=utf8'
           MISTRAL_API_KEY: test
           GEMINI_API_KEY: test
         run: |
@@ -88,7 +93,7 @@ jobs:
           E2E_TESTING: '1'
           APP_ENV: test
           APP_SECRET: test-secret-for-evie-1234567890abcdef
-          DATABASE_URL: 'sqlite:///:memory:'
+          DATABASE_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_test?serverVersion=15&charset=utf8'
           MISTRAL_API_KEY: test
           GEMINI_API_KEY: test
         run: vendor/bin/phpunit --testsuite="E2E Smoke Tests"
@@ -99,6 +104,7 @@ jobs:
       - name: Unit tests (with coverage)
         env:
           APP_SECRET: test-secret-for-evie-1234567890abcdef
+          DATABASE_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_test?serverVersion=15&charset=utf8'
         run: vendor/bin/phpunit --testsuite="EVIE AI Unit Tests" --coverage-clover=coverage-unit.xml
       # ------------------------------------------------------------------
       # Coverage-Reporting (Phase 3 / Audit CI/CD): generiert Clover-Reports
@@ -114,16 +120,19 @@ jobs:
       - name: Security tests
         env:
           APP_SECRET: test-secret-for-evie-1234567890abcdef
+          DATABASE_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_test?serverVersion=15&charset=utf8'
         run: vendor/bin/phpunit --testsuite="EVIE AI Security Tests"
 
       - name: Skills tests
         env:
           APP_SECRET: test-secret-for-evie-1234567890abcdef
+          DATABASE_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_test?serverVersion=15&charset=utf8'
         run: vendor/bin/phpunit --testsuite="EVIE AI Skills Tests"
 
       - name: Agent tests
         env:
           APP_SECRET: test-secret-for-evie-1234567890abcdef
+          DATABASE_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_test?serverVersion=15&charset=utf8'
         run: vendor/bin/phpunit --testsuite="EVIE AI Agent Tests"
 
       # -+
@@ -132,7 +141,7 @@ jobs:
       - name: Functional tests
         env:
           APP_SECRET: test-secret-for-evie-1234567890abcdef
-          DATABASE_URL: 'sqlite:///%kernel.project_dir%/var/test.db'
+          DATABASE_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_test?serverVersion=15&charset=utf8'
           MISTRAL_API_KEY: test
           GEMINI_API_KEY: test
           TAVILY_API_KEY: test
@@ -141,7 +150,7 @@ jobs:
       - name: Integration tests
         env:
           APP_SECRET: test-secret-for-evie-1234567890abcdef
-          DATABASE_URL: 'sqlite:///%kernel.project_dir%/var/test.db'
+          DATABASE_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_test?serverVersion=15&charset=utf8'
         run: vendor/bin/phpunit --testsuite="EVIE AI Integration Tests"
 
       - name: Composer validate

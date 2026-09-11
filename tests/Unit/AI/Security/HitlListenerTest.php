@@ -22,6 +22,8 @@ use Symfony\AI\Platform\Tool\Tool;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
+use Symfony\Component\Security\Core\Authentication\Token\UsernamePasswordToken;
+use Symfony\Component\Security\Core\User\InMemoryUser;
 use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
@@ -174,6 +176,73 @@ final class HitlListenerTest extends TestCase
         ($this->listener)($event);
 
         self::assertTrue($event->isDenied());
+    }
+
+    public function testAskUserWithUnregisteredToolDenies(): void
+    {
+        $guard = $this->createMock(SecurityGuard::class);
+        $guard->method('decide')->willReturn(PolicyDecision::AskUser);
+        $guard->method('addAllowedExecutor');
+        $guard->method('isToolSafe')->willReturn(true);
+
+        $requestStack = new RequestStack();
+        $requestStack->push(new Request());
+        $tokenStorage = $this->createMock(TokenStorageInterface::class);
+        $tokenStorage->method('getToken')->willReturn(null);
+        $auditRepo = $this->createMock(AuditLogRepository::class);
+        $auditRepo->method('log')->willReturn(new \App\Entity\AuditLog());
+        $listener = new HitlListener(
+            $guard,
+            $this->repo,
+            $this->dispatcher,
+            new UserContext($requestStack, $tokenStorage),
+            new AuditLogger($auditRepo, $requestStack),
+            $tokenStorage,
+        );
+
+        $this->repo->method('findOneBy')->willReturn(null);
+        $event = $this->buildEvent('unregistered_high_sec', []);
+
+        ($listener)($event);
+
+        self::assertTrue($event->isDenied());
+        self::assertStringContainsString('nicht registriert', $event->getDenialReason() ?? '');
+    }
+
+    public function testFindDefinitionUsesTenantIsolationWhenUserLoggedIn(): void
+    {
+        $definition = (new ToolDefinition())
+            ->setName('tenant_tool')
+            ->setStatus('approved')
+            ->setExecutorType('generic');
+
+        $this->repo->expects(self::once())
+            ->method('findOneByNameForUser')
+            ->with('tenant_tool', 'user@example.com')
+            ->willReturn($definition);
+        $this->repo->expects(self::never())->method('findOneBy');
+
+        $requestStack = new RequestStack();
+        $requestStack->push(new Request());
+        $tokenStorage = $this->createMock(TokenStorageInterface::class);
+        $user = new InMemoryUser('user@example.com', 'pass', ['ROLE_USER']);
+        $tokenStorage->method('getToken')->willReturn(new UsernamePasswordToken($user, 'main', ['ROLE_USER']));
+        $auditRepo = $this->createMock(AuditLogRepository::class);
+        $auditRepo->method('log')->willReturn(new \App\Entity\AuditLog());
+        $listener = new HitlListener(
+            $this->guard,
+            $this->repo,
+            $this->dispatcher,
+            new UserContext($requestStack, $tokenStorage),
+            new AuditLogger($auditRepo, $requestStack),
+            $tokenStorage,
+        );
+
+        $event = $this->buildEvent('tenant_tool', ['input' => 'data']);
+
+        ($listener)($event);
+
+        self::assertFalse($event->isDenied());
     }
 
     private function buildEvent(string $name, array $arguments): ToolCallRequested

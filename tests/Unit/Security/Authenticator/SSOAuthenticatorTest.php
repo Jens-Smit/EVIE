@@ -13,6 +13,7 @@ use Doctrine\ORM\EntityManagerInterface;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Session\Session;
+use Symfony\Component\HttpFoundation\Session\Storage\MockFileSessionStorage;
 use Symfony\Component\Security\Core\Authentication\Token\TokenInterface;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
 use Symfony\Component\Security\Http\Authenticator\Passport\Badge\UserBadge;
@@ -373,7 +374,7 @@ final class SSOAuthenticatorTest extends TestCase
     public function testOnAuthenticationFailureAddsFlashAndRedirects(): void
     {
         $exception = new AuthenticationException('Bad credentials.');
-        $session = new Session();
+        $session = new Session(new MockFileSessionStorage());
         $request = Request::create('/sso', 'POST');
         $request->setSession($session);
 
