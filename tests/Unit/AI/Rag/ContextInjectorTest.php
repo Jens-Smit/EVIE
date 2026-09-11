@@ -87,6 +87,103 @@ final class ContextInjectorTest extends TestCase
         self::assertStringNotContainsString('{context}', $result);
     }
 
+    public function testLegacyInjectAppendsContextWithoutPlaceholder(): void
+    {
+        $retriever = $this->createMock(Retriever::class);
+        $retriever->method('retrieve')
+            ->willReturn(new RetrievalResult('query', [
+                $this->createItem('Append info', 0.9, 'knowledge'),
+            ]));
+
+        $injector = new ContextInjector($retriever, $this->createUserContext());
+        $result = $injector->inject('Plain prompt', 'query');
+
+        self::assertStringContainsString('Plain prompt', $result);
+        self::assertStringContainsString('Append info', $result);
+    }
+
+    public function testLegacyInjectReturnsPromptWhenNoResults(): void
+    {
+        $retriever = $this->createMock(Retriever::class);
+        $retriever->method('retrieve')->willReturn(new RetrievalResult('query', []));
+
+        $injector = new ContextInjector($retriever, $this->createUserContext());
+        $result = $injector->inject('Prompt ohne Context', 'query');
+
+        self::assertSame('Prompt ohne Context', $result);
+    }
+
+    public function testProcessInputUsesTrustedTrustLevelWhenAllItemsTrusted(): void
+    {
+        $retriever = $this->createMock(Retriever::class);
+        $item = $this->createItem('Trusted content', 0.9, 'knowledge');
+        $item->setTrustLevel(RetrievedItem::TRUST_LEVEL_TRUSTED);
+        $retriever->method('retrieve')->willReturn(new RetrievalResult('query', [$item]));
+
+        $injector = new ContextInjector($retriever, $this->createUserContext());
+        $messageBag = new MessageBag(Message::ofUser('Frage'));
+        $input = new Input('mistral-small-latest', $messageBag);
+
+        $injector->processInput($input);
+
+        $system = $input->getMessageBag()->getMessages()[1]->getContent();
+        self::assertStringContainsString('TRUSTED - Vertrauenswuerdig', $system);
+        self::assertStringContainsString('vertrauenswuerdige Information', $system);
+    }
+
+    public function testProcessInputUsesSystemTrustLevelWhenAllItemsSystem(): void
+    {
+        $retriever = $this->createMock(Retriever::class);
+        $item = $this->createItem('System content', 0.9, 'knowledge');
+        $item->setTrustLevel(RetrievedItem::TRUST_LEVEL_SYSTEM);
+        $retriever->method('retrieve')->willReturn(new RetrievalResult('query', [$item]));
+
+        $injector = new ContextInjector($retriever, $this->createUserContext());
+        $messageBag = new MessageBag(Message::ofUser('Frage'));
+        $input = new Input('mistral-small-latest', $messageBag);
+
+        $injector->processInput($input);
+
+        $system = $input->getMessageBag()->getMessages()[1]->getContent();
+        self::assertStringContainsString('SYSTEM - System-Content', $system);
+        self::assertStringContainsString('System-Quellen', $system);
+    }
+
+    public function testProcessInputFallsBackToUntrustedForMixedTrustLevels(): void
+    {
+        $retriever = $this->createMock(Retriever::class);
+        $item1 = $this->createItem('A', 0.9, 'knowledge');
+        $item1->setTrustLevel(RetrievedItem::TRUST_LEVEL_TRUSTED);
+        $item2 = $this->createItem('B', 0.8, 'knowledge');
+        $item2->setTrustLevel(RetrievedItem::TRUST_LEVEL_UNTRUSTED);
+        $retriever->method('retrieve')->willReturn(new RetrievalResult('query', [$item1, $item2]));
+
+        $injector = new ContextInjector($retriever, $this->createUserContext());
+        $messageBag = new MessageBag(Message::ofUser('Frage'));
+        $input = new Input('mistral-small-latest', $messageBag);
+
+        $injector->processInput($input);
+
+        $system = $input->getMessageBag()->getMessages()[1]->getContent();
+        self::assertStringContainsString('UNTRUSTED', $system);
+        self::assertStringContainsString('Prompt-Injection-Schutz', $system);
+    }
+
+    public function testSetContextTemplateIsUsed(): void
+    {
+        $retriever = $this->createMock(Retriever::class);
+        $item = $this->createItem('Content X', 0.9, 'knowledge');
+        $retriever->method('retrieve')->willReturn(new RetrievalResult('query', [$item]));
+
+        $injector = new ContextInjector($retriever, $this->createUserContext());
+        $injector->setContextTemplate('CTX:{context}:END');
+
+        $result = $injector->inject('Plain prompt', 'query');
+        self::assertStringContainsString('CTX:', $result);
+        self::assertStringContainsString('Content X', $result);
+        self::assertStringContainsString(':END', $result);
+    }
+
 
     private function createUserContext(?string $identifier = null): UserContext
     {
