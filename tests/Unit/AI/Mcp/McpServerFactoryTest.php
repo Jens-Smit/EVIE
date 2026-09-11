@@ -274,4 +274,202 @@ class McpServerFactoryTest extends TestCase
 
         $this->assertCount(2, $result);
     }
+
+    public function testCreateFromDefinitionPlaywrightValidatesCommand(): void
+    {
+        $definition = new McpServerDefinition();
+        $definition->setName('test_playwright');
+        $definition->setType('playwright');
+        $definition->setDescription('Test');
+        $definition->setConfiguration(['transport' => 'stdio', 'command' => 'npx']);
+
+        $serverMock = $this->createMock(\App\AI\Mcp\McpServerInterface::class);
+        $this->securityGuardMock->method('isServiceAllowed')->willReturn(true);
+        $this->containerMock->method('has')->willReturn(true);
+        $this->containerMock->method('get')->willReturn($serverMock);
+
+        $result = $this->factory->createFromDefinition($definition);
+        $this->assertSame($serverMock, $result);
+    }
+
+    public function testCreateFromDefinitionPlaywrightBlockedCommandThrows(): void
+    {
+        $definition = new McpServerDefinition();
+        $definition->setName('bad_playwright');
+        $definition->setType('playwright');
+        $definition->setDescription('Test');
+        $definition->setConfiguration(['command' => 'evil-cmd']);
+
+        $this->securityGuardMock->method('isServiceAllowed')->willReturnMap([
+            ['ai.mcp.server.playwright', true],
+            ['evil-cmd', false],
+        ]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Command');
+
+        $this->factory->createFromDefinition($definition);
+    }
+
+    public function testCreateFromDefinitionGithubBlockedUrlThrows(): void
+    {
+        $definition = new McpServerDefinition();
+        $definition->setName('bad_github');
+        $definition->setType('github');
+        $definition->setDescription('Test');
+        $definition->setConfiguration(['url' => 'http://169.254.169.254/']);
+
+        $this->securityGuardMock->method('isServiceAllowed')->willReturn(true);
+        $this->securityGuardMock->method('isResourceBlocked')->willReturn(true);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('ist in der SecurityGuard-Blocklist');
+
+        $this->factory->createFromDefinition($definition);
+    }
+
+    public function testCreateFromDefinitionGithubValidUrlPasses(): void
+    {
+        $definition = new McpServerDefinition();
+        $definition->setName('ok_github');
+        $definition->setType('github');
+        $definition->setDescription('Test');
+        $definition->setConfiguration(['url' => 'https://api.github.com']);
+
+        $serverMock = $this->createMock(\App\AI\Mcp\McpServerInterface::class);
+        $this->securityGuardMock->method('isServiceAllowed')->willReturn(true);
+        $this->securityGuardMock->method('isResourceBlocked')->willReturn(false);
+        $this->containerMock->method('has')->willReturn(true);
+        $this->containerMock->method('get')->willReturn($serverMock);
+
+        $result = $this->factory->createFromDefinition($definition);
+        $this->assertSame($serverMock, $result);
+    }
+
+    public function testCreateFromDefinitionCustomBlockedClassThrows(): void
+    {
+        $definition = new McpServerDefinition();
+        $definition->setName('bad_custom');
+        $definition->setType('custom');
+        $definition->setDescription('Test');
+        $definition->setConfiguration(['class' => 'Evil\\Class']);
+
+        $this->securityGuardMock->method('isServiceAllowed')->willReturnMap([
+            ['ai.mcp.server.custom', true],
+            ['Evil\\Class', false],
+        ]);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('ist nicht in der SecurityGuard-Whitelist');
+
+        $this->factory->createFromDefinition($definition);
+    }
+
+    public function testCreateFromDefinitionCustomValidClassPasses(): void
+    {
+        $definition = new McpServerDefinition();
+        $definition->setName('ok_custom');
+        $definition->setType('custom');
+        $definition->setDescription('Test');
+        $definition->setConfiguration(['class' => 'App\\Safe\\Class']);
+
+        $serverMock = $this->createMock(\App\AI\Mcp\McpServerInterface::class);
+        $this->securityGuardMock->method('isServiceAllowed')->willReturn(true);
+        $this->containerMock->method('has')->willReturn(true);
+        $this->containerMock->method('get')->willReturn($serverMock);
+
+        $result = $this->factory->createFromDefinition($definition);
+        $this->assertSame($serverMock, $result);
+    }
+
+    public function testCreateFromDefinitionFilesystemBlockedArgumentThrows(): void
+    {
+        $definition = new McpServerDefinition();
+        $definition->setName('bad_fs');
+        $definition->setType('filesystem');
+        $definition->setDescription('Test');
+        $definition->setConfiguration([
+            'transport' => 'stdio',
+            'command' => 'npx',
+            'arguments' => ['/etc/passwd'],
+        ]);
+
+        $this->securityGuardMock->method('isServiceAllowed')->willReturn(true);
+        $this->securityGuardMock->method('isResourceBlocked')->willReturn(true);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('ist in der SecurityGuard-Blocklist');
+
+        $this->factory->createFromDefinition($definition);
+    }
+
+    public function testCreateFromDefinitionFilesystemShellMetacharArgumentThrows(): void
+    {
+        $definition = new McpServerDefinition();
+        $definition->setName('bad_fs_shell');
+        $definition->setType('filesystem');
+        $definition->setDescription('Test');
+        $definition->setConfiguration([
+            'transport' => 'stdio',
+            'command' => 'npx',
+            'arguments' => ['valid', 'cmd; rm -rf /'],
+        ]);
+
+        $this->securityGuardMock->method('isServiceAllowed')->willReturn(true);
+        $this->securityGuardMock->method('isResourceBlocked')->willReturn(false);
+        $this->securityGuardMock->method('containsShellMetacharacters')->willReturn(true);
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('Shell-Metazeichen');
+
+        $this->factory->createFromDefinition($definition);
+    }
+
+    public function testCreateFromDefinitionThrowsWhenServiceNotImplementsInterface(): void
+    {
+        $definition = new McpServerDefinition();
+        $definition->setName('bad_iface');
+        $definition->setType('filesystem');
+        $definition->setDescription('Test');
+        $definition->setConfiguration(['transport' => 'stdio', 'command' => 'npx']);
+
+        $this->securityGuardMock->method('isServiceAllowed')->willReturn(true);
+        $this->containerMock->method('has')->willReturn(true);
+        $this->containerMock->method('get')->willReturn(new \stdClass());
+
+        $this->expectException(\RuntimeException::class);
+        $this->expectExceptionMessage('implementiert McpServerInterface nicht');
+
+        $this->factory->createFromDefinition($definition);
+    }
+
+    public function testCreateAllFromDatabaseContinuesOnError(): void
+    {
+        $goodDefinition = new McpServerDefinition();
+        $goodDefinition->setName('ok');
+        $goodDefinition->setType('filesystem');
+        $goodDefinition->setDescription('Test');
+        $goodDefinition->setConfiguration(['transport' => 'stdio', 'command' => 'npx']);
+
+        $badDefinition = new McpServerDefinition();
+        $badDefinition->setName('bad');
+        $badDefinition->setType('invalid_type');
+        $badDefinition->setDescription('Test');
+        $badDefinition->setConfiguration([]);
+
+        $this->repoMock->method('findAllActive')->willReturn([$badDefinition, $goodDefinition]);
+        $this->securityGuardMock->method('isServiceAllowed')->willReturnMap([
+            ['ai.mcp.server.invalid_type', false],
+            ['ai.mcp.server.filesystem', true],
+            ['npx', true],
+        ]);
+        $serverMock = $this->createMock(\App\AI\Mcp\McpServerInterface::class);
+        $this->containerMock->method('has')->willReturn(true);
+        $this->containerMock->method('get')->willReturn($serverMock);
+        $this->loggerMock->method('error');
+
+        $servers = $this->factory->createAllFromDatabase();
+        $this->assertArrayHasKey('ok', $servers);
+        $this->assertArrayNotHasKey('bad', $servers);
+    }
 }
