@@ -202,6 +202,92 @@ final class ToolDefinitionGeneratorTest extends TestCase
         self::assertStringContainsString('description', $content);
     }
 
+    public function testGenerateWithDatabaseFileNetworkDependencies(): void
+    {
+        $validSchema = json_encode([
+            'type' => 'object',
+            'properties' => ['a' => ['type' => 'string'], 'b' => ['type' => 'string'], 'c' => ['type' => 'string']],
+            'required' => ['a', 'b'],
+        ], JSON_THROW_ON_ERROR);
+        $agent = new StubAgent($validSchema);
+        $this->toolDefinitionRepo->method('findAll')->willReturn([]);
+        $this->toolDefinitionRepo->method('save');
+        $generator = $this->buildGenerator($agent);
+
+        $definition = $generator->generateToolDefinition(
+            'db_tool',
+            'Liest datenbank und datei und netzwerk http api',
+            ['original_request' => 'desc']
+        );
+
+        $deps = $definition->getDependencies();
+        self::assertContains('Database', $deps);
+        self::assertContains('File System', $deps);
+        self::assertContains('Network', $deps);
+        self::assertContains('API Access', $deps);
+        self::assertSame(2, $definition->getComplexity());
+    }
+
+    public function testGenerateWithHighComplexitySchema(): void
+    {
+        $validSchema = json_encode([
+            'type' => 'object',
+            'properties' => array_fill(0, 6, ['type' => 'string']),
+            'required' => array_fill(0, 4, 'x'),
+        ], JSON_THROW_ON_ERROR);
+        $agent = new StubAgent($validSchema);
+        $this->toolDefinitionRepo->method('findAll')->willReturn([]);
+        $this->toolDefinitionRepo->method('save');
+        $generator = $this->buildGenerator($agent);
+
+        $definition = $generator->generateToolDefinition('big_tool', 'desc', ['original_request' => 'desc']);
+
+        self::assertSame(3, $definition->getComplexity());
+    }
+
+    public function testGenerateSanitizesLongName(): void
+    {
+        $longName = str_repeat('a', 60);
+        $validSchema = json_encode(['type' => 'object', 'properties' => ['x' => ['type' => 'string']]], JSON_THROW_ON_ERROR);
+        $agent = new StubAgent($validSchema);
+        $this->toolDefinitionRepo->method('findAll')->willReturn([]);
+        $this->toolDefinitionRepo->method('save');
+        $generator = $this->buildGenerator($agent);
+
+        $definition = $generator->generateToolDefinition($longName, 'desc', ['original_request' => 'desc']);
+
+        self::assertSame(50, strlen($definition->getName()));
+    }
+
+    public function testGenerateSanitizesEmptyName(): void
+    {
+        $validSchema = json_encode(['type' => 'object', 'properties' => ['x' => ['type' => 'string']]], JSON_THROW_ON_ERROR);
+        $agent = new StubAgent($validSchema);
+        $this->toolDefinitionRepo->method('findAll')->willReturn([]);
+        $this->toolDefinitionRepo->method('save');
+        $generator = $this->buildGenerator($agent);
+
+        $definition = $generator->generateToolDefinition('!!!', 'desc', ['original_request' => 'desc']);
+
+        self::assertSame('unnamed_tool', $definition->getName());
+    }
+
+    public function testApproveToolSetsApprovedStatus(): void
+    {
+        $toolDefinition = (new \App\Entity\ToolDefinition())
+            ->setName('test')
+            ->setDescription('d')
+            ->setStatus('pending');
+        $this->toolDefinitionRepo->expects(self::once())->method('save')->with($toolDefinition, true);
+
+        $generator = $this->buildGenerator(new StubAgent('{}'))
+        ;
+        $generator->approveTool($toolDefinition);
+
+        self::assertSame('approved', $toolDefinition->getStatus());
+        self::assertInstanceOf(\DateTimeImmutable::class, $toolDefinition->getApprovedAt());
+    }
+
     private function buildGenerator(StubAgent $agent): ToolDefinitionGenerator
     {
         $requestStack = new RequestStack();
