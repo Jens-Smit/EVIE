@@ -4,6 +4,7 @@
 namespace App\MessageHandler;
 
 use App\AI\Skills\Tool\DynamicToolExecutor;
+use App\AI\Skills\Tool\DynamicToolFactory;
 use App\AI\Streaming\StreamingSessionManager;
 use App\Message\ExecuteToolMessage;
 use App\Message\StreamToolResponseMessage;
@@ -21,17 +22,20 @@ use Symfony\Component\Messenger\MessageBusInterface;
 class ExecuteToolMessageHandler
 {
     private DynamicToolExecutor $toolExecutor;
+    private DynamicToolFactory $toolFactory;
     private StreamingSessionManager $sessionManager;
     private MessageBusInterface $messageBus;
     private LoggerInterface $logger;
 
     public function __construct(
         DynamicToolExecutor $toolExecutor,
+        DynamicToolFactory $toolFactory,
         StreamingSessionManager $sessionManager,
         MessageBusInterface $messageBus,
         LoggerInterface $logger
     ) {
         $this->toolExecutor = $toolExecutor;
+        $this->toolFactory = $toolFactory;
         $this->sessionManager = $sessionManager;
         $this->messageBus = $messageBus;
         $this->logger = $logger;
@@ -78,13 +82,18 @@ class ExecuteToolMessageHandler
                 $correlationId
             ));
 
-            // 4. Tool ausführen
+            // 4. Tool auflösen und ausführen
             $this->logger->debug('Führe Tool aus', [
                 'session_id' => $sessionId,
                 'tool_name' => $toolName,
             ]);
 
-            $result = $this->toolExecutor->execute($toolName, $arguments);
+            $tool = $this->toolFactory->getTool($toolName);
+            if ($tool === null) {
+                throw new \RuntimeException(sprintf('Tool "%s" nicht gefunden', $toolName));
+            }
+
+            $result = $this->toolExecutor->execute($tool, $arguments);
 
             // 5. Fortschritt aktualisieren (100%)
             $this->sessionManager->updateProgress(
@@ -95,15 +104,17 @@ class ExecuteToolMessageHandler
             );
 
             // 6. Finales Ergebnis senden
+            $finalResult = $result->isSuccess() ? ['data' => $result->getResult()] : ['error' => $result->getErrorMessage()];
+
             $this->messageBus->dispatch(StreamToolResponseMessage::createFinalResult(
                 $sessionId,
                 $toolName,
-                $result,
+                $finalResult,
                 $correlationId
             ));
 
             // 7. Session als abgeschlossen markieren
-            $this->sessionManager->completeSession($sessionId, $result, $correlationId);
+            $this->sessionManager->completeSession($sessionId, $finalResult, $correlationId);
 
             // 8. End-Message senden
             $this->messageBus->dispatch(new EndStreamingSessionMessage(
