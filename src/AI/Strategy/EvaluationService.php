@@ -218,10 +218,12 @@ class EvaluationService
         $evaluations = [];
 
         foreach ($goalHistoryPairs as $pair) {
-            if ($pair['goal'] instanceof AgentGoal && $pair['history'] instanceof AgentHistory) {
+            $goal = $pair['goal'] ?? null;
+            $history = $pair['history'] ?? null;
+            if ($goal instanceof AgentGoal && $history instanceof AgentHistory) {
                 $evaluations[] = $this->evaluateGoal(
-                    $pair['goal'],
-                    $pair['history'],
+                    $goal,
+                    $history,
                     $pair['success_metric'] ?? null
                 );
             }

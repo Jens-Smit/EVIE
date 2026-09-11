@@ -41,7 +41,7 @@ final class RestApiToolTest extends TestCase
     public function testBearerAuthAddsAuthorizationHeader(): void
     {
         $client = new MockHttpClient(function (string $method, string $url, array $options): MockResponse {
-            self::assertSame('Bearer abc', $options['headers']['Authorization']);
+            self::assertContains('Authorization: Bearer abc', $options['headers']);
 
             return new MockResponse('{"ok":true}', ['http_code' => 200]);
         });
@@ -54,7 +54,7 @@ final class RestApiToolTest extends TestCase
     public function testBasicAuthAddsBase64AuthorizationHeader(): void
     {
         $client = new MockHttpClient(function (string $method, string $url, array $options): MockResponse {
-            self::assertSame('Basic ' . base64_encode('user:pass'), $options['headers']['Authorization']);
+            self::assertContains('Authorization: Basic ' . base64_encode('user:pass'), $options['headers']);
 
             return new MockResponse('{"ok":true}', ['http_code' => 200]);
         });
@@ -67,7 +67,7 @@ final class RestApiToolTest extends TestCase
     public function testApiKeyAuthAddsXApiKeyHeader(): void
     {
         $client = new MockHttpClient(function (string $method, string $url, array $options): MockResponse {
-            self::assertSame('secret', $options['headers']['X-API-Key']);
+            self::assertContains('X-API-Key: secret', $options['headers']);
 
             return new MockResponse('{}', ['http_code' => 200]);
         });
@@ -80,7 +80,7 @@ final class RestApiToolTest extends TestCase
     public function testUnknownAuthTypeUsesRawToken(): void
     {
         $client = new MockHttpClient(function (string $method, string $url, array $options): MockResponse {
-            self::assertSame('rawtoken', $options['headers']['Authorization']);
+            self::assertContains('Authorization: rawtoken', $options['headers']);
 
             return new MockResponse('{}', ['http_code' => 200]);
         });
@@ -163,8 +163,8 @@ final class RestApiToolTest extends TestCase
     {
         $client = new MockHttpClient(function (string $method, string $url, array $options): MockResponse {
             self::assertSame(['q' => 'test'], $options['query']);
-            self::assertSame('application/json', $options['headers']['Accept']);
-            self::assertSame('custom-value', $options['headers']['X-Custom']);
+            self::assertContains('Accept: application/json', $options['headers']);
+            self::assertContains('X-Custom: custom-value', $options['headers']);
 
             return new MockResponse('{}', ['http_code' => 200]);
         });
