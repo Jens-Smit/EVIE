@@ -8,8 +8,15 @@
  * Zusammenfuehrungs-Regel:
  *  - Zeilen-Coverage: count = max aller Reports (Zeile gilt als ausgefuehrt,
  *    sobald irgendeine Suite sie getroffen hat).
- *  - Datei-/Klassen-/Projekt-Metriken: neu aggregiert aus den gemerged-en
- *    Zeilen (coveredstatements = Anzahl Zeilen mit count > 0).
+ *  - Datei-/Klassen-/Projekt-Metriken: neu aggregiert aus den gesetzten
+ *    count-Attributen (coveredstatements = Anzahl Zeilen mit count > 0).
+ *
+ * Vorgehen: Alle Reports instrumentieren denselben src/-Baum und haben daher
+ * identische Datei-/Zeilen-Struktur. Es wird die Struktur des ersten Reports
+ * als Vorlage verwendet, die count-Attribute werden pro (Datei, Zeile) auf
+ * das Maximum aller Reports gesetzt. So entfaellt importNode und damit jede
+ * Live-DOM-Interferenz; die Metriken werden danach garantiert konsistent neu
+ * berechnet.
  *
  * Aufruf:
  *   php tests/scripts/merge_clover_coverage.php                 # merge -> coverage-merged.xml
@@ -36,12 +43,13 @@ declare(strict_types=1);
             fwrite(STDERR, "Fehler: Clover-Datei fehlt oder nicht lesbar: {$summaryFile}\n");
             exit(1);
         }
-        printSummary(loadDoc($summaryFile));
+        $doc = loadDoc($summaryFile);
+        recomputeMetrics($doc);
+        printSummary($doc);
         exit(0);
     }
 
     $reports = glob(__DIR__ . '/../../coverage-*.xml') ?: [];
-    // coverage-merged.xml selbst ausschließen, falls von einem frueheren Lauf vorhanden.
     $reports = array_values(array_filter($reports, static fn (string $f) => basename($f) !== 'coverage-merged.xml'));
 
     if ($reports === []) {
@@ -49,10 +57,38 @@ declare(strict_types=1);
         exit(1);
     }
 
-    $merged = merge(loadDoc($reports[0]));
-    for ($i = 1; $i < count($reports); $i++) {
-        $merged = mergeInto($merged, loadDoc($reports[$i]));
+    // Struktur-Vorlage = erster Report.
+    $merged = loadDoc($reports[0]);
+
+    // Aggregat: name -> [lineNum => maxCount].
+    $maxCounts = [];
+    foreach ($reports as $report) {
+        $doc = loadDoc($report);
+        foreach ($doc->getElementsByTagName('file') as $file) {
+            $name = $file->getAttribute('name');
+            if (!isset($maxCounts[$name])) {
+                $maxCounts[$name] = [];
+            }
+            foreach ($file->getElementsByTagName('line') as $line) {
+                $num = (int) $line->getAttribute('num');
+                $count = (int) $line->getAttribute('count');
+                if ($count > ($maxCounts[$name][$num] ?? 0)) {
+                    $maxCounts[$name][$num] = $count;
+                }
+            }
+        }
     }
+
+    // Aggregat auf Vorlage anwenden.
+    foreach ($merged->getElementsByTagName('file') as $file) {
+        $name = $file->getAttribute('name');
+        $counts = $maxCounts[$name] ?? [];
+        foreach ($file->getElementsByTagName('line') as $line) {
+            $num = (int) $line->getAttribute('num');
+            $line->setAttribute('count', (string) ($counts[$num] ?? 0));
+        }
+    }
+
     recomputeMetrics($merged);
 
     $outPath = __DIR__ . '/../../coverage-merged.xml';
@@ -74,58 +110,6 @@ function loadDoc(string $file): DOMDocument
     return $doc;
 }
 
-function merge(DOMDocument $doc): DOMDocument
-{
-    $doc->documentElement->setAttribute('generated', (string) time());
-    $project = $doc->getElementsByTagName('project')->item(0);
-    if ($project !== null) {
-        $project->setAttribute('timestamp', (string) time());
-    }
-    return $doc;
-}
-
-function mergeInto(DOMDocument $base, DOMDocument $other): DOMDocument
-{
-    $baseFiles = [];
-    foreach ($base->getElementsByTagName('file') as $f) {
-        $baseFiles[$f->getAttribute('name')] = $f;
-    }
-
-    foreach ($other->getElementsByTagName('file') as $otherFile) {
-        $name = $otherFile->getAttribute('name');
-        if (isset($baseFiles[$name])) {
-            mergeFileLines($baseFiles[$name], $otherFile);
-        } else {
-            $imported = $base->importNode($otherFile, true);
-            $base->getElementsByTagName('project')->item(0)->appendChild($imported);
-            $baseFiles[$name] = $imported;
-        }
-    }
-
-    return $base;
-}
-
-function mergeFileLines(DOMElement $baseFile, DOMElement $otherFile): void
-{
-    $otherLines = [];
-    foreach ($otherFile->getElementsByTagName('line') as $line) {
-        $otherLines[(int) $line->getAttribute('num')] = $line;
-    }
-
-    foreach ($baseFile->getElementsByTagName('line') as $baseLine) {
-        $num = (int) $baseLine->getAttribute('num');
-        if (!isset($otherLines[$num])) {
-            continue;
-        }
-        $otherLine = $otherLines[$num];
-        $baseCount = (int) $baseLine->getAttribute('count');
-        $otherCount = (int) $otherLine->getAttribute('count');
-        if ($otherCount > $baseCount) {
-            $baseLine->setAttribute('count', (string) $otherCount);
-        }
-    }
-}
-
 function recomputeMetrics(DOMDocument $doc): void
 {
     $project = $doc->getElementsByTagName('project')->item(0);
@@ -145,77 +129,73 @@ function recomputeMetrics(DOMDocument $doc): void
     foreach ($doc->getElementsByTagName('file') as $file) {
         $totalFiles++;
 
-        $fileStmts = 0;
-        $fileCoveredStmts = 0;
-        $fileMethods = 0;
-        $fileCoveredMethods = 0;
-        $fileLoc = 0;
-        $fileNcloc = 0;
-
         $class = $file->getElementsByTagName('class')->item(0);
-        if ($class !== null) {
-            $totalClasses++;
-            $classMethods = 0;
-            $classCoveredMethods = 0;
-            $classStmts = 0;
-            $classCoveredStmts = 0;
+        if ($class === null) {
+            continue;
+        }
+        $totalClasses++;
 
-            foreach ($file->getElementsByTagName('line') as $line) {
-                $type = $line->getAttribute('type');
-                $count = (int) $line->getAttribute('count');
-                if ($type === 'method') {
-                    $classMethods++;
-                    $fileMethods++;
-                    $totalMethods++;
-                    if ($count > 0) {
-                        $classCoveredMethods++;
-                        $fileCoveredMethods++;
-                        $coveredMethods++;
-                    }
-                } elseif ($type === 'stmt') {
-                    $classStmts++;
-                    $fileStmts++;
-                    $totalStatements++;
-                    if ($count > 0) {
-                        $classCoveredStmts++;
-                        $fileCoveredStmts++;
-                        $coveredStatements++;
-                    }
+        $classMethods = 0;
+        $classCoveredMethods = 0;
+        $classStmts = 0;
+        $classCoveredStmts = 0;
+
+        foreach ($file->getElementsByTagName('line') as $line) {
+            $type = $line->getAttribute('type');
+            $count = (int) $line->getAttribute('count');
+            if ($type === 'method') {
+                $classMethods++;
+                $totalMethods++;
+                if ($count > 0) {
+                    $classCoveredMethods++;
+                    $coveredMethods++;
+                }
+            } elseif ($type === 'stmt') {
+                $classStmts++;
+                $totalStatements++;
+                if ($count > 0) {
+                    $classCoveredStmts++;
+                    $coveredStatements++;
                 }
             }
+        }
 
-            $classMetrics = $class->getElementsByTagName('metrics')->item(0);
-            if ($classMetrics !== null) {
-                $classMetrics->setAttribute('methods', (string) $classMethods);
-                $classMetrics->setAttribute('coveredmethods', (string) $classCoveredMethods);
-                $classMetrics->setAttribute('statements', (string) $classStmts);
-                $classMetrics->setAttribute('coveredstatements', (string) $classCoveredStmts);
-                $elements = $classMethods + $classStmts;
-                $coveredElements = $classCoveredMethods + $classCoveredStmts;
-                $classMetrics->setAttribute('elements', (string) $elements);
-                $classMetrics->setAttribute('coveredelements', (string) $coveredElements);
-            }
+        $classMetrics = $class->getElementsByTagName('metrics')->item(0);
+        if ($classMetrics !== null) {
+            $classMetrics->setAttribute('methods', (string) $classMethods);
+            $classMetrics->setAttribute('coveredmethods', (string) $classCoveredMethods);
+            $classMetrics->setAttribute('statements', (string) $classStmts);
+            $classMetrics->setAttribute('coveredstatements', (string) $classCoveredStmts);
+            $elements = $classMethods + $classStmts;
+            $coveredElements = $classCoveredMethods + $classCoveredStmts;
+            $classMetrics->setAttribute('elements', (string) $elements);
+            $classMetrics->setAttribute('coveredelements', (string) $coveredElements);
+        }
 
-            $fm = $file->getElementsByTagName('metrics')->item(0);
-            if ($fm !== null) {
-                $fileLoc = (int) $fm->getAttribute('loc');
-                $fileNcloc = (int) $fm->getAttribute('ncloc');
-                $fm->setAttribute('methods', (string) $fileMethods);
-                $fm->setAttribute('coveredmethods', (string) $fileCoveredMethods);
-                $fm->setAttribute('statements', (string) $fileStmts);
-                $fm->setAttribute('coveredstatements', (string) $fileCoveredStmts);
-                $fe = $fileMethods + $fileStmts;
-                $fce = $fileCoveredMethods + $fileCoveredStmts;
-                $fm->setAttribute('elements', (string) $fe);
-                $fm->setAttribute('coveredelements', (string) $fce);
-            }
-
+        $fm = $file->getElementsByTagName('metrics')->item(0);
+        if ($fm !== null) {
+            $fileLoc = (int) $fm->getAttribute('loc');
+            $fileNcloc = (int) $fm->getAttribute('ncloc');
             $totalLoc += $fileLoc;
             $totalNcloc += $fileNcloc;
+            $fm->setAttribute('methods', (string) $classMethods);
+            $fm->setAttribute('coveredmethods', (string) $classCoveredMethods);
+            $fm->setAttribute('statements', (string) $classStmts);
+            $fm->setAttribute('coveredstatements', (string) $classCoveredStmts);
+            $fe = $classMethods + $classStmts;
+            $fce = $classCoveredMethods + $classCoveredStmts;
+            $fm->setAttribute('elements', (string) $fe);
+            $fm->setAttribute('coveredelements', (string) $fce);
         }
     }
 
-    $projectMetrics = $project->getElementsByTagName('metrics')->item(0);
+    $projectMetrics = null;
+    foreach ($project->getElementsByTagName('metrics') as $m) {
+        if ($m->parentNode === $project) {
+            $projectMetrics = $m;
+            break;
+        }
+    }
     if ($projectMetrics !== null) {
         $projectMetrics->setAttribute('files', (string) $totalFiles);
         $projectMetrics->setAttribute('loc', (string) $totalLoc);
@@ -234,10 +214,15 @@ function recomputeMetrics(DOMDocument $doc): void
 
 function printSummary(DOMDocument $doc): void
 {
-    $metrics = $doc->getElementsByTagName('metrics');
+    $project = $doc->getElementsByTagName('project')->item(0);
+    if ($project === null) {
+        fwrite(STDERR, "Kein project-Element gefunden.\n");
+        return;
+    }
+
     $projectMetrics = null;
-    foreach ($metrics as $m) {
-        if ($m->parentNode->nodeName === 'project') {
+    foreach ($project->getElementsByTagName('metrics') as $m) {
+        if ($m->parentNode === $project) {
             $projectMetrics = $m;
             break;
         }
