@@ -30,7 +30,7 @@ class SubAgent
 
     #[ORM\ManyToOne(targetEntity: UserProfile::class, inversedBy: 'subAgents')]
     #[ORM\JoinColumn(nullable: false)]
-    private UserProfile $user;
+    private ?UserProfile $user = null;
 
     #[ORM\Column(type: Types::JSON, nullable: true)]
     private ?array $capabilities = [];
@@ -109,12 +109,12 @@ class SubAgent
         return $this;
     }
 
-    public function getUser(): UserProfile
+    public function getUser(): ?UserProfile
     {
         return $this->user;
     }
 
-    public function setUser(UserProfile $user): static
+    public function setUser(?UserProfile $user): static
     {
         $this->user = $user;
         return $this;
