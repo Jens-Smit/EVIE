@@ -145,7 +145,7 @@ class Organization
     public function removeUser(User $user): static
     {
         if ($this->users->removeElement($user)) {
-            if ($user->getOrganizationId() === $this->getId()) {
+            if ((string) $user->getOrganizationId() === (string) $this->getId()) {
                 $user->setOrganizationId(null);
             }
         }
