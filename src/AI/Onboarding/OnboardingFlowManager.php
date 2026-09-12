@@ -628,13 +628,4 @@ class OnboardingFlowManager
             'metadata' => $preferences['_onboarding_metadata'] ?? [],
         ];
     }
-
-    /**
-     * Loggt einen Fehler (Bestandteil der oeffentlichen API fuer Fallbacks).
-     */
-    private function logError(string $message, array $context = []): void
-    {
-        // Fehler werden nicht weiter gereicht; deterministischer Flow braucht
-        // kein Logging-Backend, um den Abschluss nicht zu gefaehrden.
-    }
 }
