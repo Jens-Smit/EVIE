@@ -22,7 +22,7 @@
 - [x] Prod-Nginx-Config (`docker/nginx/prod.conf`): hardened, HTTP/2,
       Upstream-Keepalive zum PHP-FPM (Connection Pooling), Gzip
 - [x] PHP-FPM Worker-Tuning (OPcache im `Dockerfile.prod`)
-- [x] Messenger-Worker-Container (`messenger:consume`, separater Container)
+- [x] Messenger-Worker-Container (`messenger:consume`, separater Container, aufgeteilt in async / hitl_approvals / failed)
 - [x] Redis (Cache/Rate-Limiter/Messenger-Transport, maxmemory+LRU)
 - [ ] GHCR Image Publishing (manuell/Prozess)
 
@@ -89,7 +89,9 @@ docker compose -f docker-compose.prod.yml logs -f app
 | Service   | Image              | Rolle                              | Resource-Limit |
 |-----------|--------------------|------------------------------------|----------------|
 | app       | `Dockerfile.prod`  | PHP-FPM (Web-Requests)             | 2 CPU, 1G RAM  |
-| worker    | `Dockerfile.prod`  | Messenger-Consumer (async)         | 1 CPU, 512M    |
+| worker-async (�3) | `Dockerfile.prod` | Messenger-Consumer (async)   | je 1 CPU, 512M |
+| worker-hitl      | `Dockerfile.prod` | Messenger-Consumer (hitl_approvals) | 1 CPU, 512M |
+| worker-failed    | `Dockerfile.prod` | Messenger-Consumer (failed/Retries) | 1 CPU, 512M |
 | nginx     | `nginx:alpine`     | Reverse Proxy (HTTP/2, Gzip, HSTS) | 0.5 CPU, 128M  |
 | postgres  | `pgvector/pgvector:pg15` | DB + Vektor-Store             | 2 CPU, 1G RAM  |
 | redis     | `redis:7-alpine`   | Cache/Rate-Limiter/Messenger       | 0.5 CPU, 256M  |

@@ -41,15 +41,20 @@ services:
           cpus: '2.0'
           memory: 1G
 
-  worker:
-    # Separater Messenger-Worker-Container (P1-6): entkoppelt asynchrone
-    # Verarbeitung (Streaming-Sessions, Tool-Responses, E-Mails) vom
-    # Web-Request-Pfad. Nutzt dasselbe Image wie die App.
+  # --- Messenger-Worker (P1-6) -------------------------------------------
+  # Asynchrone Verarbeitung ist in drei Transporte aufgeteilt, damit
+  # Lastarten isoliert skaliert werden koennen (vgl. config/packages/messenger.yaml):
+  #   - async           : Streaming-Sessions, Tool-Responses, E-Mails (meiste Last)
+  #   - hitl_approvals   : Human-in-the-Loop-Best�tigungen (weniger Last, manuell)
+  #   - failed          : Retries fehlgeschlagener Nachrichten
+  # Die Worker nutzen denselben Build wie die App (x-worker-base Anchor).
+  worker-async: &worker-base
+    # Drei async-Worker fuer Skalierbarkeit & Isolation: an dieser Stelle
+    # faellt die meiste Last an (Streaming, Tool-Responses, Mail-Versand).
     build:
       context: .
       dockerfile: docker/php/Dockerfile.prod
       target: runtime
-    container_name: evie_worker_prod
     restart: unless-stopped
     command: ["php", "bin/console", "messenger:consume", "async", "--limit=100", "--memory-limit=128M", "--time-limit=3600"]
     environment:
@@ -60,6 +65,8 @@ services:
       - PGVECTOR_URL=postgresql://evie:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD muss gesetzt sein}@postgres:5432/evie?serverVersion=15&charset=utf8
       - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - TAVILY_API_KEY=${TAVILY_API_KEY:-}
+      - FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY:-}
       - MESSENGER_TRANSPORT_DSN=redis://redis:6379/messages
       - MAILER_DSN=${MAILER_DSN:-smtp://localhost}
       - MAILER_FROM=${MAILER_FROM:-no-reply@evie.local}
@@ -74,6 +81,23 @@ services:
         limits:
           cpus: '1.0'
           memory: 512M
+  worker-async-2:
+    # Zweiter async-Worker fuer erhoehten Durchsatz / Ausfallsicherheit.
+    <<: *worker-base
+  worker-async-3:
+    # Dritter async-Worker; bei Last auf Streaming/Tool-Responses.
+    <<: *worker-base
+  worker-hitl:
+    # Ein Worker fuer hitl_approvals: HITL-Bestaetigungen sind meist
+    # manuell getrieben und lastaermer; ein Prozess reicht aus.
+    <<: *worker-base
+    command: ["php", "bin/console", "messenger:consume", "hitl_approvals", "--limit=50", "--memory-limit=128M", "--time-limit=3600"]
+  worker-failed:
+    # Ein Worker ausschliesslich fuer Retries aus der failed-Queue.
+    # Laenge Pausen zwischen Retries, damit nicht gegen einen dauerhaft
+    # fehlerhaften Dienst gepoltert wird.
+    <<: *worker-base
+    command: ["php", "bin/console", "messenger:consume", "failed", "--limit=10", "--memory-limit=128M", "--time-limit=3600", "--sleep=30"]
 
   nginx:
     # Prod-Nginx mit eigener Config (kein Dev-default.conf-Mount).
