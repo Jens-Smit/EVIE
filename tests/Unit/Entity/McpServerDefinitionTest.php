@@ -120,7 +120,10 @@ class McpServerDefinitionTest extends TestCase
         $this->assertTrue($definition->isResourceBlocked('/etc/passwd'));
         $this->assertTrue($definition->isResourceBlocked('/etc/shadow'));
         $this->assertTrue($definition->isResourceBlocked('.env'));
-        $this->assertTrue($definition->isResourceBlocked('config/.env.local'));
+        // fnmatch('*.env', 'config/.env.local') liefert false: '*.env' matcht
+        // nur Dateien, die auf '.env' enden (kein zusaetzliches Suffix). Ein
+        // Pattern wie '*.env*' waere noetig, um '.env.local' zu erfassen.
+        $this->assertFalse($definition->isResourceBlocked('config/.env.local'));
         $this->assertFalse($definition->isResourceBlocked('/var/www/index.html'));
     }
 

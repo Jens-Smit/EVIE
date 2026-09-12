@@ -79,6 +79,15 @@ class ToolDefinition
      */
     #[ORM\Column(type: Types::STRING, length: 255, nullable: true)]
     private ?string $userIdentifier = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $approvedAt = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $rejectedAt = null;
+
+    #[ORM\Column(type: Types::STRING, length: 500, nullable: true)]
+    private ?string $rejectionReason = null;
     // ================================================
 
     public function __construct()
@@ -290,6 +299,39 @@ class ToolDefinition
     public function setUserIdentifier(?string $userIdentifier): static
     {
         $this->userIdentifier = $userIdentifier;
+        return $this;
+    }
+
+    public function getApprovedAt(): ?DateTimeImmutable
+    {
+        return $this->approvedAt;
+    }
+
+    public function setApprovedAt(?DateTimeImmutable $approvedAt): static
+    {
+        $this->approvedAt = $approvedAt;
+        return $this;
+    }
+
+    public function getRejectedAt(): ?DateTimeImmutable
+    {
+        return $this->rejectedAt;
+    }
+
+    public function setRejectedAt(?DateTimeImmutable $rejectedAt): static
+    {
+        $this->rejectedAt = $rejectedAt;
+        return $this;
+    }
+
+    public function getRejectionReason(): ?string
+    {
+        return $this->rejectionReason;
+    }
+
+    public function setRejectionReason(?string $rejectionReason): static
+    {
+        $this->rejectionReason = $rejectionReason;
         return $this;
     }
     // ================================================

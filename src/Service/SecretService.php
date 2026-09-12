@@ -4,6 +4,7 @@ namespace App\Service;
 
 use App\Entity\Secret;
 use App\Repository\SecretRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 
 /**
@@ -18,6 +19,7 @@ class SecretService
 
     public function __construct(
         private readonly SecretRepository $secretRepository,
+        private readonly EntityManagerInterface $entityManager,
         #[Autowire(param: 'kernel.secret')]
         string $kernelSecret
     ) {
@@ -161,7 +163,7 @@ class SecretService
             $this->secretRepository->remove($secret);
         }
         
-        $this->secretRepository->getEntityManager()->flush();
+        $this->entityManager->flush();
     }
 
     /**

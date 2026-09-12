@@ -39,11 +39,13 @@ foreach ([
     }
 }
 
-// DATABASE_URL — only default to in-memory SQLite when no explicit DB is
-// configured. For dev/prod E2E runs the caller (or .env) supplies a real
-// DATABASE_URL (typically an isolated test DB on the same engine).
+// DATABASE_URL — defaults to PostgreSQL when no explicit DB is configured,
+// so tests exercise the same engine as production (strict types, SERIAL,
+// pgvector). The CI service (pgvector/pgvector:pg15) exposes evie_test on
+// 127.0.0.1:5432; local runs must provide a matching DATABASE_URL or install
+// a local PostgreSQL instance with an evie_test database.
 if (!isset($_ENV['DATABASE_URL']) && !getenv('DATABASE_URL')) {
-    putenv('DATABASE_URL=sqlite:///:memory:');
+    putenv('DATABASE_URL=postgresql://evie:evie@127.0.0.1:5432/evie_test?serverVersion=15&charset=utf8');
 }
 
 // APP_SECRET must be set for the container to compile.

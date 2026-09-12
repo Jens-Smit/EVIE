@@ -129,8 +129,11 @@ final class CriticalActionsFunctionalTest extends KernelTestCase
 
         self::assertSame('pending', $definition->getStatus());
 
-        // HITL-Freigabe simulieren.
-        $generator->approveTool($definition);
+        // HITL-Freigabe simulieren (wie ToolApprovalController::approveTool):
+        // Status auf 'approved' setzen und persistieren.
+        $definition->setStatus('approved');
+        $definition->setApprovedAt(new \DateTimeImmutable());
+        $repo->save($definition, true);
 
         // Status in der DB verifizieren (clear() ist keine Repo-Methode).
         $this->entityManager->clear();
@@ -172,7 +175,10 @@ final class CriticalActionsFunctionalTest extends KernelTestCase
         $repo = static::getContainer()->get(ToolDefinitionRepository::class);
         $def = $repo->findOneBy(['name' => 'toolbox_exposed_tool']);
         self::assertNotNull($def);
-        $generator->approveTool($def);
+        // Freigabe simulieren (wie ToolApprovalController::approveTool).
+        $def->setStatus('approved');
+        $def->setApprovedAt(new \DateTimeImmutable());
+        $repo->save($def, true);
         $this->entityManager->clear();
 
         $toolsAfter = $toolbox->getTools();

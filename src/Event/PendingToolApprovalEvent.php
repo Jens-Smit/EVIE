@@ -13,9 +13,15 @@ final class PendingToolApprovalEvent extends Event
 {
     public const NAME = 'ai.tool.pending_approval';
 
+    /**
+     * @param string|null $userIdentifier Tenant-Identifier des anfragenden Users
+     *     (null im CLI-Kontext oder wenn kein Security-Token verfuegbar ist).
+     * @param bool $approved true bei Freigabe, false bei Ablehnung / wartet
+     */
     public function __construct(
         private ToolDefinition $toolDefinition,
-        private string $userIdentifier,
+        private ?string $userIdentifier = null,
+        private bool $approved = false,
     ) {
     }
 
@@ -24,8 +30,13 @@ final class PendingToolApprovalEvent extends Event
         return $this->toolDefinition;
     }
 
-    public function getUserIdentifier(): string
+    public function getUserIdentifier(): ?string
     {
         return $this->userIdentifier;
+    }
+
+    public function isApproved(): bool
+    {
+        return $this->approved;
     }
 }

@@ -406,4 +406,52 @@ class StreamingSessionManagerTest extends TestCase
         $this->assertEquals(2, $result['running']);
         $this->assertEquals(3, $result['completed']);
     }
+
+    public function testCreateSessionWithUserIdLoadsUser(): void
+    {
+        $userId = Uuid::v4();
+        $userRepo = $this->createMock(\Doctrine\ORM\EntityRepository::class);
+        $user = new \App\Entity\User();
+        $user->setEmail('u@example.com');
+        $userRepo->method('find')->with($userId)->willReturn($user);
+        $this->entityManagerMock->method('getRepository')->with('App\Entity\User')->willReturn($userRepo);
+        $this->entityManagerMock->method('persist');
+        $this->entityManagerMock->method('flush');
+
+        $result = $this->manager->createSession('test_tool', [], 'user_123', $userId);
+
+        self::assertNotNull($result);
+        self::assertSame($user, $result->getUser());
+    }
+
+    public function testCancelSessionNotFoundReturnsNull(): void
+    {
+        $this->sessionRepoMock->method('findOneBySessionId')->willReturn(null);
+        $this->loggerMock->method('warning');
+
+        $result = $this->manager->cancelSession('missing_session');
+
+        self::assertNull($result);
+    }
+
+    public function testAddPartialResult(): void
+    {
+        $sessionMock = $this->createMock(StreamingSession::class);
+        $sessionMock->expects(self::once())->method('addPartialResult')->with(['chunk' => 'data']);
+        $this->sessionRepoMock->method('findOneBySessionId')->with('session_123')->willReturn($sessionMock);
+        $this->entityManagerMock->expects(self::once())->method('flush');
+
+        $result = $this->manager->addPartialResult('session_123', ['chunk' => 'data']);
+
+        self::assertSame($sessionMock, $result);
+    }
+
+    public function testAddPartialResultNotFoundReturnsNull(): void
+    {
+        $this->sessionRepoMock->method('findOneBySessionId')->willReturn(null);
+
+        $result = $this->manager->addPartialResult('missing', ['x']);
+
+        self::assertNull($result);
+    }
 }

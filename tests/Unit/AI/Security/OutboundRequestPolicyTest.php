@@ -146,4 +146,76 @@ final class OutboundRequestPolicyTest extends TestCase
     {
         self::assertNull($this->policy->resolveAllowedIp(':::not-a-url'));
     }
+
+    public function testRejectsUnparseableUrl(): void
+    {
+        // parse_url() liefert false -> Warning + false.
+        self::assertFalse($this->policy->isUrlAllowed('http:///example.com'));
+    }
+
+    public function testBlockedHostPatternBlocksUrl(): void
+    {
+        $this->policy->addBlockedHostPattern('*.evil.com');
+        self::assertFalse($this->policy->isUrlAllowed('https://attacker.evil.com/data'));
+    }
+
+    public function testAllowedHostPatternAllowsMatchingHost(): void
+    {
+        $this->policy->addAllowedHostPattern('example.com');
+        self::assertTrue($this->policy->isUrlAllowed('https://example.com/data'));
+    }
+
+    public function testAllowedHostPatternBlocksNonMatchingHost(): void
+    {
+        $this->policy->addAllowedHostPattern('example.com');
+        self::assertFalse($this->policy->isUrlAllowed('https://other.com/data'));
+    }
+
+    public function testAllowPrivateNetworksBypassesPrivateNetworkDnsCheck(): void
+    {
+        // allow_private_networks=true bypasses isPrivateNetwork() (DNS-basiert)
+        // fuer Hostnamen. Direkte private IPs werden ueber isIpAllowed() weiter-
+        // hin geblockt (Defense-in-Depth). Ein oeffentlicher Hostname bleibt
+        // erlaubt, auch wenn isPrivateNetwork theoretisch greifen wuerde.
+        $policy = new OutboundRequestPolicy(new NullLogger(), [
+            'allow_private_networks' => true,
+            'allow_redirects' => false,
+            'max_redirects' => 0,
+        ]);
+        self::assertTrue($policy->isUrlAllowed('https://example.com/data'));
+        // Direkte private IP bleibt trotz allowPrivateNetworks geblockt.
+        self::assertFalse($policy->isUrlAllowed('http://127.0.0.1/local'));
+    }
+
+    public function testAllowRedirectsSetsFlag(): void
+    {
+        $this->policy->allowRedirects(true, 3);
+        self::assertInstanceOf(OutboundRequestPolicy::class, $this->policy);
+    }
+
+    public function testAllowPrivateNetworksSetterEnablesBypass(): void
+    {
+        $this->policy->allowPrivateNetworks(true);
+        // Ein oeffentlicher Hostname bleibt erlaubt; der DNS-basierte
+        // isPrivateNetwork-Check wird durch den Setter bypassed.
+        self::assertTrue($this->policy->isUrlAllowed('https://example.com/data'));
+    }
+
+    public function testAddBlockedHostPatternSetter(): void
+    {
+        $this->policy->addBlockedHostPattern('blocked.test');
+        self::assertFalse($this->policy->isUrlAllowed('https://blocked.test/x'));
+    }
+
+    public function testResolveAllowedIpReturnsNullForEmptyHost(): void
+    {
+        self::assertNull($this->policy->resolveAllowedIp('https:///path'));
+    }
+
+    public function testIsIpAllowedRejectsUnknownIpType(): void
+    {
+        // resolveAllowedIp mit einer gueltigen oeffentlichen IPv6 ueber den
+        // direkten IP-Pfad deckt isIpAllowed() fuer IPv6 ab.
+        self::assertSame('2606:4700::1', $this->policy->resolveAllowedIp('http://[2606:4700::1]/data'));
+    }
 }

@@ -6,7 +6,7 @@ namespace App\EventListener;
 use App\Event\PendingToolApprovalEvent;
 use App\Entity\ToolDefinition;
 use Symfony\Component\Notifier\NotifierInterface;
-use Symfony\Component\Notifier\Message\ChatMessage;
+use Symfony\Component\Notifier\Notification\Notification;
 use Symfony\Component\Notifier\Recipient\Recipient;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 use Psr\Log\LoggerInterface;
@@ -40,8 +40,11 @@ final readonly class PendingToolApprovalListener
             'tool_id' => $toolDefinition->getId(),
         ]);
 
-        // 1. Benachrichtigung per Chat/Notifier senden
-        $this->sendNotification($toolDefinition, $userIdentifier);
+        // 1. Benachrichtigung per Chat/Notifier senden (nur wenn ein Tenant-
+        //    Identifier vorhanden ist; im CLI/Worker ohne Token wird uebersprungen).
+        if (null !== $userIdentifier) {
+            $this->sendNotification($toolDefinition, $userIdentifier);
+        }
 
         // Die native DynamicToolbox liest approved Tools live aus der Datenbank
         // (Blueprint §4.B) — ein Registry-Update ist nicht erforderlich.
@@ -61,8 +64,8 @@ final readonly class PendingToolApprovalListener
             'id' => $toolDefinition->getId(),
         ], UrlGeneratorInterface::ABSOLUTE_URL);
 
-        // Erstelle eine Chat-Nachricht (kann an Slack, Telegram, etc. gesendet werden)
-        $message = new ChatMessage(
+        // Erstelle eine Benachrichtigung (kann an Slack, Telegram, etc. gesendet werden)
+        $message = new Notification(
             sprintf(
                 "🤖 *Neues AI-Tool wartet auf Freigabe*\n\n" .
                 "**Tool:** `%s`\n" .
@@ -77,11 +80,7 @@ final readonly class PendingToolApprovalListener
         );
 
         // Sende an den User (hier muss der Recipient angepasst werden)
-        $recipient = new Recipient(
-            $userIdentifier,
-            null,
-            'chat' // Standard-Kanal (kann in der Konfiguration angepasst werden)
-        );
+        $recipient = new Recipient($userIdentifier);
 
         try {
             $this->notifier->send($message, $recipient);

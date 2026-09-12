@@ -139,7 +139,7 @@ class Embedding
             $normB += ($vectorB[$i] ?? 0) * ($vectorB[$i] ?? 0);
         }
         
-        if ($normA === 0 || $normB === 0) {
+        if ($normA == 0 || $normB == 0) {
             return 0.0;
         }
         

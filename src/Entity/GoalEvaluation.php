@@ -120,9 +120,9 @@ class GoalEvaluation
         return $this->evaluationDetails;
     }
 
-    public function setEvaluationDetails(?string $evaluationDetails): static
+    public function setEvaluationDetails(array|string|null $evaluationDetails): static
     {
-        $this->evaluationDetails = $evaluationDetails;
+        $this->evaluationDetails = is_array($evaluationDetails) ? json_encode($evaluationDetails) : $evaluationDetails;
         return $this;
     }
 

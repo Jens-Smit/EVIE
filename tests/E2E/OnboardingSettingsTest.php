@@ -83,7 +83,7 @@ class OnboardingSettingsTest extends WebTestCase
         $this->client->request('GET', '/onboarding');
 
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorExists('[x-data="onboardingFlow()"]');
+        $this->assertSelectorExists('[x-data="onboardingFlow"]');
         $this->assertSelectorTextContains('', 'Willkommen bei EVIE');
         $this->assertSelectorTextContains('', 'Lass uns ein paar Dinge einrichten');
     }
@@ -187,9 +187,14 @@ class OnboardingSettingsTest extends WebTestCase
     {
         $this->createUserAndLogin('sidebar@beispiel.de', 'SidebarPass123');
         $crawler = $this->client->request('GET', '/dashboard');
-        $settingsLink = $crawler->filter('a[href*="/settings"]');
-        $this->assertGreaterThan(0, $settingsLink->count(), 'Sidebar sollte einen /settings-Link enthalten.');
+        // Der Sidebar hat mehrere /settings-Sub-Links (Quota, Secrets, ...).
+        // Der Haupt-Einstellungen-Link zeigt exakt auf /settings (app_settings)
+        // und traegt den Text "Einstellungen". Wir filtern daher auf den Text
+        // statt nur auf href enthaelt /settings (was auch /settings/quota matcht).
+        $settingsLink = $crawler->filter('a:contains("Einstellungen")');
+        $this->assertGreaterThan(0, $settingsLink->count(), 'Sidebar sollte einen Einstellungen-Link enthalten.');
         $this->assertSame('Einstellungen', trim($settingsLink->text()));
+        $this->assertStringContainsString('/settings', $settingsLink->attr('href'));
     }
 
     public function testSettingsPageContainsDsgvoActions(): void
@@ -331,7 +336,7 @@ class OnboardingSettingsTest extends WebTestCase
     {
         $this->client->request('GET', '/datenschutz');
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorTextContains('', 'Datenschutzerklaerung');
+        $this->assertSelectorTextContains('', 'Datenschutzerklärung');
         $this->assertSelectorTextContains('', 'DSGVO');
         $this->assertSelectorTextContains('', 'Mistral AI');
     }

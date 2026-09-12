@@ -4,7 +4,6 @@
 namespace App\Controller\Frontend;
 
 use App\AI\Streaming\StreamingSessionManager;
-use App\Repository\StreamingSessionRepository;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -19,8 +18,7 @@ use Symfony\Component\Security\Core\User\UserInterface;
 class StreamingController extends AbstractController
 {
     public function __construct(
-        private StreamingSessionManager $sessionManager,
-        private StreamingSessionRepository $sessionRepo
+        private StreamingSessionManager $sessionManager
     ) {
     }
 

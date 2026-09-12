@@ -78,6 +78,7 @@ final class DataPrivacyService
                 ? $this->subAgentRepository->findBy(['user' => $profile])
                 : [],
             'audit_logs' => $this->auditLogRepository->findBy(['userId' => $user->getId()]),
+            'legal_notice' => 'Dieser Datenexport wurde gem. Art. 20 DSGVO (Recht auf Datenuebertragbarkeit) erstellt. Die Daten sind maschinenlesbar und koennen an einen anderen Verantwortlichen uebermittelt werden. Fuer Auskunfts- und Loeschansprueche siehe Art. 15 bzw. Art. 17 DSGVO.',
         ];
     }
 
@@ -129,7 +130,12 @@ final class DataPrivacyService
                 $deleted++;
             }
 
-            // Profile selbst loeschen
+            // Profile selbst loeschen. Die inverse User->profile-Assoziation
+            // hat cascade:['persist'] — ohne Trennung der Referenz wuerde das
+            // spaetere persist($user) das geloeschte Profil wiederherstellen
+            // (cascade-persist resurrects). Daher Referenz vor dem Loeschen
+            // aufheben, damit flush() das Profil tatsaechlich aus der DB entfernt.
+            $user->setProfile(null);
             $em->remove($profile);
             $deleted++;
         }

@@ -60,6 +60,15 @@ class AgentGoal
     #[ORM\Column(type: Types::BOOLEAN, options: ['default' => false])]
     private bool $isApproved = false;
 
+    #[ORM\Column(type: Types::TEXT, nullable: true)]
+    private ?string $successMetric = null;
+
+    #[ORM\Column(type: Types::DATETIME_IMMUTABLE, nullable: true)]
+    private ?DateTimeImmutable $lastEvaluation = null;
+
+    #[ORM\Column(type: Types::FLOAT, nullable: true)]
+    private ?float $lastEvaluationScore = null;
+
     #[ORM\ManyToOne(targetEntity: UserProfile::class)]
     #[ORM\JoinColumn(nullable: true)]
     private ?UserProfile $userProfile = null;
@@ -245,6 +254,39 @@ class AgentGoal
     public function setUserProfile(?UserProfile $userProfile): static
     {
         $this->userProfile = $userProfile;
+        return $this;
+    }
+
+    public function getSuccessMetric(): ?string
+    {
+        return $this->successMetric;
+    }
+
+    public function setSuccessMetric(?string $successMetric): static
+    {
+        $this->successMetric = $successMetric;
+        return $this;
+    }
+
+    public function getLastEvaluation(): ?DateTimeImmutable
+    {
+        return $this->lastEvaluation;
+    }
+
+    public function setLastEvaluation(?DateTimeImmutable $lastEvaluation): static
+    {
+        $this->lastEvaluation = $lastEvaluation;
+        return $this;
+    }
+
+    public function getLastEvaluationScore(): ?float
+    {
+        return $this->lastEvaluationScore;
+    }
+
+    public function setLastEvaluationScore(?float $lastEvaluationScore): static
+    {
+        $this->lastEvaluationScore = $lastEvaluationScore;
         return $this;
     }
 

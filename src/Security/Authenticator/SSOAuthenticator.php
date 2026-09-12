@@ -241,7 +241,10 @@ class SSOAuthenticator extends AbstractAuthenticator
     public function onAuthenticationFailure(Request $request, AuthenticationException $exception): ?Response
     {
         $message = strtr($exception->getMessageKey(), $exception->getMessageData());
-        $request->getSession()->getFlashBag()->add('error', $message);
+        $session = $request->getSession();
+        if ($session instanceof \Symfony\Component\HttpFoundation\Session\Session) {
+            $session->getFlashBag()->add('error', $message);
+        }
 
         return new RedirectResponse($this->urlGenerator->generate('app_login'));
     }

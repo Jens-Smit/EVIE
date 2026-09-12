@@ -146,7 +146,8 @@ class NavigationPagesTest extends WebTestCase
 
     public function testMcpServersPageLoads(): void
     {
-        $this->createUserAndLogin('mcp@beispiel.de', 'McpPass123', ['ROLE_ADMIN']);
+        // /mcp/servers erfordert ROLE_ADMIN (Verwaltung der MCP-Server).
+        $this->createAdminAndLogin('mcp@beispiel.de', 'McpPass123');
 
         $this->client->request('GET', '/mcp/servers');
 

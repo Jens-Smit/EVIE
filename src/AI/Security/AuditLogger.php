@@ -35,11 +35,11 @@ class AuditLogger
             $userId,
             $entityId,
             $entityType,
-            array_merge($context, [
+            array_merge([
                 'user_email' => $user?->getUserIdentifier(),
                 'ip_address' => $ipAddress,
-                'user_agent' => $userAgent
-            ]),
+                'user_agent' => $userAgent,
+            ], $context),
             $status,
             $details
         );
@@ -112,7 +112,7 @@ class AuditLogger
     /**
      * Logge Authentifizierungsversuch
      */
-    public function logAuthenticationAttempt(?UserInterface $user, bool $success, ?string $error = null, string $ipAddress = null): AuditLog
+    public function logAuthenticationAttempt(?UserInterface $user, bool $success, ?string $error = null, ?string $ipAddress = null): AuditLog
     {
         return $this->log(
             'authentication',

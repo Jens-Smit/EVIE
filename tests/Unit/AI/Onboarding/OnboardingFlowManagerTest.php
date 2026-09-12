@@ -175,4 +175,123 @@ final class OnboardingFlowManagerTest extends TestCase
             }
         };
     }
+
+    public function testGetOnboardingStatusNotStartedWithoutProfile(): void
+    {
+        $this->userProfileRepo->method('findOneBy')->willReturn(null);
+
+        $status = $this->manager->getOnboardingStatus('user-123');
+
+        self::assertSame('not_started', $status['status']);
+    }
+
+    public function testGetOnboardingStatusCompletedFromProfile(): void
+    {
+        $profile = new UserProfile();
+        $profile->setUserIdentifier('user-123');
+        $profile->setOnboardingData(['completed' => true, 'completed_at' => '2026-01-01T00:00:00+00:00']);
+        $this->userProfileRepo->method('findOneBy')->willReturn($profile);
+
+        $status = $this->manager->getOnboardingStatus('user-123');
+
+        self::assertSame('completed', $status['status']);
+        self::assertSame('2026-01-01T00:00:00+00:00', $status['completed_at']);
+    }
+
+    public function testGetOnboardingStatusInProgressFromContext(): void
+    {
+        $profile = new UserProfile();
+        $profile->setUserIdentifier('user-123');
+        $this->userProfileRepo->method('findOneBy')->willReturn($profile);
+        $this->contextStore->method('loadContext')->willReturn([
+            'onboarding_data' => ['started_at' => '2026-01-01T00:00:00+00:00'],
+        ]);
+
+        $status = $this->manager->getOnboardingStatus('user-123');
+
+        self::assertSame('in_progress', $status['status']);
+    }
+
+    public function testGetOnboardingStatusCompletedWhenRequiredFieldsPresent(): void
+    {
+        $profile = new UserProfile();
+        $profile->setUserIdentifier('user-123');
+        $this->userProfileRepo->method('findOneBy')->willReturn($profile);
+        $this->contextStore->method('loadContext')->willReturn([
+            'onboarding_data' => ['user_type' => 'Business'],
+        ]);
+
+        $status = $this->manager->getOnboardingStatus('user-123');
+
+        self::assertSame('completed', $status['status']);
+    }
+
+    public function testResetOnboardingClearsContextAndProfile(): void
+    {
+        $profile = new UserProfile();
+        $profile->setUserIdentifier('user-123');
+        $profile->setOnboardingData(['completed' => true]);
+        $this->userProfileRepo->method('findOneBy')->willReturn($profile);
+        $this->contextStore->method('loadContext')->willReturn([
+            'onboarding_data' => ['user_type' => 'Business'],
+        ]);
+        $this->contextStore->expects(self::once())->method('saveContext');
+        $this->userProfileRepo->expects(self::once())->method('save');
+
+        $this->manager->resetOnboarding('user-123');
+
+        $onb = $profile->getOnboardingData();
+        self::assertFalse($onb['completed']);
+        self::assertNull($onb['completed_at']);
+    }
+
+    public function testResumeOnboardingStartsFresh(): void
+    {
+        $this->contextStore->method('loadContext')->willReturn([]);
+        $this->contextStore->expects(self::atLeastOnce())->method('saveContext');
+        $this->userProfileRepo->method('findOneBy')->willReturn(null);
+
+        $result = $this->manager->resumeOnboarding('user-123');
+
+        self::assertSame('in_progress', $result['status']);
+    }
+
+    public function testCompleteOnboardingUpdatesUserProfileFromContext(): void
+    {
+        $this->contextStore->method('loadContext')->willReturn([
+            'onboarding_data' => [
+                'status' => 'in_progress',
+                'user_type' => 'Business (CRM, Termine)',
+                'user_type_detail' => 'detail',
+                'technical_skills' => ['php'],
+                'experience_level' => 'advanced',
+                'use_cases' => ['crm'],
+                'industry' => 'IT',
+                'industry_detail' => 'SaaS',
+                'response_style' => 'concise',
+                'technical_level' => 'high',
+                'language' => 'de',
+                'notifications' => ['email'],
+                'hitl_requirements' => ['critical'],
+                'security_level' => 'strict',
+            ],
+        ]);
+
+        $profile = new UserProfile();
+        $profile->setUserIdentifier('user-123');
+        $this->userProfileRepo->method('findOneBy')->willReturn($profile);
+        $this->userProfileRepo->expects(self::once())->method('save');
+
+        $result = $this->manager->completeOnboarding('user-123');
+
+        self::assertSame('completed', $result['status']);
+        self::assertSame('Business (CRM, Termine)', $profile->getUserType());
+        $preferences = $profile->getPreferences() ?? [];
+        self::assertSame('detail', $preferences['user_type_detail']);
+        self::assertSame(['php'], $preferences['technical_skills']);
+        self::assertSame('IT', $preferences['industry']);
+        self::assertSame('de', $preferences['language']);
+        self::assertSame('strict', $preferences['security_level']);
+        self::assertArrayHasKey('_onboarding_metadata', $preferences);
+    }
 }

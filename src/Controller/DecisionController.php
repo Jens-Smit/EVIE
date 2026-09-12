@@ -194,6 +194,32 @@ class DecisionController extends AbstractController
     }
 
     /**
+     * Prüft, ob ausstehende Entscheidungen vorhanden sind.
+     *
+     * WICHTIG: Diese spezifische Route muss vor der generischen
+     * /api/decisions/{id}-Route definiert sein, da Symfony Routen in
+     * Definitionsreihenfolge matchet und {id} andernfalls das Literal
+     * "check" schluckt (was zu einem int-ParametertypeError fuehrt).
+     */
+    #[Route('/api/decisions/check', name: 'api_decisions_check', methods: ['GET'])]
+    public function checkPendingDecisions(#[CurrentUser] ?UserInterface $user = null): JsonResponse
+    {
+        if (null === $user) {
+            return $this->json(['error' => 'Authentifizierung erforderlich.'], 401);
+        }
+        
+        $userIdentifier = $user->getUserIdentifier();
+        $hasPending = $this->decisionManager->hasPendingDecisions($userIdentifier);
+        $count = $this->decisionManager->countPendingDecisions($userIdentifier);
+
+        return $this->json([
+            'status' => 'success',
+            'has_pending' => $hasPending,
+            'count' => $count,
+        ]);
+    }
+
+    /**
      * Gibt eine bestimmte Entscheidung zurück
      */
     #[Route('/api/decisions/{id}', name: 'api_decisions_show', methods: ['GET'])]
@@ -222,27 +248,6 @@ class DecisionController extends AbstractController
                 'approved_by' => $decision->getApprovedBy(),
                 'metadata' => $decision->getMetadata(),
             ],
-        ]);
-    }
-
-    /**
-     * Prüft, ob ausstehende Entscheidungen vorhanden sind
-     */
-    #[Route('/api/decisions/check', name: 'api_decisions_check', methods: ['GET'])]
-    public function checkPendingDecisions(#[CurrentUser] ?UserInterface $user = null): JsonResponse
-    {
-        if (null === $user) {
-            return $this->json(['error' => 'Authentifizierung erforderlich.'], 401);
-        }
-        
-        $userIdentifier = $user->getUserIdentifier();
-        $hasPending = $this->decisionManager->hasPendingDecisions($userIdentifier);
-        $count = $this->decisionManager->countPendingDecisions($userIdentifier);
-
-        return $this->json([
-            'status' => 'success',
-            'has_pending' => $hasPending,
-            'count' => $count,
         ]);
     }
 
