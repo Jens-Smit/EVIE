@@ -57,6 +57,39 @@
                 </template>
             </div>
 
+            <!-- Multiselect (Mehrfachauswahl + Freitext) -->
+            <div x-show="currentType === 'multiselect'" class="space-y-3">
+                <template x-for="(label, key) in currentOptions" :key="key">
+                    <button @click="toggleMulti(key)"
+                            class="w-full text-left p-4 rounded-xl border bg-surface-muted transition-all
+                                   text-content font-medium flex items-center gap-3"
+                            :class="multiSelected.includes(key) ? 'border-primary bg-primary-soft' : 'border-border hover:border-primary'">
+                        <span class="w-5 h-5 rounded-md border flex items-center justify-center shrink-0"
+                              :class="multiSelected.includes(key) ? 'bg-primary border-primary' : 'border-border'">
+                            <i x-show="multiSelected.includes(key)" class="ph ph-check text-white text-xs"></i>
+                        </span>
+                        <span x-text="label"></span>
+                    </button>
+                </template>
+
+                <!-- Freitext fuer zusaetzliche Bereiche/Use-Cases -->
+                <div x-show="allowFreetext" class="space-y-2">
+                    <input type="text" x-model="multiFreetext"
+                           class="w-full p-3 border border-border rounded-xl bg-surface-muted text-content
+                                  focus:ring-2 focus:ring-primary focus:border-transparent"
+                           placeholder="Eigene Eingabe (Komma-getrennt fuer mehrere)">
+                </div>
+
+                <div class="flex gap-2 pt-2">
+                    <button @click="submitMultiselect()"
+                            class="btn btn-primary"
+                            :disabled="multiSelected.length === 0 && !multiFreetext.trim()">
+                        <i class="ph ph-arrow-right"></i>
+                        Weiter (<span x-text="multiSelected.length + freetextItems().length"></span> ausgewaehlt)
+                    </button>
+                </div>
+            </div>
+
             <!-- Text Input -->
             <div x-show="currentType === 'text'" class="space-y-3">
                 <textarea x-model="textInput"
@@ -83,6 +116,10 @@
                     <i class="ph ph-lock-key"></i>
                     Wird verschl&uuml;sselt gespeichert und nie im Klartext angezeigt.
                 </p>
+                <p x-show="currentArea" class="text-xs text-info flex items-center gap-1">
+                    <i class="ph ph-shield-check"></i>
+                    Der Key wird vor dem Speichern live geprueft.
+                </p>
                 <div class="flex gap-2">
                     <button @click="submitResponse(textInput)"
                             class="btn btn-primary"
@@ -92,49 +129,86 @@
                     </button>
                     <button x-show="!currentRequired" @click="submitResponse('')"
                             class="btn btn-ghost">
-                        Überspringen
+                        &Uuml;berspringen
                     </button>
                 </div>
             </div>
 
-            <!-- E-Mail Verbindung (SMTP/IMAP) -->
-            <div x-show="currentType === 'email_smtp' || currentType === 'email_imap'" class="space-y-3">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <input type="text" x-model="emailConfig.host"
-                           class="w-full p-3 border border-border rounded-xl bg-surface-muted text-content"
-                           placeholder="Host (z.B. smtp.gmail.com)">
-                    <input type="text" x-model="emailConfig.port"
-                           class="w-full p-3 border border-border rounded-xl bg-surface-muted text-content"
-                           :placeholder="currentType === 'email_smtp' ? 'Port (587)' : 'Port (993)'">
-                    <input type="text" x-model="emailConfig.user"
-                           class="w-full p-3 border border-border rounded-xl bg-surface-muted text-content"
-                           placeholder="Benutzername / E-Mail">
-                    <input type="password" x-model="emailConfig.pass"
-                           class="w-full p-3 border border-border rounded-xl bg-surface-muted text-content"
-                           placeholder="Passwort / App-Passwort" autocomplete="off">
-                    <select x-model="emailConfig.encryption"
-                            class="w-full p-3 border border-border rounded-xl bg-surface-muted text-content">
-                        <option value="">Keine Verschl&uuml;sselung</option>
-                        <option value="ssl">SSL</option>
-                        <option value="tls">TLS</option>
-                    </select>
-                    <input type="email" x-model="emailConfig.from"
-                           class="w-full p-3 border border-border rounded-xl bg-surface-muted text-content"
-                           placeholder="Absender-E-Mail (optional)">
+            <!-- Kombinierte E-Mail-Maske (SMTP + IMAP) -->
+            <div x-show="currentType === 'email_combined'" class="space-y-4">
+                <div x-show="currentArea" class="text-xs text-info bg-info-soft px-3 py-2 rounded-lg">
+                    <i class="ph ph-envelope-simple-open"></i>
+                    Bereich: <span x-text="currentAreaLabel"></span> &mdash; du kannst pro Bereich eine eigene Adresse hinterlegen.
                 </div>
+
+                <div class="space-y-3">
+                    <h3 class="font-semibold text-content flex items-center gap-2">
+                        <i class="ph ph-paper-plane-tilt text-primary"></i> SMTP (Versand)
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <input type="text" x-model="emailConfig.smtp_host"
+                               class="w-full p-3 border border-border rounded-xl bg-surface-muted text-content"
+                               placeholder="SMTP-Host (z.B. smtp.gmail.com)">
+                        <input type="text" x-model="emailConfig.smtp_port"
+                               class="w-full p-3 border border-border rounded-xl bg-surface-muted text-content"
+                               placeholder="Port (587)">
+                        <input type="text" x-model="emailConfig.smtp_user"
+                               class="w-full p-3 border border-border rounded-xl bg-surface-muted text-content"
+                               placeholder="Benutzername / E-Mail">
+                        <input type="password" x-model="emailConfig.smtp_pass"
+                               class="w-full p-3 border border-border rounded-xl bg-surface-muted text-content"
+                               placeholder="Passwort / App-Passwort" autocomplete="off">
+                        <select x-model="emailConfig.smtp_encryption"
+                                class="w-full p-3 border border-border rounded-xl bg-surface-muted text-content">
+                            <option value="tls">TLS</option>
+                            <option value="ssl">SSL</option>
+                            <option value="">Keine</option>
+                        </select>
+                        <input type="email" x-model="emailConfig.from"
+                               class="w-full p-3 border border-border rounded-xl bg-surface-muted text-content"
+                               placeholder="Absender-E-Mail">
+                    </div>
+                </div>
+
+                <div class="space-y-3">
+                    <h3 class="font-semibold text-content flex items-center gap-2">
+                        <i class="ph ph-inbox text-primary"></i> IMAP (Empfang)
+                    </h3>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                        <input type="text" x-model="emailConfig.imap_host"
+                               class="w-full p-3 border border-border rounded-xl bg-surface-muted text-content"
+                               placeholder="IMAP-Host (z.B. imap.gmail.com)">
+                        <input type="text" x-model="emailConfig.imap_port"
+                               class="w-full p-3 border border-border rounded-xl bg-surface-muted text-content"
+                               placeholder="Port (993)">
+                        <input type="text" x-model="emailConfig.imap_user"
+                               class="w-full p-3 border border-border rounded-xl bg-surface-muted text-content"
+                               placeholder="Benutzername (leer = wie SMTP)">
+                        <input type="password" x-model="emailConfig.imap_pass"
+                               class="w-full p-3 border border-border rounded-xl bg-surface-muted text-content"
+                               placeholder="Passwort (leer = wie SMTP)" autocomplete="off">
+                        <select x-model="emailConfig.imap_encryption"
+                                class="w-full p-3 border border-border rounded-xl bg-surface-muted text-content">
+                            <option value="ssl">SSL</option>
+                            <option value="tls">TLS</option>
+                            <option value="">Keine</option>
+                        </select>
+                    </div>
+                </div>
+
                 <p class="text-xs text-content-muted">
-                    Die Zugangsdaten werden verschl&uuml;sselt als Secret gespeichert.
+                    Die Zugangsdaten werden verschl&uuml;sselt als Secret gespeichert. Verschiedene Bereiche koennen verschiedene Adressen nutzen.
                 </p>
                 <div class="flex gap-2">
-                    <button @click="submitEmailConfig()"
+                    <button @click="submitEmailCombined()"
                             class="btn btn-primary"
-                            :disabled="!emailConfig.host.trim()">
+                            :disabled="!emailConfig.smtp_host.trim() && !emailConfig.imap_host.trim()">
                         <i class="ph ph-floppy-disk"></i>
                         Speichern & Weiter
                     </button>
                     <button @click="submitResponse('')"
                             class="btn btn-ghost">
-                        Überspringen
+                        &Uuml;berspringen
                     </button>
                 </div>
             </div>
@@ -187,8 +261,31 @@
         currentHelp: '',
         currentRequired: true,
         currentError: '',
+        currentArea: null,
+        allowFreetext: false,
         textInput: '',
-        emailConfig: { host: '', port: '', user: '', pass: '', encryption: 'tls', from: '' },
+        multiSelected: [],
+        multiFreetext: '',
+        emailConfig: {
+            smtp_host: '', smtp_port: '', smtp_user: '', smtp_pass: '', smtp_encryption: 'tls',
+            imap_host: '', imap_port: '', imap_user: '', imap_pass: '', imap_encryption: 'ssl',
+            from: ''
+        },
+
+        get currentAreaLabel() {
+            if (!this.currentArea) return '';
+            const labels = {
+                sales: 'Vertrieb', support: 'Support / Kundenservice', marketing: 'Marketing',
+                hr: 'Personalwesen (HR)', finance: 'Finanzen / Buchhaltung',
+                operations: 'Betrieb / Operations', project_management: 'Projektmanagement',
+                it: 'IT / Technik'
+            };
+            return labels[this.currentArea] || this.currentArea;
+        },
+
+        freetextItems() {
+            return this.multiFreetext.split(',').map(s => s.trim()).filter(s => s !== '');
+        },
 
         async init() {
             try {
@@ -209,6 +306,24 @@
             }
         },
 
+        toggleMulti(key) {
+            const idx = this.multiSelected.indexOf(key);
+            if (idx === -1) {
+                this.multiSelected.push(key);
+            } else {
+                this.multiSelected.splice(idx, 1);
+            }
+        },
+
+        async submitMultiselect() {
+            const items = [...this.multiSelected, ...this.freetextItems()];
+            if (items.length === 0) {
+                this.currentError = 'Bitte mindestens eine Option auswaehlen.';
+                return;
+            }
+            await this.submitResponse(items);
+        },
+
         async submitResponse(response) {
             this.loading = true;
             this.currentError = '';
@@ -223,7 +338,13 @@
                 });
                 const data = await res.json();
                 this.textInput = '';
+                this.resetMulti();
                 this.resetEmailConfig();
+                if (!res.ok && data.error_type === 'invalid_api_key') {
+                    this.currentError = data.error;
+                    this.restoreStep();
+                    return;
+                }
                 this.updateStep(data);
             } catch (e) {
                 this.currentError = 'Antwort konnte nicht gesendet werden.';
@@ -232,21 +353,37 @@
             }
         },
 
-        async submitEmailConfig() {
+        async submitEmailCombined() {
             const cfg = { ...this.emailConfig };
-            if (!cfg.host.trim()) {
-                this.currentError = 'Bitte einen Host angeben oder überspringen.';
+            // SMTP-User/Pass als Fallback fuer IMAP verwenden, falls leer.
+            if (!cfg.imap_user.trim()) cfg.imap_user = cfg.smtp_user;
+            if (!cfg.imap_pass.trim()) cfg.imap_pass = cfg.smtp_pass;
+            if (!cfg.smtp_host.trim() && !cfg.imap_host.trim()) {
+                this.currentError = 'Bitte mindestens einen Host angeben oder ueberspringen.';
                 return;
             }
             await this.submitResponse(cfg);
         },
 
+        resetMulti() {
+            this.multiSelected = [];
+            this.multiFreetext = '';
+        },
+
         resetEmailConfig() {
-            this.emailConfig = { host: '', port: '', user: '', pass: '', encryption: 'tls', from: '' };
+            this.emailConfig = {
+                smtp_host: '', smtp_port: '', smtp_user: '', smtp_pass: '', smtp_encryption: 'tls',
+                imap_host: '', imap_port: '', imap_user: '', imap_pass: '', imap_encryption: 'ssl',
+                from: ''
+            };
+        },
+
+        restoreStep() {
+            // Bei Validierungsfehler:aktuellen Schritt beibehalten, nur Loading entfernen.
         },
 
         async skipOnboarding() {
-            if (!confirm('Möchtest du das Onboarding wirklich überspringen? Du kannst es später in den Einstellungen nachholen.')) {
+            if (!confirm('M\u00f6chtest du das Onboarding wirklich \u00fcberspringen? Du kannst es sp\u00e4ter in den Einstellungen nachholen.')) {
                 return;
             }
             try {
@@ -256,7 +393,7 @@
                 });
                 window.location.href = '{{ path("app_dashboard") }}';
             } catch (e) {
-                this.currentError = 'Überspringen fehlgeschlagen.';
+                this.currentError = '\u00dcberspringen fehlgeschlagen.';
             }
         },
 
@@ -268,11 +405,13 @@
             this.currentStep = data.current_step ?? 0;
             this.totalSteps = data.total_steps ?? (this.currentStep + 1);
             this.currentPhase = data.phase ?? '';
-            this.currentQuestion = data.question ?? 'Wie können wir dir helfen?';
+            this.currentQuestion = data.question ?? 'Wie k\u00f6nnen wir dir helfen?';
             this.currentType = data.type ?? 'multiple_choice';
             this.currentOptions = data.options ?? {};
             this.currentHelp = data.help ?? '';
             this.currentRequired = data.required !== false;
+            this.currentArea = data.area ?? null;
+            this.allowFreetext = data.allow_freetext === true;
         }
     });
     if (typeof Alpine !== 'undefined') {

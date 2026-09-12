@@ -6,6 +6,7 @@ namespace App\AI\Onboarding;
 
 use App\Entity\UserProfile;
 use App\Repository\UserProfileRepository;
+use App\Service\ApiKeyValidator;
 use App\Service\SecretService;
 use Symfony\AI\Agent\AgentInterface;
 use Symfony\AI\Platform\Message\Message;
@@ -45,7 +46,7 @@ class OnboardingFlowManager
     private OnboardingStepProvider $stepProvider;
     private IntegrationRequirementMapper $requirementMapper;
     private SecretService $secretService;
-    private int $currentStep = 0;
+    private ?ApiKeyValidator $apiKeyValidator;
 
     /**
      * @param ContextStoreManager           $contextStore       Verwaltet den Benutzerkontext
@@ -61,7 +62,8 @@ class OnboardingFlowManager
         AgentInterface $onboardingAgent,
         OnboardingStepProvider $stepProvider,
         IntegrationRequirementMapper $requirementMapper,
-        SecretService $secretService
+        SecretService $secretService,
+        ?ApiKeyValidator $apiKeyValidator = null
     ) {
         $this->contextStore = $contextStore;
         $this->userProfileRepo = $userProfileRepo;
@@ -69,6 +71,7 @@ class OnboardingFlowManager
         $this->stepProvider = $stepProvider;
         $this->requirementMapper = $requirementMapper;
         $this->secretService = $secretService;
+        $this->apiKeyValidator = $apiKeyValidator;
     }
 
     /**
@@ -81,8 +84,6 @@ class OnboardingFlowManager
      */
     public function startOnboarding(string $userIdentifier, array $initialContext = []): array
     {
-        $this->currentStep = 0;
-
         $context = $this->contextStore->loadContext($userIdentifier);
         if (!isset($context['onboarding_data'])) {
             $context['onboarding_data'] = [
@@ -91,7 +92,6 @@ class OnboardingFlowManager
                 'prompt_version' => '2.0',
             ];
         }
-        $context['onboarding_data']['current_step'] = $this->currentStep;
         $this->contextStore->saveContext($userIdentifier, $context);
 
         return $this->buildStepResponse($userIdentifier, $context);
@@ -117,9 +117,8 @@ class OnboardingFlowManager
             ];
         }
 
-        $this->currentStep = $context['onboarding_data']['current_step'] ?? 0;
         $steps = $this->resolveSteps($context);
-        $currentStepDef = $steps[$this->currentStep] ?? null;
+        $currentStepDef = $this->firstUnansweredStep($steps, $context['onboarding_data']);
 
         if ($currentStepDef === null) {
             return $this->completeOnboarding($userIdentifier);
@@ -131,7 +130,7 @@ class OnboardingFlowManager
         // Antwort normalisieren und im Kontext speichern.
         $normalized = $this->normalizeResponse($response, $type);
         $context['onboarding_data'][$field] = $normalized;
-        $context['onboarding_data']['step_' . $this->currentStep] = [
+        $context['onboarding_data']['step_' . $field] = [
             'response' => $normalized,
             'timestamp' => (new \DateTimeImmutable())->format(\DATE_ATOM),
         ];
@@ -140,22 +139,13 @@ class OnboardingFlowManager
         // LLM-Praeferenz-Persistierung, Modell-Optionen dynamisieren).
         $this->applyStepSideEffects($userIdentifier, $context, $currentStepDef, $normalized);
 
-        // Wenn der Use-Case-Schritt beantwortet wurde, muessen die
-        // Schnittstellen-Schritte neu in die Schrittfolge eingefuegt werden,
-        // da ihre Anzahl von den Use-Cases abhaengt.
+        // use_cases als Liste sicherstellen, damit der RequirementMapper
+        // die Schnittstellen-Schritte ableiten kann.
         if ($field === 'use_cases') {
-            // use_cases als Liste sicherstellen
             $context['onboarding_data']['use_cases'] = $this->toArray($normalized);
         }
 
-        $this->currentStep++;
-        $context['onboarding_data']['current_step'] = $this->currentStep;
         $this->contextStore->saveContext($userIdentifier, $context);
-
-        $steps = $this->resolveSteps($context);
-        if (!isset($steps[$this->currentStep])) {
-            return $this->completeOnboarding($userIdentifier);
-        }
 
         return $this->buildStepResponse($userIdentifier, $context);
     }
@@ -171,7 +161,6 @@ class OnboardingFlowManager
     public function getNextStep(string $userIdentifier, array $additionalContext = []): array
     {
         $context = $this->contextStore->loadContext($userIdentifier);
-        $this->currentStep = $context['onboarding_data']['current_step'] ?? 0;
 
         return $this->buildStepResponse($userIdentifier, $context);
     }
@@ -205,8 +194,6 @@ class OnboardingFlowManager
         $context['onboarding_data']['completed_at'] = (new \DateTimeImmutable())->format(\DATE_ATOM);
         $context['onboarding_data']['status'] = 'completed';
         $this->contextStore->saveContext($userIdentifier, $context);
-
-        $this->currentStep = 0;
 
         // Onboarding-Agent (optional) ueber Abschluss informieren. Fehler
         // hier duerfen den Abschluss nicht blockieren.
@@ -250,7 +237,6 @@ class OnboardingFlowManager
 
         return [
             'status' => 'in_progress',
-            'current_step' => $context['onboarding_data']['current_step'] ?? 0,
             'onboarding_data' => $context['onboarding_data'],
         ];
     }
@@ -260,8 +246,6 @@ class OnboardingFlowManager
      */
     public function resetOnboarding(string $userIdentifier): void
     {
-        $this->currentStep = 0;
-
         $context = $this->contextStore->loadContext($userIdentifier);
         unset($context['onboarding_data']);
         $this->contextStore->saveContext($userIdentifier, $context);
@@ -300,9 +284,47 @@ class OnboardingFlowManager
      */
     private function resolveSteps(array $context): array
     {
-        $useCases = $this->toArray($context['onboarding_data']['use_cases'] ?? []);
+        return $this->stepProvider->allSteps($context['onboarding_data'] ?? [], $this->requirementMapper);
+    }
 
-        return $this->stepProvider->allSteps($useCases, $this->requirementMapper);
+    /**
+     * Bestimmt den naechsten unbeantworteten Schritt anhand des onboarding-
+     * Kontexts. Da die Schrittfolge dynamisch ist (verzweigend, schrumpfend),
+     * kann nicht mit einem festen numerischen Index gearbeitet werden: ein
+     * beantworteter Schritt faellt aus der Liste, und der Index wuerde sich
+     * verschieben. Stattdessen wird der erste Schritt geliefert, dessen
+     * Feld im Kontext noch nicht gesetzt ist.
+     *
+     * @param array<int, array<string, mixed>> $steps
+     * @param array<string, mixed>             $onboardingData
+     *
+     * @return array<string, mixed>|null
+     */
+    private function firstUnansweredStep(array $steps, array $onboardingData): ?array
+    {
+        foreach ($steps as $step) {
+            $field = $step['field'] ?? null;
+            $id = $step['id'] ?? null;
+            if ($field === null || $id === null) {
+                continue;
+            }
+            // Der summary-Schritt ist der Abschluss; er gilt als unbeantwortet,
+            // bis er bestaetigt wird (Feld 'summary' wird auf 'confirm' gesetzt).
+            // email_account-Schritte sind pro Bereich wiederholbar; sie gelten
+            // als beantwortet, sobald der Bereich in email_configured_areas steht.
+            if ($field === 'email_account' && isset($step['area'])) {
+                $configured = $this->toArray($onboardingData['email_configured_areas'] ?? []);
+                if (in_array($step['area'], $configured, true)) {
+                    continue;
+                }
+                return $step;
+            }
+            if (!array_key_exists($field, $onboardingData)) {
+                return $step;
+            }
+        }
+
+        return null;
     }
 
     /**
@@ -314,27 +336,38 @@ class OnboardingFlowManager
      */
     private function buildStepResponse(string $userIdentifier, array $context): array
     {
-        $this->currentStep = $context['onboarding_data']['current_step'] ?? 0;
         $steps = $this->resolveSteps($context);
+        $onboardingData = $context['onboarding_data'] ?? [];
 
-        if (!isset($steps[$this->currentStep])) {
+        $step = $this->firstUnansweredStep($steps, $onboardingData);
+        if ($step === null) {
             return $this->completeOnboarding($userIdentifier);
         }
 
-        $step = $steps[$this->currentStep];
+        // Position des aktuellen Schritts fuer die Fortschrittsanzeige (1-basiert).
+        $currentPosition = 0;
+        foreach ($steps as $idx => $s) {
+            if (($s['id'] ?? null) === ($step['id'] ?? null)) {
+                $currentPosition = $idx;
+                break;
+            }
+        }
+
         $options = $this->resolveOptions($step, $context);
 
         return [
             'status' => 'in_progress',
             'step_id' => $step['id'],
             'phase' => $step['phase'] ?? '',
-            'current_step' => $this->currentStep,
+            'current_step' => $currentPosition,
             'total_steps' => count($steps),
             'question' => $step['question'],
             'type' => $step['type'],
             'options' => $options,
             'help' => $step['help'] ?? '',
             'required' => $step['required'] ?? true,
+            'area' => $step['area'] ?? null,
+            'allow_freetext' => $step['allow_freetext'] ?? false,
             'context' => $context['onboarding_data'] ?? [],
         ];
     }
@@ -370,6 +403,18 @@ class OnboardingFlowManager
     {
         if ($type === 'multiple_choice' && is_array($response)) {
             return array_values(array_map('strval', $response));
+        }
+
+        if ($type === 'multiselect') {
+            // multiselect kann ein Array sein oder ein String mit Komma-Separation.
+            // Freitext-Zusaetze aus dem Template werden als 'freetext' mitgegeben.
+            if (is_array($response)) {
+                $items = array_values(array_map('strval', $response));
+            } else {
+                $items = array_values(array_filter(array_map('trim', explode(',', (string) $response)), fn ($v) => $v !== ''));
+            }
+
+            return $items;
         }
 
         return is_array($response) ? $response : (string) $response;
@@ -435,6 +480,7 @@ class OnboardingFlowManager
             $secretKey = $this->secretKeyForField($field, $context);
             $plain = is_array($value) ? (string) ($value['value'] ?? '') : (string) $value;
             if ($secretKey !== '' && $plain !== '') {
+                $this->validateApiKeyBeforeStore($field, $secretKey, $plain, $context);
                 $this->secretService->set($secretKey, $plain, $userIdentifier, 'onboarding');
             }
 
@@ -444,6 +490,16 @@ class OnboardingFlowManager
         // E-Mail-Verbindung (SMTP/IMAP) als zusammengesetztes Secret ablegen.
         if ($type === 'email_smtp' || $type === 'email_imap') {
             $this->storeEmailConnection($userIdentifier, $type, $value, $context);
+
+            return;
+        }
+
+        // Kombinierte E-Mail-Maske (SMTP + IMAP in einem Schritt). Leitet beide
+        // DSNs ab und speichert sie pro Bereich (scope) als Secret. Unterstuetzt
+        // mehrere E-Mail-Konten (z.B. Vertrieb und Support mit eigenen Adressen).
+        if ($type === 'email_combined') {
+            $area = $step['area'] ?? null;
+            $this->storeEmailCombined($userIdentifier, $value, $area, $context);
 
             return;
         }
@@ -463,6 +519,101 @@ class OnboardingFlowManager
         }
 
         return $field;
+    }
+
+    /**
+     * Validiert einen API-Key gegen die echte Anbieter-API, bevor er als
+     * Secret gespeichert wird. Bei einem eindeutig ungueltigen Key (HTTP
+     * 401/403) wird eine InvalidApiKeyException geworfen, sodass der
+     * Onboarding-Schritt nicht fortgesetzt wird. Netzwerk-/Verbindungs-
+     * fehler blockieren den Flow nicht (siehe ApiKeyValidator).
+     *
+     * @param array<string, mixed> $context
+     *
+     * @throws \App\AI\Onboarding\Exception\InvalidApiKeyException
+     */
+    private function validateApiKeyBeforeStore(string $field, string $secretKey, string $plain, array $context): void
+    {
+        if ($this->apiKeyValidator === null) {
+            return;
+        }
+
+        $provider = match ($secretKey) {
+            'MISTRAL_API_KEY' => 'mistral',
+            'GEMINI_API_KEY' => 'gemini',
+            'TAVILY_API_KEY' => 'tavily',
+            default => null,
+        };
+
+        if ($provider === null) {
+            return;
+        }
+
+        $result = $this->apiKeyValidator->validate($provider, $plain);
+        if (!($result['valid'] ?? false)) {
+            throw new Exception\InvalidApiKeyException($result['message'] ?? 'API-Key ist ungueltig.');
+        }
+    }
+
+    /**
+     * Speichert eine kombinierte E-Mail-Verbindung (SMTP + IMAP) aus einer
+     * Maske als verschluesselte Secrets. Unterstuetzt mehrere Konten pro
+     * Bereich (scope), z.B. getrennte Adressen fuer Vertrieb und Support.
+     *
+     * @param string|array $value Array mit smtp.* und imap.* Schluesseln
+     * @param array<string, mixed> $context
+     */
+    private function storeEmailCombined(string $userIdentifier, string|array $value, ?string $area, array &$context): void
+    {
+        if (!is_array($value)) {
+            return;
+        }
+
+        $smtpHost = (string) ($value['smtp_host'] ?? $value['host'] ?? '');
+        if ($smtpHost !== '') {
+            $smtpDsn = $this->buildMailerDsn('email_smtp', [
+                'host' => $smtpHost,
+                'port' => $value['smtp_port'] ?? $value['port'] ?? '587',
+                'user' => $value['smtp_user'] ?? $value['user'] ?? '',
+                'pass' => $value['smtp_pass'] ?? $value['pass'] ?? '',
+                'encryption' => $value['smtp_encryption'] ?? $value['encryption'] ?? 'tls',
+            ]);
+            if ($smtpDsn !== '') {
+                $scope = $area !== null ? 'email:' . $area : 'onboarding';
+                $this->secretService->set('MAILER_DSN', $smtpDsn, $userIdentifier, $scope);
+            }
+        }
+
+        $imapHost = (string) ($value['imap_host'] ?? '');
+        if ($imapHost !== '') {
+            $imapDsn = $this->buildMailerDsn('email_imap', [
+                'host' => $imapHost,
+                'port' => $value['imap_port'] ?? '993',
+                'user' => $value['imap_user'] ?? $value['smtp_user'] ?? $value['user'] ?? '',
+                'pass' => $value['imap_pass'] ?? $value['smtp_pass'] ?? $value['pass'] ?? '',
+                'encryption' => $value['imap_encryption'] ?? 'ssl',
+            ]);
+            if ($imapDsn !== '') {
+                $scope = $area !== null ? 'email:' . $area : 'onboarding';
+                $this->secretService->set('IMAP_DSN', $imapDsn, $userIdentifier, $scope);
+            }
+        }
+
+        $from = (string) ($value['from'] ?? $value['smtp_user'] ?? '');
+        if ($from !== '') {
+            $scope = $area !== null ? 'email:' . $area : 'onboarding';
+            $this->secretService->set('MAILER_FROM', $from, $userIdentifier, $scope);
+        }
+
+        // Bereich als konfiguriert markieren, damit der naechste E-Mail-Schritt
+        // fuer den folgenden Bereich erscheint.
+        if ($area !== null) {
+            $configured = $this->toArray($context['onboarding_data']['email_configured_areas'] ?? []);
+            if (!in_array($area, $configured, true)) {
+                $configured[] = $area;
+                $context['onboarding_data']['email_configured_areas'] = $configured;
+            }
+        }
     }
 
     /**

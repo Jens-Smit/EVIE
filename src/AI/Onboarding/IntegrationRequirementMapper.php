@@ -6,21 +6,17 @@ namespace App\AI\Onboarding;
 
 /**
  * IntegrationRequirementMapper leitet aus den Onboarding-Angaben (insbesondere
- * den gewaehlten Use-Cases) die technischen Schnittstellen ab, die EVIE fuer
- * den Nutzer konfigurieren muss.
+ * den gewaehlten Use-Cases und Bereichen) die technischen Schnittstellen ab,
+ * die EVIE fuer den Nutzer konfigurieren muss.
  *
  * Das Mapping ist deterministisch (keine LLM-Halluzination) und orientiert sich
  * an den im Blueprint verankerten Tool-/Service-Klassen von EVIE:
  *  - LLM-Anbindung (Mistral/Gemini) -> API-Key + Provider/Modell
- *  - E-Mail (EmailTool) -> SMTP (Senden) + IMAP (Empfangen) als Secrets
+ *  - E-Mail (EmailTool) -> kombinierte SMTP+IMAP-Maske als Secret
  *  - Research/Recherche -> Tavily-API-Key
- *  - LinkedIn -> LinkedIn-API-Token
- *  - MCP-Server (Filesystem/GitHub/Playwright) -> MCP-URLs
  *
- * Jede Anforderung ist als Requirement-Datensatz mit einem eindeutigen Key,
- * einem Anzeige-Label, einem Frage-Typ und ggf. Optionen beschrieben, sodass
- * der OnboardingFlowManager die entsprechenden Schritte dynamisch anhaengen
- * kann.
+ * SMTP und IMAP werden in EINEM kombinierten Schritt erfasst (email_combined),
+ * sodass der Nutzer beide Verbindungen in einer Maske ausfuellt.
  */
 final class IntegrationRequirementMapper
 {
@@ -42,7 +38,6 @@ final class IntegrationRequirementMapper
     {
         $requirements = [];
         $seen = [];
-
         foreach ($useCases as $useCase) {
             foreach ($this->requirementsForUseCase($useCase) as $req) {
                 if (isset($seen[$req['key']])) {
@@ -81,18 +76,11 @@ final class IntegrationRequirementMapper
             ],
             'business_automation', 'project_management' => [
                 [
-                    'key' => 'email_smtp',
-                    'label' => 'E-Mail Versand (SMTP)',
-                    'type' => 'email_smtp',
+                    'key' => 'email_combined',
+                    'label' => 'E-Mail (SMTP + IMAP)',
+                    'type' => 'email_combined',
                     'required' => false,
-                    'help' => 'SMTP-Zugangsdaten, damit EVIE E-Mails versenden kann.',
-                ],
-                [
-                    'key' => 'email_imap',
-                    'label' => 'E-Mail Empfang (IMAP)',
-                    'type' => 'email_imap',
-                    'required' => false,
-                    'help' => 'IMAP-Zugangsdaten, damit EVIE E-Mails lesen/verarbeiten kann.',
+                    'help' => 'Kombinierte SMTP-/IMAP-Eingabe. Verschiedene Bereiche koennen verschiedene E-Mail-Konten nutzen.',
                 ],
             ],
             default => [],

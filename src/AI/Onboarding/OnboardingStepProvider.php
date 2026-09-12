@@ -5,38 +5,36 @@ declare(strict_types=1);
 namespace App\AI\Onboarding;
 
 /**
- * OnboardingStepProvider liefert die deterministische, phasenbasierte
+ * OnboardingStepProvider liefert die dynamische, verzweigende
  * Schrittfolge des EVIE-Onboardings.
  *
- * Damit das Onboarding zuverlaessig durchlaeuft (auch ohne erreichbaren
- * Onboarding-Agent) und alle fuer den Betrieb noetigen Konfigurationen
- * erfasst, wird der Flow in feste Phasen unterteilt:
+ * Der Flow ist PHASENBASIERT und beginnt zwingend mit den KI-Settings,
+ * damit nachfolgende Agent-Aufrufe den konfigurierten Provider nutzen
+ * koennen. Danach oeffnet sich ein verzweigender Bedarfsdialog:
  *
  *   Phase A - KI-Settings (zwingend zuerst):
  *     1. LLM-Anbieter waehlen (mistral/gemini)
  *     2. LLM-Modell waehlen (provider-abhaengig)
- *     3. LLM API-Key erfassen (als Secret)
+ *     3. LLM API-Key erfassen (als Secret, mit Live-Validierung)
  *
- *   Phase B - Profil/Bedarfsanalyse:
- *     4. Nutzerrolle (Developer/Business/Administrator/...)
- *     5. Use-Cases (Code, Recherche, Business-Automation, ...)
- *     6. Branche
+ *   Phase B - Ziel & Verzweigung (dynamisch):
+ *     4. Hauptziel: Was soll EVIE fuer dich tun?
+ *        - "Mein Unternehmen managen"  -> Branche -> Bereiche (multiselect)
+ *        - "Mich bei meiner Arbeit unterstützen" -> Use-Cases (multiselect)
+ *        - "Etwas anderes" -> Freitext
+ *     5. (nur bei "Unternehmen managen") Branche
+ *     6. (nur bei "Unternehmen managen") Bereiche (multiselect + freetext)
+ *     7. Pro gewaehltem Bereich: E-Mail-Konto konfigurieren (kombiniert SMTP+IMAP,
+ *        wiederholbar -> mehrere Konten pro Bereich)
+ *     8. Tavily-API-Key (bei Recherche-Use-Case)
+ *     9. "Weitere Bereiche/Konfiguration hinzufuegen?" -> Loop oder Abschluss
  *
- *   Phase C - Schnittstellen (dynamisch aus Use-Cases abgeleitet):
- *     - Tavily-API-Key (Recherche)
- *     - SMTP (E-Mail Versand)
- *     - IMAP (E-Mail Empfang)
- *     - LinkedIn-Token
- *
- *   Phase D - Abschluss/Zusammenfassung.
- *
- * Die KI-Settings bewusst zuerst, damit nachfolgende Agent-Aufrufe den
- * konfigurierten Provider nutzen koennen. Die Schnittstellen-Phase folgt
- * erst nach der Bedarfsanalyse, da sich die noetigen Keys aus den Use-Cases
- * ergeben (Blueprint-konform, keine Fantasie-Tools).
+ *   Phase C - Abschluss/Zusammenfassung.
  *
  * Der Provider ist rein datengetrieben und enthaelt KEINE Konstruktor-
- * Injection (Projektvorgabe fuer Tools/Services dieser Schicht).
+ * Injection (Projektvorgabe fuer Tools/Services dieser Schicht). Das
+ * Branching wird ueber das onboarding_data-Context-Array gesteuert, das
+ * der FlowManager an resolveSteps() uebergibt.
  */
 final class OnboardingStepProvider
 {
@@ -61,19 +59,58 @@ final class OnboardingStepProvider
     public const DEFAULT_PROVIDER = 'mistral';
     public const DEFAULT_MODEL = 'mistral-small-latest';
 
+    /** Hauptziele (Phase B Einstieg) */
+    public const GOALS = [
+        'manage_company' => 'EVIE soll mein Unternehmen managen',
+        'assist_work' => 'EVIE soll mich bei meiner Arbeit unterstuetzen',
+        'other' => 'Etwas anderes',
+    ];
+
+    /** Branchen (nur bei manage_company) */
+    public const INDUSTRIES = [
+        'software_it' => 'Software / IT',
+        'gastronomy' => 'Gastronomie / Gastgewerbe',
+        'retail' => 'Einzelhandel / E-Commerce',
+        'finance' => 'Finanzen / Rechnungswesen',
+        'healthcare' => 'Gesundheitswesen',
+        'education' => 'Bildung',
+        'manufacturing' => 'Produktion / Logistik',
+        'nonprofit' => 'Non-profit / NGO',
+        'other' => 'Andere',
+    ];
+
+    /** Bereiche, die EVIE abdecken kann (multiselect + freetext) */
+    public const BUSINESS_AREAS = [
+        'sales' => 'Vertrieb',
+        'support' => 'Support / Kundenservice',
+        'marketing' => 'Marketing',
+        'hr' => 'Personalwesen (HR)',
+        'finance' => 'Finanzen / Buchhaltung',
+        'operations' => 'Betrieb / Operations',
+        'project_management' => 'Projektmanagement',
+        'it' => 'IT / Technik',
+    ];
+
+    /** Use-Cases (nur bei assist_work) */
+    public const USE_CASES = [
+        'code_generation' => 'Code-Generierung',
+        'code_review' => 'Code-Review',
+        'business_automation' => 'Geschaeftsprozess-Automatisierung',
+        'data_analysis' => 'Datenanalyse',
+        'document_processing' => 'Dokument-Verarbeitung',
+        'research' => 'Recherche & Informationssuche',
+        'project_management' => 'Projektmanagement',
+        'system_administration' => 'Systemadministration',
+        'education' => 'Lernen & Weiterbildung',
+        'other' => 'Andere',
+    ];
+
     /**
-     * Liefert die festen Basis-Schritte (Phase A + B), die unabhaengig von den
-     * Use-Cases immer durchlaufen werden.
+     * Liefert die festen Basis-Schritte (Phase A + Phase B Einstieg), unabhaengig
+     * von den Use-Cases. Das dynamische Branching ergibt sich aus den Antworten
+     * und wird in allSteps() anhand des Kontexts zusammengestellt.
      *
-     * @return array<int, array{
-     *   id: string,
-     *   phase: string,
-     *   question: string,
-     *   type: string,
-     *   field: string,
-     *   options?: array<int|string,string>,
-     *   help?: string
-     * }>
+     * @return array<int, array<string, mixed>>
      */
     public function baseSteps(): array
     {
@@ -99,84 +136,30 @@ final class OnboardingStepProvider
             [
                 'id' => 'llm_api_key',
                 'phase' => 'KI-Settings',
-                'question' => 'Bitte gib deinen API-Key fuer den gewaehlten Anbieter ein. Der Key wird verschluesselt als Secret gespeichert.',
+                'question' => 'Bitte gib deinen API-Key fuer den gewaehlten Anbieter ein. Der Key wird verschluesselt als Secret gespeichert und vor dem Speichern geprueft.',
                 'type' => 'secret',
                 'field' => 'llm_api_key',
-                'help' => 'Ohne gueltigen API-Key kann EVIE keine KI-Anfragen ausfuehren. Du findest den Key im jeweiligen Anbieter-Dashboard.',
+                'help' => 'Ohne gueltigen API-Key kann EVIE keine KI-Anfragen ausfuehren. Der Key wird live gegen die Anbieter-API validiert.',
             ],
             [
-                'id' => 'user_role',
-                'phase' => 'Profil',
-                'question' => 'Was ist deine primaere Rolle?',
+                'id' => 'goal',
+                'phase' => 'Ziel',
+                'question' => 'Was moechtest du mit EVIE erreichen?',
                 'type' => 'multiple_choice',
-                'field' => 'user_type',
-                'options' => [
-                    'Developer' => 'Developer',
-                    'Business User' => 'Business User',
-                    'Administrator' => 'Administrator',
-                    'Data Scientist' => 'Data Scientist',
-                    'Other' => 'Andere',
-                ],
-                'help' => 'Hieraus leitet EVIE ab, welche Schnittstellen und Tools du benoetigst.',
-            ],
-            [
-                'id' => 'use_cases',
-                'phase' => 'Profil',
-                'question' => 'Welche Use-Cases hast du? Waehle alle zutreffenden.',
-                'type' => 'multiple_choice',
-                'field' => 'use_cases',
-                'options' => [
-                    'code_generation' => 'Code-Generierung',
-                    'code_review' => 'Code-Review',
-                    'business_automation' => 'Geschaeftsprozess-Automatisierung',
-                    'data_analysis' => 'Datenanalyse',
-                    'document_processing' => 'Dokument-Verarbeitung',
-                    'research' => 'Recherche & Informationssuche',
-                    'project_management' => 'Projektmanagement',
-                    'system_administration' => 'Systemadministration',
-                    'education' => 'Lernen & Weiterbildung',
-                    'other' => 'Andere',
-                ],
-                'help' => 'EVIE leitet daraus die noetigen Schnittstellen und API-Keys ab.',
-            ],
-            [
-                'id' => 'industry',
-                'phase' => 'Profil',
-                'question' => 'In welcher Branche arbeitest du primaer?',
-                'type' => 'multiple_choice',
-                'field' => 'industry',
-                'options' => [
-                    'technology' => 'Technologie/Software',
-                    'gastronomy' => 'Gastronomie/Gastgewerbe',
-                    'retail' => 'Einzelhandel/E-Commerce',
-                    'finance' => 'Finanzen/Rechnungswesen',
-                    'healthcare' => 'Gesundheitswesen',
-                    'education' => 'Bildung',
-                    'manufacturing' => 'Produktion/Logistik',
-                    'nonprofit' => 'Non-profit/NGO',
-                    'other' => 'Andere',
-                ],
-                'help' => 'Zur Personalisierung der Antworten.',
+                'field' => 'goal',
+                'options' => self::GOALS,
+                'help' => 'Deine Antwort bestimmt, welche weiteren Fragen EVIE stellt.',
             ],
         ];
     }
 
     /**
      * Erzeugt die Schnittstellen-Schritte (Phase C) aus den gewaehlten
-     * Use-Cases mittels IntegrationRequirementMapper.
+     * Use-Cases / Bereichen mittels IntegrationRequirementMapper.
      *
      * @param array<string> $useCases
      *
-     * @return array<int, array{
-     *   id: string,
-     *   phase: string,
-     *   question: string,
-     *   type: string,
-     *   field: string,
-     *   options?: array<int|string,string>,
-     *   help?: string,
-     *   required?: bool
-     * }>
+     * @return array<int, array<string, mixed>>
      */
     public function integrationSteps(array $useCases, IntegrationRequirementMapper $mapper): array
     {
@@ -198,17 +181,21 @@ final class OnboardingStepProvider
     }
 
     /**
-     * Vollstaendige, sortierte Schrittliste bestehend aus Basis-Schritten,
-     * dynamischen Schnittstellen-Schritten (aus Use-Cases) und Abschluss.
+     * Vollstaendige, dynamische Schrittliste bestehend aus Basis-Schritten,
+     * verzweigten Bedarfsfragen (Ziel/Branche/Bereiche/E-Mail-Konten) und
+     * Abschluss. Die Verzweigung ergibt sich aus dem onboarding_data-Kontext.
      *
-     * @param array<string> $useCases
+     * @param array<string, mixed> $context  Vollstaendiges onboarding_data-Array
      *
      * @return array<int, array<string, mixed>>
      */
-    public function allSteps(array $useCases, IntegrationRequirementMapper $mapper): array
+    public function allSteps(array $context, IntegrationRequirementMapper $mapper): array
     {
         $base = $this->baseSteps();
+        $branch = $this->branchSteps($context);
+        $useCases = $this->useCasesFromContext($context);
         $integrations = $this->integrationSteps($useCases, $mapper);
+
         $completion = [
             [
                 'id' => 'summary',
@@ -219,7 +206,122 @@ final class OnboardingStepProvider
             ],
         ];
 
-        return array_merge($base, $integrations, $completion);
+        return array_merge($base, $branch, $integrations, $completion);
+    }
+
+    /**
+     * Baut die verzweigten Bedarfsfragen anhand des Kontexts.
+     *
+     * @param array<string, mixed> $context
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    private function branchSteps(array $context): array
+    {
+        $steps = [];
+        $goal = $context['goal'] ?? null;
+        $goal = is_array($goal) ? ($goal[0] ?? null) : $goal;
+
+        // Freitext bei "etwas anderes"
+        if ($goal === 'other' && !isset($context['goal_detail'])) {
+            $steps[] = [
+                'id' => 'goal_detail',
+                'phase' => 'Ziel',
+                'question' => 'Bitte beschreibe kurz, was du mit EVIE erreichen moechtest.',
+                'type' => 'text',
+                'field' => 'goal_detail',
+                'help' => 'Freitext-Antwort.',
+            ];
+        }
+
+        // Verzweigung bei "Unternehmen managen": Branche -> Bereiche -> E-Mail-Konten
+        if ($goal === 'manage_company') {
+            if (!isset($context['industry'])) {
+                $steps[] = [
+                    'id' => 'industry',
+                    'phase' => 'Profil',
+                    'question' => 'In welcher Branche arbeitest du primaer?',
+                    'type' => 'multiple_choice',
+                    'field' => 'industry',
+                    'options' => self::INDUSTRIES,
+                    'help' => 'Zur Personalisierung der Antworten.',
+                ];
+            }
+
+            if (!isset($context['business_areas'])) {
+                $steps[] = [
+                    'id' => 'business_areas',
+                    'phase' => 'Bereiche',
+                    'question' => 'Welche Bereiche soll EVIE abdecken? Waehle alle zutreffenden.',
+                    'type' => 'multiselect',
+                    'field' => 'business_areas',
+                    'options' => self::BUSINESS_AREAS,
+                    'help' => 'Mehrfachauswahl. Du kannst weitere Bereiche als Freitext hinzufuegen.',
+                    'allow_freetext' => true,
+                ];
+            }
+
+            // E-Mail-Konten pro gewaehltem Bereich (wiederholbar)
+            $areas = $this->toArray($context['business_areas'] ?? []);
+            $configuredAreas = $this->toArray($context['email_configured_areas'] ?? []);
+            foreach ($areas as $area) {
+                if (in_array($area, $configuredAreas, true)) {
+                    continue;
+                }
+                $label = self::BUSINESS_AREAS[$area] ?? ucfirst((string) $area);
+                $steps[] = [
+                    'id' => 'email_account_' . $area,
+                    'phase' => 'E-Mail-Konten',
+                    'question' => sprintf(
+                        'E-Mail-Konto fuer "%s" konfigurieren (SMTP + IMAP). Du kannst es auch ueberspringen.',
+                        $label
+                    ),
+                    'type' => 'email_combined',
+                    'field' => 'email_account',
+                    'area' => $area,
+                    'help' => 'Kombinierte SMTP- und IMAP-Eingabe fuer diesen Bereich. Verschiedene Bereiche koennen verschiedene E-Mail-Adressen nutzen.',
+                    'required' => false,
+                ];
+            }
+        }
+
+        // Verzweigung bei "bei Arbeit unterstuetzen": Use-Cases (multiselect)
+        if ($goal === 'assist_work' && !isset($context['use_cases'])) {
+            $steps[] = [
+                'id' => 'use_cases',
+                'phase' => 'Profil',
+                'question' => 'Welche Use-Cases hast du? Waehle alle zutreffenden.',
+                'type' => 'multiselect',
+                'field' => 'use_cases',
+                'options' => self::USE_CASES,
+                'help' => 'Mehrfachauswahl. EVIE leitet daraus die noetigen Schnittstellen ab.',
+                'allow_freetext' => true,
+            ];
+        }
+
+        // Schleife: "Weitere Bereiche hinzufuegen?" nachdem E-Mail-Konten
+        // konfiguriert wurden (nur bei manage_company, wenn Bereiche gewaehlt).
+        if ($goal === 'manage_company') {
+            $areas = $this->toArray($context['business_areas'] ?? []);
+            $configuredAreas = $this->toArray($context['email_configured_areas'] ?? []);
+            $allConfigured = !empty($areas) && count($areas) === count($configuredAreas);
+            if ($allConfigured && !isset($context['add_more'])) {
+                $steps[] = [
+                    'id' => 'add_more',
+                    'phase' => 'Abschluss',
+                    'question' => 'Moechtest du weitere Bereiche konfigurieren oder war es das erstmal?',
+                    'type' => 'multiple_choice',
+                    'field' => 'add_more',
+                    'options' => [
+                        'add_area' => 'Weiteren Bereich hinzufuegen',
+                        'done' => 'Das war es erstmal',
+                    ],
+                    'help' => 'Du kannst spaeter weitere Bereiche in den Einstellungen hinzufuegen.',
+                ];
+            }
+        }
+
+        return $steps;
     }
 
     /**
@@ -230,5 +332,50 @@ final class OnboardingStepProvider
     public function modelsForProvider(string $provider): array
     {
         return self::MODELS[$provider] ?? self::MODELS[self::DEFAULT_PROVIDER];
+    }
+
+    /**
+     * @param mixed $value
+     *
+     * @return array<string>
+     */
+    private function toArray(mixed $value): array
+    {
+        if (is_array($value)) {
+            return array_values(array_map('strval', $value));
+        }
+        if (is_string($value) && $value !== '') {
+            return [$value];
+        }
+
+        return [];
+    }
+
+    /**
+     * Vereinigt die Use-Cases aus dem assist_work-Zweig und die aus
+     * manage_company gewaehlten Bereichen, sodass der RequirementMapper
+     * beide Quellen beruecksichtigt.
+     *
+     * @param array<string, mixed> $context
+     *
+     * @return array<string>
+     */
+    private function useCasesFromContext(array $context): array
+    {
+        $useCases = $this->toArray($context['use_cases'] ?? []);
+        $areas = $this->toArray($context['business_areas'] ?? []);
+
+        // Bereiche, die E-Mail-Schnittstellen benoetigen, werden als
+        // Pseudo-Use-Case 'business_automation' weitergereicht, damit der
+        // RequirementMapper Tavily/SMTP/IMAP ableitet.
+        $emailAreas = array_intersect($areas, ['sales', 'support', 'marketing', 'hr', 'finance', 'operations']);
+        if (!empty($emailAreas) && !in_array('business_automation', $useCases, true)) {
+            $useCases[] = 'business_automation';
+        }
+        if (in_array('research', $this->toArray($context['use_cases'] ?? []), true) && !in_array('research', $useCases, true)) {
+            $useCases[] = 'research';
+        }
+
+        return array_values(array_unique($useCases));
     }
 }
