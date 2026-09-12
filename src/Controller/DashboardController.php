@@ -28,23 +28,33 @@ class DashboardController extends AbstractController
     public function index(): JsonResponse
     {
         $user = $this->getUser();
-        if (!$user) {
-            // Default-User laden
-            $user = $this->userRepository->find(1); // oder eine andere ID
+        $userProfile = null;
+        if ($user) {
+            // UserProfile ist an den userIdentifier gebunden, nicht an die
+            // Security-User-Entity. Repositories erwarten ein UserProfile.
+            $userProfile = $this->userRepository->findOneBy([
+                'userIdentifier' => $user->getUserIdentifier(),
+            ]);
         }
 
-        $recentActions = $this->agentHistoryRepository->findBy(
-            ['user' => $user],
-            ['createdAt' => 'DESC'],
-            10
-        );
+        $recentActions = [];
+        if ($userProfile) {
+            $recentActions = $this->agentHistoryRepository->findBy(
+                ['user' => $userProfile],
+                ['createdAt' => 'DESC'],
+                10
+            );
+        }
 
         $pendingTools = $this->toolDefinitionRepository->findBy(
             ['status' => 'pending']
         );
-
         $recentDocuments = $this->documentRepository->findRecent(5);
-        $subAgents = $this->subAgentRepository->findByUser($user->getId());
+
+        $subAgents = [];
+        if ($userProfile) {
+            $subAgents = $this->subAgentRepository->findByUser($userProfile->getId());
+        }
 
         $dashboardData = [
             'recentActions' => array_map(function ($action) {
