@@ -6,6 +6,7 @@ namespace App\AI\Onboarding;
 
 use App\Entity\UserProfile;
 use App\Repository\UserProfileRepository;
+use App\Service\ApiKeyValidator;
 use App\Service\SecretService;
 use Symfony\AI\Agent\AgentInterface;
 use Symfony\AI\Platform\Message\Message;
@@ -45,6 +46,7 @@ class OnboardingFlowManager
     private OnboardingStepProvider $stepProvider;
     private IntegrationRequirementMapper $requirementMapper;
     private SecretService $secretService;
+    private ?ApiKeyValidator $apiKeyValidator;
     private int $currentStep = 0;
 
     /**
@@ -61,7 +63,8 @@ class OnboardingFlowManager
         AgentInterface $onboardingAgent,
         OnboardingStepProvider $stepProvider,
         IntegrationRequirementMapper $requirementMapper,
-        SecretService $secretService
+        SecretService $secretService,
+        ?ApiKeyValidator $apiKeyValidator = null
     ) {
         $this->contextStore = $contextStore;
         $this->userProfileRepo = $userProfileRepo;
@@ -69,6 +72,7 @@ class OnboardingFlowManager
         $this->stepProvider = $stepProvider;
         $this->requirementMapper = $requirementMapper;
         $this->secretService = $secretService;
+        $this->apiKeyValidator = $apiKeyValidator;
     }
 
     /**
@@ -300,9 +304,7 @@ class OnboardingFlowManager
      */
     private function resolveSteps(array $context): array
     {
-        $useCases = $this->toArray($context['onboarding_data']['use_cases'] ?? []);
-
-        return $this->stepProvider->allSteps($useCases, $this->requirementMapper);
+        return $this->stepProvider->allSteps($context['onboarding_data'] ?? [], $this->requirementMapper);
     }
 
     /**
@@ -335,6 +337,8 @@ class OnboardingFlowManager
             'options' => $options,
             'help' => $step['help'] ?? '',
             'required' => $step['required'] ?? true,
+            'area' => $step['area'] ?? null,
+            'allow_freetext' => $step['allow_freetext'] ?? false,
             'context' => $context['onboarding_data'] ?? [],
         ];
     }
@@ -370,6 +374,18 @@ class OnboardingFlowManager
     {
         if ($type === 'multiple_choice' && is_array($response)) {
             return array_values(array_map('strval', $response));
+        }
+
+        if ($type === 'multiselect') {
+            // multiselect kann ein Array sein oder ein String mit Komma-Separation.
+            // Freitext-Zusaetze aus dem Template werden als 'freetext' mitgegeben.
+            if (is_array($response)) {
+                $items = array_values(array_map('strval', $response));
+            } else {
+                $items = array_values(array_filter(array_map('trim', explode(',', (string) $response)), fn ($v) => $v !== ''));
+            }
+
+            return $items;
         }
 
         return is_array($response) ? $response : (string) $response;
@@ -435,6 +451,7 @@ class OnboardingFlowManager
             $secretKey = $this->secretKeyForField($field, $context);
             $plain = is_array($value) ? (string) ($value['value'] ?? '') : (string) $value;
             if ($secretKey !== '' && $plain !== '') {
+                $this->validateApiKeyBeforeStore($field, $secretKey, $plain, $context);
                 $this->secretService->set($secretKey, $plain, $userIdentifier, 'onboarding');
             }
 
@@ -444,6 +461,16 @@ class OnboardingFlowManager
         // E-Mail-Verbindung (SMTP/IMAP) als zusammengesetztes Secret ablegen.
         if ($type === 'email_smtp' || $type === 'email_imap') {
             $this->storeEmailConnection($userIdentifier, $type, $value, $context);
+
+            return;
+        }
+
+        // Kombinierte E-Mail-Maske (SMTP + IMAP in einem Schritt). Leitet beide
+        // DSNs ab und speichert sie pro Bereich (scope) als Secret. Unterstuetzt
+        // mehrere E-Mail-Konten (z.B. Vertrieb und Support mit eigenen Adressen).
+        if ($type === 'email_combined') {
+            $area = $step['area'] ?? null;
+            $this->storeEmailCombined($userIdentifier, $value, $area, $context);
 
             return;
         }
@@ -463,6 +490,101 @@ class OnboardingFlowManager
         }
 
         return $field;
+    }
+
+    /**
+     * Validiert einen API-Key gegen die echte Anbieter-API, bevor er als
+     * Secret gespeichert wird. Bei einem eindeutig ungueltigen Key (HTTP
+     * 401/403) wird eine InvalidApiKeyException geworfen, sodass der
+     * Onboarding-Schritt nicht fortgesetzt wird. Netzwerk-/Verbindungs-
+     * fehler blockieren den Flow nicht (siehe ApiKeyValidator).
+     *
+     * @param array<string, mixed> $context
+     *
+     * @throws \App\AI\Onboarding\Exception\InvalidApiKeyException
+     */
+    private function validateApiKeyBeforeStore(string $field, string $secretKey, string $plain, array $context): void
+    {
+        if ($this->apiKeyValidator === null) {
+            return;
+        }
+
+        $provider = match ($secretKey) {
+            'MISTRAL_API_KEY' => 'mistral',
+            'GEMINI_API_KEY' => 'gemini',
+            'TAVILY_API_KEY' => 'tavily',
+            default => null,
+        };
+
+        if ($provider === null) {
+            return;
+        }
+
+        $result = $this->apiKeyValidator->validate($provider, $plain);
+        if (!($result['valid'] ?? false)) {
+            throw new Exception\InvalidApiKeyException($result['message'] ?? 'API-Key ist ungueltig.');
+        }
+    }
+
+    /**
+     * Speichert eine kombinierte E-Mail-Verbindung (SMTP + IMAP) aus einer
+     * Maske als verschluesselte Secrets. Unterstuetzt mehrere Konten pro
+     * Bereich (scope), z.B. getrennte Adressen fuer Vertrieb und Support.
+     *
+     * @param string|array $value Array mit smtp.* und imap.* Schluesseln
+     * @param array<string, mixed> $context
+     */
+    private function storeEmailCombined(string $userIdentifier, string|array $value, ?string $area, array &$context): void
+    {
+        if (!is_array($value)) {
+            return;
+        }
+
+        $smtpHost = (string) ($value['smtp_host'] ?? $value['host'] ?? '');
+        if ($smtpHost !== '') {
+            $smtpDsn = $this->buildMailerDsn('email_smtp', [
+                'host' => $smtpHost,
+                'port' => $value['smtp_port'] ?? $value['port'] ?? '587',
+                'user' => $value['smtp_user'] ?? $value['user'] ?? '',
+                'pass' => $value['smtp_pass'] ?? $value['pass'] ?? '',
+                'encryption' => $value['smtp_encryption'] ?? $value['encryption'] ?? 'tls',
+            ]);
+            if ($smtpDsn !== '') {
+                $scope = $area !== null ? 'email:' . $area : 'onboarding';
+                $this->secretService->set('MAILER_DSN', $smtpDsn, $userIdentifier, $scope);
+            }
+        }
+
+        $imapHost = (string) ($value['imap_host'] ?? '');
+        if ($imapHost !== '') {
+            $imapDsn = $this->buildMailerDsn('email_imap', [
+                'host' => $imapHost,
+                'port' => $value['imap_port'] ?? '993',
+                'user' => $value['imap_user'] ?? $value['smtp_user'] ?? $value['user'] ?? '',
+                'pass' => $value['imap_pass'] ?? $value['smtp_pass'] ?? $value['pass'] ?? '',
+                'encryption' => $value['imap_encryption'] ?? 'ssl',
+            ]);
+            if ($imapDsn !== '') {
+                $scope = $area !== null ? 'email:' . $area : 'onboarding';
+                $this->secretService->set('IMAP_DSN', $imapDsn, $userIdentifier, $scope);
+            }
+        }
+
+        $from = (string) ($value['from'] ?? $value['smtp_user'] ?? '');
+        if ($from !== '') {
+            $scope = $area !== null ? 'email:' . $area : 'onboarding';
+            $this->secretService->set('MAILER_FROM', $from, $userIdentifier, $scope);
+        }
+
+        // Bereich als konfiguriert markieren, damit der naechste E-Mail-Schritt
+        // fuer den folgenden Bereich erscheint.
+        if ($area !== null) {
+            $configured = $this->toArray($context['onboarding_data']['email_configured_areas'] ?? []);
+            if (!in_array($area, $configured, true)) {
+                $configured[] = $area;
+                $context['onboarding_data']['email_configured_areas'] = $configured;
+            }
+        }
     }
 
     /**

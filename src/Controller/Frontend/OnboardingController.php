@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace App\Controller\Frontend;
 
+use App\AI\Onboarding\Exception\InvalidApiKeyException;
 use App\AI\Onboarding\OnboardingFlowManager;
 use App\Entity\User;
+use App\Service\ApiKeyValidator;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -32,6 +34,7 @@ class OnboardingController extends AbstractController
     public function __construct(
         private readonly OnboardingFlowManager $onboardingFlowManager,
         private readonly EntityManagerInterface $entityManager,
+        private readonly ApiKeyValidator $apiKeyValidator,
     ) {
     }
 
@@ -129,6 +132,12 @@ class OnboardingController extends AbstractController
             }
 
             return $this->json($result);
+        } catch (InvalidApiKeyException $e) {
+            return $this->json([
+                'status' => 'error',
+                'error' => $e->getMessage(),
+                'error_type' => 'invalid_api_key',
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
         } catch (\Throwable $e) {
             return $this->json([
                 'status' => 'error',
@@ -136,6 +145,30 @@ class OnboardingController extends AbstractController
                 'detail' => $e->getMessage(),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+    }
+
+    #[Route('/onboarding/validate-key', name: 'app_onboarding_validate_key', methods: ['POST'])]
+    public function validateKey(Request $request): JsonResponse
+    {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return $this->json(['error' => 'Nicht authentifiziert'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $data = $request->getContentTypeFormat() === 'json' ? $request->toArray() : $request->request->all();
+        $provider = (string) ($data['provider'] ?? '');
+        $apiKey = (string) ($data['api_key'] ?? '');
+
+        if ($provider === '' || $apiKey === '') {
+            return $this->json(
+                ['valid' => false, 'message' => 'Anbieter und API-Key sind erforderlich.'],
+                Response::HTTP_BAD_REQUEST
+            );
+        }
+
+        $result = $this->apiKeyValidator->validate($provider, $apiKey);
+
+        return $this->json($result, $result['valid'] ? Response::HTTP_OK : Response::HTTP_UNPROCESSABLE_ENTITY);
     }
 
     #[Route('/onboarding/complete', name: 'app_onboarding_complete', methods: ['POST'])]

@@ -65,8 +65,14 @@ services:
             $stepProvider: '@App\AI\Onboarding\OnboardingStepProvider'
             $requirementMapper: '@App\AI\Onboarding\IntegrationRequirementMapper'
             $secretService: '@App\Service\SecretService'
+            $apiKeyValidator: '@App\Service\ApiKeyValidator'
     App\AI\Onboarding\OnboardingStepProvider: ~
     App\AI\Onboarding\IntegrationRequirementMapper: ~
+    # API-Key-Validierung waehrend Onboarding: echter HTTP-Check gegen die
+    # Anbieter-API (Mistral/Gemini/Tavily). Autowired via HttpClientInterface.
+    App\Service\ApiKeyValidator:
+        arguments:
+            $httpClient: '@http_client'
 
     # Event Listeners
     App\EventListener\ApiSecurityListener:
