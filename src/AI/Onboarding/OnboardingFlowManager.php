@@ -47,7 +47,6 @@ class OnboardingFlowManager
     private IntegrationRequirementMapper $requirementMapper;
     private SecretService $secretService;
     private ?ApiKeyValidator $apiKeyValidator;
-    private int $currentStep = 0;
 
     /**
      * @param ContextStoreManager           $contextStore       Verwaltet den Benutzerkontext
@@ -85,8 +84,6 @@ class OnboardingFlowManager
      */
     public function startOnboarding(string $userIdentifier, array $initialContext = []): array
     {
-        $this->currentStep = 0;
-
         $context = $this->contextStore->loadContext($userIdentifier);
         if (!isset($context['onboarding_data'])) {
             $context['onboarding_data'] = [
@@ -95,7 +92,6 @@ class OnboardingFlowManager
                 'prompt_version' => '2.0',
             ];
         }
-        $context['onboarding_data']['current_step'] = $this->currentStep;
         $this->contextStore->saveContext($userIdentifier, $context);
 
         return $this->buildStepResponse($userIdentifier, $context);
@@ -121,9 +117,8 @@ class OnboardingFlowManager
             ];
         }
 
-        $this->currentStep = $context['onboarding_data']['current_step'] ?? 0;
         $steps = $this->resolveSteps($context);
-        $currentStepDef = $steps[$this->currentStep] ?? null;
+        $currentStepDef = $this->firstUnansweredStep($steps, $context['onboarding_data']);
 
         if ($currentStepDef === null) {
             return $this->completeOnboarding($userIdentifier);
@@ -135,7 +130,7 @@ class OnboardingFlowManager
         // Antwort normalisieren und im Kontext speichern.
         $normalized = $this->normalizeResponse($response, $type);
         $context['onboarding_data'][$field] = $normalized;
-        $context['onboarding_data']['step_' . $this->currentStep] = [
+        $context['onboarding_data']['step_' . $field] = [
             'response' => $normalized,
             'timestamp' => (new \DateTimeImmutable())->format(\DATE_ATOM),
         ];
@@ -144,22 +139,13 @@ class OnboardingFlowManager
         // LLM-Praeferenz-Persistierung, Modell-Optionen dynamisieren).
         $this->applyStepSideEffects($userIdentifier, $context, $currentStepDef, $normalized);
 
-        // Wenn der Use-Case-Schritt beantwortet wurde, muessen die
-        // Schnittstellen-Schritte neu in die Schrittfolge eingefuegt werden,
-        // da ihre Anzahl von den Use-Cases abhaengt.
+        // use_cases als Liste sicherstellen, damit der RequirementMapper
+        // die Schnittstellen-Schritte ableiten kann.
         if ($field === 'use_cases') {
-            // use_cases als Liste sicherstellen
             $context['onboarding_data']['use_cases'] = $this->toArray($normalized);
         }
 
-        $this->currentStep++;
-        $context['onboarding_data']['current_step'] = $this->currentStep;
         $this->contextStore->saveContext($userIdentifier, $context);
-
-        $steps = $this->resolveSteps($context);
-        if (!isset($steps[$this->currentStep])) {
-            return $this->completeOnboarding($userIdentifier);
-        }
 
         return $this->buildStepResponse($userIdentifier, $context);
     }
@@ -175,7 +161,6 @@ class OnboardingFlowManager
     public function getNextStep(string $userIdentifier, array $additionalContext = []): array
     {
         $context = $this->contextStore->loadContext($userIdentifier);
-        $this->currentStep = $context['onboarding_data']['current_step'] ?? 0;
 
         return $this->buildStepResponse($userIdentifier, $context);
     }
@@ -209,8 +194,6 @@ class OnboardingFlowManager
         $context['onboarding_data']['completed_at'] = (new \DateTimeImmutable())->format(\DATE_ATOM);
         $context['onboarding_data']['status'] = 'completed';
         $this->contextStore->saveContext($userIdentifier, $context);
-
-        $this->currentStep = 0;
 
         // Onboarding-Agent (optional) ueber Abschluss informieren. Fehler
         // hier duerfen den Abschluss nicht blockieren.
@@ -254,7 +237,6 @@ class OnboardingFlowManager
 
         return [
             'status' => 'in_progress',
-            'current_step' => $context['onboarding_data']['current_step'] ?? 0,
             'onboarding_data' => $context['onboarding_data'],
         ];
     }
@@ -264,8 +246,6 @@ class OnboardingFlowManager
      */
     public function resetOnboarding(string $userIdentifier): void
     {
-        $this->currentStep = 0;
-
         $context = $this->contextStore->loadContext($userIdentifier);
         unset($context['onboarding_data']);
         $this->contextStore->saveContext($userIdentifier, $context);
@@ -308,6 +288,46 @@ class OnboardingFlowManager
     }
 
     /**
+     * Bestimmt den naechsten unbeantworteten Schritt anhand des onboarding-
+     * Kontexts. Da die Schrittfolge dynamisch ist (verzweigend, schrumpfend),
+     * kann nicht mit einem festen numerischen Index gearbeitet werden: ein
+     * beantworteter Schritt faellt aus der Liste, und der Index wuerde sich
+     * verschieben. Stattdessen wird der erste Schritt geliefert, dessen
+     * Feld im Kontext noch nicht gesetzt ist.
+     *
+     * @param array<int, array<string, mixed>> $steps
+     * @param array<string, mixed>             $onboardingData
+     *
+     * @return array<string, mixed>|null
+     */
+    private function firstUnansweredStep(array $steps, array $onboardingData): ?array
+    {
+        foreach ($steps as $step) {
+            $field = $step['field'] ?? null;
+            $id = $step['id'] ?? null;
+            if ($field === null || $id === null) {
+                continue;
+            }
+            // Der summary-Schritt ist der Abschluss; er gilt als unbeantwortet,
+            // bis er bestaetigt wird (Feld 'summary' wird auf 'confirm' gesetzt).
+            // email_account-Schritte sind pro Bereich wiederholbar; sie gelten
+            // als beantwortet, sobald der Bereich in email_configured_areas steht.
+            if ($field === 'email_account' && isset($step['area'])) {
+                $configured = $this->toArray($onboardingData['email_configured_areas'] ?? []);
+                if (in_array($step['area'], $configured, true)) {
+                    continue;
+                }
+                return $step;
+            }
+            if (!array_key_exists($field, $onboardingData)) {
+                return $step;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Baut die Antwort-Struktur fuer den aktuellen Schritt.
      *
      * @param array<string, mixed> $context
@@ -316,21 +336,30 @@ class OnboardingFlowManager
      */
     private function buildStepResponse(string $userIdentifier, array $context): array
     {
-        $this->currentStep = $context['onboarding_data']['current_step'] ?? 0;
         $steps = $this->resolveSteps($context);
+        $onboardingData = $context['onboarding_data'] ?? [];
 
-        if (!isset($steps[$this->currentStep])) {
+        $step = $this->firstUnansweredStep($steps, $onboardingData);
+        if ($step === null) {
             return $this->completeOnboarding($userIdentifier);
         }
 
-        $step = $steps[$this->currentStep];
+        // Position des aktuellen Schritts fuer die Fortschrittsanzeige (1-basiert).
+        $currentPosition = 0;
+        foreach ($steps as $idx => $s) {
+            if (($s['id'] ?? null) === ($step['id'] ?? null)) {
+                $currentPosition = $idx;
+                break;
+            }
+        }
+
         $options = $this->resolveOptions($step, $context);
 
         return [
             'status' => 'in_progress',
             'step_id' => $step['id'],
             'phase' => $step['phase'] ?? '',
-            'current_step' => $this->currentStep,
+            'current_step' => $currentPosition,
             'total_steps' => count($steps),
             'question' => $step['question'],
             'type' => $step['type'],

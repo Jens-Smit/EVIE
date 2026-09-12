@@ -148,7 +148,8 @@ final class OnboardingFlowManagerTest extends TestCase
         $this->manager->processResponse('user-123', 'mistral-small-latest');
         $this->manager->processResponse('user-123', 'test-key');
 
-        $result = $this->manager->processResponse('user-123', 'mistral');
+        // Nach dem API-Key-Schritt folgt die goal-Frage (Ziel-Verzweigung).
+        $result = $this->manager->getNextStep('user-123');
         self::assertSame('goal', $result['step_id']);
         self::assertArrayHasKey('manage_company', $result['options']);
     }
