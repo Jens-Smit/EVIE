@@ -43,15 +43,42 @@ final class OnboardingFlowManagerTest extends TestCase
         $this->secretService = $this->createMock(SecretService::class);
         $this->stepProvider = new OnboardingStepProvider();
         $this->requirementMapper = new IntegrationRequirementMapper();
+        $this->context = [];
 
-        // ContextStore laedt/speichert gegen ein lokales Array, damit der
-        // schrittuebergreifende Zustand (current_step, use_cases) erhalten bleibt.
+        // setUp registriert bewusst KEINE loadContext-Will-Value, damit Tests,
+        // die einen festen Kontext pruefen, diesen via willReturn(...) setzen
+        // koennen (PHPUnit 10 haengt weitere Return-Values an, sodass ein
+        // vorab registrierter Default einen willReturn-Override verdraengen
+        // wuerde). Default-muessig liefert der Mock fuer array-Rueckgabe [].
+        // saveContext ist zustaendigkeitsfrei (Default-Callback).
+        $this->contextStore->method('saveContext')->willReturnCallback(function (string $id, array $ctx): void {
+            $this->context = $ctx;
+        });
+
+        $this->manager = new OnboardingFlowManager(
+            $this->contextStore,
+            $this->userProfileRepo,
+            $this->onboardingAgent,
+            $this->stepProvider,
+            $this->requirementMapper,
+            $this->secretService
+        );
+    }
+
+    /**
+     * Schaltet den ContextStore so, dass loadContext/saveContext gegen ein
+     * lokales Array arbeiten (schrittuebergreifender Zustand). Erzeugt einen
+     * neuen Mock + Manager, damit Tests die loadContext-Default nicht selbst
+     * ueberschreiben muessen.
+     */
+    private function setUpStatefulContext(): void
+    {
+        $this->contextStore = $this->createMock(ContextStoreManager::class);
         $this->context = [];
         $this->contextStore->method('loadContext')->willReturnCallback(fn () => $this->context);
         $this->contextStore->method('saveContext')->willReturnCallback(function (string $id, array $ctx): void {
             $this->context = $ctx;
         });
-
         $this->manager = new OnboardingFlowManager(
             $this->contextStore,
             $this->userProfileRepo,
@@ -77,6 +104,7 @@ final class OnboardingFlowManagerTest extends TestCase
 
     public function testProcessResponseAdvancesStepAndPersistsLlmProvider(): void
     {
+        $this->setUpStatefulContext();
         $this->manager->startOnboarding('user-123');
 
         $profile = new UserProfile();
@@ -96,6 +124,7 @@ final class OnboardingFlowManagerTest extends TestCase
 
     public function testModelOptionsDependOnSelectedProvider(): void
     {
+        $this->setUpStatefulContext();
         $this->manager->startOnboarding('user-123');
 
         $profile = new UserProfile();
@@ -114,6 +143,7 @@ final class OnboardingFlowManagerTest extends TestCase
     public function testLlmApiKeyIsStoredAsProviderSpecificSecret(): void
     {
         // Bis zum llm_api_key-Schritt vorspulen (provider + model).
+        $this->setUpStatefulContext();
         $this->manager->startOnboarding('user-123');
         $profile = new UserProfile();
         $profile->setUserIdentifier('user-123');
@@ -133,6 +163,7 @@ final class OnboardingFlowManagerTest extends TestCase
     public function testUseCasesAppendIntegrationSteps(): void
     {
         // Basis-Schritte durchlaufen bis use_cases.
+        $this->setUpStatefulContext();
         $this->manager->startOnboarding('user-123');
         $profile = new UserProfile();
         $profile->setUserIdentifier('user-123');
@@ -157,6 +188,7 @@ final class OnboardingFlowManagerTest extends TestCase
     {
         // Vollstaendigen Basis-Flow mit business_automation durchlaufen, damit
         // SMTP/IMAP-Schritte aktiv werden.
+        $this->setUpStatefulContext();
         $this->manager->startOnboarding('user-123');
         $profile = new UserProfile();
         $profile->setUserIdentifier('user-123');
@@ -185,6 +217,7 @@ final class OnboardingFlowManagerTest extends TestCase
 
     public function testCompleteOnboardingSetsCompletedFlag(): void
     {
+        $this->setUpStatefulContext();
         $this->manager->startOnboarding('user-123');
         $profile = new UserProfile();
         $profile->setUserIdentifier('user-123');
@@ -210,6 +243,7 @@ final class OnboardingFlowManagerTest extends TestCase
 
     public function testGetNextStepAfterCompletionReturnsCompleted(): void
     {
+        $this->setUpStatefulContext();
         $this->manager->startOnboarding('user-123');
         $profile = new UserProfile();
         $profile->setUserIdentifier('user-123');
@@ -265,12 +299,13 @@ final class OnboardingFlowManagerTest extends TestCase
 
     public function testGetOnboardingStatusCompletedWhenRequiredFieldsPresent(): void
     {
+        // Deterministisch: 'completed' ist nur gesetzt, wenn das Profil den
+        // completed-Flag traegt (von completeOnboarding geschrieben). Ein
+        // befuellter onboarding-Kontext allein bedeutet 'in_progress'.
         $profile = new UserProfile();
         $profile->setUserIdentifier('user-123');
+        $profile->setOnboardingData(['completed' => true, 'user_type' => 'Business']);
         $this->userProfileRepo->method('findOneBy')->willReturn($profile);
-        $this->contextStore->method('loadContext')->willReturn([
-            'onboarding_data' => ['user_type' => 'Business'],
-        ]);
 
         $status = $this->manager->getOnboardingStatus('user-123');
 
