@@ -5,23 +5,24 @@ declare(strict_types=1);
 namespace App\Tests\Unit\AI\Onboarding;
 
 use App\AI\Onboarding\ContextStoreManager;
+use App\AI\Onboarding\IntegrationRequirementMapper;
 use App\AI\Onboarding\OnboardingFlowManager;
+use App\AI\Onboarding\OnboardingStepProvider;
 use App\Entity\UserProfile;
 use App\Repository\UserProfileRepository;
+use App\Service\SecretService;
 use App\Tests\Stub\StubAgent;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
 /**
- * Unit-Tests fuer den Onboarding-Flow (Blueprint §4.C / Phase 3 Massnahme 10).
+ * Unit-Tests fuer den phasenbasierten Onboarding-Flow.
  *
- * Verifiziert die kritischen Onboarding-Aktionen inklusive des LLM-Abrufs ueber
- * den onboarding-Agent. Der StubAgent ersetzt den echten Mistral-Aufruf
- * deterministisch, sodass der LLM-Abruf-Pfad (AgentInterface::call) vollstaendig
- * durchlaufen wird, ohne echte API-Kosten zu verursachen.
- *
- * Die Anzahl der LLM-Aufrufe wird assertionsgeprueft (Minimierung: genau 1
- * Abruf pro Onboarding-Aktion), wie in der Anforderung gefordert.
+ * Der Flow ist deterministisch (Phase A: KI-Settings -> Phase B: Profil ->
+ * Phase C: Schnittstellen -> Phase D: Abschluss). Die Tests verifizieren die
+ * Schrittfolge, die dynamische Ableitung von Schnittstellen aus Use-Cases,
+ * die Persistierung der LLM-Praeferenz und die verschluesselte Ablage von
+ * API-Keys/Email-Verbindungen als Secrets.
  */
 final class OnboardingFlowManagerTest extends TestCase
 {
@@ -29,151 +30,235 @@ final class OnboardingFlowManagerTest extends TestCase
     private StubAgent $onboardingAgent;
     private ContextStoreManager&MockObject $contextStore;
     private UserProfileRepository&MockObject $userProfileRepo;
+    private SecretService&MockObject $secretService;
+    private OnboardingStepProvider $stepProvider;
+    private IntegrationRequirementMapper $requirementMapper;
+    private array $context = [];
 
     protected function setUp(): void
     {
-        $this->onboardingAgent = new StubAgent(
-            json_encode([
-                'status' => 'in_progress',
-                'step_id' => 'user_type',
-                'question' => 'Wie moechtest du den Agenten nutzen?',
-                'type' => 'multiple_choice',
-                'options' => ['Business (CRM, Termine)', 'Privat (Recherche, Notizen)'],
-                'next_step' => 'business_type',
-                'context_updates' => ['user_type' => 'Business (CRM, Termine)'],
-            ], JSON_THROW_ON_ERROR)
-        );
-
+        $this->onboardingAgent = new StubAgent('{}');
         $this->contextStore = $this->createMock(ContextStoreManager::class);
         $this->userProfileRepo = $this->createMock(UserProfileRepository::class);
+        $this->secretService = $this->createMock(SecretService::class);
+        $this->stepProvider = new OnboardingStepProvider();
+        $this->requirementMapper = new IntegrationRequirementMapper();
+        $this->context = [];
+
+        // setUp registriert bewusst KEINE loadContext-Will-Value, damit Tests,
+        // die einen festen Kontext pruefen, diesen via willReturn(...) setzen
+        // koennen (PHPUnit 10 haengt weitere Return-Values an, sodass ein
+        // vorab registrierter Default einen willReturn-Override verdraengen
+        // wuerde). Default-muessig liefert der Mock fuer array-Rueckgabe [].
+        // saveContext ist zustaendigkeitsfrei (Default-Callback).
+        $this->contextStore->method('saveContext')->willReturnCallback(function (string $id, array $ctx): void {
+            $this->context = $ctx;
+        });
 
         $this->manager = new OnboardingFlowManager(
             $this->contextStore,
             $this->userProfileRepo,
-            $this->onboardingAgent
+            $this->onboardingAgent,
+            $this->stepProvider,
+            $this->requirementMapper,
+            $this->secretService
         );
     }
 
-    public function testStartOnboardingTriggersSingleLlmCall(): void
+    /**
+     * Schaltet den ContextStore so, dass loadContext/saveContext gegen ein
+     * lokales Array arbeiten (schrittuebergreifender Zustand). Erzeugt einen
+     * neuen Mock + Manager, damit Tests die loadContext-Default nicht selbst
+     * ueberschreiben muessen.
+     */
+    private function setUpStatefulContext(): void
     {
-        $this->contextStore->method('loadContext')->willReturn([]);
-        $this->contextStore->expects(self::atLeastOnce())->method('saveContext');
-
-        $result = $this->manager->startOnboarding('user-123', ['source' => 'web']);
-
-        // Genau 1 LLM-Abruf fuer den ersten Onboarding-Schritt (minimiert).
-        self::assertSame(1, $this->onboardingAgent->getCallCount());
-        self::assertSame('in_progress', $result['status']);
-        self::assertArrayHasKey('question', $result);
-        self::assertNotEmpty($result['question']);
-    }
-
-    public function testProcessResponseInvokesLlmAndParsesStep(): void
-    {
-        $this->contextStore->method('loadContext')->willReturn([
-            'onboarding_data' => ['started_at' => '2026-01-01T00:00:00+00:00'],
-        ]);
-        $this->contextStore->expects(self::atLeastOnce())->method('saveContext');
-
-        $result = $this->manager->processResponse('user-123', 'Business (CRM, Termine)');
-
-        self::assertSame(1, $this->onboardingAgent->getCallCount());
-        self::assertSame('in_progress', $result['status']);
-        // Kontext-Update aus der Agenten-Antwort wurde uebernommen.
-        self::assertArrayHasKey('context', $result);
-    }
-
-    public function testGetNextStepUsesOnboardingAgent(): void
-    {
-        $this->contextStore->method('loadContext')->willReturn([
-            'onboarding_data' => ['user_type' => 'Business'],
-        ]);
-        $this->contextStore->expects(self::once())->method('saveContext');
-
-        $result = $this->manager->getNextStep('user-123');
-
-        self::assertSame(1, $this->onboardingAgent->getCallCount());
-        self::assertSame('in_progress', $result['status']);
-        self::assertArrayHasKey('question', $result);
-    }
-
-    public function testCompleteOnboardingPersistsUserProfile(): void
-    {
-        // Komplettierungs-Agent-Antwort: notifyAgentOfCompletion.
-        $this->contextStore->method('loadContext')->willReturn([
-            'onboarding_data' => [
-                'status' => 'in_progress',
-                'user_type' => 'Business (CRM, Termine)',
-                'industry' => 'IT',
-            ],
-        ]);
-
-        $userProfile = new UserProfile();
-        $userProfile->setUserIdentifier('user-123');
-
-        // Beim ersten completeOnboarding-Aufruf: kein Profil vorhanden -> neu.
-        $this->userProfileRepo->method('findOneBy')->willReturn(null);
-        $this->userProfileRepo->expects(self::once())->method('save')
-            ->with(self::callback(function (UserProfile $p): bool {
-                // Onboarding-Flags werden beim Abschluss gesetzt.
-                $onb = $p->getOnboardingData() ?? [];
-                return ($onb['completed'] ?? false) === true;
-            }), true);
-
-        $result = $this->manager->completeOnboarding('user-123');
-
-        self::assertSame('completed', $result['status']);
-        // notifyAgentOfCompletion fuehrt zu 1 weiteren LLM-Abruf.
-        self::assertSame(1, $this->onboardingAgent->getCallCount());
-    }
-
-    public function testLlmFailureFallsBackGracefully(): void
-    {
-        // Agent wirft Exception -> Fallback-Pfad wird genutzt.
-        $failingAgent = new class {
-            public function call($input, array $options = []): \Symfony\AI\Platform\Result\TextResult
-            {
-                throw new \RuntimeException('Mistral API unreachable');
-            }
-
-            public function getName(): string
-            {
-                return 'failing_onboarding';
-            }
-        };
-
-        $this->contextStore->method('loadContext')->willReturn([
-            'onboarding_data' => ['started_at' => '2026-01-01T00:00:00+00:00'],
-        ]);
-        $this->contextStore->method('saveContext');
-
-        // OnboardingFlowManager mit einem fehlschlagenden Agent via Reflection injizieren,
-        // da der Konstruktor AgentInterface typisiert.
-        $manager = new OnboardingFlowManager(
+        $this->contextStore = $this->createMock(ContextStoreManager::class);
+        $this->context = [];
+        $this->contextStore->method('loadContext')->willReturnCallback(fn () => $this->context);
+        $this->contextStore->method('saveContext')->willReturnCallback(function (string $id, array $ctx): void {
+            $this->context = $ctx;
+        });
+        $this->manager = new OnboardingFlowManager(
             $this->contextStore,
             $this->userProfileRepo,
-            $this->buildFailingAgent()
+            $this->onboardingAgent,
+            $this->stepProvider,
+            $this->requirementMapper,
+            $this->secretService
         );
-
-        $result = $manager->getNextStep('user-123');
-
-        // Fallback liefert einen gueltigen Schritt zurueck, kein Absturz.
-        self::assertArrayHasKey('step_id', $result);
     }
 
-    private function buildFailingAgent(): \Symfony\AI\Agent\AgentInterface
+    public function testStartOnboardingReturnsFirstPhaseStepWithTotalSteps(): void
     {
-        return new class implements \Symfony\AI\Agent\AgentInterface {
-            public function call(string|\Symfony\AI\Platform\Message\MessageBag|\Symfony\AI\Platform\Message\UserMessage $input, array $options = []): \Symfony\AI\Platform\Result\ResultInterface
-            {
-                throw new \RuntimeException('Mistral API unreachable');
-            }
+        $result = $this->manager->startOnboarding('user-123');
 
-            public function getName(): string
-            {
-                return 'failing_onboarding';
-            }
-        };
+        self::assertSame('in_progress', $result['status']);
+        self::assertSame('llm_provider', $result['step_id']);
+        self::assertSame('KI-Settings', $result['phase']);
+        // Basis-Schritte (6) + Abschluss (1) = 7 ohne Schnittstellen.
+        self::assertSame(7, $result['total_steps']);
+        self::assertArrayHasKey('mistral', $result['options']);
+        self::assertArrayHasKey('gemini', $result['options']);
+    }
+
+    public function testProcessResponseAdvancesStepAndPersistsLlmProvider(): void
+    {
+        $this->setUpStatefulContext();
+        $this->manager->startOnboarding('user-123');
+
+        $profile = new UserProfile();
+        $profile->setUserIdentifier('user-123');
+        $this->userProfileRepo->method('findOneBy')->willReturn($profile);
+        $this->userProfileRepo->expects(self::atLeastOnce())->method('save');
+
+        $result = $this->manager->processResponse('user-123', 'mistral');
+
+        self::assertSame('in_progress', $result['status']);
+        self::assertSame('llm_model', $result['step_id']);
+        // Provider wurde im Profil persistiert.
+        self::assertSame('mistral', $profile->getPreferredLlmProvider());
+        // Default-Modell fuer Mistral gesetzt.
+        self::assertSame('mistral-small-latest', $profile->getPreferredLlmModel());
+    }
+
+    public function testModelOptionsDependOnSelectedProvider(): void
+    {
+        $this->setUpStatefulContext();
+        $this->manager->startOnboarding('user-123');
+
+        $profile = new UserProfile();
+        $profile->setUserIdentifier('user-123');
+        $this->userProfileRepo->method('findOneBy')->willReturn($profile);
+
+        $this->manager->processResponse('user-123', 'gemini');
+
+        $result = $this->manager->getNextStep('user-123');
+        self::assertSame('llm_model', $result['step_id']);
+        // Gemini-Modelle werden geliefert.
+        self::assertArrayHasKey('gemini-1.5-flash-latest', $result['options']);
+        self::assertArrayNotHasKey('mistral-small-latest', $result['options']);
+    }
+
+    public function testLlmApiKeyIsStoredAsProviderSpecificSecret(): void
+    {
+        // Bis zum llm_api_key-Schritt vorspulen (provider + model).
+        $this->setUpStatefulContext();
+        $this->manager->startOnboarding('user-123');
+        $profile = new UserProfile();
+        $profile->setUserIdentifier('user-123');
+        $this->userProfileRepo->method('findOneBy')->willReturn($profile);
+
+        $this->manager->processResponse('user-123', 'gemini');
+        $this->manager->processResponse('user-123', 'gemini-1.5-pro-latest');
+
+        // API-Key-Schritt: Secret wird als GEMINI_API_KEY gespeichert.
+        $this->secretService->expects(self::once())
+            ->method('set')
+            ->with('GEMINI_API_KEY', 'secret-gemini-key', 'user-123', 'onboarding');
+
+        $this->manager->processResponse('user-123', 'secret-gemini-key');
+    }
+
+    public function testUseCasesAppendIntegrationSteps(): void
+    {
+        // Basis-Schritte durchlaufen bis use_cases.
+        $this->setUpStatefulContext();
+        $this->manager->startOnboarding('user-123');
+        $profile = new UserProfile();
+        $profile->setUserIdentifier('user-123');
+        $this->userProfileRepo->method('findOneBy')->willReturn($profile);
+
+        $this->manager->processResponse('user-123', 'mistral');
+        $this->manager->processResponse('user-123', 'mistral-small-latest');
+        $this->manager->processResponse('user-123', 'test-key');
+        $this->manager->processResponse('user-123', 'Developer');
+
+        // use_cases mit research -> Tavily-Step wird angehaengt.
+        $result = $this->manager->processResponse('user-123', ['research']);
+
+        // 6 Basis + 1 Tavily-Integration + 1 Abschluss = 8.
+        self::assertSame(8, $result['total_steps']);
+        // Naechster Schritt nach use_cases ist industry (Basis), erst danach
+        // kommen die Integrationen.
+        self::assertSame('industry', $result['step_id']);
+    }
+
+    public function testEmailConnectionIsStoredAsMailerDsnSecret(): void
+    {
+        // Vollstaendigen Basis-Flow mit business_automation durchlaufen, damit
+        // SMTP/IMAP-Schritte aktiv werden.
+        $this->setUpStatefulContext();
+        $this->manager->startOnboarding('user-123');
+        $profile = new UserProfile();
+        $profile->setUserIdentifier('user-123');
+        $this->userProfileRepo->method('findOneBy')->willReturn($profile);
+
+        $this->manager->processResponse('user-123', 'mistral');
+        $this->manager->processResponse('user-123', 'mistral-small-latest');
+        $this->manager->processResponse('user-123', 'test-key');
+        $this->manager->processResponse('user-123', 'Business User');
+        $this->manager->processResponse('user-123', ['business_automation']);
+        $this->manager->processResponse('user-123', 'technology');
+
+        // SMTP-Schritt: Secret wird als MAILER_DSN gespeichert.
+        $this->secretService->expects(self::once())
+            ->method('set')
+            ->with('MAILER_DSN', self::stringStartsWith('smtp://user:pass@smtp.example.com:587'), 'user-123', 'onboarding');
+
+        $this->manager->processResponse('user-123', [
+            'host' => 'smtp.example.com',
+            'port' => '587',
+            'user' => 'user',
+            'pass' => 'pass',
+            'encryption' => 'tls',
+        ]);
+    }
+
+    public function testCompleteOnboardingSetsCompletedFlag(): void
+    {
+        $this->setUpStatefulContext();
+        $this->manager->startOnboarding('user-123');
+        $profile = new UserProfile();
+        $profile->setUserIdentifier('user-123');
+        $this->userProfileRepo->method('findOneBy')->willReturn($profile);
+        $this->userProfileRepo->expects(self::atLeastOnce())->method('save');
+
+        // Nur die zwingenden Basis-Schritte (keine Use-Cases -> keine Integrationen).
+        $this->manager->processResponse('user-123', 'mistral');
+        $this->manager->processResponse('user-123', 'mistral-small-latest');
+        $this->manager->processResponse('user-123', 'key');
+        $this->manager->processResponse('user-123', 'Developer');
+        $this->manager->processResponse('user-123', []);
+        $result = $this->manager->processResponse('user-123', 'technology');
+
+        // Abschluss-Schritt (summary) -> bestaetigen -> completed.
+        self::assertSame('summary', $result['step_id']);
+        $completion = $this->manager->processResponse('user-123', 'confirm');
+
+        self::assertSame('completed', $completion['status']);
+        $onb = $profile->getOnboardingData();
+        self::assertTrue($onb['completed']);
+    }
+
+    public function testGetNextStepAfterCompletionReturnsCompleted(): void
+    {
+        $this->setUpStatefulContext();
+        $this->manager->startOnboarding('user-123');
+        $profile = new UserProfile();
+        $profile->setUserIdentifier('user-123');
+        $this->userProfileRepo->method('findOneBy')->willReturn($profile);
+
+        $this->manager->processResponse('user-123', 'mistral');
+        $this->manager->processResponse('user-123', 'mistral-small-latest');
+        $this->manager->processResponse('user-123', 'key');
+        $this->manager->processResponse('user-123', 'Developer');
+        $this->manager->processResponse('user-123', []);
+        $this->manager->processResponse('user-123', 'technology');
+        $this->manager->processResponse('user-123', 'confirm');
+
+        $status = $this->manager->getOnboardingStatus('user-123');
+        self::assertSame('completed', $status['status']);
     }
 
     public function testGetOnboardingStatusNotStartedWithoutProfile(): void
@@ -214,12 +299,13 @@ final class OnboardingFlowManagerTest extends TestCase
 
     public function testGetOnboardingStatusCompletedWhenRequiredFieldsPresent(): void
     {
+        // Deterministisch: 'completed' ist nur gesetzt, wenn das Profil den
+        // completed-Flag traegt (von completeOnboarding geschrieben). Ein
+        // befuellter onboarding-Kontext allein bedeutet 'in_progress'.
         $profile = new UserProfile();
         $profile->setUserIdentifier('user-123');
+        $profile->setOnboardingData(['completed' => true, 'user_type' => 'Business']);
         $this->userProfileRepo->method('findOneBy')->willReturn($profile);
-        $this->contextStore->method('loadContext')->willReturn([
-            'onboarding_data' => ['user_type' => 'Business'],
-        ]);
 
         $status = $this->manager->getOnboardingStatus('user-123');
 

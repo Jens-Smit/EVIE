@@ -56,9 +56,17 @@ services:
 
     # OnboardingFlowManager benoetigt den expliziten onboarding-Agent, da
     # autowiring bei mehreren AgentInterface-Services nicht aufloesen kann.
+    # Zusaetzlich werden der deterministische StepProvider, der RequirementMapper
+    # und der SecretService injiziert, damit der Onboarding-Flow KI-Settings,
+    # API-Keys und E-Mail-Verbindungen direkt erfasst.
     App\AI\Onboarding\OnboardingFlowManager:
         arguments:
             $onboardingAgent: '@ai.agent.onboarding'
+            $stepProvider: '@App\AI\Onboarding\OnboardingStepProvider'
+            $requirementMapper: '@App\AI\Onboarding\IntegrationRequirementMapper'
+            $secretService: '@App\Service\SecretService'
+    App\AI\Onboarding\OnboardingStepProvider: ~
+    App\AI\Onboarding\IntegrationRequirementMapper: ~
 
     # Event Listeners
     App\EventListener\ApiSecurityListener:

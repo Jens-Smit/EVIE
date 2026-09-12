@@ -73,19 +73,25 @@ class OnboardingController extends AbstractController
 
             return $this->json($step);
         } catch (\Throwable $e) {
-            // Graceful Fallback: wenn der Onboarding-Agent (Mistral) nicht
-            // erreichbar ist, liefere den ersten Legacy-Schritt, damit der
-            // Nutzer den Flow zumindest durchlaufen kann.
+            // Deterministischer Fallback, falls das Container-Setup unvollstaendig
+            // ist. Liefert den ersten phasenbasierten Schritt (KI-Anbieter).
             return $this->json([
                 'status' => 'in_progress',
-                'step_id' => 'welcome',
+                'step_id' => 'llm_provider',
+                'phase' => 'KI-Settings',
                 'current_step' => 0,
-                'question' => 'Willkommen beim EVIE AI-Agent! Wie möchtest du den Agenten nutzen?',
+                'total_steps' => 7,
+                'question' => 'Welchen KI-Anbieter moechtest du fuer EVIE nutzen? Diese Einstellung wird zuerst benoetigt, damit EVIE funktioniert.',
                 'type' => 'multiple_choice',
-                'options' => ['Business (CRM, Termine)', 'Privat (Recherche, Notizen)'],
+                'options' => [
+                    'mistral' => 'Mistral AI',
+                    'gemini' => 'Google Gemini',
+                ],
+                'help' => 'Der Anbieter bestimmt, welches Sprachmodell EVIE verwendet.',
+                'required' => true,
                 'validation' => [],
                 'fallback' => true,
-                'error' => 'Onboarding-Agent nicht erreichbar, nutze Fallback-Schritt.',
+                'error' => 'Onboarding-Engine nicht erreichbar, nutze Fallback-Schritt: ' . $e->getMessage(),
             ]);
         }
     }
@@ -102,6 +108,10 @@ class OnboardingController extends AbstractController
             $userIdentifier = $user->getUserIdentifier();
             $response = '';
 
+            // Antworten konnen je nach Schritttyp unterschiedlich sein:
+            //  - multiple_choice: String (eine Option) oder Array (Mehrfachauswahl)
+            //  - text/secret: String
+            //  - email_smtp/email_imap: Array mit host/port/user/pass/encryption/from
             if ($request->getContentTypeFormat() === 'json') {
                 $data = $request->toArray();
                 $response = $data['response'] ?? '';
