@@ -13,16 +13,22 @@
             </div>
             <div>
                 <h1 class="text-2xl md:text-3xl font-bold text-content">Willkommen bei EVIE</h1>
-                <p class="text-content-muted">Lass uns ein paar Dinge einrichten, damit EVIE optimal für dich arbeitet.</p>
+                <p class="text-content-muted">Lass uns ein paar Dinge einrichten, damit EVIE optimal f&uuml;r dich arbeitet.</p>
             </div>
         </div>
 
-        <!-- Fortschrittsanzeige -->
-        <div class="flex items-center gap-2 mb-8">
-            <template x-for="i in 4" :key="i">
+        <!-- Fortschrittsanzeige (dynamisch, basiert auf totalSteps aus dem Backend) -->
+        <div class="flex items-center gap-2 mb-2">
+            <template x-for="i in totalSteps" :key="i">
                 <div class="flex-1 h-1.5 rounded-full transition-colors duration-300"
                      :class="currentStep >= i ? 'bg-primary' : 'bg-surface-elevated'"></div>
             </template>
+        </div>
+        <div class="flex items-center justify-between mb-8">
+            <span class="text-xs font-medium text-primary" x-text="currentPhase"></span>
+            <span class="text-xs text-content-muted">
+                Schritt <span x-text="Math.min(currentStep + 1, totalSteps)"></span> / <span x-text="totalSteps"></span>
+            </span>
         </div>
 
         <!-- Loading State -->
@@ -35,17 +41,18 @@
         <div x-show="!loading && !completed" class="space-y-6">
             <div>
                 <h2 class="text-xl font-semibold text-content mb-2" x-text="currentQuestion"></h2>
+                <p x-show="currentHelp" class="text-sm text-content-muted" x-text="currentHelp"></p>
                 <p x-show="currentError" class="text-danger text-sm" x-text="currentError"></p>
             </div>
 
-            <!-- Multiple Choice -->
+            <!-- Multiple Choice (Einzelauswahl) -->
             <div x-show="currentType === 'multiple_choice'" class="space-y-3">
-                <template x-for="option in currentOptions" :key="option">
-                    <button @click="submitResponse(option)"
+                <template x-for="(label, key) in currentOptions" :key="key">
+                    <button @click="submitResponse(key)"
                             class="w-full text-left p-4 rounded-xl border border-border bg-surface-muted
                                    hover:bg-primary-soft hover:border-primary transition-all
                                    text-content font-medium">
-                        <span x-text="option"></span>
+                        <span x-text="label"></span>
                     </button>
                 </template>
             </div>
@@ -65,11 +72,88 @@
                 </button>
             </div>
 
-            <!-- Skip / Später -->
+            <!-- Secret Input (API-Key etc.) -->
+            <div x-show="currentType === 'secret'" class="space-y-3">
+                <input type="password" x-model="textInput"
+                       class="w-full p-3 border border-border rounded-xl bg-surface-muted text-content
+                              focus:ring-2 focus:ring-primary focus:border-transparent"
+                       placeholder="API-Key eingeben..."
+                       autocomplete="off">
+                <p class="text-xs text-content-muted flex items-center gap-1">
+                    <i class="ph ph-lock-key"></i>
+                    Wird verschl&uuml;sselt gespeichert und nie im Klartext angezeigt.
+                </p>
+                <div class="flex gap-2">
+                    <button @click="submitResponse(textInput)"
+                            class="btn btn-primary"
+                            :disabled="!textInput.trim()">
+                        <i class="ph ph-floppy-disk"></i>
+                        Speichern & Weiter
+                    </button>
+                    <button x-show="!currentRequired" @click="submitResponse('')"
+                            class="btn btn-ghost">
+                        Überspringen
+                    </button>
+                </div>
+            </div>
+
+            <!-- E-Mail Verbindung (SMTP/IMAP) -->
+            <div x-show="currentType === 'email_smtp' || currentType === 'email_imap'" class="space-y-3">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <input type="text" x-model="emailConfig.host"
+                           class="w-full p-3 border border-border rounded-xl bg-surface-muted text-content"
+                           placeholder="Host (z.B. smtp.gmail.com)">
+                    <input type="text" x-model="emailConfig.port"
+                           class="w-full p-3 border border-border rounded-xl bg-surface-muted text-content"
+                           :placeholder="currentType === 'email_smtp' ? 'Port (587)' : 'Port (993)'">
+                    <input type="text" x-model="emailConfig.user"
+                           class="w-full p-3 border border-border rounded-xl bg-surface-muted text-content"
+                           placeholder="Benutzername / E-Mail">
+                    <input type="password" x-model="emailConfig.pass"
+                           class="w-full p-3 border border-border rounded-xl bg-surface-muted text-content"
+                           placeholder="Passwort / App-Passwort" autocomplete="off">
+                    <select x-model="emailConfig.encryption"
+                            class="w-full p-3 border border-border rounded-xl bg-surface-muted text-content">
+                        <option value="">Keine Verschl&uuml;sselung</option>
+                        <option value="ssl">SSL</option>
+                        <option value="tls">TLS</option>
+                    </select>
+                    <input type="email" x-model="emailConfig.from"
+                           class="w-full p-3 border border-border rounded-xl bg-surface-muted text-content"
+                           placeholder="Absender-E-Mail (optional)">
+                </div>
+                <p class="text-xs text-content-muted">
+                    Die Zugangsdaten werden verschl&uuml;sselt als Secret gespeichert.
+                </p>
+                <div class="flex gap-2">
+                    <button @click="submitEmailConfig()"
+                            class="btn btn-primary"
+                            :disabled="!emailConfig.host.trim()">
+                        <i class="ph ph-floppy-disk"></i>
+                        Speichern & Weiter
+                    </button>
+                    <button @click="submitResponse('')"
+                            class="btn btn-ghost">
+                        Überspringen
+                    </button>
+                </div>
+            </div>
+
+            <!-- Summary / Abschluss-Schritt -->
+            <div x-show="currentType === 'summary'" class="space-y-4">
+                <p class="text-content-muted">Deine Konfiguration wurde gespeichert. Du kannst jetzt loslegen.</p>
+                <button @click="submitResponse('confirm')"
+                        class="btn btn-primary">
+                    <i class="ph ph-check-circle"></i>
+                    Onboarding abschlie&szlig;en
+                </button>
+            </div>
+
+            <!-- Skip / Sp&auml;ter -->
             <div class="pt-4 border-t border-border">
                 <button @click="skipOnboarding()"
                         class="text-sm text-content-muted hover:text-content">
-                    Überspringen und später durchführen
+                    &Uuml;berspringen und sp&auml;ter durchf&uuml;hren
                 </button>
             </div>
         </div>
@@ -80,7 +164,7 @@
                 <i class="ph ph-check-circle text-success text-4xl"></i>
             </div>
             <h2 class="text-2xl font-bold text-content">Onboarding abgeschlossen!</h2>
-            <p class="text-content-muted text-center">Danke für deine Angaben. Du kannst jetzt EVIE nutzen.</p>
+            <p class="text-content-muted text-center">Danke f&uuml;r deine Angaben. Du kannst jetzt EVIE nutzen.</p>
             <a href="{{ path('app_dashboard') }}" class="btn btn-primary">
                 <i class="ph ph-house"></i>
                 Zum Dashboard
@@ -95,11 +179,16 @@
         loading: true,
         completed: false,
         currentStep: 0,
+        totalSteps: 1,
+        currentPhase: '',
         currentQuestion: '',
         currentType: 'multiple_choice',
-        currentOptions: [],
+        currentOptions: {},
+        currentHelp: '',
+        currentRequired: true,
         currentError: '',
         textInput: '',
+        emailConfig: { host: '', port: '', user: '', pass: '', encryption: 'tls', from: '' },
 
         async init() {
             try {
@@ -134,12 +223,26 @@
                 });
                 const data = await res.json();
                 this.textInput = '';
+                this.resetEmailConfig();
                 this.updateStep(data);
             } catch (e) {
                 this.currentError = 'Antwort konnte nicht gesendet werden.';
             } finally {
                 this.loading = false;
             }
+        },
+
+        async submitEmailConfig() {
+            const cfg = { ...this.emailConfig };
+            if (!cfg.host.trim()) {
+                this.currentError = 'Bitte einen Host angeben oder überspringen.';
+                return;
+            }
+            await this.submitResponse(cfg);
+        },
+
+        resetEmailConfig() {
+            this.emailConfig = { host: '', port: '', user: '', pass: '', encryption: 'tls', from: '' };
         },
 
         async skipOnboarding() {
@@ -162,10 +265,14 @@
                 this.completed = true;
                 return;
             }
-            this.currentStep = (data.current_step ?? 0) + 1;
+            this.currentStep = data.current_step ?? 0;
+            this.totalSteps = data.total_steps ?? (this.currentStep + 1);
+            this.currentPhase = data.phase ?? '';
             this.currentQuestion = data.question ?? 'Wie können wir dir helfen?';
             this.currentType = data.type ?? 'multiple_choice';
-            this.currentOptions = data.options ?? [];
+            this.currentOptions = data.options ?? {};
+            this.currentHelp = data.help ?? '';
+            this.currentRequired = data.required !== false;
         }
     });
     if (typeof Alpine !== 'undefined') {

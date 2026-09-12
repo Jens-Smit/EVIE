@@ -83,7 +83,7 @@ class OnboardingSettingsTest extends WebTestCase
         $this->client->request('GET', '/onboarding');
 
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorExists('[x-data="onboardingFlow()"]');
+        $this->assertSelectorExists('[x-data="onboardingFlow"]');
         $this->assertSelectorTextContains('', 'Willkommen bei EVIE');
         $this->assertSelectorTextContains('', 'Lass uns ein paar Dinge einrichten');
     }
