@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Service;
 
 use Symfony\Contracts\HttpClient\HttpClientInterface;
+use Symfony\Contracts\HttpClient\ResponseInterface;
 
 /**
  * Validiert API-Keys fuer die von EVIE unterstuetzten Anbieter (Mistral,
@@ -96,7 +97,7 @@ final class ApiKeyValidator
     /**
      * @return array{valid: bool, message: string}
      */
-    private function errorFromResponse($response, string $provider): array
+    private function errorFromResponse(ResponseInterface $response, string $provider): array
     {
         try {
             $body = json_decode($response->getContent(false), true);

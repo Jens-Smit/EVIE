@@ -83,7 +83,7 @@ class OnboardingController extends AbstractController
                 'step_id' => 'llm_provider',
                 'phase' => 'KI-Settings',
                 'current_step' => 0,
-                'total_steps' => 7,
+                'total_steps' => 5,
                 'question' => 'Welchen KI-Anbieter moechtest du fuer EVIE nutzen? Diese Einstellung wird zuerst benoetigt, damit EVIE funktioniert.',
                 'type' => 'multiple_choice',
                 'options' => [
