@@ -91,6 +91,10 @@ final class ApiKeyValidator
                 'headers' => ['Authorization' => 'Bearer ' . $apiKey, 'Accept' => 'application/json'],
                 'max_duration' => 10,
             ],
+            default => [
+                'headers' => ['Authorization' => 'Bearer ' . $apiKey, 'Accept' => 'application/json'],
+                'max_duration' => 10,
+            ],
         };
     }
 
