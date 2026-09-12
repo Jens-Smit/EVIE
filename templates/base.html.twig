@@ -101,6 +101,11 @@
         };
     </script>
     
+    {# HTMX + Alpine.js Bibliotheken (im <head>, damit hx-boost sie nicht bei jeder Navigation neu ausfuehrt) #}
+    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
+    <script src="https://unpkg.com/htmx.org@1.9.10/dist/ext/json-enc.js"></script>
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+
     {% block stylesheets %}{% endblock %}
 </head>
 
@@ -249,13 +254,6 @@
             }
         });
     </script>
-    
-    {# HTMX Script #}
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <script src="https://unpkg.com/htmx.org@1.9.10/dist/ext/json-enc.js"></script>
-    
-    {# Alpine.js #}
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
     
     {# HTMX Configuration Script #}
     <script>
