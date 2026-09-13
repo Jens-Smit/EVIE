@@ -1,5 +1,9 @@
 # Agent-Architektur
 
+> Siehe auch: [`orchestrator-pipeline.md`](orchestrator-pipeline.md) — die
+> 5-Phasen-Pipeline Goal → Intent → Plan → Capability → Execution, in die der
+> Orchestrator umgebaut wird.
+
 Der Orchestrator ist ein nativer `Symfony\AI\Agent\Agent`. Er **führt keine
 konkreten Aufgaben aus**, sondern plant und delegiert über Tool-Calling.
 

@@ -1,5 +1,9 @@
 # Architektur-Übersicht
 
+> Übersicht der Doku-Seiten: `overview.md`, `agent-architecture.md`,
+> [`orchestrator-pipeline.md`](orchestrator-pipeline.md), `data-flow.md`,
+> `evolution.md`, `memory.md`, `rag.md`, `tool-system.md`.
+
 > EVIE folgt dem nativen Symfony AI v0.12 Agent-Loop: Der `Agent` wrappt ein
 > Modell mit einer `Toolbox` und `InputProcessor`/`OutputProcessor`, ruft Tools
 > auf, liest Ergebnisse und entscheidet das weitere Vorgehen — bis die Aufgabe
