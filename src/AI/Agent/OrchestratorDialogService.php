@@ -40,11 +40,14 @@ final readonly class OrchestratorDialogService
 
     /**
      * Sendet eine Nachricht an den Orchestrator-Agenten.
-     * Falls kein passendes Tool gefunden wird, wird automatisch eine Tool-Generierung ausgelöst.
+     * Der Agent antwortet wie ein Mensch: Konversation, Strategie-Diskussion
+     * und reine Informationswuensche fuehren zu einer direkten Dialog-Antwort.
+     * Erst eine konkrete, ausfuehrbare Aufgabe ohne passendes Tool loest eine
+     * Tool-Generierung mit HITL aus.
      */
     public function ask(string $userMessage, string $userIdentifier): string
     {
-        // Temporär deaktiviert, da der Orchestrator-Prompt in ai.yaml jetzt JSON erzwingt
+        // Temporaer deaktiviert, da der Orchestrator-Prompt in ai.yaml jetzt JSON erzwingt
         $messages = new MessageBag(Message::ofUser($userMessage));
 
         try {
@@ -58,15 +61,15 @@ final readonly class OrchestratorDialogService
 
             // NORMALISIERE die Antwort SOFORT, bevor weitere Verarbeitung
             $normalizedResponse = $this->responseNormalizer->normalizeResponse($responseContent);
-            
+
             $this->logger->debug('Orchestrator-Agent Antwort (normalisiert)', [
                 'response' => $normalizedResponse,
                 'is_valid_json' => $this->jsonResponseEnforcer->validateJsonResponse($normalizedResponse)
             ]);
 
-            // Prüfe, ob die normalisierte Antwort gültiges JSON ist
+            // Pruefe, ob die normalisierte Antwort gueltiges JSON ist
             if (!$this->jsonResponseEnforcer->validateJsonResponse($normalizedResponse)) {
-                $this->logger->warning('Ungültige JSON-Antwort vom LLM auch nach Normalisierung, starte Fallback-Handling');
+                $this->logger->warning('Ungueltige JSON-Antwort vom LLM auch nach Normalisierung, starte Fallback-Handling');
                 return $this->handleUnstructuredResponse($normalizedResponse, $userMessage, $userIdentifier);
             }
 
@@ -82,7 +85,11 @@ final readonly class OrchestratorDialogService
                     return $this->handleSubAgentDelegation($normalizedResponse, $userMessage, $userIdentifier);
 
                 case 'no_tool_found':
-                    return $this->handleToolNotFound($userMessage, $userIdentifier);
+                    // Keine sofortige Tool-Generierung: erst pruefen, ob es
+                    // ueberhaupt eine ausfuehrbare Aufgabe ist. Konversation,
+                    // Strategie-Diskussion, Begruesung und reine
+                    // Informationswuensche werden als Dialog beantwortet.
+                    return $this->handleNoToolFound($userMessage, $userIdentifier, $normalizedResponse);
 
                 case 'dialog':
                     return $this->handleDialogResponse($normalizedResponse, $userMessage, $userIdentifier);
@@ -96,7 +103,9 @@ final readonly class OrchestratorDialogService
             }
         } catch (\Exception $e) {
             $this->logger->error('Fehler beim Aufruf des Orchestrator-Agenten: ' . $e->getMessage());
-            return $this->handleToolNotFound($userMessage, $userIdentifier);
+            // LLM-Ausfall ist KEIN Grund, automatisch ein Tool zu generieren.
+            // Der Agent antwortet menschenahnlich mit einer lesbaren Nachricht.
+            return $this->handleOrchestratorFailure($userMessage);
         }
     }
 
@@ -221,12 +230,173 @@ final readonly class OrchestratorDialogService
     }
 
     /**
-     * Behandelt den Fall, wenn kein passendes Tool gefunden wurde.
-     * Erstellt automatisch einen passenden Sub-Agenten und ein neues Tool.
+     * Behandelt den Fall, wenn der Orchestrator kein passendes Tool findet.
+     *
+     * Der Agent agiert menschenahnlich: Eine Konversation, Strategie-Diskussion,
+     * Begruesung oder ein reiner Informationswunsch ("wer bist du?",
+     * "lass uns ueber die Strategie reden") wird als direkte Dialog-Antwort
+     * zurueckgegeben. Erst eine konkrete, ausfuehrbare Aufgabe (z.B. "ruf
+     * diese API ab", "analysiere diese Datei"), fuer die tatsaechlich ein
+     * Werkzeug fehlt, loest die Tool-Generierung mit HITL-Freigabe aus.
      */
-    private function handleToolNotFound(string $userMessage, string $userIdentifier): string
+    private function handleNoToolFound(string $userMessage, string $userIdentifier, string $responseContent): string
     {
-        $this->logger->info('Kein passendes Tool gefunden. Starte Tool-Generierung...');
+        $intent = $this->classifyIntent($userMessage);
+
+        $this->logger->info('Intent klassifiziert, entscheide ueber weitere Pipeline.', [
+            'intent' => $intent,
+        ]);
+
+        switch ($intent) {
+            case 'conversation':
+            case 'information':
+                // Konversation, Strategie-Diskussion und aus vorhandenem
+                // Kontext beantwortbare Informationswuensche werden als
+                // direkte Dialog-Antwort zurueckgegeben - kein Tool noetig.
+                return $this->buildConversationAnswer($userMessage, $responseContent);
+
+            case 'unclear':
+                // Die Anfrage ist mehrdeutig: der Agent stellt eine
+                // Rueckfrage, anstatt ein Werkzeug zu erfinden.
+                return $this->buildClarifyingQuestion($userMessage, $responseContent);
+
+            case 'task_requires_tool':
+            default:
+                // Erst eine konkrete, ausfuehrbare Aufgabe, fuer die
+                // tatsaechlich ein Werkzeug fehlt, loest die
+                // Tool-Generierung mit HITL-Freigabe aus.
+                return $this->generateNewTool($userMessage, $userIdentifier);
+        }
+    }
+
+    /**
+     * Behandelt einen Ausfall des Orchestrator-LLM (Exception / ungueltiges JSON).
+     *
+     * Frueher wurde hier automatisch ein Tool generiert. Das ist nicht
+     * menschenahnlich und erzeugt aus jeder fehlerhaften Anfrage ein neues
+     * pending Tool. Stattdessen liefert der Agent eine lesbare Nachricht,
+     * die den Nutzer um Eingabe bittet.
+     */
+    private function handleOrchestratorFailure(string $userMessage): string
+    {
+        return 'Ich konnte deine Anfrage gerade leider nicht verarbeiten. '
+            . 'Kannst du sie bitte etwas anders formulieren oder praeziser beschreiben, '
+            . 'was du moechtest?';
+    }
+
+    /**
+     * Klassifiziert die User-Anfrage in vier Intent-Klassen, bevor ueber
+     * eine Tool-Generierung entschieden wird (verstehen, dann entscheiden).
+     *
+     *  - 'conversation':        Begruesung, Identitaet, allgemeine
+     *                            Unterhaltung, Strategie-Diskussion.
+     *  - 'information':         Ein Informationswunsch, der aus vorhandenem
+     *                            Kontext/dem Dialogverlauf mit Text
+     *                            beantwortet werden kann.
+     *  - 'unclear':             Mehrdeutige Anfrage; der Agent sollte eine
+     *                            Rueckfrage stellen.
+     *  - 'task_requires_tool':  Eine konkrete, ausfuehrbare Aktion, fuer die
+     *                            tatsaechlich ein Werkzeug fehlt (z.B. API
+     *                            abrufen, konkrete Datei analysieren,
+     *                            Nachricht versenden).
+     *
+     * Nutzt LLM-Klassifizierung (analog classifyWithLLM) und faellt bei
+     * Fehler konservativ auf 'conversation' zurueck, damit aus Fehlern keine
+     * ungewollten Tools entstehen.
+     */
+    private function classifyIntent(string $userMessage): string
+    {
+        try {
+            $prompt = $this->buildIntentClassificationPrompt($userMessage);
+            $messages = new MessageBag(Message::ofUser($prompt));
+            $result = $this->platform->invoke('mistral-small-latest', $messages)->asText();
+            $result = strtoupper(trim($result));
+
+            return match ($result) {
+                'INFORMATION' => 'information',
+                'UNCLEAR' => 'unclear',
+                'TASK' => 'task_requires_tool',
+                default => 'conversation',
+            };
+        } catch (\Exception $e) {
+            $this->logger->warning('Intent-Klassifizierung fehlgeschlagen, verwende Fallback conversation: ' . $e->getMessage());
+            return 'conversation';
+        }
+    }
+
+    private function buildIntentClassificationPrompt(string $userMessage): string
+    {
+        return "Klassifiziere die folgende User-Anfrage. Antworte ausschliesslich mit einem der Woerter CONVERSATION, INFORMATION, UNCLEAR oder TASK.\n\n"
+            . "- CONVERSATION: Begruessung, Identitaetsfrage (wer bist du, was kannst du), allgemeine "
+            . "  Unterhaltung, Strategie-Diskussion, Brainstorming.\n"
+            . "- INFORMATION: Ein Informationswunsch, der mit vorhandenem Kontext/dem Dialogverlauf "
+            . "  direkt mit Text beantwortet werden kann (z.B. 'was kannst du', 'erklaere mir die Strategie', "
+            . "  'welche Tools hast du').\n"
+            . "- UNCLEAR: Die Anfrage ist mehrdeutig oder unvollstaendig; der Agent muesste erst "
+            . "  rueckfragen, bevor er handeln kann.\n"
+            . "- TASK: Eine konkrete, ausfuehrbare Aktion, die ein Werkzeug erfordert, z.B. das Abrufen "
+            . "  einer externen API, die Analyse einer konkreten Datei, das Versenden einer Nachricht oder "
+            . "  eine Datenbankabfrage.\n\n"
+            . 'Anfrage: "' . $userMessage . '"';
+    }
+
+    /**
+     * Erstellt eine Rueckfrage fuer mehrdeutige (unclear) Anfragen, statt
+     * sofort ein Werkzeug zu generieren. Bevorzugt einen Hinweis aus der
+     * Orchestrator-Antwort und faellt auf eine generische Rueckfrage zurueck.
+     */
+    private function buildClarifyingQuestion(string $userMessage, string $responseContent): string
+    {
+        $responseData = json_decode($responseContent, true);
+        if (is_array($responseData)) {
+            $missing = $responseData['missing_capability'] ?? '';
+            $suggested = $responseData['suggested_description'] ?? '';
+            $reason = $responseData['reason'] ?? '';
+            $hint = $missing ?: $suggested ?: $reason;
+            if (!empty($hint)) {
+                return 'Damit ich dir richtig helfen kann, brauche ich noch etwas mehr Info: '
+                    . $hint
+                    . ' Kannst du genauer beschreiben, was du moechtest?';
+            }
+        }
+
+        return 'Ich bin mir nicht ganz sicher, was du genau moechtest. '
+            . 'Moechtest du nur darueber reden, eine Information haben oder '
+            . 'soll ich eine konkrete Aktion ausfuehren (z.B. eine API abrufen, '
+            . 'eine Datei analysieren)? Bitte beschreibe es etwas genauer.';
+    }
+
+    /**
+     * Erstellt eine direkte Dialog-Antwort fuer Konversations-Anfragen.
+     * Bevorzugt den Dialog-Inhalt aus der Orchestrator-Antwort; faellt auf
+     * eine generische, freundliche Rueckmeldung zurueck.
+     */
+    private function buildConversationAnswer(string $userMessage, string $responseContent): string
+    {
+        $responseData = json_decode($responseContent, true);
+        if (is_array($responseData)) {
+            $content = $responseData['content'] ?? '';
+            $reason = $responseData['reason'] ?? '';
+            $message = $responseData['message'] ?? '';
+            $answer = $content ?: $reason ?: $message;
+            if (!empty($answer)) {
+                return $answer;
+            }
+        }
+
+        return 'Hallo, ich bin EVIE, dein selbst-evolvierender KI-Agent. Ich kann Aufgaben '
+            . 'fuer dich ausfuehren und bei Bedarf neue Werkzeuge anlegen. '
+            . 'Was moechtest du besprechen oder tun?';
+    }
+
+    /**
+     * Behandelt den Fall, wenn keine passende Aufgabe als ausfuehrbar
+     * eingestuft wurde und tatsaechlich ein neues Tool benoetigt wird.
+     * Erstellt einen passenden Sub-Agenten und ein neues Tool mit HITL.
+     */
+    private function generateNewTool(string $userMessage, string $userIdentifier): string
+    {
+        $this->logger->info('Konkrete ausfuehrbare Aufgabe ohne passendes Tool. Starte Tool-Generierung...');
 
         // 1. Bestimme den passenden Sub-Agenten basierend auf der User-Anfrage
         $subAgent = $this->determineAndCreateSubAgent($userMessage);
@@ -672,10 +842,12 @@ final readonly class OrchestratorDialogService
         $toolName = $responseData['tool_name'] ?? 'unknown';
         $parameters = $responseData['parameters'] ?? [];
 
-        // Falls tool_name "unknown" oder leer ist → Tool-Generierung auslösen
+        // Falls tool_name "unknown" oder leer ist, starte das no_tool_found-Handling,
+        // das zwischen Konversation (Dialog-Antwort) und konkreter Aufgabe
+        // (Tool-Generierung) unterscheidet.
         if ($toolName === 'unknown' || empty($toolName) || !isset($responseData['tool_name'])) {
-            $this->logger->info('Tool-Call mit unbekanntem oder fehlendem Tool-Namen erkannt, starte Tool-Generierung...');
-            return $this->handleToolNotFound($userMessage, $userIdentifier);
+            $this->logger->info('Tool-Call mit unbekanntem oder fehlendem Tool-Namen erkannt, starte no_tool_found-Handling...');
+            return $this->handleNoToolFound($userMessage, $userIdentifier, $responseContent);
         }
 
         $this->logger->info('Tool-Call erkannt', [
@@ -723,27 +895,24 @@ final readonly class OrchestratorDialogService
     }
 
     /**
-     * Behandelt direkte Dialog-Antworten
-     * Prüft, ob die Antwort auf fehlende Tools hindeutet und löst dann Tool-Generierung aus
+     * Behandelt direkte Dialog-Antworten.
+     * Ein Dialog bleibt ein Dialog: Konversation, Strategie und Information
+     * werden direkt an den Nutzer zurückgegeben, ohne automatisch ein
+     * neues Tool zu generieren.
      */
     private function handleDialogResponse(string $responseContent, string $userMessage, string $userIdentifier): string
     {
         $responseData = json_decode($responseContent, true);
 
-        // Die LLM-Antwort nutzt 'reason' als Schlüssel für die Antwort, 
+        // Die LLM-Antwort nutzt 'reason' als Schlüssel für die Antwort,
         // Fallback auf 'content' für Kompatibilität
         $content = $responseData['content'] ?? '';
         $reason = $responseData['reason'] ?? '';
+        $message = $responseData['message'] ?? '';
         $intent = $responseData['intent'] ?? 'general';
 
-        // Prüfe, ob die Antwort darauf hindeutet, dass kein Tool verfügbar ist
-        if ($this->isNoToolAvailableResponse($reason, $content)) {
-            $this->logger->info('Dialog-Antwort enthält Tool-Fehlermeldung, starte Tool-Generierung...');
-            return $this->handleToolNotFound($userMessage, $userIdentifier);
-        }
-
         // Normale Dialog-Antwort
-        $finalContent = $content ?: $reason ?: 'Keine Antwort verfügbar';
+        $finalContent = $content ?: $reason ?: $message ?: 'Keine Antwort verfügbar';
 
         $this->logger->info('Dialog-Antwort erkannt', [
             'intent' => $intent,

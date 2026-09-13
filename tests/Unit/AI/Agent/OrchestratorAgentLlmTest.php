@@ -37,6 +37,7 @@ final class OrchestratorAgentLlmTest extends TestCase
     private SubAgentFactory&MockObject $subAgentFactory;
     private JsonResponseEnforcer $jsonResponseEnforcer;
     private ResponseNormalizer $responseNormalizer;
+    private \Symfony\AI\Platform\Result\DeferredResult $intentClassification;
 
     protected function setUp(): void
     {
@@ -46,6 +47,8 @@ final class OrchestratorAgentLlmTest extends TestCase
             new ResponseNormalizer(new NullLogger())
         );
         $this->responseNormalizer = new ResponseNormalizer(new NullLogger());
+        // Default-Intent ist CONVERSATION; Tests koennen es ueberschreiben.
+        $this->intentClassification = \App\Tests\Stub\StubDeferredResult::withText('CONVERSATION');
     }
 
     public function testToolCallResponseDispatchedAfterSingleLlmCall(): void
@@ -116,55 +119,104 @@ final class OrchestratorAgentLlmTest extends TestCase
         self::assertNotEmpty($result);
     }
 
-    public function testToolNotFoundTriggersToolGeneration(): void
+    public function testToolNotFoundTriggersToolGenerationOnlyForTask(): void
     {
+        // Eine konkrete ausfuehrbare Aufgabe ohne passendes Tool (TASK) loest
+        // die Tool-Generierung aus (Blueprint 95: Evolution-Flow).
         $llmResponse = json_encode([
             'type' => 'no_tool_found',
             'message' => 'Kein passendes Tool vorhanden',
         ], JSON_THROW_ON_ERROR);
 
         $this->agent = new StubAgent($llmResponse);
+        $this->intentClassification = \App\Tests\Stub\StubDeferredResult::withText('TASK');
 
-        // ToolDefinitionGenerator wird beim handleToolNotFound aufgerufen.
+        // ToolDefinitionGenerator wird nur bei TASK aufgerufen.
         $this->toolGenerator = $this->createMock(ToolDefinitionGenerator::class);
         $this->toolGenerator->expects(self::atLeastOnce())->method('generateToolDefinition');
-
         $this->subAgentFactory = $this->createMock(SubAgentFactory::class);
 
         $orchestrator = $this->buildOrchestrator();
-        $result = $orchestrator->ask('Mache etwas völlig Neues', 'user-gen');
+        $result = $orchestrator->ask('Rufe die API example.com auf und gib mir die Daten', 'user-gen');
 
         self::assertSame(1, $this->agent->getCallCount());
         self::assertIsString($result);
     }
 
-    public function testLlmExceptionFallsBackToToolGeneration(): void
+    public function testToolNotFoundConversationDoesNotGenerateTool(): void
     {
-        // Agent wirft Exception -> Orchestrator faengt ab und nutzt handleToolNotFound.
-        // Der OrchestratorDialogService ist readonly; daher wird der Failing-Agent
-        // direkt im Konstruktor uebergeben (kein Reflection auf readonly noetig).
+        // Konversation/Begrueßung -> Dialog-Antwort, KEINE Tool-Generierung.
+        $llmResponse = json_encode([
+            'type' => 'no_tool_found',
+            'message' => 'Kein passendes Tool vorhanden',
+        ], JSON_THROW_ON_ERROR);
+
+        $this->agent = new StubAgent($llmResponse);
+        $this->intentClassification = \App\Tests\Stub\StubDeferredResult::withText('CONVERSATION');
+
+        $this->toolGenerator = $this->createMock(ToolDefinitionGenerator::class);
+        $this->toolGenerator->expects(self::never())->method('generateToolDefinition');
+        $this->subAgentFactory = $this->createMock(SubAgentFactory::class);
+
+        $orchestrator = $this->buildOrchestrator();
+        $result = $orchestrator->ask('moin wer bist du', 'user-con');
+
+        self::assertIsString($result);
+    }
+
+    public function testToolNotFoundUnclearReturnsClarifyingQuestion(): void
+    {
+        // Mehrdeutige Anfrage -> Rueckfrage statt Tool-Generierung.
+        $llmResponse = json_encode([
+            'type' => 'no_tool_found',
+            'message' => 'Kein passendes Tool vorhanden',
+        ], JSON_THROW_ON_ERROR);
+
+        $this->agent = new StubAgent($llmResponse);
+        $this->intentClassification = \App\Tests\Stub\StubDeferredResult::withText('UNCLEAR');
+
+        $this->toolGenerator = $this->createMock(ToolDefinitionGenerator::class);
+        $this->toolGenerator->expects(self::never())->method('generateToolDefinition');
+        $this->subAgentFactory = $this->createMock(SubAgentFactory::class);
+
+        $orchestrator = $this->buildOrchestrator();
+        $result = $orchestrator->ask('irgendwas', 'user-unclear');
+
+        self::assertIsString($result);
+        self::assertStringContainsString('genauer', $result);
+    }
+
+    public function testLlmExceptionReturnsReadableMessageWithoutToolGeneration(): void
+    {
+        // Agent wirft Exception -> Orchestrator antwortet menschenahnlich mit
+        // einer lesbaren Nachricht und erfindet KEIN Tool mehr.
         $failingAgent = $this->buildFailingAgent();
 
         $this->agent = $failingAgent;
         $this->toolGenerator = $this->createMock(ToolDefinitionGenerator::class);
-        $this->toolGenerator->expects(self::atLeastOnce())->method('generateToolDefinition');
+        $this->toolGenerator->expects(self::never())->method('generateToolDefinition');
         $this->subAgentFactory = $this->createMock(SubAgentFactory::class);
 
         $orchestrator = $this->buildOrchestrator();
         $result = $orchestrator->ask('Fehler-Test', 'user-err');
 
         self::assertIsString($result);
+        self::assertStringContainsString('nicht verarbeiten', $result);
     }
 
     private function buildOrchestrator(): OrchestratorDialogService
     {
+        // Platform-Mock liefert die Intent-Klassifizierung als Text.
+        $platform = $this->createMock(PlatformInterface::class);
+        $platform->method('invoke')->willReturn($this->intentClassification);
+
         return new OrchestratorDialogService(
             $this->agent,
             $this->toolGenerator,
             $this->subAgentFactory,
             $this->createMock(EventDispatcherInterface::class),
             new NullLogger(),
-            $this->createMock(PlatformInterface::class),
+            $platform,
             $this->createMock(UrlGeneratorInterface::class),
             $this->jsonResponseEnforcer,
             $this->createMock(FaultTolerantValidator::class),
