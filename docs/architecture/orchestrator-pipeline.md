@@ -1,6 +1,36 @@
 # Orchestrator-Pipeline: Goal → Intent → Plan → Capability → Execution
 
-> Status: Plan / Blueprint-konform · Symfony AI v0.12-kompatibel · ohne Mocks oder Fantasie-Tools
+> Status: **Implementiert (Stufen 1–7)** / Blueprint-konform · Symfony AI
+> v0.12-kompatibel · ohne Mocks oder Fantasie-Tools
+
+## Implementierungs-Stand
+
+Die Pipeline ist als primärer Pfad in `OrchestratorDialogService::ask()`
+verdrahtet (Stufe 7): sofern eine `PipelineInterface`-Implementierung
+injiziert wurde (Produktion über `services.yaml`), delegiert `ask()` an
+`Pipeline::run()` und liefert `PipelineResult::getContent()`. Die
+fünf Phasen-Implementierungen sind vorhanden:
+
+| Phase | Klasse | Status |
+|-------|-------|--------|
+| 1 Goal | `GoalResolver` | implementiert + getestet |
+| 2 Intent | `IntentClassifier` | implementiert + getestet |
+| 3 Plan | `Planner` | implementiert + getestet |
+| 4 Capability | `CapabilityResolver` | implementiert + getestet |
+| 5 Execution | `ExecutionCoordinator` | implementiert + getestet |
+| Orchestrierung | `Pipeline` | implementiert + getestet |
+| Fassade | `OrchestratorDialogService::ask()` | delegiert an Pipeline |
+
+Der Legacy-Pfad (alte Regex-basierte Sub-Agent-Auswahl
+`determineAndCreateSubAgent`, nachträgliche `classifyIntent` im
+`no_tool_found`-Zweig) bleibt als nullable-Fallback erhalten, damit
+bestehende Tests, die den Service ohne Pipeline konstruieren, weiter
+laufen. In Produktion ist die Pipeline injiziert und aktiv. Eine
+vollständige Entfernung des Legacy-Codes ist ein nachfolgender Aufräum-
+Schritt, sobald alle Konsumenten auf die Pipeline umgestellt sind.
+CI: tests ✓, migrations ✓, e2e-llm ✓.
+
+---
 
 Dieses Dokument beschreibt den Umbau der EVIE-Orchestrierung von der heutigen
 **reaktiven** Pipeline (User-Request → JSON-Dispatch → ggf. Tool-Generierung)
