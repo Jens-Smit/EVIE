@@ -3,10 +3,10 @@ evie_mcp:
     servers:
         filesystem:
             transport: 'http'
-            url: '%env(default:MCP_FILESYSTEM_URL:default:http://mcp-filesystem:8123)%'
+            url: '%env(default::MCP_FILESYSTEM_URL)%'
         playwright:
             transport: 'http'
-            url: '%env(default:MCP_PLAYWRIGHT_URL:default:http://mcp-playwright:8931/mcp)%'
+            url: '%env(default::MCP_PLAYWRIGHT_URL)%'
         github:
             transport: 'http'
             url: '%env(default::GITHUB_MCP_URL)%'
