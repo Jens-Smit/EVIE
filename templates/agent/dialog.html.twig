@@ -175,13 +175,31 @@
                         })
                     });
 
-                    const data = await response.json();
-                    typingEl.remove();
-
-                    if (!response.ok) {
-                        appendMessage('agent', 'Fehler: ' + (data.error || 'Unbekannter Fehler'));
+                    const contentType = response.headers.get('Content-Type') || '';
+                    // Server hat keine JSON-Antwort geliefert (z. B. HTML-
+                    // Fehlerseite, Login-Redirect, leere Antwort). Statt
+                    // response.json() zu erzwingen (-> JSON.parse-Fehler)
+                    // wird der Rohtext ausgelesen und sauber gemeldet.
+                    if (!response.ok || !contentType.includes('application/json')) {
+                        const text = await response.text();
+                        typingEl.remove();
+                        if (response.status === 401) {
+                            appendMessage('agent', 'Sitzung abgelaufen. Bitte neu anmelden.');
+                            window.location.reload();
+                            return;
+                        }
+                        let detail = 'Unbekannter Fehler (HTTP ' + response.status + ')';
+                        if (contentType.includes('application/json')) {
+                            try { detail = (JSON.parse(text).error) || detail; } catch (e) {}
+                        } else if (text && text.length < 300) {
+                            detail = text.trim();
+                        }
+                        appendMessage('agent', 'Fehler: ' + detail);
                         return;
                     }
+
+                    const data = await response.json();
+                    typingEl.remove();
 
                     appendMessage('agent', data.response || 'Keine Antwort erhalten.');
 

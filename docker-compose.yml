@@ -15,6 +15,12 @@ services:
       - PGVECTOR_URL=postgresql://evie:evie_password@postgres:5432/evie?serverVersion=15&charset=utf8
       - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
       - MESSENGER_TRANSPORT_DSN=doctrine://default
+      - MESSENGER_TRANSPORT_DSN_TOOLS=doctrine://default
+      - MESSENGER_TRANSPORT_DSN_STREAMING=doctrine://default
+      - MESSENGER_TRANSPORT_DSN_HITL=doctrine://default
+      - MESSENGER_TRANSPORT_DSN_FAILED=doctrine://default?queue_name=failed
+      - MCP_FILESYSTEM_URL=http://mcp-filesystem:8123
+      - MCP_PLAYWRIGHT_URL=http://mcp-playwright:8931/mcp
     depends_on:
       - postgres
       - mcp-filesystem
@@ -22,9 +28,10 @@ services:
     networks: [mcp_isolated]
 
   worker:
-    # Dev-Worker fuer asynchrone Verarbeitung (Streaming, Tool-Responses,
-    # E-Mails). In Prod werden mehrere Worker ueber docker-compose.prod.yml
-    # nach Transport getrennt (async / hitl_approvals / failed).
+    # Dev-Worker fuer asynchrone Verarbeitung. In Dev teilen sich alle
+    # Transporte die Doctrine-DB (queue_name trennt die Queues); daher
+    # konsumiert dieser eine Worker alle aktiven Queues. In Prod werden
+    # mehrere Worker ueber docker-compose.prod.yml nach Transport getrennt.
     build:
       context: .
       dockerfile: docker/php/Dockerfile
@@ -32,7 +39,7 @@ services:
     restart: unless-stopped
     volumes:
       - .:/var/www/html
-    command: ["php", "bin/console", "messenger:consume", "async", "--limit=100", "--memory-limit=128M", "--time-limit=3600"]
+    command: ["php", "bin/console", "messenger:consume", "async", "async_tools", "streaming", "hitl_approvals", "--limit=100", "--memory-limit=128M", "--time-limit=3600"]
     environment:
       - APP_ENV=dev
       - APP_DEBUG=true
@@ -41,6 +48,10 @@ services:
       - PGVECTOR_URL=postgresql://evie:evie_password@postgres:5432/evie?serverVersion=15&charset=utf8
       - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
       - MESSENGER_TRANSPORT_DSN=doctrine://default
+      - MESSENGER_TRANSPORT_DSN_TOOLS=doctrine://default
+      - MESSENGER_TRANSPORT_DSN_STREAMING=doctrine://default
+      - MESSENGER_TRANSPORT_DSN_HITL=doctrine://default
+      - MESSENGER_TRANSPORT_DSN_FAILED=doctrine://default?queue_name=failed
     depends_on:
       - postgres
     networks: [mcp_isolated]

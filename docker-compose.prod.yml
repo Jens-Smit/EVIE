@@ -26,7 +26,13 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - TAVILY_API_KEY=${TAVILY_API_KEY:-}
       - FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY:-}
-      - MESSENGER_TRANSPORT_DSN=redis://redis:6379/messages
+      - MESSENGER_TRANSPORT_DSN=redis://redis:6379/messages?queue_name=async
+      - MESSENGER_TRANSPORT_DSN_TOOLS=redis://redis:6379/messages?queue_name=async_tools
+      - MESSENGER_TRANSPORT_DSN_STREAMING=redis://redis:6379/messages?queue_name=streaming
+      - MESSENGER_TRANSPORT_DSN_HITL=redis://redis:6379/messages?queue_name=hitl_approvals
+      - MESSENGER_TRANSPORT_DSN_FAILED=redis://redis:6379/messages?queue_name=failed
+      - MCP_FILESYSTEM_URL=http://mcp-filesystem:8123
+      - MCP_PLAYWRIGHT_URL=http://mcp-playwright:8931/mcp
       - MAILER_DSN=${MAILER_DSN:-smtp://localhost}
       - MAILER_FROM=${MAILER_FROM:-no-reply@evie.local}
     depends_on:
@@ -42,10 +48,12 @@ services:
           memory: 1G
 
   # --- Messenger-Worker (P1-6) -------------------------------------------
-  # Asynchrone Verarbeitung ist in drei Transporte aufgeteilt, damit
+  # Asynchrone Verarbeitung ist in funf Transporte aufgeteilt, damit
   # Lastarten isoliert skaliert werden koennen (vgl. config/packages/messenger.yaml):
-  #   - async           : Streaming-Sessions, Tool-Responses, E-Mails (meiste Last)
-  #   - hitl_approvals   : Human-in-the-Loop-Best�tigungen (weniger Last, manuell)
+  #   - async           : Agent-Goals, Mail-Versand (meiste Last)
+  #   - async_tools     : Tool-Execution (ExecuteToolMessage)
+  #   - streaming       : Streaming-Sessions / Tool-Response-Chunks (fluchtig, keine Retries)
+  #   - hitl_approvals   : Human-in-the-Loop-Bestatigungen (weniger Last, manuell)
   #   - failed          : Retries fehlgeschlagener Nachrichten
   # Die Worker nutzen denselben Build wie die App (x-worker-base Anchor).
   worker-async: &worker-base
@@ -67,7 +75,13 @@ services:
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - TAVILY_API_KEY=${TAVILY_API_KEY:-}
       - FIRECRAWL_API_KEY=${FIRECRAWL_API_KEY:-}
-      - MESSENGER_TRANSPORT_DSN=redis://redis:6379/messages
+      - MESSENGER_TRANSPORT_DSN=redis://redis:6379/messages?queue_name=async
+      - MESSENGER_TRANSPORT_DSN_TOOLS=redis://redis:6379/messages?queue_name=async_tools
+      - MESSENGER_TRANSPORT_DSN_STREAMING=redis://redis:6379/messages?queue_name=streaming
+      - MESSENGER_TRANSPORT_DSN_HITL=redis://redis:6379/messages?queue_name=hitl_approvals
+      - MESSENGER_TRANSPORT_DSN_FAILED=redis://redis:6379/messages?queue_name=failed
+      - MCP_FILESYSTEM_URL=http://mcp-filesystem:8123
+      - MCP_PLAYWRIGHT_URL=http://mcp-playwright:8931/mcp
       - MAILER_DSN=${MAILER_DSN:-smtp://localhost}
       - MAILER_FROM=${MAILER_FROM:-no-reply@evie.local}
     depends_on:
@@ -87,6 +101,14 @@ services:
   worker-async-3:
     # Dritter async-Worker; bei Last auf Streaming/Tool-Responses.
     <<: *worker-base
+  worker-tools:
+    # Drei Tool-Worker pro Job-Queue: isolierte Skalierung der Tool-Execution.
+    <<: *worker-base
+    command: ["php", "bin/console", "messenger:consume", "async_tools", "--limit=50", "--memory-limit=128M", "--time-limit=3600"]
+  worker-streaming:
+    # Streaming-Worker fuer Session-/Chunk-Nachrichten (flüchtig, keine Retries).
+    <<: *worker-base
+    command: ["php", "bin/console", "messenger:consume", "streaming", "--limit=200", "--memory-limit=128M", "--time-limit=1800"]
   worker-hitl:
     # Ein Worker fuer hitl_approvals: HITL-Bestaetigungen sind meist
     # manuell getrieben und lastaermer; ein Prozess reicht aus.
