@@ -55,6 +55,12 @@ services:
         arguments:
             $promptFile: '%kernel.project_dir%/config/prompts/planner.txt'
 
+    # Orchestrator-Pipeline: PipelineInterface -> Pipeline-Implementierung,
+    # die die fuenf Phasen Goal -> Intent -> Plan -> Capability -> Execution
+    # verdrahtet (autowired via Interfaces). Wird ab Stufe 7 von der
+    # OrchestratorDialogService-Fassade und RunAgentGoalHandler konsumiert.
+    App\AI\Pipeline\PipelineInterface: '@App\AI\Pipeline\Pipeline'
+
     App\AI\Skills\ToolDefinitionGenerator:
         arguments:
             $toolGeneratorAgent: '@ai.agent.tool_generator'

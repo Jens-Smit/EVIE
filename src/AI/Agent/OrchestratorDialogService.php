@@ -4,6 +4,7 @@
 namespace App\AI\Agent;
 
 use App\AI\Skills\ToolDefinitionGenerator;
+use App\AI\Pipeline\PipelineInterface;
 use App\AI\Response\JsonResponseEnforcer;
 use App\AI\Response\FaultTolerantValidator;
 use App\AI\Response\ResponseNormalizer;
@@ -35,6 +36,7 @@ final readonly class OrchestratorDialogService
         private ResponseNormalizer $responseNormalizer,
         private ToolDefinitionRepository $toolDefinitionRepo,
         private LlmRetryExecutor $llmRetryExecutor,
+        private ?PipelineInterface $pipeline = null,
     ) {
     }
 
@@ -44,9 +46,20 @@ final readonly class OrchestratorDialogService
      * und reine Informationswuensche fuehren zu einer direkten Dialog-Antwort.
      * Erst eine konkrete, ausfuehrbare Aufgabe ohne passendes Tool loest eine
      * Tool-Generierung mit HITL aus.
+     *
+     * Sofern eine Orchestrator-Pipeline (Goal -> Intent -> Plan -> Capability
+     * -> Execution) injiziert wurde, delegiert ask() an diese. Das stellt
+     * sicher, dass Capability Discovery/Generierung erst in Phase 4 und
+     * niemals bei Konversation/Information/unclear stattfindet (Blueprint §5).
      */
     public function ask(string $userMessage, string $userIdentifier): string
     {
+        if ($this->pipeline !== null) {
+            $result = $this->pipeline->run($userMessage, $userIdentifier);
+
+            return $result->getContent();
+        }
+
         // Temporaer deaktiviert, da der Orchestrator-Prompt in ai.yaml jetzt JSON erzwingt
         $messages = new MessageBag(Message::ofUser($userMessage));
 
