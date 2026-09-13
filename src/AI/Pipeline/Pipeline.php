@@ -9,7 +9,9 @@ use App\AI\Pipeline\Execution\ExecutionCoordinatorInterface;
 use App\AI\Pipeline\Execution\PipelineResult;
 use App\AI\Pipeline\Goal\GoalResolverInterface;
 use App\AI\Pipeline\Intent\IntentClassifierInterface;
+use App\AI\Pipeline\Plan\Plan;
 use App\AI\Pipeline\Plan\PlannerInterface;
+use App\AI\Pipeline\Plan\Step;
 
 /**
  * Orchestriert die fuenf Phasen Goal -> Intent -> Plan -> Capability ->
@@ -89,7 +91,7 @@ final class Pipeline implements PipelineInterface
      * Ersetzt einen Schritt innerhalb eines Plans durch eine neue Instanz
      * (z.B. mit gesetzter ExecutionReference) und liefert einen neuen Plan.
      */
-    private function replaceStep(Plan $plan, Plan\Step $oldStep, Plan\Step $newStep): Plan
+    private function replaceStep(Plan $plan, Step $oldStep, Step $newStep): Plan
     {
         $steps = [];
         foreach ($plan->getSteps() as $step) {
