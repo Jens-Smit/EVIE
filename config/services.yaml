@@ -49,6 +49,12 @@ services:
         arguments:
             $promptDirectory: '%kernel.project_dir%/config/prompts'
 
+    # Orchestrator-Pipeline: Planner (Phase 3) laedt den Prompt aus
+    # config/prompts/planner.txt (analog SubAgentPromptResolver-Verzeichnis).
+    App\AI\Pipeline\Plan\Planner:
+        arguments:
+            $promptFile: '%kernel.project_dir%/config/prompts/planner.txt'
+
     App\AI\Skills\ToolDefinitionGenerator:
         arguments:
             $toolGeneratorAgent: '@ai.agent.tool_generator'
