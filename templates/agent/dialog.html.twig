@@ -278,30 +278,38 @@
 
             async function approveTool(toolId, cardEl) {
                 try {
-                    const res = await fetch('/api/tools/' + toolId + '/approve', {
+                    const res = await fetch('/tools/pending/' + toolId + '/approve', {
                         method: 'POST',
                         headers: { 'X-Requested-With': 'XMLHttpRequest' }
                     });
                     if (res.ok) {
                         cardEl.innerHTML = '<div class="flex items-center gap-2 text-success"><i class="ph ph-check-circle text-lg"></i> Tool genehmigt. Agent wird fortgesetzt.</div>';
                         refreshPendingToolsBadge();
+                    } else {
+                        console.error('Freigabe fehlgeschlagen: HTTP ' + res.status, await res.text().catch(() => ''));
+                        showToast('Freigabe fehlgeschlagen (HTTP ' + res.status + ')', 'error');
                     }
                 } catch (e) {
+                    console.error('Freigabe fehlgeschlagen (Netzwerkfehler):', e);
                     showToast('Freigabe fehlgeschlagen', 'error');
                 }
             }
 
             async function rejectTool(toolId, cardEl) {
                 try {
-                    const res = await fetch('/api/tools/' + toolId + '/reject', {
+                    const res = await fetch('/tools/pending/' + toolId + '/reject', {
                         method: 'POST',
                         headers: { 'X-Requested-With': 'XMLHttpRequest' }
                     });
                     if (res.ok) {
                         cardEl.innerHTML = '<div class="flex items-center gap-2 text-danger"><i class="ph ph-x-circle text-lg"></i> Tool abgelehnt.</div>';
                         refreshPendingToolsBadge();
+                    } else {
+                        console.error('Ablehnung fehlgeschlagen: HTTP ' + res.status, await res.text().catch(() => ''));
+                        showToast('Ablehnung fehlgeschlagen (HTTP ' + res.status + ')', 'error');
                     }
                 } catch (e) {
+                    console.error('Ablehnung fehlgeschlagen (Netzwerkfehler):', e);
                     showToast('Ablehnung fehlgeschlagen', 'error');
                 }
             }

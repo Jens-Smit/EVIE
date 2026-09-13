@@ -87,7 +87,7 @@
                 this.innerHTML = '<i class="ph ph-spinner spinner"></i> Verarbeiten...';
                 
                 try {
-                    const response = await fetch(`/api/tools/${toolId}/${action}`, {
+                    const response = await fetch(`/tools/pending/${toolId}/${action}`, {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
@@ -96,6 +96,10 @@
                         },
                         body: JSON.stringify({})
                     });
+                    
+                    if (!response.ok) {
+                        throw new Error('Server antwortete mit Status ' + response.status);
+                    }
                     
                     const data = await response.json();
                     

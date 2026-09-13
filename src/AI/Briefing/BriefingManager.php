@@ -224,7 +224,7 @@ class BriefingManager
                 'type' => 'tool_approval',
                 'priority' => 'high',
                 'description' => sprintf('Es warten %d Tools auf Freigabe', $pendingTools),
-                'action' => '/frontend/tools/pending',
+                'action' => '/tools/pending',
             ];
         }
 

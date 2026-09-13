@@ -85,12 +85,15 @@ class AgentDialogHitlTest extends WebTestCase
         $crawler = $this->client->request('GET', '/agent/dialog');
 
         $this->assertResponseIsSuccessful();
-        // JS muss die approve-Endpoint-URL enthalten.
+        // JS muss die approve-Endpoint-URL enthalten. Die kanonische Route
+        // ist /tools/pending/{id}/{approve|reject} (ToolApprovalController),
+        // nicht /api/tools/* (diese Route existiert nicht und fuehrte zu
+        // stillen 404s beim Freigeben/Ablehnen).
         $scriptContent = $crawler->filter('script')->each(function ($node) {
             return $node->text();
         });
         $allJs = implode("\n", $scriptContent);
-        $this->assertStringContainsString('/api/tools/', $allJs);
+        $this->assertStringContainsString('/tools/pending/', $allJs);
         $this->assertStringContainsString('/approve', $allJs);
         $this->assertStringContainsString('/reject', $allJs);
     }
