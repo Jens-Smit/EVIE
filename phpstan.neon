@@ -56,6 +56,7 @@ parameters:
         - '#Property App\\MessageHandler\\EndStreamingSessionMessageHandler::\$sessionManager is never read, only written#'
         - '#Property App\\MessageHandler\\StreamToolResponseMessageHandler::\$streamingPublisher is never read, only written#'
         - '#Method App\\AI\\Agent\\OrchestratorDialogService::isNoToolFoundResponse\(\) is unused#'
+        - '#Method App\\AI\\Agent\\OrchestratorDialogService::isNoToolAvailableResponse\(\) is unused#'
         - '#Method App\\AI\\Agent\\OrchestratorDialogService::isSubAgentSuggested\(\) is unused#'
         - '#Method App\\AI\\Skills\\Executor\\GenericToolExecutor::executeApiCall\(\) is unused#'
         - '#Method App\\AI\\Skills\\Executor\\GenericToolExecutor::executeDatabaseQuery\(\) is unused#'
