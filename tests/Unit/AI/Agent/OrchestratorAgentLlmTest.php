@@ -37,7 +37,7 @@ final class OrchestratorAgentLlmTest extends TestCase
     private SubAgentFactory&MockObject $subAgentFactory;
     private JsonResponseEnforcer $jsonResponseEnforcer;
     private ResponseNormalizer $responseNormalizer;
-    private \Symfony\AI\Platform\Result\TextResult $intentClassification;
+    private \Symfony\AI\Platform\Result\DeferredResult $intentClassification;
 
     protected function setUp(): void
     {
@@ -48,7 +48,7 @@ final class OrchestratorAgentLlmTest extends TestCase
         );
         $this->responseNormalizer = new ResponseNormalizer(new NullLogger());
         // Default-Intent ist CONVERSATION; Tests koennen es ueberschreiben.
-        $this->intentClassification = new \Symfony\AI\Platform\Result\TextResult('CONVERSATION');
+        $this->intentClassification = \App\Tests\Stub\StubDeferredResult::withText('CONVERSATION');
     }
 
     public function testToolCallResponseDispatchedAfterSingleLlmCall(): void
@@ -129,7 +129,7 @@ final class OrchestratorAgentLlmTest extends TestCase
         ], JSON_THROW_ON_ERROR);
 
         $this->agent = new StubAgent($llmResponse);
-        $this->intentClassification = new \Symfony\AI\Platform\Result\TextResult('TASK');
+        $this->intentClassification = \App\Tests\Stub\StubDeferredResult::withText('TASK');
 
         // ToolDefinitionGenerator wird nur bei TASK aufgerufen.
         $this->toolGenerator = $this->createMock(ToolDefinitionGenerator::class);
@@ -152,7 +152,7 @@ final class OrchestratorAgentLlmTest extends TestCase
         ], JSON_THROW_ON_ERROR);
 
         $this->agent = new StubAgent($llmResponse);
-        $this->intentClassification = new \Symfony\AI\Platform\Result\TextResult('CONVERSATION');
+        $this->intentClassification = \App\Tests\Stub\StubDeferredResult::withText('CONVERSATION');
 
         $this->toolGenerator = $this->createMock(ToolDefinitionGenerator::class);
         $this->toolGenerator->expects(self::never())->method('generateToolDefinition');
@@ -173,7 +173,7 @@ final class OrchestratorAgentLlmTest extends TestCase
         ], JSON_THROW_ON_ERROR);
 
         $this->agent = new StubAgent($llmResponse);
-        $this->intentClassification = new \Symfony\AI\Platform\Result\TextResult('UNCLEAR');
+        $this->intentClassification = \App\Tests\Stub\StubDeferredResult::withText('UNCLEAR');
 
         $this->toolGenerator = $this->createMock(ToolDefinitionGenerator::class);
         $this->toolGenerator->expects(self::never())->method('generateToolDefinition');
