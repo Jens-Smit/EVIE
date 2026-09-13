@@ -1,15 +1,20 @@
 # Orchestrator-Pipeline: Goal → Intent → Plan → Capability → Execution
 
-> Status: **Implementiert (Stufen 1–7)** / Blueprint-konform · Symfony AI
+> Status: **Implementiert (Stufen 1–8)** / Blueprint-konform · Symfony AI
 > v0.12-kompatibel · ohne Mocks oder Fantasie-Tools
 
 ## Implementierungs-Stand
 
-Die Pipeline ist als primärer Pfad in `OrchestratorDialogService::ask()`
-verdrahtet (Stufe 7): sofern eine `PipelineInterface`-Implementierung
-injiziert wurde (Produktion über `services.yaml`), delegiert `ask()` an
-`Pipeline::run()` und liefert `PipelineResult::getContent()`. Die
-fünf Phasen-Implementierungen sind vorhanden:
+Die Pipeline ist der alleinige Pfad in
+`OrchestratorDialogService::ask()` (Stufen 7–8): die Fassade ist nun eine
+reine Delegation an `PipelineInterface::run()` und liefert
+`PipelineResult::getContent()`. Der gesamte reaktive Legacy-Pfad
+(JSON-Dispatch, Regex-basierte Sub-Agent-Auswahl
+`determineAndCreateSubAgent`, nachträgliche `classifyIntent` im
+`no_tool_found`-Zweig, `JsonResponseEnforcer`/`ResponseNormalizer`-
+Normalisierung) ist entfernt. Capability Discovery/Generierung findet
+ausschliesslich in Phase 4 statt. Die fünf Phasen-Implementierungen
+sind vorhanden:
 
 | Phase | Klasse | Status |
 |-------|-------|--------|
@@ -19,16 +24,13 @@ fünf Phasen-Implementierungen sind vorhanden:
 | 4 Capability | `CapabilityResolver` | implementiert + getestet |
 | 5 Execution | `ExecutionCoordinator` | implementiert + getestet |
 | Orchestrierung | `Pipeline` | implementiert + getestet |
-| Fassade | `OrchestratorDialogService::ask()` | delegiert an Pipeline |
+| Fassade | `OrchestratorDialogService::ask()` | duenne Delegation an Pipeline |
 
-Der Legacy-Pfad (alte Regex-basierte Sub-Agent-Auswahl
-`determineAndCreateSubAgent`, nachträgliche `classifyIntent` im
-`no_tool_found`-Zweig) bleibt als nullable-Fallback erhalten, damit
-bestehende Tests, die den Service ohne Pipeline konstruieren, weiter
-laufen. In Produktion ist die Pipeline injiziert und aktiv. Eine
-vollständige Entfernung des Legacy-Codes ist ein nachfolgender Aufräum-
-Schritt, sobald alle Konsumenten auf die Pipeline umgestellt sind.
-CI: tests ✓, migrations ✓, e2e-llm ✓.
+Alle Konsumenten (`AgentDialogController`, `RunAgentGoalHandler`,
+`EvaluationService`, `StrategyManager`) konsumieren die Fassade, die
+ausschliesslich `PipelineInterface` injiziert bekommt (Autowiring via
+`services.yaml`-Alias auf `Pipeline`). CI: tests ✓, migrations ✓,
+e2e-llm ✓.
 
 ---
 
@@ -425,10 +427,12 @@ Jede Phase liefert kompilierbaren, getesteten Stand. Kein Big-Bang.
    `OrchestratorDialogService::ask()` → `Pipeline::run()`;
    `RunAgentGoalHandler` auf `Pipeline` umstellen. →
    `OrchestratorAgentLlmTest`, `RunAgentGoalHandlerTest` anpassen.
-8. **Doku & Aufräum**
+8. **Doku & Aufräum** ✅
    `docs/architecture/agent-architecture.md`, `data-flow.md` und
-   `evolution.md` referenzieren diese Pipeline; alte Regex-Sub-Agent-Auswahl
-   (`determineAndCreateSubAgent`) entfernen, sobald Phase 4 übernimmt.
+   `evolution.md` referenzieren diese Pipeline; die alte Regex-Sub-Agent-Auswahl
+   (`determineAndCreateSubAgent`) und der gesamte reaktive JSON-Dispatch-Pfad
+   sind entfernt. `OrchestratorDialogService` ist eine duenne Fassade, die
+   ausschliesslich an `PipelineInterface` delegiert.
 
 ---
 

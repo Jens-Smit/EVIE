@@ -1,20 +1,28 @@
 # Data-Flow: Vollständiger Request-Trace
 
-## Beispiel: Tool-Generierung
+> Hinweis: Der primäre Pfad ist die fünf-Phasen-Pipeline
+> (Goal -> Intent -> Plan -> Capability -> Execution), die von
+> `OrchestratorDialogService::ask()` über `PipelineInterface`
+> aufgerufen wird. Der unten stehende Trace ist das entsprechende
+> Beispiel aus Pipeline-Sicht; die detaillierte Phasenbeschreibung
+> steht in `orchestrator-pipeline.md`. `OrchestratorDialogService`
+> ist eine dünne Fassade ohne eigene Dispatch-Logik.
+
+## Beispiel: Tool-Generierung (Pipeline-Sicht)
 
 ```text
 User: "Erstelle mir ein Tool, das Wetterdaten abfragt."
   ↓
 AgentDialogController.ask(userMessage, userIdentifier)
   ↓
-OrchestratorDialogService → Agent::call(MessageBag)
+OrchestratorDialogService → Pipeline::run()
   ↓
-ContextInjector.processInput() → RAG-Kontext (falls vorhanden)
-ContextMemoryProvider.load() → User-Präferenzen
+Phase 1 Goal  → GoalResolver (AgentGoal oder ad-hoc-LLM)
+Phase 2 Intent → IntentClassifier (TASK)  → kein Dialog-Exit
+Phase 3 Plan   → Planner (tool_plan, needsCapability=true)
+Phase 4 Capability → CapabilityResolver → missing
   ↓
-Mistral LLM → "Kein passendes Tool vorhanden"
-  ↓
-ToolDefinitionGenerator.generateFromUserRequest()
+ToolDefinitionGenerator.generateToolDefinition()
   ↓
 tool_generator Agent → JSON-Schema für "WeatherLookupTool"
   ↓
