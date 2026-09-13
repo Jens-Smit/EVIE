@@ -2,25 +2,78 @@ framework:
     messenger:
         failure_transport: failed
 
+        serializer:
+            default_serializer: messenger.transport.symfony_serializer
+            symfony_serializer:
+                format: json
+                context: {}
+
         transports:
-            hitl_approvals: '%env(MESSENGER_TRANSPORT_DSN)%'
-            # https://symfony.com/doc/current/messenger.html#transport-configuration
+            # Allgemeiner async-Transport (z. B. RunAgentGoal, Mail-Versand).
             async:
                 dsn: '%env(MESSENGER_TRANSPORT_DSN)%'
                 retry_strategy:
                     max_retries: 3
                     multiplier: 2
-            failed: 'doctrine://default?queue_name=failed'
-            # sync: 'sync://'
+            # Tool-Execution (ExecuteToolMessage) — eigene Queue für isolierte Skalierung.
+            async_tools:
+                dsn: '%env(resolve:MESSENGER_TRANSPORT_DSN_TOOLS)%'
+                retry_strategy:
+                    max_retries: 3
+                    delay: 1000
+                    multiplier: 2
+                    max_delay: 10000
+            # Streaming-Sessions / Tool-Response-Chunks — keine Retries (Chunks sind flüchtig).
+            streaming:
+                dsn: '%env(resolve:MESSENGER_TRANSPORT_DSN_STREAMING)%'
+                retry_strategy:
+                    max_retries: 0
+            # Human-in-the-Loop-Bestätigungen.
+            hitl_approvals:
+                dsn: '%env(resolve:MESSENGER_TRANSPORT_DSN_HITL)%'
+            # Retry-Queue fehlgeschlagener Nachrichten.
+            failed:
+                dsn: '%env(resolve:MESSENGER_TRANSPORT_DSN_FAILED)%'
 
         default_bus: messenger.bus.default
-
         buses:
             messenger.bus.default: []
 
         routing:
+            # Mail
             Symfony\Component\Mailer\Messenger\SendEmailMessage: async
-            App\Message\ToolApprovalRequested: hitl_approvals
-            App\Message\MailDraftApprovalRequested: hitl_approvals
-            # Route your messages to the transports
-            # 'App\Message\YourMessage': async
+
+            # Agent-Goals (Cron getrieben)
+            'App\Message\RunAgentGoalMessage': async
+
+            # Tool-Execution + Streaming
+            'App\Message\ExecuteToolMessage': async_tools
+            'App\Message\StreamToolResponseMessage': streaming
+            'App\Message\StartStreamingSessionMessage': streaming
+            'App\Message\EndStreamingSessionMessage': streaming
+            'App\Message\StreamChunkMessage': streaming
+
+            # Human-in-the-Loop
+            'App\Message\ToolApprovalRequested': hitl_approvals
+            'App\Message\MailDraftApprovalRequested': hitl_approvals
+
+when@dev:
+    framework:
+        messenger:
+            transports:
+                # Dev: alle Transporte teilen sich die Doctrine-DB, werden aber
+                # per queue_name getrennt, damit ein Worker gezielt konsumiert.
+                async_tools: 'doctrine://default?queue_name=async_tools'
+                streaming: 'doctrine://default?queue_name=streaming'
+                hitl_approvals: 'doctrine://default?queue_name=hitl_approvals'
+                failed: 'doctrine://default?queue_name=failed'
+
+when@test:
+    framework:
+        messenger:
+            transports:
+                async: 'sync://'
+                async_tools: 'sync://'
+                streaming: 'sync://'
+                hitl_approvals: 'sync://'
+                failed: 'sync://'
