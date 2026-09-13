@@ -1,15 +1,16 @@
 # Production-Readiness Härtung
 
-> **Stand:** August 2026 — alle kritischen Audit-Findings aus
-> `docs/temp/audit.md` sind geschlossen. Dieses Dokument dokumentiert die
-> Umsetzung der 5-Phasen-Roadmap (`docs/temp/roadmap.md`) und dient als
-> Nachweis der Prod-Readiness.
+> **Stand:** August 2026 — alle kritischen Audit-Findings sind geschlossen. Dieses
+> Dokument dokumentiert die Umsetzung der Härtungs-Roadmap (Security /
+> Performance / CI-CD) und dient als Nachweis der Prod-Readiness. Der
+> fortlaufende Status ist in [`docs/roadmap.md`](../roadmap.md) zusammengefasst.
 
 ## Übersicht: Audit-Findings und Behebung
 
-Das Audit (`docs/temp/audit.md`) identifizierte 34 Findings in den
-Kategorien Security (11), Performance (8) und Code Quality (15+). Die
-kritischen und High-Priority-Findings wurden in den Phasen 1-3 geschlossen.
+Die zugrunde liegenden Audits identifizierten 34 Findings in den Kategorien
+Security (11), Performance (8) und Code Quality (15+). Die kritischen und
+High-Priority-Findings wurden in den Phasen 1-3 geschlossen; die Ergebnisse
+sind in dieses Dokument eingearbeitet.
 
 ---
 
@@ -62,6 +63,7 @@ IPv4-mapped IPv6 (`::ffff:127.0.0.1`). Getestet in `SsrfBypassTest`.
 | `composer validate --strict` | ✅ | In CI als blockierender Schritt |
 | Postgres-Schema-Validierung | ✅ | Separater CI-Job gegen echte pgvector-Instanz |
 | Test-Kategorisierung | ✅ | Unit/Security/Skills/Agent/Functional/Integration/E2E/Smoke |
+| GHCR Image Publishing | ✅ | `.github/workflows/docker.yml` baut das Prod-Image, pusht zu GHCR und führt einen Smoke-Test aus |
 
 ---
 
@@ -73,8 +75,6 @@ des aktuellen Scopes:
 - **LLM-Latency/Token-Usage-Metriken**: Observability-Erweiterung für
   KI-Aufrufe (separater Observability-Punkt).
 - **Externes Log-Aggregation**: ELK/Loki-Integration (Infrastruktur).
-- **GHCR Image Publishing + Docker Build in CI**: CI-Erweiterung für
-  Container-Builds.
 - **Content-Security-Policy**: muss mit dem HTMX-Frontend (Inline-Scripts)
   zusammen entwickelt werden.
 - **pgvector-Typ-Migration**: `vector`-Feld von JSON auf echten pgvector-Typ
@@ -86,9 +86,7 @@ des aktuellen Scopes:
 
 ## Referenzen
 
-- Audit: `docs/temp/audit.md`
-- Roadmap: `docs/temp/roadmap.md`
-- Fortschritts-Doku: `docs/temp/roadmap-progress.md`
-- Production-Readiness-Checkliste: `docs/PRODUCTION_READINESS_CHECKLIST.md`
-- Deployment: `docs/deployment/production.md`
-- Security-Architektur: `docs/security/security-architecture.md`
+- Roadmap & Fortschritts-Status: [`docs/roadmap.md`](../roadmap.md)
+- Production-Deployment: [`docs/deployment/production.md`](production.md)
+- Security-Architektur: [`docs/security/security-architecture.md`](security-architecture.md)
+- Bedrohungsmodell: [`docs/security/threat-model.md`](threat-model.md)

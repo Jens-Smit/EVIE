@@ -1,8 +1,8 @@
 # Production Deployment
 
-> **Stand:** August 2026 — alle P0/P1-Blocker aus dem Audit sind geschlossen,
-> die 5-Phasen-Roadmap (Security/Performance/CI-CD) ist umgesetzt. Siehe
-> `docs/temp/roadmap-progress.md` fuer den detaillierten Fortschritt.
+> **Stand:** August 2026 — alle P0/P1-Blocker sind geschlossen, die
+> Härtungs-Roadmap (Security/Performance/CI-CD) ist umgesetzt. Der
+> detaillierte Status befindet sich in [`docs/roadmap.md`](../roadmap.md).
 
 ## Production-Checkliste
 
@@ -24,7 +24,7 @@
 - [x] PHP-FPM Worker-Tuning (OPcache im `Dockerfile.prod`)
 - [x] Messenger-Worker-Container (`messenger:consume`, separater Container, aufgeteilt in async / hitl_approvals / failed)
 - [x] Redis (Cache/Rate-Limiter/Messenger-Transport, maxmemory+LRU)
-- [ ] GHCR Image Publishing (manuell/Prozess)
+- [x] GHCR Image Publishing + Docker-Smoke-Test (`.github/workflows/docker.yml`)
 
 ### Sicherheit
 - [x] HTTPS (externer Load Balancer/Traefik, HSTS via SecurityHeadersListener)
@@ -65,8 +65,7 @@
 - [x] Postgres-Schema-Validierung gegen echte pgvector-Instanz
 - [x] Coverage-Reporting (pcov + Clover-Report als Artefakt)
 - [x] Security-Scan fuer Prod-Dependencies (`composer audit --no-dev`)
-- [ ] Docker Build in CI
-- [ ] Docker Smoke Test
+- [x] Docker Build in CI + GHCR-Publishing + Smoke-Test (`.github/workflows/docker.yml`)
 
 ## Deployment mit docker-compose.prod.yml
 
@@ -89,7 +88,7 @@ docker compose -f docker-compose.prod.yml logs -f app
 | Service   | Image              | Rolle                              | Resource-Limit |
 |-----------|--------------------|------------------------------------|----------------|
 | app       | `Dockerfile.prod`  | PHP-FPM (Web-Requests)             | 2 CPU, 1G RAM  |
-| worker-async (�3) | `Dockerfile.prod` | Messenger-Consumer (async)   | je 1 CPU, 512M |
+| worker-async (×3) | `Dockerfile.prod` | Messenger-Consumer (async)   | je 1 CPU, 512M |
 | worker-hitl      | `Dockerfile.prod` | Messenger-Consumer (hitl_approvals) | 1 CPU, 512M |
 | worker-failed    | `Dockerfile.prod` | Messenger-Consumer (failed/Retries) | 1 CPU, 512M |
 | nginx     | `nginx:alpine`     | Reverse Proxy (HTTP/2, Gzip, HSTS) | 0.5 CPU, 128M  |
@@ -119,3 +118,10 @@ pgbouncer:
 ```
 
 Danach `DATABASE_URL` auf `postgresql://evie:...@pgbouncer:5432/evie` setzen.
+
+## Weiterfuehrende Dokumente
+
+- Konfiguration: [`docs/deployment/configuration.md`](configuration.md)
+- Docker (Dev/Prod): [`docs/deployment/docker.md`](docker.md)
+- Prod-Härtung & Audit-Findings: [`docs/security/production-hardening.md`](../security/production-hardening.md)
+- Roadmap & Status: [`docs/roadmap.md`](../roadmap.md)

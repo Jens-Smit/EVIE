@@ -138,9 +138,9 @@ kontrollierte Generierung, Validierung, Freigabe und Registrierung neuer Tools.
 | Persistent Memory | ✅ | `ContextMemoryProvider` (MemoryProviderInterface) |
 | Audit Logging | ✅ | `AuditLogger` + `AgentHistory`/`DecisionLog` |
 | Observability | ✅ | Request-ID/Trace-ID (`ObservabilityListener`) |
-| MCP | ⚠️ | Native `ChainFactory` + `McpServerManager` (Retry/Timeout), erweiterte Features offen |
-| Production Docker | ⚠️ | `Dockerfile.prod` vorhanden, GHCR/Messenger-Worker offen |
-| CI/CD | ✅ | E2E + Unit + Integration + Security + PHPStan + composer validate/audit |
+| MCP | ✅ | Native `ChainFactory` + `McpServerManager` (Timeout/Retry/Auth); erweiterte Discovery offen |
+| Production Docker | ✅ | `Dockerfile.prod`, `docker-compose.prod.yml` (Nginx/Redis/Worker), GHCR-Publishing + Smoke-Test |
+| CI/CD | ✅ | E2E + Unit + Integration + Security + PHPStan + composer validate/audit + Docker-Smoke-Test + Coverage |
 
 ---
 
@@ -254,11 +254,14 @@ vendor/bin/phpunit --testsuite="EVIE AI Security Tests"
 | Self-Evolution | [`docs/architecture/evolution.md`](docs/architecture/evolution.md) |
 | Tool-System | [`docs/architecture/tool-system.md`](docs/architecture/tool-system.md) |
 | RAG | [`docs/architecture/rag.md`](docs/architecture/rag.md) |
+| Architektur-Blueprint | [`blueprint.md`](blueprint.md) |
 | Security Model | [`docs/security/threat-model.md`](docs/security/threat-model.md) |
 | Tenant Isolation | [`docs/security/tenant-isolation.md`](docs/security/tenant-isolation.md) |
+| Prod-Härtung | [`docs/security/production-hardening.md`](docs/security/production-hardening.md) |
 | Setup & Testing | [`docs/development/setup.md`](docs/development/setup.md) |
 | Tool erstellen | [`docs/development/creating-tools.md`](docs/development/creating-tools.md) |
 | Production Docker | [`docs/deployment/docker.md`](docs/deployment/docker.md) |
+| Production Deployment | [`docs/deployment/production.md`](docs/deployment/production.md) |
 | Architecture Decisions | [`docs/decisions/`](docs/decisions/) |
 | API-Endpunkte | [`docs/api/overview.md`](docs/api/overview.md) |
 | Roadmap | [`docs/roadmap.md`](docs/roadmap.md) |
@@ -277,12 +280,12 @@ vendor/bin/phpunit --testsuite="EVIE AI Security Tests"
 | Tenant Isolation (UserContext) | ✅ Implementiert |
 | RAG (InputProcessor + StoreAdapter) | ✅ Implementiert |
 | Audit Logging | ✅ Implementiert |
-| CI/CD (composer validate/audit, PHPStan, alle Test-Suiten) | ✅ Implementiert |
-| Production Docker (Dockerfile.prod) | ⚠️ Grundgerüst vorhanden |
-| Advanced MCP (Discovery, Auth, Netzwerkisolation) | ⚠️ Teilweise |
+| CI/CD (composer validate/audit, PHPStan, alle Test-Suiten, Docker-Smoke-Test) | ✅ Implementiert |
+| Production Docker (Dockerfile.prod, Nginx, Redis, Messenger-Worker) | ✅ Implementiert |
+| GHCR Image Publishing | ✅ Implementiert |
+| Advanced MCP (Discovery, Netzwerkisolation) | ⚠️ Teilweise |
 | Distributed Messenger Workers | ⏳ Geplant |
 | Advanced Scheduling | ⏳ Geplant |
-| GHCR Image Publishing | ⏳ Geplant |
 
 ---
 
@@ -319,4 +322,7 @@ vendor/bin/phpunit --testsuite="EVIE AI Security Tests"
 
 ## License
 
-Privat — Vision Gastro / AiCabs. Kontakt: [Jens Smit](https://jens-smit.de)
+Veröffentlicht unter der **GNU Affero General Public License v3.0 (AGPL-3.0)**.
+Siehe [`LICENSE`](LICENSE).
+
+Kontakt: [Jens Smit](https://jenssmit.de)
