@@ -90,7 +90,6 @@ EVIE erweitert diesen Loop **nur** an den dafür vorgesehenen Erweiterungspunkte
 src/
 ├── AI/
 │   ├── Agent/
-│   │   ├── EvieToolboxFactory.php        # Baut die Toolbox (statisch + dynamisch + MCP)
 │   │   ├── SubAgentFactory.php           # Erzeugt Subagent-Instanzen (Symfony\AI\...\Tool\Subagent)
 │   │   └── OrchestratorDialogService.php # Controller-Ebene: User-Request → Agent
 │   ├── Skills/
@@ -195,8 +194,10 @@ $toolbox = new Toolbox([$subagent]);
 ```
 
 Die `SubAgentFactory` instanziiert die spezialisierten Agenten und wrappt sie
-in `Subagent`-Objekte. Die `EvieToolboxFactory` fügt diese der Toolbox hinzu —
-der Orchestrator ruft Sub-Agenten wie jedes andere Tool auf.
+in `Subagent`-Objekte. Das Symfony AI Bundle registriert diese über die
+native `multi_agent`/`handoffs`-Konfiguration in `config/packages/ai.yaml`
+automatisch in der Orchestrator-Toolbox — der Orchestrator ruft Sub-Agenten
+wie jedes andere Tool auf (keine handgeschriebene Factory).
 
 ### D. HITL über `ToolCallRequested` (natives Event)
 
@@ -273,12 +274,10 @@ Ausgabe direkt unterstützt, wird das native `outputStructure`/Schema verwendet.
 ### I. MCP (Model Context Protocol)
 
 EVIE integriert MCP nativ als weitere Tool-Quelle über die
-`ToolFactory`-Chain (`ChainFactory`) in der `EvieToolboxFactory`:
-
-```php
-$chainFactory = new ChainFactory([$mcpToolFactory, $reflectionToolFactory]);
-$toolbox = new Toolbox($allTools, $chainFactory);
-```
+`tools:`-Liste der Agent-Definition in `config/packages/ai.yaml`
+(`McpToolExecutor` als registrierter Tool-Service). Das AI Bundle baut
+die `Toolbox`-Instanz automatisch aus dieser Konfiguration; dynamische
+Tools werden zur Laufzeit über den `DynamicToolbox`-Decorator ergänzt.
 
 - `McpToolFactory` stellt Remote-Tools (filesystem, playwright, github) bereit,
   die wie native Symfony AI Tools in der Toolbox erscheinen.
@@ -357,8 +356,8 @@ Ergebnis). Bei HITL-relevanten Aktionen zusätzlich in `DecisionLog`.
 
 ### 📌 Phase 5: Subagents & MCP (nativ)
 - `SubAgentFactory` erzeugt `Subagent`-Instanzen (verschachtelte `Agent`).
-- Subagents als Tools in der `EvieToolboxFactory` registriert.
-- MCP-Integration über `McpToolFactory` in der `ChainFactory`.
+- Subagents über native `multi_agent`/`handoffs`-Konfiguration registriert.
+- MCP-Integration über `McpToolExecutor` in der `tools:`-Liste der Agent-Definition.
 
 ---
 
@@ -398,11 +397,11 @@ Ergebnis). Bei HITL-relevanten Aktionen zusätzlich in `DecisionLog`.
 |------------|---------------------------|--------------|
 | Dynamic Toolbox | `ToolboxInterface`-Decorator (`DynamicToolbox`) | `src/AI/Skills/DynamicToolbox.php` |
 | HITL | `ToolCallRequested`-Event | `HitlListener` (EventSubscriber) + `SecurityGuard`-Policy |
-| Subagents als Tools | `Symfony\AI\Agent\Toolbox\Tool\Subagent` | `SubAgentFactory` → `EvieToolboxFactory` |
+| Subagents als Tools | `Symfony\AI\Agent\Toolbox\Tool\Subagent` | `SubAgentFactory` → native `multi_agent`/`handoffs` (`ai.yaml`) |
 | Runtime Tool Parameters | JSON-Schema aus `#[AsTool]`/`Tool`; `ToolCallArgumentsResolved` | `ToolDefinition.schema` → `Tool`-Objekt |
 | Structured Output | Platform `outputStructure` / Serializer-Groups | Agenteninterne Antworten (Entscheidungen, Tool-Gen) |
 | RAG | `symfony/ai-store`, `InputProcessor` | `ContextInjector` + `Retriever` + pgvector |
-| MCP | `ToolFactory`/`ChainFactory`, MCP-Client | `McpToolFactory` in `EvieToolboxFactory` |
+| MCP | `ToolFactory`/`ChainFactory`, MCP-Client | `McpToolExecutor` in `tools:`-Liste (`ai.yaml`) |
 
 ---
 

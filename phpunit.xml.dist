@@ -76,6 +76,11 @@
             <directory>tests/Unit/AI/Agent</directory>
         </testsuite>
 
+        <!-- Orchestrator-Pipeline: Goal -> Intent -> Plan -> Capability -> Execution -->
+        <testsuite name="EVIE AI Pipeline Tests">
+            <directory>tests/Unit/AI/Pipeline</directory>
+        </testsuite>
+
     </testsuites>
 
     <!-- Source Configuration -->

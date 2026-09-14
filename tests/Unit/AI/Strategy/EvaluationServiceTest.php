@@ -4,13 +4,9 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\AI\Strategy;
 
-use App\AI\Agent\LlmRetryExecutor;
 use App\AI\Agent\OrchestratorDialogService;
-use App\AI\Agent\SubAgentFactory;
-use App\AI\Response\FaultTolerantValidator;
-use App\AI\Response\JsonResponseEnforcer;
-use App\AI\Response\ResponseNormalizer;
-use App\AI\Skills\ToolDefinitionGenerator;
+use App\AI\Pipeline\Execution\PipelineResult;
+use App\AI\Pipeline\PipelineInterface;
 use App\AI\Strategy\EvaluationService;
 use App\Entity\AgentGoal;
 use App\Entity\AgentHistory;
@@ -18,13 +14,9 @@ use App\Entity\GoalEvaluation;
 use App\Entity\UserProfile;
 use App\Repository\AgentGoalRepository;
 use App\Repository\GoalEvaluationRepository;
-use App\Repository\ToolDefinitionRepository;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
-use Symfony\AI\Agent\AgentInterface;
-use Symfony\AI\Platform\PlatformInterface;
-use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Unit-Tests für EvaluationService (Ziel-Evaluation mit generischer und LLM-gestützter Bewertung).
@@ -51,20 +43,12 @@ final class EvaluationServiceTest extends TestCase
 
     private function buildOrchestrator(): OrchestratorDialogService
     {
-        return new OrchestratorDialogService(
-            $this->createMock(AgentInterface::class),
-            $this->createMock(ToolDefinitionGenerator::class),
-            $this->createMock(SubAgentFactory::class),
-            $this->createMock(EventDispatcherInterface::class),
-            new NullLogger(),
-            $this->createMock(PlatformInterface::class),
-            $this->createMock(\Symfony\Component\Routing\Generator\UrlGeneratorInterface::class),
-            $this->createMock(JsonResponseEnforcer::class),
-            $this->createMock(FaultTolerantValidator::class),
-            $this->createMock(ResponseNormalizer::class),
-            $this->createMock(ToolDefinitionRepository::class),
-            new LlmRetryExecutor(new NullLogger(), maxRetries: 0, initialDelayMs: 1),
+        $pipeline = $this->createMock(PipelineInterface::class);
+        $pipeline->method('run')->willReturn(
+            new PipelineResult(PipelineResult::TYPE_EXECUTED, 'evaluation-test-result')
         );
+
+        return new OrchestratorDialogService($pipeline);
     }
 
     public function testEvaluateGoalWithGenericEvaluationSuccess(): void
