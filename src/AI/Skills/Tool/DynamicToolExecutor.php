@@ -2,6 +2,7 @@
 
 namespace App\AI\Skills\Tool;
 
+use App\AI\Security\AuditLogger;
 use App\AI\Skills\Executor\ExecutorResolverInterface;
 use Psr\Log\LoggerInterface;
 use App\AI\Skills\Tool\ToolExecutionResult;
@@ -15,7 +16,8 @@ class DynamicToolExecutor
 {
     public function __construct(
         private ExecutorResolverInterface $executorResolver,
-        private LoggerInterface $logger
+        private LoggerInterface $logger,
+        private AuditLogger $auditLogger
     ) {
     }
 
@@ -61,7 +63,7 @@ class DynamicToolExecutor
                 'tool_name' => $tool->getName(),
                 'executor_type' => $executorType,
                 'error' => $e->getMessage(),
-                'trace' => $e->getTraceAsString()
+                'trace' => $this->auditLogger->redactTrace($e->getTraceAsString())
             ]);
 
             return new ToolExecutionResult(

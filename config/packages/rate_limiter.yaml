@@ -12,3 +12,10 @@ framework:
             policy: 'fixed_window'
             limit: 20
             interval: '1 day'
+        # M-8: Rate-Limiter fuer die MCP-API-Endpunkte (Tool-Ausfuehrung und
+        # Tool-Listing unter /api/mcp/servers/...). Begrenzt Missbrauch/Kosten
+        # (LLM-/API-Calls) und Brute-Force gegen Tool-Argumente.
+        mcp_api_calls:
+            policy: 'sliding_window'
+            limit: 30
+            interval: '10 minutes'

@@ -117,10 +117,6 @@ final class SubAgentListController extends AbstractController
                 ],
                 'required' => ['task'],
             ]);
-            $toolDefinition->setParameters([
-                ['name' => 'task', 'type' => 'string', 'required' => true, 'description' => 'Aufgabe für den Sub-Agenten'],
-                ['name' => 'parameters', 'type' => 'object', 'required' => false, 'description' => 'Zusätzliche Parameter'],
-            ]);
             
             // Füge die ausgewählten Tools als Metadaten hinzu
             if (!empty($selectedTools)) {

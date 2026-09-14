@@ -56,7 +56,7 @@ final class ToolApprovalController extends AbstractController
                         'created_at' => $tool->getCreatedAt()?->format(DATE_ATOM),
                         'schema' => $tool->getSchema(),
                         'security_level' => $tool->getSecurityLevel(),
-                        'requires_hitl' => $tool->isRequiresHitl(),
+                        'requires_hitl' => $tool->getRequiresHitl(),
                     ];
                 }, $pendingTools),
             ]);

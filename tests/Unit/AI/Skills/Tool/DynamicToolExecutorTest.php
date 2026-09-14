@@ -4,12 +4,15 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\AI\Skills\Tool;
 
+use App\AI\Security\AuditLogger;
 use App\AI\Skills\Executor\ExecutorInterface;
 use App\AI\Skills\Executor\ExecutorResolverInterface;
 use App\AI\Skills\Tool\DynamicTool;
 use App\AI\Skills\Tool\DynamicToolExecutor;
+use App\Repository\AuditLogRepository;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
+use Symfony\Component\HttpFoundation\RequestStack;
 
 /**
  * Unit-Tests für DynamicToolExecutor (Blueprint §4.F).
@@ -27,7 +30,9 @@ final class DynamicToolExecutorTest extends TestCase
     protected function setUp(): void
     {
         $this->resolver = $this->createMock(ExecutorResolverInterface::class);
-        $this->executor = new DynamicToolExecutor($this->resolver, new NullLogger());
+        $auditRepo = $this->createMock(AuditLogRepository::class);
+        $auditLogger = new AuditLogger($auditRepo, new RequestStack());
+        $this->executor = new DynamicToolExecutor($this->resolver, new NullLogger(), $auditLogger);
     }
 
     public function testExecuteRunsViaResolvedExecutor(): void

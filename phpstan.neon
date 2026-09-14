@@ -11,18 +11,27 @@ parameters:
     excludePaths:
         - 'src/DataFixtures/UserProfileFixture.php'
 
-    # P1-1: klassenweite `undefined method`-Ignores wurden entfernt und durch
-    # ein generiertes, zeilengenaues Baseline-File (phpstan-baseline.neon)
-    # ersetzt. So werden nur noch die tatsaechlich bekannten Stellen
-    # unterdrueckt, nicht mehr jegliche undefined-method-Meldung einer ganzen
-    # Klasse (insb. SecurityGuard, ContextInjector, ToolDefinitionGenerator).
+    # P1-1 + M-3: klassenweite `undefined method`-Ignores wurden schrittweise
+    # entfernt. Urspruenglich unterdrueckten pauschale Regex-Regeln jegliche
+    # undefined-method-Meldung kompletter Klassen (insb. SecurityGuard,
+    # ContextInjector, ToolDefinitionGenerator, ToolDefinition). Das senkte den
+    # Wert der statischen Analyse gerade in sicherheitsrelevantem Code, weil
+    # echte Bugs (z. B. ToolApprovalController::isRequiresHitl() statt
+    # getRequiresHitl(), SubAgentListController::setParameters() auf einer
+    # Methode, die nicht existiert) mitverdeckt wurden.
+    #
+    # M-3 hat diese beiden echten Bugs behoben und die verbleibenden Ignores
+    # dokumentiert. Verbleibende klassenweite Ignores gelten nur noch fuer
+    # Klassen mit dokumentierten Luecken:
+    #   - ToolCategory::setColor()  -> fehlendes `color`-Property (createDefaultCategories ist aktuell toter Pfad)
+    #   - UserProfileFixture        -> erfordert doctrine/doctrine-fixtures-bundle (ausgeschlossen via excludePaths)
+    #   - Vendor-Interfaces         -> PHPStan kann generic-Methoden z. T. nicht resolven
     reportUnmatchedIgnoredErrors: false
 
     ignoreErrors:
         # --- Undefined method calls (Entities mit fehlenden Methoden) ---
         - '#Call to an undefined method App\\DataFixtures\\UserProfileFixture::#'
         - '#Call to an undefined method App\\Entity\\ToolCategory::#'
-        - '#Call to an undefined method App\\Entity\\ToolDefinition::#'
         - '#Call to an undefined method App\\Entity\\UserProfile::#'
         - '#Call to an undefined method Doctrine\\DBAL\\Statement::#'
         - '#Call to an undefined method Symfony\\AI\\Platform\\Message\\MessageInterface::#'
