@@ -18,6 +18,7 @@ use Symfony\Component\RateLimiter\Storage\InMemoryStorage;
 final class DialogRateLimiterTest extends TestCase
 {
     private RateLimiterFactory $factory;
+    private RateLimiterFactory $mcpFactory;
     private DialogRateLimiter $listener;
 
     protected function setUp(): void
@@ -26,7 +27,11 @@ final class DialogRateLimiterTest extends TestCase
             ['id' => 'agent_web_actions', 'policy' => 'no_limit'],
             new InMemoryStorage(),
         );
-        $this->listener = new DialogRateLimiter($this->factory);
+        $this->mcpFactory = new RateLimiterFactory(
+            ['id' => 'mcp_api_calls', 'policy' => 'no_limit'],
+            new InMemoryStorage(),
+        );
+        $this->listener = new DialogRateLimiter($this->factory, $this->mcpFactory);
     }
 
     public function testIgnoresSubRequests(): void
@@ -53,6 +58,26 @@ final class DialogRateLimiterTest extends TestCase
     public function testAllowsDialogRequestWithinLimit(): void
     {
         $request = Request::create('/api/agent/dialog', 'POST');
+        $event = $this->createRequestEvent($request);
+
+        $this->listener->onKernelRequest($event);
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testAllowsMcpRequestWithinLimit(): void
+    {
+        $request = Request::create('/api/mcp/servers/myserver/tools', 'GET');
+        $event = $this->createRequestEvent($request);
+
+        $this->listener->onKernelRequest($event);
+
+        $this->addToAssertionCount(1);
+    }
+
+    public function testIgnoresNonApiRoutes(): void
+    {
+        $request = Request::create('/dashboard', 'GET');
         $event = $this->createRequestEvent($request);
 
         $this->listener->onKernelRequest($event);
