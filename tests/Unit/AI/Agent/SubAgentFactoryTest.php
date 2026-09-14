@@ -273,15 +273,4 @@ final class SubAgentFactoryTest extends TestCase
         self::assertArrayHasKey('ceo_assistant', $agents);
         self::assertCount(11, $agents);
     }
-
-    public function testCreateAllSubAgentTools(): void
-    {
-        $this->subAgentRepo->method('findAllActive')->willReturn([]);
-        $this->toolRepo->method('save');
-
-        $tools = $this->factory->createAllSubAgentTools();
-
-        self::assertCount(11, $tools);
-        self::assertInstanceOf(\Symfony\AI\Agent\Toolbox\Tool\Subagent::class, $tools['website_researcher']);
-    }
 }

@@ -25,8 +25,9 @@ Feste PHP-Klassen mit `#[AsTool]`-Attribut: `WeatherTool`, `FileReadTool`,
 
 ### Subagent-Tools
 Native `Symfony\AI\Agent\Toolbox\Tool\Subagent`-Instanzen, die einen
-verschachtelten `Agent` kapseln. Die `SubAgentFactory` erzeugt sie, die
-`EvieToolboxFactory` registriert sie als Tools.
+verschachtelten `Agent` kapseln. Die `SubAgentFactory` erzeugt sie; das
+Symfony AI Bundle registriert sie über die native `multi_agent`/`handoffs`-
+Konfiguration (`ai.yaml`) automatisch als Tools in der Orchestrator-Toolbox.
 
 ### Dynamische Tools
 Aus `ToolDefinition`-Entities (Status `approved`) erzeugte native

@@ -49,9 +49,9 @@
 |-------------------|---------------|--------------|
 | Dynamic Toolbox | `ToolboxInterface`-Decorator | `DynamicToolbox` (mergt statische + dynamische Tools) |
 | HITL | `ToolCallRequested`-Event | `HitlListener` + `SecurityGuard`-Policy |
-| Subagents | `Subagent` als Tool | `SubAgentFactory` → `EvieToolboxFactory` |
+| Subagents | `Subagent` als Tool | `SubAgentFactory` → native `multi_agent`/`handoffs` (`ai.yaml`) |
 | Runtime Tool Parameters | `Tool` aus `ToolDefinition.schema` | `DynamicToolbox::getTools()` |
 | Structured Output | Platform `outputStructure` | `ToolDefinitionGenerator` nutzt `Agent::call()` |
 | RAG | `InputProcessorInterface` | `ContextInjector` + `StoreRetrieverAdapter` |
 | Memory | `MemoryProviderInterface` | `ContextMemoryProvider` |
-| MCP | `ToolFactory`/`ChainFactory` | `McpToolFactory` in `EvieToolboxFactory` |
+| MCP | `ToolFactory`/`ChainFactory` | `McpToolExecutor` in `tools:`-Liste (`ai.yaml`) |

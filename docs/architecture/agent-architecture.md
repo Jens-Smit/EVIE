@@ -51,7 +51,8 @@ Die Agent-Konfiguration erfolgt in `config/packages/ai.yaml`:
 ## Sub-Agents
 
 Sub-Agents sind native `Symfony\AI\Agent\Toolbox\Tool\Subagent`-Instanzen.
-Die `SubAgentFactory` erzeugt sie und die `EvieToolboxFactory` registriert sie
+Die `SubAgentFactory` erzeugt sie; das Symfony AI Bundle registriert sie
+über die native `multi_agent`/`handoffs`-Konfiguration (`ai.yaml`) automatisch
 als Tools in der Toolbox — der Orchestrator ruft Sub-Agents wie jedes andere
 Tool auf.
 

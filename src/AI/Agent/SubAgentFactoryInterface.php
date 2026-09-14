@@ -67,13 +67,6 @@ interface SubAgentFactoryInterface
     public function getAvailableSubAgents(): array;
 
     /**
-     * Erstellt alle Sub-Agenten als Tools für den Orchestrator.
-     * 
-     * @return array<string, Subagent>
-     */
-    public function createAllSubAgentTools(): array;
-
-    /**
      * Registriert einen neuen Sub-Agenten dynamisch in der Datenbank.
      */
     public function registerSubAgent(SubAgentDefinition $definition): void;

@@ -239,8 +239,8 @@ Goal modellieren, ohne dass jede Chat-Nachricht sofort Tools erzeugt.
 src/AI/
 ├── Agent/
 │   ├── OrchestratorDialogService.php   # wird zur dünnen Fassade
-│   ├── SubAgentFactory.php             # bestehend
-│   └── EvieToolboxFactory.php          # bestehend
+│   ├── SubAgentFactory.php             # bestehend (Subagent-Instanzen)
+│   └── OrchestratorDialogService.php   # duenne Fassade -> Pipeline
 ├── Pipeline/                           # NEU — die 5 Phasen
 │   ├── Pipeline.php                    # Orchestriert Phase 1..5
 │   ├── PipelineContext.php             # Value-Object: Goal, Intent, Plan

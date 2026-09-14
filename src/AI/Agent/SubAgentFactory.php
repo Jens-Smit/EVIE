@@ -359,16 +359,4 @@ class SubAgentFactory implements SubAgentFactoryInterface
         ];
         return array_merge($staticSubAgents, $dynamicSubAgents);
     }
-
-    /**
-     * Erstellt alle Sub-Agenten als Tools für den Orchestrator
-     */
-    public function createAllSubAgentTools(): array
-    {
-        $subAgentTools = [];
-        foreach ($this->getAvailableSubAgents() as $name => $agent) {
-            $subAgentTools[$name] = $this->createSubAgentTool($name, $name);
-        }
-        return $subAgentTools;
-    }
 }
