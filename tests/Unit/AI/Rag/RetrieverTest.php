@@ -106,7 +106,7 @@ final class RetrieverTest extends TestCase
     public function testRetrieveForTypeDelegatesToRetrieveWithSingleContentType(): void
     {
         $this->vectorStore->expects(self::once())->method('search')
-            ->with('q', 'conversation', 3, 0.7)
+            ->with('q', 'conversation', 3, 0.7, null)
             ->willReturn([]);
 
         $result = $this->retriever->retrieveForType('q', 'conversation', 3, 0.7);
@@ -115,14 +115,31 @@ final class RetrieverTest extends TestCase
         self::assertFalse($result->hasResults());
     }
 
+    /**
+     * C-2: retrieveForType muss den user_identifier an den VectorStore
+     * durchreichen, damit die Suche tenant-isoliert laeuft.
+     */
     public function testRetrieveForTypeWithUserIdentifierPropagates(): void
     {
         $this->vectorStore->expects(self::once())->method('search')
-            ->with('q', 'conversation', 3, 0.7, null)
+            ->with('q', 'conversation', 3, 0.7, 'tenant-a')
             ->willReturn([]);
 
-        $result = $this->retriever->retrieveForType('q', 'conversation', 3, 0.7);
+        $result = $this->retriever->retrieveForType('q', 'conversation', 3, 0.7, 'tenant-a');
 
         self::assertSame(0, $result->getCount());
+    }
+
+    /**
+     * C-2: Ohne user_identifier bleibt die Suche tenant-agnostisch (null),
+     * damit System-Wissen weiterhin fuer alle abrufbar ist.
+     */
+    public function testRetrieveForTypeWithoutUserIdentifierStaysTenantAgnostic(): void
+    {
+        $this->vectorStore->expects(self::once())->method('search')
+            ->with('q', 'knowledge', 5, 0.5, null)
+            ->willReturn([]);
+
+        $this->retriever->retrieveForType('q', 'knowledge');
     }
 }

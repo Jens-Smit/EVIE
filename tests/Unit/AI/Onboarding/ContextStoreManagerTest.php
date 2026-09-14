@@ -130,7 +130,7 @@ final class ContextStoreManagerTest extends TestCase
         $embedding = $this->createMock(Embedding::class);
         $vectorStore->expects(self::once())
             ->method('store')
-            ->with('ctx', 'user_profile', 'user_1', ['user_id' => 1, 'user_type' => 'recruiter'])
+            ->with('ctx', 'user_profile', 'user_1', ['user_id' => 1, 'user_identifier' => 'user-123', 'user_type' => 'recruiter'])
             ->willReturn($embedding);
 
         $manager = $this->createManager($vectorStore);
@@ -204,6 +204,23 @@ final class ContextStoreManagerTest extends TestCase
         $manager = $this->createManager(null, $retriever);
         $result = $manager->getRelevantUserContext($this->createUserProfile(1), 'query');
         self::assertCount(2, $result);
+    }
+
+    /**
+     * C-2: getRelevantUserContext muss den Tenant-Identifier an
+     * retrieveForType durchreichen, sodass die semantische Suche nur die
+     * Embeddings des aktuellen Tenants (plus System-Wissen) durchsucht.
+     */
+    public function testGetRelevantUserContextPropagatesTenantIdentifier(): void
+    {
+        $retriever = $this->createMock(Retriever::class);
+        $retriever->expects(self::once())
+            ->method('retrieveForType')
+            ->with('query', 'user_profile', 5, 0.5, 'user-123')
+            ->willReturn(new RetrievalResult('q', []));
+
+        $manager = $this->createManager(null, $retriever);
+        $manager->getRelevantUserContext($this->createUserProfile(1), 'query');
     }
 
     public function testGetRelevantUserContextWithNoMatchesReturnsEmpty(): void
@@ -326,7 +343,7 @@ final class ContextStoreManagerTest extends TestCase
         $retriever = $this->createMock(Retriever::class);
         $retriever->expects(self::once())
             ->method('retrieveForType')
-            ->with('query', 'user_profile', 10)
+            ->with('query', 'user_profile', 10, 0.5, 'user-123')
             ->willReturn(new RetrievalResult('q', []));
 
         $manager = $this->createManager(null, $retriever);

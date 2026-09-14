@@ -52,6 +52,13 @@ class McpServerDefinition
     #[ORM\JoinColumn(nullable: true)]
     private ?User $createdBy = null;
 
+    // Tenant-Zuordnung (P0-5): ein MCP-Server gehoert zu genau einer
+    // Organisation. null = systemweiter Server (nur Super-Admins duerfen
+    // systemweite Server anlegen). Die Ausfuehrungs-Route prueft, dass der
+    // aufrufende User derselben Organisation angehoert.
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $organizationId = null;
+
     public function __construct()
     {
         $this->id = Uuid::v4();
@@ -172,6 +179,17 @@ class McpServerDefinition
     public function setCreatedBy(?User $createdBy): self
     {
         $this->createdBy = $createdBy;
+        return $this;
+    }
+
+    public function getOrganizationId(): ?string
+    {
+        return $this->organizationId;
+    }
+
+    public function setOrganizationId(?string $organizationId): self
+    {
+        $this->organizationId = $organizationId;
         return $this;
     }
 

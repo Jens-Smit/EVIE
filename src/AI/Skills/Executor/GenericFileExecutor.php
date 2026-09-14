@@ -2,11 +2,17 @@
 
 namespace App\AI\Skills\Executor;
 
+use App\AI\Security\SecurityGuard;
 use App\AI\Skills\Tool\DynamicTool;
 use RuntimeException;
 
 class GenericFileExecutor implements ExecutorInterface
 {
+    public function __construct(
+        private ?SecurityGuard $securityGuard = null,
+    ) {
+    }
+
     public function execute(DynamicTool $tool, array $parameters): mixed
     {
         $config = $tool->getExecutorConfig();
@@ -16,6 +22,8 @@ class GenericFileExecutor implements ExecutorInterface
         if (!$path) {
             throw new RuntimeException('File-Executor: Pfad ist erforderlich');
         }
+
+        $this->guardPath($path);
 
         switch ($action) {
             case 'read':
@@ -44,5 +52,13 @@ class GenericFileExecutor implements ExecutorInterface
     public function getType(): string
     {
         return 'filesystem';
+    }
+
+    private function guardPath(string $path): void
+    {
+        if (null === $this->securityGuard || $this->securityGuard->isPathSafe($path)) {
+            return;
+        }
+        throw new RuntimeException('File-Executor: Pfad durch SecurityGuard blockiert.');
     }
 }

@@ -84,6 +84,7 @@ class ContextStoreManager
             'user_' . $userProfile->getId(),
             array_merge($metadata, [
                 'user_id' => $userProfile->getId(),
+                'user_identifier' => $userProfile->getUserIdentifier(),
                 'user_type' => $userProfile->getUserType(),
             ])
         );
@@ -121,23 +122,23 @@ class ContextStoreManager
 
     public function getRelevantUserContext(UserProfile $userProfile, string $query, int $limit = 5): array
     {
-        $result = $this->retriever->retrieveForType($query, 'user_profile', $limit);
+        $result = $this->retriever->retrieveForType($query, 'user_profile', $limit, 0.5, $userProfile->getUserIdentifier());
         return array_filter($result->getItems(), function($item) use ($userProfile) {
             return ($item->getMetadata()['user_id'] ?? null) === $userProfile->getId();
         });
     }
 
-    public function getRelevantConversationContext(string $sessionId, string $query, int $limit = 5): array
+    public function getRelevantConversationContext(string $sessionId, string $query, int $limit = 5, ?string $userIdentifier = null): array
     {
-        $result = $this->retriever->retrieveForType($query, 'conversation', $limit);
+        $result = $this->retriever->retrieveForType($query, 'conversation', $limit, 0.5, $userIdentifier);
         return array_filter($result->getItems(), function($item) use ($sessionId) {
             return ($item->getMetadata()['session_id'] ?? null) === $sessionId;
         });
     }
 
-    public function getRelevantToolContext(string $toolName, string $query, int $limit = 5): array
+    public function getRelevantToolContext(string $toolName, string $query, int $limit = 5, ?string $userIdentifier = null): array
     {
-        $result = $this->retriever->retrieveForType($query, 'tool_memory', $limit);
+        $result = $this->retriever->retrieveForType($query, 'tool_memory', $limit, 0.5, $userIdentifier);
         return array_filter($result->getItems(), function($item) use ($toolName) {
             return ($item->getMetadata()['tool_name'] ?? null) === $toolName;
         });

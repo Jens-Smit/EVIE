@@ -39,6 +39,16 @@ framework:
     php_errors:
         log: true
 
+# C-4: In Produktion wird das Session-Cookie zwingend sicher ausgeliefert.
+# 'auto' setzt das Secure-Flag anhand des Request-Schemas (HTTPS), sobald
+# trusted_proxies gesetzt sind und Symfony X-Forwarded-Proto auswertet. So
+# kann das Cookie niemals im Klartext ueber HTTP ausgeliefert werden, auch
+# wenn das Deployment versehentlich ohne SESSION_COOKIE_SECURE laeuft.
+when@prod:
+    framework:
+        session:
+            cookie_secure: auto
+
 when@test:
     framework:
         test: true
