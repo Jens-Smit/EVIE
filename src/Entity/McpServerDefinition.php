@@ -13,6 +13,7 @@ use Symfony\Component\Uid\Uuid;
  */
 #[ORM\Entity(repositoryClass: McpServerDefinitionRepository::class)]
 #[ORM\Table(name: 'ai_mcp_server_definitions')]
+#[ORM\Index(name: 'idx_mcp_server_organization', columns: ['organization_id'])]
 class McpServerDefinition
 {
     #[ORM\Id]
