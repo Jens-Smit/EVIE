@@ -26,7 +26,12 @@ security:
                 path: app_logout
             remember_me:
                 secret: '%kernel.secret%'
-                lifetime: 604800
+                # M-7: Lifetime von 7 Tagen (604800) auf 1 Tag (86400) reduziert.
+                # Sensible Bereiche (Secrets-Verwaltung, MCP-Server-Verwaltung)
+                # sollten zusaetzlich Step-up-Authentifizierung erfordern, da ein
+                # kompromittiertes Remember-Me-Cookie sonst den vollen Zugriff
+                # fuer die gesamte Lifetime ermoeglicht.
+                lifetime: 86400
                 path: /
 
     access_control:
@@ -42,5 +47,9 @@ security:
         - { path: ^/, roles: ROLE_USER }
 
     role_hierarchy:
-        ROLE_ADMIN: ROLE_USER
+        # M-6: ROLE_ORG_ADMIN fuer tenant-begrenzte Administration (MCP-Server,
+        # Tools) innerhalb der eigenen Organisation, ohne globales ROLE_ADMIN.
+        # OrganizationContext::isOrganizationAdmin() prueft auf diese Rolle.
+        ROLE_ORG_ADMIN: ROLE_USER
+        ROLE_ADMIN: ROLE_ORG_ADMIN
         ROLE_SUPER_ADMIN: ROLE_ADMIN
