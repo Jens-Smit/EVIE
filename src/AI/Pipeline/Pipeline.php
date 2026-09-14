@@ -8,6 +8,7 @@ use App\AI\Pipeline\Capability\CapabilityResolverInterface;
 use App\AI\Pipeline\Execution\ExecutionCoordinatorInterface;
 use App\AI\Pipeline\Execution\PipelineResult;
 use App\AI\Pipeline\Goal\GoalResolverInterface;
+use App\AI\Pipeline\Intent\Intent;
 use App\AI\Pipeline\Intent\IntentClassifierInterface;
 use App\AI\Pipeline\Plan\Plan;
 use App\AI\Pipeline\Plan\PlannerInterface;
