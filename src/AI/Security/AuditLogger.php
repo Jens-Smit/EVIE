@@ -161,6 +161,34 @@ class AuditLogger
     }
 
     /**
+     * Redigiert sensible Werte in einem Stack-Trace-String (M-5).
+     *
+     * Stack-Traces enthalten Funktions-Argumente, Dateipfade und ggf.
+     * Klartext-Secrets (z. B. ein als Methoden-Argument uebergebenes Passwort).
+     * Diese Methode entfernt Zeilen, die offensichtlich sensible
+     * Schluessel-Wert-Muster enthalten (password=..., token=...,
+     * api_key=...), und maskiert Vorkommen gaengiger Secret-Token-Prefixe.
+     *
+     * @param string $trace roher Stack-Trace aus getTraceAsString()
+     */
+    public function redactTrace(string $trace): string
+    {
+        $sensitiveKeys = ['password', 'secret', 'api_key', 'apikey', 'token', 'authorization', 'auth', 'private_key', 'credentials'];
+
+        $redacted = $trace;
+        foreach ($sensitiveKeys as $sensitive) {
+            // Maskiert Muster wie 'password' => '...', password='...', password: '...'
+            $redacted = preg_replace(
+                '/(' . preg_quote($sensitive, '/') . ')\s*(=>|=|:)\s*([' . chr(34) . "'][^'" . chr(34) . "]*['" . chr(34) . ']|[0-9a-zA-Z._-]+)/i',
+                '$1$2 ***REDACTED***',
+                $redacted
+            );
+        }
+
+        return $redacted;
+    }
+
+    /**
      * Redigiert sensible Werte in Tool-Parametern (P0-9).
      *
      * Erkennt Schluessel wie password, secret, api_key, token, authorization

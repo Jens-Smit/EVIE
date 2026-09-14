@@ -66,6 +66,23 @@ final class AuditRedactionTest extends TestCase
         self::assertSame('https://example.com', $redacted['url']);
     }
 
+    public function testRedactsSecretsInStackTrace(): void
+    {
+        $auditLogger = $this->buildAuditLogger();
+
+        $trace = "#0 /app/src/Service.php(42): Foo->login('alice', password='super-secret-123')\n"
+            . "#1 /app/src/Bar.php(13): Bar->call(api_key='sk-abc123', token='jwt-token-here')\n"
+            . "#2 {main}";
+
+        $redacted = $auditLogger->redactTrace($trace);
+
+        self::assertStringNotContainsString('super-secret-123', $redacted);
+        self::assertStringNotContainsString('sk-abc123', $redacted);
+        self::assertStringNotContainsString('jwt-token-here', $redacted);
+        self::assertStringContainsString('***REDACTED***', $redacted);
+        self::assertStringContainsString('{main}', $redacted);
+    }
+
     private function buildAuditLogger(): AuditLogger
     {
         $auditRepo = $this->createMock(AuditLogRepository::class);
