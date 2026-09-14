@@ -664,4 +664,59 @@ final class SecurityGuardTest extends TestCase
         $this->guard->removeAllowedService('App\\Custom\\Executor');
         self::assertFalse($this->guard->isServiceAllowed('App\\Custom\\Executor'));
     }
+
+    // ========================================================================
+    // H-1: Allowlist-basiertes Sandbox-Root (Default-Deny)
+    // ========================================================================
+
+    public function testSandboxRootAllowsPathWithinSandbox(): void
+    {
+        $sandbox = sys_get_temp_dir() . '/evie_sandbox_test_' . uniqid('', true);
+        @mkdir($sandbox, 0777, true);
+        try {
+            $guard = new SecurityGuard(new NullLogger(), null, $sandbox);
+            // Relativer Pfad innerhalb der Sandbox.
+            self::assertTrue($guard->isPathSafe('documents/file.txt'));
+            // Absoluter Pfad innerhalb der Sandbox.
+            self::assertTrue($guard->isPathSafe($sandbox . '/file.txt'));
+        } finally {
+            @rmdir($sandbox);
+        }
+    }
+
+    public function testSandboxRootBlocksPathOutsideSandbox(): void
+    {
+        $sandbox = sys_get_temp_dir() . '/evie_sandbox_test_' . uniqid('', true);
+        @mkdir($sandbox, 0777, true);
+        try {
+            $guard = new SecurityGuard(new NullLogger(), null, $sandbox);
+            // /etc liegt ausserhalb der Sandbox.
+            self::assertFalse($guard->isPathSafe('/etc/passwd'));
+            // /tmp (Elterverzeichnis der Sandbox) ist ausserhalb.
+            self::assertFalse($guard->isPathSafe(sys_get_temp_dir() . '/other/file.txt'));
+        } finally {
+            @rmdir($sandbox);
+        }
+    }
+
+    public function testSandboxRootBlocksTraversalEvenWithinSandbox(): void
+    {
+        $sandbox = sys_get_temp_dir() . '/evie_sandbox_test_' . uniqid('', true);
+        @mkdir($sandbox, 0777, true);
+        try {
+            $guard = new SecurityGuard(new NullLogger(), null, $sandbox);
+            self::assertFalse($guard->isPathSafe('../etc/passwd'));
+            self::assertFalse($guard->isPathSafe('documents/../../etc/passwd'));
+        } finally {
+            @rmdir($sandbox);
+        }
+    }
+
+    public function testSandboxRootNullFallsBackToBlocklist(): void
+    {
+        // Ohne Sandbox-Root greift die Blockliste (Backward-Kompatibilitaet).
+        $guard = new SecurityGuard(new NullLogger(), null, null);
+        self::assertTrue($guard->isPathSafe('/tmp/uploads/data.csv'));
+        self::assertFalse($guard->isPathSafe('/etc/passwd'));
+    }
 }

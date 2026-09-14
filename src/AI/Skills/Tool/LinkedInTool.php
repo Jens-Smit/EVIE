@@ -3,6 +3,7 @@
 
 namespace App\AI\Skills\Tool;
 
+use App\AI\Security\OutboundRequestPolicy;
 use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
@@ -19,7 +20,8 @@ class LinkedInTool
 {
     public function __construct(
         private HttpClientInterface $httpClient,
-        private string $accessToken
+        private string $accessToken,
+        private ?OutboundRequestPolicy $outboundRequestPolicy = null,
     ) {
     }
 
@@ -73,15 +75,21 @@ class LinkedInTool
     {
         try {
             $profileId = $this->extractProfileId($profileIdOrUrl);
-            
+            $url = "https://api.linkedin.com/v2/people/~:(id,firstName,lastName,profilePicture)";
+
+            if ($error = $this->guardUrl($url)) {
+                return $error;
+            }
+
             $response = $this->httpClient->request('GET', 
-                "https://api.linkedin.com/v2/people/~:(id,firstName,lastName,profilePicture)",
+                $url,
                 [
                     'headers' => [
                         'Authorization' => 'Bearer ' . $this->accessToken,
                         'Content-Type' => 'application/json',
                         'X-Restli-Protocol-Version' => '2.0.0',
                     ],
+                    'max_redirects' => 0,
                 ]
             );
 
@@ -107,8 +115,14 @@ class LinkedInTool
     private function searchProfiles(string $query, int $limit = 10): array
     {
         try {
+            $url = "https://api.linkedin.com/v2/people.search";
+
+            if ($error = $this->guardUrl($url)) {
+                return $error;
+            }
+
             $response = $this->httpClient->request('GET',
-                "https://api.linkedin.com/v2/people.search",
+                $url,
                 [
                     'headers' => [
                         'Authorization' => 'Bearer ' . $this->accessToken,
@@ -120,6 +134,7 @@ class LinkedInTool
                         'keywords' => $query,
                         'count' => $limit,
                     ],
+                    'max_redirects' => 0,
                 ]
             );
 
@@ -146,8 +161,14 @@ class LinkedInTool
     private function sendMessage(string $recipientId, string $subject, string $message): array
     {
         try {
+            $url = "https://api.linkedin.com/v2/messaging/conversations";
+
+            if ($error = $this->guardUrl($url)) {
+                return $error;
+            }
+
             $response = $this->httpClient->request('POST',
-                "https://api.linkedin.com/v2/messaging/conversations",
+                $url,
                 [
                     'headers' => [
                         'Authorization' => 'Bearer ' . $this->accessToken,
@@ -163,6 +184,7 @@ class LinkedInTool
                             'text' => $message
                         ]
                     ],
+                    'max_redirects' => 0,
                 ]
             );
 
@@ -198,5 +220,28 @@ class LinkedInTool
             return $matches[2];
         }
         return $profileIdOrUrl;
+    }
+
+    /**
+     * H-3: Prüft eine URL gegen die OutboundRequestPolicy (SSRF-Schutz), bevor
+     * ein ausgehender Request gesendet wird. Gibt null zurück, wenn die URL
+     * sicher ist, sonst ein Fehler-Array.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function guardUrl(string $url): ?array
+    {
+        if (null === $this->outboundRequestPolicy) {
+            return null;
+        }
+        if ($this->outboundRequestPolicy->isUrlAllowed($url)) {
+            return null;
+        }
+
+        return [
+            'status' => 'error',
+            'message' => 'Request blockiert: URL verletzt die SSRF-Richtlinie (OutboundRequestPolicy).',
+            'url' => $url,
+        ];
     }
 }

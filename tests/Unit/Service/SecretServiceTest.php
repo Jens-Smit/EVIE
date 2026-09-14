@@ -101,13 +101,6 @@ final class SecretServiceTest extends TestCase
 
     public function testGetReturnsDecryptedValue(): void
     {
-        $this->service->set('test_key', 'my-secret-value', 'tenant1');
-
-        $secret = new Secret();
-        $secret->setUserIdentifier('tenant1')
-            ->setKeyName('test_key')
-            ->setEncryptedValue('');
-
         $this->secretRepository
             ->method('findOneByKeyAndUser')
             ->willReturnCallback(function (string $keyName) {
@@ -117,7 +110,7 @@ final class SecretServiceTest extends TestCase
 
                 $reflection = new \ReflectionClass(Secret::class);
                 $prop = $reflection->getProperty('encryptedValue');
-                $prop->setValue($secret, $this->encryptValue($secret, 'my-secret-value'));
+                $prop->setValue($secret, $this->encryptForTenant('my-secret-value', 'tenant1'));
 
                 return $secret;
             });
@@ -206,9 +199,9 @@ final class SecretServiceTest extends TestCase
     public function testGetAllForUserReturnsDecryptedMap(): void
     {
         $secret1 = new Secret();
-        $secret1->setKeyName('key1')->setEncryptedValue($this->encryptForTest('value1'));
+        $secret1->setKeyName('key1')->setEncryptedValue($this->encryptForTenant('value1', 'tenant1'));
         $secret2 = new Secret();
-        $secret2->setKeyName('key2')->setEncryptedValue($this->encryptForTest('value2'));
+        $secret2->setKeyName('key2')->setEncryptedValue($this->encryptForTenant('value2', 'tenant1'));
 
         $this->secretRepository
             ->method('findByUser')
@@ -279,9 +272,10 @@ final class SecretServiceTest extends TestCase
         $secret = new Secret();
         $secret->setKeyName('roundtrip_key');
 
-        $reflection = new \ReflectionClass(SecretService::class);
-        $encryptMethod = $reflection->getMethod('encrypt');
-        $encrypted = $encryptMethod->invoke($this->service, 'roundtrip-value');
+        // H-4: get() entschluesselt mit dem tenant-spezifischen Schluessel,
+        // daher muss auch die Verschluesselung hier mit dem Tenant-Schluessel
+        // von 'tenant1' erfolgen.
+        $encrypted = $this->encryptForTenant('roundtrip-value', 'tenant1');
 
         $secret->setEncryptedValue($encrypted);
 
@@ -305,6 +299,37 @@ final class SecretServiceTest extends TestCase
         $this->service->get('bad', 'tenant1');
     }
 
+    /**
+     * H-4: Ein mit dem Tenant-Schluessel von tenant-a verschluesseltes Secret
+     * darf mit dem Tenant-Schluessel von tenant-b nicht entschluesselbar sein.
+     */
+    public function testTenantKeyDerivationIsolatesSecrets(): void
+    {
+        $reflection = new \ReflectionClass(SecretService::class);
+        $encryptMethod = $reflection->getMethod('encrypt');
+
+        $tenantAEncrypted = $encryptMethod->invoke($this->service, 'secret-value', $this->deriveTenantKey('tenant-a'));
+
+        $secret = new Secret();
+        $secret->setKeyName('key')->setEncryptedValue($tenantAEncrypted);
+
+        $this->secretRepository
+            ->method('findOneByKeyAndUser')
+            ->willReturn($secret);
+
+        // Entschluesseln mit tenant-b Schluessel muss fehlschlagen (GCM-Tag
+        // stimmt nicht, da unterschiedliche Schluessel).
+        $this->expectException(\RuntimeException::class);
+        $this->service->get('key', 'tenant-b');
+    }
+
+    private function deriveTenantKey(string $userIdentifier): string
+    {
+        $reflection = new \ReflectionClass(SecretService::class);
+        $method = $reflection->getMethod('deriveTenantKey');
+        return $method->invoke($this->service, $userIdentifier);
+    }
+
     private function encryptForTest(string $value): string
     {
         $reflection = new \ReflectionClass(SecretService::class);
@@ -312,8 +337,10 @@ final class SecretServiceTest extends TestCase
         return $method->invoke($this->service, $value);
     }
 
-    private function encryptValue(Secret $secret, string $value): string
+    private function encryptForTenant(string $value, string $userIdentifier): string
     {
-        return $this->encryptForTest($value);
+        $reflection = new \ReflectionClass(SecretService::class);
+        $method = $reflection->getMethod('encrypt');
+        return $method->invoke($this->service, $value, $this->deriveTenantKey($userIdentifier));
     }
 }

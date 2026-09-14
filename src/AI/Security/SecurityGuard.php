@@ -13,6 +13,8 @@ use Psr\Log\LoggerInterface;
  */
 class SecurityGuard
 {
+    private string|null $fileSandboxRoot;
+
     private array $allowedExecutors = [
         'api',
         'database',
@@ -34,6 +36,9 @@ class SecurityGuard
         'fc00::',
     ];
 
+    // H-1: Blockliste bleibt als Defense-in-Depth erhalten, solange kein
+    // Sandbox-Root konfiguriert ist. Mit Sandbox-Root (Allowlist) ist sie
+    // redundant, da ausserhalb der Sandbox ohnehin alles geblockt wird.
     private array $blockedPaths = [
         '/etc',
         '/root',
@@ -46,6 +51,10 @@ class SecurityGuard
         '/sys',
         '/dev',
         '/boot',
+        '/opt',
+        '/srv',
+        '/mnt',
+        '/data',
     ];
 
     private array $blockedUrls = [
@@ -80,7 +89,14 @@ class SecurityGuard
     public function __construct(
         private LoggerInterface $logger,
         private ?OutboundRequestPolicy $outboundRequestPolicy = null,
+        ?string $fileSandboxRoot = null,
     ) {
+        // H-1: Allowlist-basiertes Sandbox-Root. Ist es gesetzt, prueft
+        // isPathSafe() per realpath()-Praefix-Match, dass der Pfad innerhalb
+        // der Sandbox liegt. Ist es null/leer, greift die Blockliste (Backward-
+        // Kompatibilitaet fuer Tests/CLI ohne konfigurierte Sandbox).
+        $resolved = ($fileSandboxRoot === null || $fileSandboxRoot === '') ? null : realpath($fileSandboxRoot);
+        $this->fileSandboxRoot = $resolved === false ? null : $resolved;
     }
 
     /**
@@ -112,10 +128,27 @@ class SecurityGuard
     }
 
     /**
-     * Prüfe ob eine URL sicher ist (SSRF-Schutz)
+     * Prüfe ob eine URL sicher ist (SSRF-Schutz).
+     *
+     * H-2: OutboundRequestPolicy ist die kanonische SSRF-Implementierung
+     * (echte IP-Bereichspruefung inkl. IPv6 und DNS-Rebinding-Schutz). Ist
+     * sie injiziert, wird sie als primaere Pruefung konsultiert; die
+     * String-basierten Checks unten laufen als Defense-in-Depth nach.
+     * Ohne injizierte Policy bleiben die String-Checks die einzige Pruefung
+     * (Backward-Kompatibilitaet fuer Tests/CLI).
      */
     public function isUrlSafe(string $url): bool
     {
+        // Primaere Pruefung: kanonische OutboundRequestPolicy (H-2).
+        if (null !== $this->outboundRequestPolicy && !$this->outboundRequestPolicy->isUrlAllowed($url)) {
+            $this->logger->warning('URL durch OutboundRequestPolicy geblockt', ['url' => $url]);
+            return false;
+        }
+
+        // Defense-in-Depth: String-basierte Sekundaer-Pruefung. Diese fange
+        // Faelle ab, die die Policy (z. B. bei deaktiviertem DNS-Check oder
+        // nicht-kanonischen Host-Formen in Tests) nicht erfasst.
+
         // Prüfe gegen geblockte URLs
         foreach ($this->blockedUrls as $blockedUrl) {
             if (str_starts_with($url, $blockedUrl)) {
@@ -148,15 +181,6 @@ class SecurityGuard
             return false;
         }
 
-        // Defense-in-Depth: ist die OutboundRequestPolicy injiziert (Produktion),
-        // läuft zusätzlich eine DNS-basierte Prüfung, die auch Domains erfasst,
-        // die auf private IPs auflösen (z. B. evil.com -> 169.254.169.254). Die
-        // String-basierte Prüfung oben sieht nur den Hostnamen, nicht die IP.
-        if (null !== $this->outboundRequestPolicy && !$this->outboundRequestPolicy->isUrlAllowed($url)) {
-            $this->logger->warning('URL durch OutboundRequestPolicy geblockt', ['url' => $url]);
-            return false;
-        }
-
         return true;
     }
 
@@ -175,6 +199,19 @@ class SecurityGuard
             $this->logger->warning('Directory Traversal geblockt', ['path' => $path]);
             return false;
         }
+
+        // H-1: Allowlist-basierte Sandbox. Ist ein Sandbox-Root konfiguriert,
+        // wird der Pfad via realpath() aufgeloest und muss innerhalb des
+        // Sandbox-Roots liegen. Relative Pfade werden gegen den Sandbox-Root
+        // aufgeloest. Dies ist robuster als eine Blockliste verbotener
+        // Praefixe, da jeder Pfad ausserhalb der Sandbox per Default geblockt
+        // ist (Default-Deny statt Default-Allow).
+        if ($this->fileSandboxRoot !== null) {
+            return $this->isPathWithinSandbox($path);
+        }
+
+        // Ohne konfigurierte Sandbox-Root: Blockliste als Fallback
+        // (Backward-Kompatibilitaet).
 
         // Original-Pfad gegen Blocklist pruefen (vor realpath, da realpath
         // Symlinks wie /var/run -> /run aufloesen kann und so einen geblockten
@@ -200,6 +237,76 @@ class SecurityGuard
         }
 
         return true;
+    }
+
+    /**
+     * H-1: Prueft, ob ein Pfad innerhalb des konfigurierten Sandbox-Roots
+     * liegt. Der Pfad wird per realpath() aufgeloest (Symlinks werden
+     * aufgeloest), und der aufgeloeste Pfad muss mit dem Sandbox-Root
+     * beginnen. Nicht existierende Pfade werden gegen den Sandbox-Root
+     * relativiert, solange keine Traversal vorliegt (bereits oben geprueft).
+     */
+    private function isPathWithinSandbox(string $path): bool
+    {
+        $root = $this->fileSandboxRoot;
+        if ($root === null) {
+            return true;
+        }
+
+        // Absolute Pfade direkt pruefen; relative gegen Sandbox-Root aufloesen.
+        $checkPath = str_starts_with($path, '/')
+            ? $path
+            : $root . '/' . ltrim($path, '/');
+
+        $realPath = @realpath($checkPath);
+        if (false !== $realPath) {
+            $isSafe = $realPath === $root || str_starts_with($realPath, $root . '/');
+            if (!$isSafe) {
+                $this->logger->warning('Pfad ausserhalb der Sandbox (realpath)', [
+                    'path' => $realPath,
+                    'sandbox_root' => $root,
+                ]);
+            }
+
+            return $isSafe;
+        }
+
+        // Nicht existierender Pfad: kanonisch auflösen ohne Symlink-Resolution.
+        $canonical = $this->canonicalizePath($checkPath);
+        $isSafe = $canonical === $root || str_starts_with($canonical, $root . '/');
+        if (!$isSafe) {
+            $this->logger->warning('Pfad ausserhalb der Sandbox (kanonisch)', [
+                'path' => $canonical,
+                'sandbox_root' => $root,
+            ]);
+        }
+
+        return $isSafe;
+    }
+
+    /**
+     * Kanonisiert einen Pfad (entfernt '.', '..' und doppelte Slashes), ohne
+     * realpath() aufzurufen, sodass auch nicht-existierende Pfade geprueft
+     * werden koennen.
+     */
+    private function canonicalizePath(string $path): string
+    {
+        $segments = [];
+        $parts = explode('/', $path);
+        foreach ($parts as $part) {
+            if ($part === '' || $part === '.') {
+                continue;
+            }
+            if ($part === '..') {
+                array_pop($segments);
+                continue;
+            }
+            $segments[] = $part;
+        }
+
+        $canonical = implode('/', $segments);
+
+        return $path[0] === '/' ? '/' . $canonical : $canonical;
     }
 
     /**

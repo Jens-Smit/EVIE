@@ -3,6 +3,7 @@
 
 namespace App\AI\Skills\Tool;
 
+use App\AI\Security\OutboundRequestPolicy;
 use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Component\HttpClient\Exception\ClientException;
@@ -19,7 +20,8 @@ class RestApiTool
 {
     public function __construct(
         private HttpClientInterface $httpClient,
-        private ?string $defaultBaseUrl = null
+        private ?string $defaultBaseUrl = null,
+        private ?OutboundRequestPolicy $outboundRequestPolicy = null,
     ) {
     }
 
@@ -73,9 +75,24 @@ class RestApiTool
                 $fullUrl = rtrim($this->defaultBaseUrl, '/') . '/' . ltrim($url, '/');
             }
 
+            // H-3: SSRF-Schutz. Jede ausgehende URL wird vor dem Request gegen
+            // die OutboundRequestPolicy geprüft (IP-Bereich, DNS-Rebinding). Ist
+            // keine Policy injiziert (Tests), wird der Request ohne Prüfung
+            // ausgeführt (Backward-Kompatibilität).
+            if (null !== $this->outboundRequestPolicy && !$this->outboundRequestPolicy->isUrlAllowed($fullUrl)) {
+                return [
+                    'status' => 'error',
+                    'url' => $fullUrl,
+                    'method' => $method,
+                    'message' => 'Request blockiert: URL verletzt die SSRF-Richtlinie (OutboundRequestPolicy).',
+                ];
+            }
+
             $options = [
                 'headers' => array_merge(['Accept' => 'application/json'], $headers),
                 'query' => $query,
+                // SSRF-Defense: Redirects dürfen nicht automatisch gefolgt werden.
+                'max_redirects' => 0,
             ];
 
             // Für POST, PUT, PATCH: Body hinzufügen

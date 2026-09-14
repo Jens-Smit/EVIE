@@ -33,10 +33,14 @@ services:
     App\Security\OrganizationContext: ~
     # SecurityGuard erhaelt die OutboundRequestPolicy als ergaenzende,
     # DNS-basierte SSRF-Pruefung (Defense-in-Depth in isUrlSafe()).
+    # H-1: fileSandboxRoot schaltet isPathSafe() von einer Blockliste auf
+    # ein Allowlist-Sandbox-Root um (Default-Deny). Der Env-Default zeigt auf
+    # var/sandbox; nicht gesetzte Env -> null -> Blockliste als Fallback.
     App\AI\Security\SecurityGuard:
         arguments:
             $logger: '@logger'
             $outboundRequestPolicy: '@App\AI\Security\OutboundRequestPolicy'
+            $fileSandboxRoot: '%env(default::FILE_SANDBOX_ROOT)%'
     App\Security\ResetPasswordTokenGenerator: ~
 
     App\Security\Authenticator\LoginFormAuthenticator:
@@ -112,6 +116,7 @@ services:
         arguments:
             $httpClient: '@http_client'
             $accessToken: '%env(default::LINKEDIN_API_TOKEN)%'
+            $outboundRequestPolicy: '@App\AI\Security\OutboundRequestPolicy'
 
     # OAuthTool fordert Symfony\Component\Cache\Adapter\AdapterInterface, das
     # nicht als Alias im Container registriert ist. Einen konkreten
@@ -119,6 +124,13 @@ services:
     App\AI\Skills\Tool\OAuthTool:
         arguments:
             $cache: '@App\AI\Skills\Tool\OAuthTool\CacheAdapter'
+            $outboundRequestPolicy: '@App\AI\Security\OutboundRequestPolicy'
+
+    # H-3: RestApiTool erhaelt die OutboundRequestPolicy, damit jede
+    # ausgehende URL vor dem HTTP-Request gegen die SSRF-Richtlinie geprueft wird.
+    App\AI\Skills\Tool\RestApiTool:
+        arguments:
+            $outboundRequestPolicy: '@App\AI\Security\OutboundRequestPolicy'
 
     App\AI\Skills\Tool\OAuthTool\CacheAdapter:
         class: Symfony\Component\Cache\Adapter\FilesystemAdapter

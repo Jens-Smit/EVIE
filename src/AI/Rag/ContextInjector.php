@@ -153,6 +153,20 @@ final class ContextInjector implements InputProcessorInterface
      */
     public function inject(string $prompt, string $query, array $options = []): string
     {
+        // H-6: Tenant-Isolation als Default. Ist in den Options kein
+        // user_identifier gesetzt, wird der aus dem UserContext uebernommen.
+        // Ist auch der UserContext-Identifier null (kein Tenant-Kontext,
+        // z. B. CLI/Worker), wird allow_cross_tenant gesetzt, damit die
+        // Legacy-Methode nicht fehlschlaegt.
+        if (!isset($options['user_identifier']) && !isset($options['allow_cross_tenant'])) {
+            $identifier = $this->userContext->getUserIdentifier();
+            if ($identifier !== null) {
+                $options['user_identifier'] = $identifier;
+            } else {
+                $options['allow_cross_tenant'] = true;
+            }
+        }
+
         $result = $this->retriever->retrieve($query, $options);
 
         if (!$result->hasResults()) {

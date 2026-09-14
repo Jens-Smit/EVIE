@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\AI\Skills\Tool;
 
+use App\AI\Security\OutboundRequestPolicy;
 use App\AI\Skills\Tool\RestApiTool;
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\HttpClient\MockHttpClient;
@@ -172,5 +173,68 @@ final class RestApiToolTest extends TestCase
 
         $tool(['method' => 'GET', 'url' => 'https://api.example.com/', 'query' => ['q' => 'test'], 'headers' => ['X-Custom' => 'custom-value']]);
         $this->addToAssertionCount(1);
+    }
+
+    // ========================================================================
+    // H-3: SSRF-Schutz via OutboundRequestPolicy
+    // ========================================================================
+
+    public function testSsrfBlocksRequestToPrivateIp(): void
+    {
+        $policy = new OutboundRequestPolicy(new \Psr\Log\NullLogger(), [
+            'allow_private_networks' => false,
+            'allow_redirects' => false,
+            'max_redirects' => 0,
+        ]);
+        $client = new MockHttpClient(fn () => new MockResponse('{}', ['http_code' => 200]));
+        $tool = new RestApiTool($client, null, $policy);
+
+        $result = $tool(['method' => 'GET', 'url' => 'http://169.254.169.254/latest/meta-data/']);
+
+        self::assertSame('error', $result['status']);
+        self::assertStringContainsString('SSRF', $result['message']);
+    }
+
+    public function testSsrfBlocksRequestToLocalhost(): void
+    {
+        $policy = new OutboundRequestPolicy(new \Psr\Log\NullLogger(), [
+            'allow_private_networks' => false,
+            'allow_redirects' => false,
+            'max_redirects' => 0,
+        ]);
+        $client = new MockHttpClient(fn () => new MockResponse('{}', ['http_code' => 200]));
+        $tool = new RestApiTool($client, null, $policy);
+
+        $result = $tool(['method' => 'GET', 'url' => 'http://127.0.0.1/admin']);
+
+        self::assertSame('error', $result['status']);
+        self::assertStringContainsString('SSRF', $result['message']);
+    }
+
+    public function testSsrfAllowsPublicUrlWithPolicy(): void
+    {
+        $policy = new OutboundRequestPolicy(new \Psr\Log\NullLogger(), [
+            'allow_private_networks' => false,
+            'allow_redirects' => false,
+            'max_redirects' => 0,
+        ]);
+        $client = new MockHttpClient(new MockResponse('{"ok":true}', ['http_code' => 200]));
+        $tool = new RestApiTool($client, null, $policy);
+
+        $result = $tool(['method' => 'GET', 'url' => 'https://api.example.com/data']);
+
+        self::assertSame('success', $result['status']);
+        self::assertSame(200, $result['status_code']);
+    }
+
+    public function testWithoutPolicyBackwardCompatible(): void
+    {
+        // Ohne injizierte Policy wird der Request ohne SSRF-Pruefung ausgefuehrt.
+        $client = new MockHttpClient(new MockResponse('{}', ['http_code' => 200]));
+        $tool = new RestApiTool($client, null, null);
+
+        $result = $tool(['method' => 'GET', 'url' => 'http://127.0.0.1/data']);
+
+        self::assertSame('success', $result['status']);
     }
 }
