@@ -37,12 +37,13 @@ class Retriever
         return new RetrievalResult($query, array_slice($allResults, 0, $limit));
     }
 
-    public function retrieveForType(string $query, string $contentType, int $limit = 5, float $minSimilarity = 0.5): RetrievalResult
+    public function retrieveForType(string $query, string $contentType, int $limit = 5, float $minSimilarity = 0.5, ?string $userIdentifier = null): RetrievalResult
     {
         return $this->retrieve($query, [
             'content_types' => [$contentType],
             'limit' => $limit,
-            'min_similarity' => $minSimilarity
+            'min_similarity' => $minSimilarity,
+            'user_identifier' => $userIdentifier,
         ]);
     }
 }

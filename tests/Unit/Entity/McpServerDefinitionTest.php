@@ -72,6 +72,11 @@ class McpServerDefinitionTest extends TestCase
         $user = new User();
         $definition->setCreatedBy($user);
         $this->assertSame($user, $definition->getCreatedBy());
+
+        // Test organizationId (C-3: Tenant-Zuordnung fuer MCP-Server)
+        $this->assertNull($definition->getOrganizationId());
+        $definition->setOrganizationId('org-42');
+        $this->assertEquals('org-42', $definition->getOrganizationId());
     }
 
     public function testGetMcpConfiguration(): void

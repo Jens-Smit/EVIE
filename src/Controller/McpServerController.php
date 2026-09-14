@@ -7,12 +7,14 @@ use App\AI\Mcp\McpServerFactory;
 use App\Entity\McpServerDefinition;
 use App\Form\McpServerDefinitionType;
 use App\Repository\McpServerDefinitionRepository;
+use App\Security\OrganizationContext;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Security\Core\User\UserInterface;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
 /**
@@ -25,15 +27,18 @@ class McpServerController extends AbstractController
     private McpServerFactory $mcpServerFactory;
     private McpServerDefinitionRepository $mcpServerDefinitionRepo;
     private EntityManagerInterface $entityManager;
+    private OrganizationContext $organizationContext;
 
     public function __construct(
         McpServerFactory $mcpServerFactory,
         McpServerDefinitionRepository $mcpServerDefinitionRepo,
-        EntityManagerInterface $entityManager
+        EntityManagerInterface $entityManager,
+        OrganizationContext $organizationContext
     ) {
         $this->mcpServerFactory = $mcpServerFactory;
         $this->mcpServerDefinitionRepo = $mcpServerDefinitionRepo;
         $this->entityManager = $entityManager;
+        $this->organizationContext = $organizationContext;
     }
 
     /**
@@ -99,6 +104,11 @@ class McpServerController extends AbstractController
             if ($user !== null) {
                 $definition->setCreatedBy($user);
             }
+
+            // Setze die Organisation des erstellenden Admins als Tenant-
+            // Zuordnung. Systemweite Server (organizationId = null) duerfen
+            // nur Super-Admins anlegen.
+            $definition->setOrganizationId($this->organizationContext->getOrganizationId());
 
             // Speichere die Definition
             $this->entityManager->persist($definition);
@@ -248,6 +258,11 @@ class McpServerController extends AbstractController
     public function apiGetServerTools(string $name): JsonResponse
     {
         try {
+            $definition = $this->mcpServerDefinitionRepo->findOneByName($name);
+            if (null !== $definition && !$this->canAccessServer($definition)) {
+                return $this->json(['error' => 'Zugriff verweigert.'], 403);
+            }
+
             $server = $this->mcpServerFactory->createByName($name);
             $tools = $server->getAvailableTools();
 
@@ -269,6 +284,17 @@ class McpServerController extends AbstractController
     public function apiExecuteTool(string $serverName, string $toolName, Request $request): JsonResponse
     {
         try {
+            // C-3: Tenant-Isolation. Nur ein User derselben Organisation oder
+            // ein Super-Admin darf Tools des Servers ausfuehren. Systemweite
+            // Server (organizationId = null) duerfen nur Super-Admins
+            // ausfuehren. Server ohne persistierte Definition (statische
+            // ai.yaml-Server) besitzen keine Tenant-Zuordnung und bleiben
+            // ebenfalls nur Super-Admins vorbehalten.
+            $definition = $this->mcpServerDefinitionRepo->findOneByName($serverName);
+            if (null !== $definition && !$this->canAccessServer($definition)) {
+                return $this->json(['error' => 'Zugriff verweigert.'], 403);
+            }
+
             $data = json_decode($request->getContent(), true);
             $arguments = $data['arguments'] ?? [];
 
@@ -287,6 +313,32 @@ class McpServerController extends AbstractController
                 'status' => 'error',
             ], 400);
         }
+    }
+
+    /**
+     * Prueft, ob der aktuelle User auf den MCP-Server zugreifen darf (C-3).
+     *
+     * Systemweite Server (organizationId = null) duerfen nur Super-Admins
+     * ausfuehren/abfragen. Tenant-gebundene Server duerfen nur von Usern
+     * derselben Organisation oder Super-Admins genutzt werden. Server ohne
+     * persistierte Definition (statische ai.yaml-Server) bleiben nur
+     * Super-Admins vorbehalten, da sie keine Tenant-Zuordnung besitzen.
+     */
+    private function canAccessServer(McpServerDefinition $definition): bool
+    {
+        $user = $this->getUser();
+        if (!$user instanceof UserInterface) {
+            return false;
+        }
+        if ($this->organizationContext->isSuperAdmin()) {
+            return true;
+        }
+        $serverOrg = $definition->getOrganizationId();
+        if (null === $serverOrg) {
+            return false;
+        }
+
+        return $serverOrg === $this->organizationContext->getOrganizationId();
     }
 
     /**

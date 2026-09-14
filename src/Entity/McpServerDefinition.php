@@ -13,6 +13,7 @@ use Symfony\Component\Uid\Uuid;
  */
 #[ORM\Entity(repositoryClass: McpServerDefinitionRepository::class)]
 #[ORM\Table(name: 'ai_mcp_server_definitions')]
+#[ORM\Index(name: 'idx_mcp_server_organization', columns: ['organization_id'])]
 class McpServerDefinition
 {
     #[ORM\Id]
@@ -51,6 +52,13 @@ class McpServerDefinition
     #[ORM\ManyToOne(targetEntity: User::class)]
     #[ORM\JoinColumn(nullable: true)]
     private ?User $createdBy = null;
+
+    // Tenant-Zuordnung (P0-5): ein MCP-Server gehoert zu genau einer
+    // Organisation. null = systemweiter Server (nur Super-Admins duerfen
+    // systemweite Server anlegen). Die Ausfuehrungs-Route prueft, dass der
+    // aufrufende User derselben Organisation angehoert.
+    #[ORM\Column(length: 255, nullable: true)]
+    private ?string $organizationId = null;
 
     public function __construct()
     {
@@ -172,6 +180,17 @@ class McpServerDefinition
     public function setCreatedBy(?User $createdBy): self
     {
         $this->createdBy = $createdBy;
+        return $this;
+    }
+
+    public function getOrganizationId(): ?string
+    {
+        return $this->organizationId;
+    }
+
+    public function setOrganizationId(?string $organizationId): self
+    {
+        $this->organizationId = $organizationId;
         return $this;
     }
 

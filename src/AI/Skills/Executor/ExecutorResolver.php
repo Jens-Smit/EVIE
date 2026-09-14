@@ -20,7 +20,7 @@ class ExecutorResolver implements ExecutorResolverInterface
         $this->executors = [
             'api' => new GenericApiExecutor(),
             'database' => new GenericDatabaseExecutor($connection),
-            'filesystem' => new GenericFileExecutor(),
+            'filesystem' => new GenericFileExecutor($securityGuard),
             'http' => new GenericHttpExecutor($httpClient, $securityGuard),
         ];
     }
