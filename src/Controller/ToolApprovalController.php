@@ -6,6 +6,7 @@ namespace App\Controller;
 use App\Entity\ToolDefinition;
 use App\Repository\ToolDefinitionRepository;
 use App\Event\PendingToolApprovalEvent;
+use App\Service\SecretService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
@@ -26,6 +27,7 @@ final class ToolApprovalController extends AbstractController
         private ToolDefinitionRepository $toolDefinitionRepo,
         private EventDispatcherInterface $dispatcher,
         private LoggerInterface $logger,
+        private SecretService $secretService,
     ) {
     }
 
@@ -86,18 +88,56 @@ final class ToolApprovalController extends AbstractController
      * Genehmigt ein ausstehendes Tool.
      */
     #[Route('/tools/pending/{id}/approve', name: 'app_tool_pending_approve', methods: ['POST'])]
-    public function approveTool(ToolDefinition $tool): JsonResponse
+    public function approveTool(Request $request, ToolDefinition $tool): JsonResponse
     {
         try {
+            // Freitext-Antwort des Users (Luecke 4): die Antwort wird im
+            // metadata-Feld der ToolDefinition gespeichert und ist fuer die
+            // Wiederaufnahme des pausierten Plans verfuegbar.
+            $userAnswer = trim((string) $request->request->get('user_answer', $request->request->get('answer', '')));
+
+            // Secret hinterlegen (Luecke 5): der User kann waehrend der
+            // Freigabe einen API-Key/ein Secret mit Bezeichnung hinterlegen.
+            $secretName = trim((string) $request->request->get('secret_name', ''));
+            $secretValue = trim((string) $request->request->get('secret_value', ''));
+            $secretScope = trim((string) $request->request->get('secret_scope', ''));
+
             // Status auf approved setzen
             $tool->setStatus('approved');
             $tool->setApprovedAt(new \DateTimeImmutable());
+
+            // Freitext-Antwort in metadata ablegen (fuer Wiederaufnahme).
+            $metadata = $tool->getMetadata() ?? [];
+            if ($userAnswer !== '') {
+                $metadata['user_answer'] = $userAnswer;
+            }
+            if ($secretName !== '' && $secretValue !== '') {
+                $metadata['secret_name'] = $secretName;
+            }
+            $tool->setMetadata($metadata);
             $this->toolDefinitionRepo->save($tool, true);
 
-            // Event ausloesen
-            $this->dispatcher->dispatch(new PendingToolApprovalEvent($tool, null, true));
+            // Secret verschluesselt hinterlegen (Luecke 5).
+            if ($secretName !== '' && $secretValue !== '') {
+                $userIdentifier = $tool->getUserIdentifier();
+                if ($userIdentifier !== null && $userIdentifier !== '') {
+                    $this->secretService->set(
+                        $secretName,
+                        $secretValue,
+                        $userIdentifier,
+                        $secretScope !== '' ? $secretScope : null,
+                    );
+                }
+            }
 
-            return $this->json([
+            // Event ausloesen (mit userIdentifier fuer Wiederaufnahme).
+            $this->dispatcher->dispatch(new PendingToolApprovalEvent(
+                $tool,
+                $tool->getUserIdentifier(),
+                true,
+            ));
+
+            $responseData = [
                 'status' => 'success',
                 'message' => 'Tool wurde genehmigt',
                 'tool' => [
@@ -105,7 +145,16 @@ final class ToolApprovalController extends AbstractController
                     'name' => $tool->getName(),
                     'status' => $tool->getStatus(),
                 ],
-            ]);
+            ];
+            if ($userAnswer !== '') {
+                $responseData['user_answer'] = $userAnswer;
+            }
+            if ($secretName !== '' && $secretValue !== '') {
+                $responseData['secret_stored'] = true;
+                $responseData['secret_name'] = $secretName;
+            }
+
+            return $this->json($responseData);
         } catch (\Exception $e) {
             $this->logger->error('Fehler beim Genehmigen des Tools: ' . $e->getMessage());
             return $this->json([

@@ -271,7 +271,6 @@ jobs:
 
   e2e-llm:
     runs-on: ubuntu-latest
-    continue-on-error: true
     services:
       postgres:
         image: pgvector/pgvector:pg15

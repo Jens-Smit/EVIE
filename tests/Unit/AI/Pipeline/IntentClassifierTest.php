@@ -64,6 +64,20 @@ final class IntentClassifierTest extends TestCase
         self::assertFalse($intent->isDialog());
     }
 
+    public function testClassifiesSetupTask(): void
+    {
+        $classifier = $this->buildClassifier('SETUP_TASK');
+
+        $intent = $classifier->classify(PipelineContext::create(
+            'EVIE soll mein Unternehmen aufbauen und als CEO agieren',
+            'u'
+        ));
+
+        self::assertSame(Intent::SetupTask, $intent);
+        self::assertFalse($intent->isDialog());
+        self::assertTrue($intent->requiresPlan());
+    }
+
     public function testFallsBackToConversationOnUnknownToken(): void
     {
         $classifier = $this->buildClassifier('UNBEKANNT');

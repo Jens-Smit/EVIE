@@ -164,6 +164,8 @@ ai:
                 - { service: 'App\AI\Skills\Tool\LinkedInTool' }
                 - { service: 'App\AI\Skills\Tool\OAuthTool' }
                 - { service: 'App\AI\Skills\Tool\RestApiTool' }
+                - { service: 'App\AI\Skills\Tool\StrategyDocumentTool' }
+                - { service: 'App\AI\Skills\Tool\SubAgentRegisterTool' }
 
                 # Dynamische Tools aus der Datenbank werden zur Laufzeit über die
                 # native DynamicToolbox (ToolboxInterface-Decorator) ergänzt —
