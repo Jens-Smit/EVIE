@@ -18,6 +18,8 @@ use App\AI\Pipeline\PipelineContext;
 use App\AI\Pipeline\Plan\Plan;
 use App\AI\Pipeline\Plan\PlannerInterface;
 use App\AI\Pipeline\Plan\Step;
+use App\Repository\AgentGoalRepository;
+use App\Repository\UserProfileRepository;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 
@@ -42,6 +44,8 @@ final class PipelineTest extends TestCase
     private PlannerInterface&MockObject $planner;
     private CapabilityResolverInterface&MockObject $capabilityResolver;
     private ExecutionCoordinatorInterface&MockObject $execution;
+    private AgentGoalRepository&MockObject $agentGoalRepository;
+    private UserProfileRepository&MockObject $userProfileRepository;
 
     protected function setUp(): void
     {
@@ -50,6 +54,8 @@ final class PipelineTest extends TestCase
         $this->planner = $this->createMock(PlannerInterface::class);
         $this->capabilityResolver = $this->createMock(CapabilityResolverInterface::class);
         $this->execution = $this->createMock(ExecutionCoordinatorInterface::class);
+        $this->agentGoalRepository = $this->createMock(AgentGoalRepository::class);
+        $this->userProfileRepository = $this->createMock(UserProfileRepository::class);
     }
 
     public function testConversationExitGateReturnsDialogWithoutCapability(): void
@@ -187,6 +193,39 @@ final class PipelineTest extends TestCase
         self::assertSame($expected, $result);
     }
 
+    public function testSetupTaskPersistsAgentGoal(): void
+    {
+        $this->goalResolver->method('resolve')->willReturn(
+            new Goal('g', 'ad-hoc', null, Goal::SOURCE_AD_HOC)
+        );
+        $this->intentClassifier->method('classify')->willReturn(Intent::SetupTask);
+        $this->planner->method('plan')->willReturn(
+            new Plan([new Step(Step::TYPE_TOOL, 'strategy_document', ['name' => 'Businessplan', 'content' => '...'])], 'Businessplan erstellen')
+        );
+        $this->capabilityResolver->method('resolve')->willReturn(
+            new CapabilityResult(CapabilityDecision::Available)
+        );
+
+        $userProfile = new \App\Entity\UserProfile();
+        $this->userProfileRepository->method('findOneBy')->willReturn($userProfile);
+
+        // AgentGoal muss persistiert werden (Luecke 2).
+        $this->agentGoalRepository->expects(self::once())->method('save')
+            ->with(self::callback(function (\App\Entity\AgentGoal $goal): bool {
+                return $goal->getStatus() === 'paused'
+                    && $goal->isRequiresApproval() === true
+                    && $goal->isApproved() === false
+                    && $goal->getTitle() === 'Businessplan erstellen';
+            }), true);
+
+        $expected = new PipelineResult(PipelineResult::TYPE_EXECUTED, 'Done');
+        $this->execution->expects(self::once())->method('execute')->willReturn($expected);
+
+        $result = $this->pipeline()->run('EVIE soll mein Unternehmen aufbauen', 'user-setup');
+
+        self::assertSame($expected, $result);
+    }
+
     private function pipeline(): Pipeline
     {
         return new Pipeline(
@@ -194,7 +233,9 @@ final class PipelineTest extends TestCase
             $this->intentClassifier,
             $this->planner,
             $this->capabilityResolver,
-            $this->execution
+            $this->execution,
+            $this->agentGoalRepository,
+            $this->userProfileRepository
         );
     }
 }

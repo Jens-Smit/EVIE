@@ -38,11 +38,25 @@ final class IntentTest extends TestCase
         self::assertFalse(Intent::Unclear->isDialog());
     }
 
+    public function testSetupTaskIsNotDialog(): void
+    {
+        self::assertFalse(Intent::SetupTask->isDialog());
+    }
+
+    public function testSetupTaskRequiresPlan(): void
+    {
+        self::assertTrue(Intent::SetupTask->requiresPlan());
+        self::assertTrue(Intent::Task->requiresPlan());
+        self::assertFalse(Intent::Conversation->requiresPlan());
+        self::assertFalse(Intent::Unclear->requiresPlan());
+    }
+
     public function testEnumValuesAreStableStrings(): void
     {
         self::assertSame('conversation', Intent::Conversation->value);
         self::assertSame('information', Intent::Information->value);
         self::assertSame('task', Intent::Task->value);
         self::assertSame('unclear', Intent::Unclear->value);
+        self::assertSame('setup_task', Intent::SetupTask->value);
     }
 }

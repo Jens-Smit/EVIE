@@ -8,10 +8,14 @@ use App\AI\Pipeline\Capability\CapabilityResolverInterface;
 use App\AI\Pipeline\Execution\ExecutionCoordinatorInterface;
 use App\AI\Pipeline\Execution\PipelineResult;
 use App\AI\Pipeline\Goal\GoalResolverInterface;
+use App\AI\Pipeline\Intent\Intent;
 use App\AI\Pipeline\Intent\IntentClassifierInterface;
 use App\AI\Pipeline\Plan\Plan;
 use App\AI\Pipeline\Plan\PlannerInterface;
 use App\AI\Pipeline\Plan\Step;
+use App\Entity\AgentGoal;
+use App\Repository\AgentGoalRepository;
+use App\Repository\UserProfileRepository;
 
 /**
  * Orchestriert die fuenf Phasen Goal -> Intent -> Plan -> Capability ->
@@ -33,19 +37,25 @@ final class Pipeline implements PipelineInterface
     private PlannerInterface $planner;
     private CapabilityResolverInterface $capabilityResolver;
     private ExecutionCoordinatorInterface $executionCoordinator;
+    private AgentGoalRepository $agentGoalRepository;
+    private UserProfileRepository $userProfileRepository;
 
     public function __construct(
         GoalResolverInterface $goalResolver,
         IntentClassifierInterface $intentClassifier,
         PlannerInterface $planner,
         CapabilityResolverInterface $capabilityResolver,
-        ExecutionCoordinatorInterface $executionCoordinator
+        ExecutionCoordinatorInterface $executionCoordinator,
+        AgentGoalRepository $agentGoalRepository,
+        UserProfileRepository $userProfileRepository
     ) {
         $this->goalResolver = $goalResolver;
         $this->intentClassifier = $intentClassifier;
         $this->planner = $planner;
         $this->capabilityResolver = $capabilityResolver;
         $this->executionCoordinator = $executionCoordinator;
+        $this->agentGoalRepository = $agentGoalRepository;
+        $this->userProfileRepository = $userProfileRepository;
     }
 
     public function run(string $message, string $userIdentifier): PipelineResult
@@ -68,6 +78,13 @@ final class Pipeline implements PipelineInterface
             return $this->executionCoordinator->clarify($context, $plan);
         }
 
+        // Luecke 2: Bei SetupTask-Intent wird der Plan als persistentes
+        // AgentGoal gespeichert, damit EVIE die mehrstufige Aufgabe ueber
+        // mehrere Dialogrunden/Messenger-Ausfuehrungen autonom abarbeitet.
+        if ($intent === Intent::SetupTask) {
+            $this->persistSetupTaskGoal($context, $plan);
+        }
+
         // Phase 4 — Capability (Exit-Gate: HITL)
         $resolvedPlan = $plan;
         foreach ($plan->getSteps() as $step) {
@@ -85,6 +102,33 @@ final class Pipeline implements PipelineInterface
 
         // Phase 5 — Execution
         return $this->executionCoordinator->execute($context, $resolvedPlan);
+    }
+
+    /**
+     * Persistiert den Plan als AgentGoal (Luecke 2), damit EVIE die
+     * mehrstufige Setup-Aufgabe autonom ueber RunAgentGoalHandler
+     * abarbeitet. Das Goal ist paused + requiresApproval=true (HITL).
+     */
+    private function persistSetupTaskGoal(PipelineContext $context, Plan $plan): void
+    {
+        $userProfile = $this->userProfileRepository->findOneBy([
+            'userIdentifier' => $context->getUserIdentifier(),
+        ]);
+        if ($userProfile === null) {
+            return;
+        }
+
+        $summary = $plan->getSummary() ?? $context->getMessage();
+        $goal = new AgentGoal();
+        $goal->setUserIdentifier($context->getUserIdentifier());
+        $goal->setTitle(mb_substr($summary, 0, 255));
+        $goal->setDescription($context->getMessage());
+        $goal->setStatus('paused');
+        $goal->setRequiresApproval(true);
+        $goal->setIsApproved(false);
+        $goal->setUserProfile($userProfile);
+
+        $this->agentGoalRepository->save($goal, true);
     }
 
     /**

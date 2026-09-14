@@ -20,6 +20,11 @@ use Symfony\AI\Platform\PlatformInterface;
  * Fantasie-Tools; der Prompt ist der bereits existierende
  * Intent-Klassifizierungs-Prompt.
  *
+ * SetupTask erkennt mehrstufige Aufbau-Aufgaben (CEO-Agent, Unternehmensaufbau,
+ * Sub-Agenten-Setup, mehrstufige Strategie mit konkreten Ausfuehrungsschritten).
+ * Diese enden nicht als Dialog, sondern erzeugen in Phase 3 einen persistenten
+ * Plan mit AgentGoal + Aufgabenschritten.
+ *
  * @see docs/architecture/orchestrator-pipeline.md Phase 2
  */
 final class IntentClassifier implements IntentClassifierInterface
@@ -45,6 +50,7 @@ final class IntentClassifier implements IntentClassifierInterface
                 'INFORMATION' => Intent::Information,
                 'UNCLEAR' => Intent::Unclear,
                 'TASK' => Intent::Task,
+                'SETUP_TASK' => Intent::SetupTask,
                 default => Intent::Conversation,
             };
         } catch (\Exception $e) {
@@ -55,17 +61,24 @@ final class IntentClassifier implements IntentClassifierInterface
 
     private function buildIntentClassificationPrompt(string $userMessage): string
     {
-        return "Klassifiziere die folgende User-Anfrage. Antworte ausschliesslich mit einem der Woerter CONVERSATION, INFORMATION, UNCLEAR oder TASK.\n\n"
-            . "- CONVERSATION: Begruessung, Identitaetsfrage (wer bist du, was kannst du), allgemeine "
-            . "  Unterhaltung, Strategie-Diskussion, Brainstorming.\n"
-            . "- INFORMATION: Ein Informationswunsch, der mit vorhandenem Kontext/dem Dialogverlauf "
-            . "  direkt mit Text beantwortet werden kann (z.B. 'was kannst du', 'erklaere mir die Strategie', "
+        return "Klassifiziere die folgende User-Anfrage. Antworte ausschliesslich mit einem der Woerter CONVERSATION, INFORMATION, UNCLEAR, TASK oder SETUP_TASK.\n\n"
+            . "- CONVERSATION: Begruessung, Identitaetsfrage (wer bist du, was kannst du), allgemeine \"\n"
+            . "  Unterhaltung, einfache Strategie-Diskussion ohne konkrete Ausfuehrungsaufforderung, Brainstorming.\n"
+            . "- INFORMATION: Ein Informationswunsch, der mit vorhandenem Kontext/dem Dialogverlauf \"\n"
+            . "  direkt mit Text beantwortet werden kann (z.B. 'was kannst du', 'erklaere mir die Strategie', \"\n"
             . "  'welche Tools hast du').\n"
-            . "- UNCLEAR: Die Anfrage ist mehrdeutig oder unvollstaendig; der Agent muesste erst "
+            . "- UNCLEAR: Die Anfrage ist mehrdeutig oder unvollstaendig; der Agent muesste erst \"\n"
             . "  rueckfragen, bevor er handeln kann.\n"
-            . "- TASK: Eine konkrete, ausfuehrbare Aktion, die ein Werkzeug erfordert, z.B. das Abrufen "
-            . "  einer externen API, die Analyse einer konkreten Datei, das Versenden einer Nachricht oder "
-            . "  eine Datenbankabfrage.\n\n"
+            . "- TASK: Eine einzelne konkrete, ausfuehrbare Aktion, die ein Werkzeug erfordert, z.B. das Abrufen \"\n"
+            . "  einer externen API, die Analyse einer konkreten Datei, das Versenden einer Nachricht oder \"\n"
+            . "  eine Datenbankabfrage.\n"
+            . "- SETUP_TASK: Eine mehrstufige Aufbau-Aufgabe, bei der der Agent als Koordinator/CEO agieren, \"\n"
+            . "  mehrere Sub-Agenten koordinieren, ein Strategiedokument/Businessplan erstellen, \"\n"
+            . "  Aufgaben autonom anlegen und ausfuehren soll. Indikatoren: 'EVIE soll ... aufbauen', \"\n"
+            . "  'als CEO agieren', 'Sub-Agenten koordinieren', 'mehrstufig', 'autonom', 'Plan erstellen', \"\n"
+            . "  'Strategiedokument', 'Businessplan entwickeln', 'Aufgaben erstellen und ausfuehren', \"\n"
+            . "  'Prozesse automatisieren', 'skalieren', Umsatzziele, mehrgjaehrige Plaene, Setup-Anweisungen \"\n"
+            . "  mit mehreren konkreten Ausfuehrungsschritten.\n\n"
             . 'Anfrage: "' . $userMessage . '"';
     }
 }
