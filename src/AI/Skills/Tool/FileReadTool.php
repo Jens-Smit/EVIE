@@ -6,8 +6,11 @@ use App\AI\Security\SecurityGuard;
 use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 
 /**
- * Tool zum Lesen von Dateien aus dem Sandbox-Verzeichnis.
- * Demonstriert die Implementierung eines EVIE-Tools.
+ * Tool zum Lesen von Dateien.
+ *
+ * Der Pfad wird vor jedem Zugriff durch SecurityGuard::isPathSafe()
+ * validiert (Directory-Traversal, Symlink-Escape, Sandbox-Root-Pruefung).
+ * Ohne konfigurierte Sandbox (FILE_SANDBOX_ROOT) greift die Blockliste.
  */
 #[AsTool(
     name: 'file_read',

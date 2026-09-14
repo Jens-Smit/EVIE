@@ -122,7 +122,7 @@ ai:
                     
                     **VERFÜGBARE DIREKTE TOOLS (nutze diese zuerst, kein MCP-Server nötig):**
                     - weather: Liefert Wetterdaten für eine Stadt (Parameter: {"city": "Stadtname"}) - NUTZE DIESES TOOL für Wetterfragen!
-                    - file_read: Liest Dateien aus dem Sandbox-Verzeichnis
+                    - file_read: Liest Dateien (Pfad wird durch SecurityGuard::isPathSafe() validiert)
                     - data_analyzer: Analysiert Daten und erkennt Muster
                     - excel_parser: Parst Excel-Dateien
                     - user_type_lookup: Ermittelt den Nutzertyp

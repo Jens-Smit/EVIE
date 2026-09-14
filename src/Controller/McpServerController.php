@@ -295,6 +295,17 @@ class McpServerController extends AbstractController
                 return $this->json(['error' => 'Zugriff verweigert.'], 403);
             }
 
+            // M-1: CSRF-Schutz fuer den zustandsveraendernden JSON-API-Endpunkt.
+            // Der Endpunkt laeuft ueber Session-Cookies (SameSite=Lax), sodass
+            // ein CSRF-Token konsistent mit reloadServers()/deleteServer()
+            // verlangt wird. Der Token kann als Form-Parameter (_csrf_token)
+            // oder als X-CSRF-Token-Header gesendet werden.
+            $csrfToken = $request->request->get('_csrf_token')
+                ?? $request->headers->get('X-CSRF-TOKEN');
+            if (!$this->isCsrfTokenValid('mcp_tool_execute', (string) $csrfToken)) {
+                return $this->json(['error' => 'Ungültiges CSRF-Token.'], 419);
+            }
+
             $data = json_decode($request->getContent(), true);
             $arguments = $data['arguments'] ?? [];
 
