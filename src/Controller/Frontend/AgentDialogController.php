@@ -137,6 +137,7 @@ class AgentDialogController extends AbstractController
             'messages' => $messages,
             'continuing_conversation' => true,
             'conversation_id' => $id,
+            'userIdentifier' => $user->getUserIdentifier(),
         ]);
     }
 }
