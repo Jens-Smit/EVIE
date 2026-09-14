@@ -84,7 +84,33 @@ final class CapabilityResolverTest extends TestCase
         );
 
         self::assertTrue($result->getDecision()->isAvailable());
-        self::assertNotNull($result->getExecutionReference());
+        // Available ohne ExecutionReference: die Ausfuehrung laeuft ueber
+        // den nativen Agent-Loop, der die Tools aus seiner Toolbox kennt.
+        self::assertNull($result->getExecutionReference());
+    }
+
+    public function testNativeAsToolIsAvailableWithoutToolInterface(): void
+    {
+        // Regression: ein natives #[AsTool]-Tool (z. B. Tavily) implementiert
+        // ToolInterface nicht. resolveTool() darf get() nicht aufrufen, da
+        // dies sonst wirft; die Ausfuehrung laeuft nativ ueber den Agent-Loop.
+        $registry = new ToolRegistry([new CapabilityNativeAsToolStub()]);
+        $resolver = new CapabilityResolver(
+            $registry,
+            $this->toolDefinitionRepo,
+            $this->subAgentFactory,
+            $this->toolGenerator,
+            $this->dispatcher,
+            new NullLogger()
+        );
+
+        $result = $resolver->resolve(
+            new Step(Step::TYPE_TOOL, 'data_analyzer', []),
+            $this->context()
+        );
+
+        self::assertTrue($result->getDecision()->isAvailable());
+        self::assertNull($result->getExecutionReference());
     }
 
     public function testApprovedDynamicToolIsAvailable(): void
@@ -208,5 +234,14 @@ final class CapabilityResolverTest extends TestCase
         $definition->setStatus($status);
 
         return $definition;
+    }
+}
+
+#[\Symfony\AI\Agent\Toolbox\Attribute\AsTool('data_analyzer', 'Analysiert Daten.')]
+final class CapabilityNativeAsToolStub
+{
+    public function __invoke(array $data): string
+    {
+        return '';
     }
 }
