@@ -130,7 +130,10 @@ class ContextStoreManager
 
     public function getRelevantConversationContext(string $sessionId, string $query, int $limit = 5, ?string $userIdentifier = null): array
     {
-        $result = $this->retriever->retrieveForType($query, 'conversation', $limit, 0.5, $userIdentifier);
+        // H-6: Ist kein userIdentifier gesetzt, wird allow_cross_tenant
+        // explizit gesetzt; die Suche ist dann tenant-agnostisch und die
+        // nachfolgende session_id-Filterung uebernimmt die Eingrenzung.
+        $result = $this->retriever->retrieveForType($query, 'conversation', $limit, 0.5, $userIdentifier, $userIdentifier === null);
         return array_filter($result->getItems(), function($item) use ($sessionId) {
             return ($item->getMetadata()['session_id'] ?? null) === $sessionId;
         });
@@ -138,7 +141,10 @@ class ContextStoreManager
 
     public function getRelevantToolContext(string $toolName, string $query, int $limit = 5, ?string $userIdentifier = null): array
     {
-        $result = $this->retriever->retrieveForType($query, 'tool_memory', $limit, 0.5, $userIdentifier);
+        // H-6: Ist kein userIdentifier gesetzt, wird allow_cross_tenant
+        // explizit gesetzt; die Suche ist dann tenant-agnostisch und die
+        // nachfolgende tool_name-Filterung uebernimmt die Eingrenzung.
+        $result = $this->retriever->retrieveForType($query, 'tool_memory', $limit, 0.5, $userIdentifier, $userIdentifier === null);
         return array_filter($result->getItems(), function($item) use ($toolName) {
             return ($item->getMetadata()['tool_name'] ?? null) === $toolName;
         });
@@ -146,7 +152,9 @@ class ContextStoreManager
 
     public function getRelevantKnowledge(string $query, int $limit = 5): array
     {
-        $result = $this->retriever->retrieveForType($query, 'knowledge', $limit);
+        // H-6: Wissen ist als system-globaler Content konzipiert (kein
+        // Tenant-Bezug), daher wird allow_cross_tenant explizit gesetzt.
+        $result = $this->retriever->retrieveForType($query, 'knowledge', $limit, 0.5, null, true);
         return $result->getItems();
     }
 

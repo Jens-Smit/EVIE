@@ -29,6 +29,25 @@ class SecretService
     }
 
     /**
+     * H-4: Leitet einen tenant-spezifischen Schluessel aus dem Master-Key
+     * per HKDF (RFC 5869) ab. Der Tenant-Identifier dient als info-Parameter,
+     * sodass jeder Tenant einen kryptografisch separaten Schluessel erhaelt.
+     *
+     * Das gewaehrleistet Key-Separation zwischen Mandanten: selbst wenn der
+     * Master-Key (aus APP_SECRET) kompromittiert wird, bleibt die Isolation
+     * auf Datenbankebene (WHERE-Klausel) erhalten. Ein kompromittierter
+     * Tenant-Kontext allein macht nicht automatisch alle anderen Tenants
+     * lesbar, da der abgeleitete Schluessel tenant-spezifisch ist.
+     *
+     * Mittelfristig sollte ein externes KMS (AWS KMS/Vault/GCP KMS) fuer die
+     * Envelope Encryption verwendet werden.
+     */
+    private function deriveTenantKey(string $userIdentifier): string
+    {
+        return hash_hkdf('sha256', $this->encryptionKey, length: 32, info: 'evie-secret:' . $userIdentifier);
+    }
+
+    /**
      * Setze ein Secret für einen Tenant (verschlüsselt).
      * 
      * @param string $keyName Der Name des Secrets (z.B. 'openweather_api_key')
@@ -49,8 +68,9 @@ class SecretService
             throw new \InvalidArgumentException('userIdentifier darf nicht leer sein');
         }
 
-        // Verschlüsseln
-        $encryptedValue = $this->encrypt($value);
+        // H-4: Verschluesseln mit tenant-spezifischem Schluessel (HKDF).
+        $tenantKey = $this->deriveTenantKey($userIdentifier);
+        $encryptedValue = $this->encrypt($value, $tenantKey);
 
         // Existierendes Secret aktualisieren
         $existingSecret = $this->secretRepository->findOneByKeyAndUser($keyName, $userIdentifier);
@@ -88,7 +108,9 @@ class SecretService
             return null;
         }
 
-        return $this->decrypt($secret->getEncryptedValue());
+        // H-4: Entschluesseln mit tenant-spezifischem Schluessel (HKDF).
+        $tenantKey = $this->deriveTenantKey($userIdentifier);
+        return $this->decrypt($secret->getEncryptedValue(), $tenantKey);
     }
 
     /**
@@ -142,11 +164,13 @@ class SecretService
     {
         $secrets = $this->secretRepository->findByUser($userIdentifier);
         $result = [];
-        
+
+        // H-4: tenant-spezifischer Schluessel (HKDF) fuer alle Secrets.
+        $tenantKey = $this->deriveTenantKey($userIdentifier);
         foreach ($secrets as $secret) {
-            $result[$secret->getKeyName()] = $this->decrypt($secret->getEncryptedValue());
+            $result[$secret->getKeyName()] = $this->decrypt($secret->getEncryptedValue(), $tenantKey);
         }
-        
+
         return $result;
     }
 
@@ -185,14 +209,14 @@ class SecretService
     /**
      * Verschlüssele einen Wert mit AES-256-GCM.
      */
-    private function encrypt(string $plaintext): string
+    private function encrypt(string $plaintext, ?string $key = null): string
     {
         $iv = random_bytes(12); // 96-bit IV für GCM
-        
+
         $ciphertext = openssl_encrypt(
             $plaintext,
             'aes-256-gcm',
-            $this->encryptionKey,
+            $key ?? $this->encryptionKey,
             OPENSSL_RAW_DATA,
             $iv,
             $tag
@@ -209,17 +233,17 @@ class SecretService
     /**
      * Entschlüssele einen Wert mit AES-256-GCM.
      */
-    private function decrypt(string $encrypted): string
+    private function decrypt(string $encrypted, ?string $key = null): string
     {
         $data = base64_decode($encrypted);
-        
+
         if (false === $data) {
             throw new \InvalidArgumentException('Ungültige Base64-Daten');
         }
 
         $ivLength = 12; // 96-bit IV
         $tagLength = 16; // 128-bit Tag
-        
+
         $iv = substr($data, 0, $ivLength);
         $tag = substr($data, $ivLength, $tagLength);
         $ciphertext = substr($data, $ivLength + $tagLength);
@@ -227,7 +251,7 @@ class SecretService
         $plaintext = openssl_decrypt(
             $ciphertext,
             'aes-256-gcm',
-            $this->encryptionKey,
+            $key ?? $this->encryptionKey,
             OPENSSL_RAW_DATA,
             $iv,
             $tag

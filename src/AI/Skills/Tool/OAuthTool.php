@@ -3,6 +3,7 @@
 
 namespace App\AI\Skills\Tool;
 
+use App\AI\Security\OutboundRequestPolicy;
 use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 use Symfony\Component\Cache\Adapter\AdapterInterface;
@@ -16,11 +17,13 @@ class OAuthTool
     private array $providers = [];
     private AdapterInterface $cache;
     private HttpClientInterface $httpClient;
+    private ?OutboundRequestPolicy $outboundRequestPolicy;
 
-    public function __construct(HttpClientInterface $httpClient, AdapterInterface $cache)
+    public function __construct(HttpClientInterface $httpClient, AdapterInterface $cache, ?OutboundRequestPolicy $outboundRequestPolicy = null)
     {
         $this->httpClient = $httpClient;
         $this->cache = $cache;
+        $this->outboundRequestPolicy = $outboundRequestPolicy;
         $this->providers = [
             'linkedin' => ['auth_url' => 'https://www.linkedin.com/oauth/v2/authorization', 'token_url' => 'https://www.linkedin.com/oauth/v2/accessToken', 'scopes' => 'r_liteprofile r_emailaddress w_member_social'],
             'google' => ['auth_url' => 'https://accounts.google.com/o/oauth2/auth', 'token_url' => 'https://oauth2.googleapis.com/token', 'scopes' => 'email profile'],
@@ -62,6 +65,7 @@ class OAuthTool
         if (!isset($this->providers[$provider])) return ['status' => 'error', 'message' => 'Unknown provider'];
         $config = $this->providers[$provider];
         try {
+            if ($error = $this->guardUrl($config['token_url'])) return $error;
             $response = $this->httpClient->request('POST', $config['token_url'], ['headers' => ['Content-Type' => 'application/x-www-form-urlencoded'], 'body' => ['grant_type' => 'authorization_code', 'code' => $code, 'redirect_uri' => $redirectUri, 'client_id' => $clientId, 'client_secret' => $clientSecret]]);
             $data = json_decode($response->getContent(), true);
             if (isset($data['access_token'])) {
@@ -80,6 +84,7 @@ class OAuthTool
         if (!isset($this->providers[$provider])) return ['status' => 'error', 'message' => 'Unknown provider'];
         $config = $this->providers[$provider];
         try {
+            if ($error = $this->guardUrl($config['token_url'])) return $error;
             $response = $this->httpClient->request('POST', $config['token_url'], ['headers' => ['Content-Type' => 'application/x-www-form-urlencoded'], 'body' => ['grant_type' => 'refresh_token', 'refresh_token' => $refreshToken, 'client_id' => $clientId, 'client_secret' => $clientSecret]]);
             $data = json_decode($response->getContent(), true);
             if (isset($data['access_token'])) {
@@ -99,6 +104,7 @@ class OAuthTool
         $revokeUrl = match ($provider) {'linkedin' => 'https://www.linkedin.com/oauth/v2/revoke', 'google' => 'https://oauth2.googleapis.com/revoke', default => null};
         if (!$revokeUrl) return ['status' => 'error', 'message' => 'Revoke URL not configured for: ' . $provider];
         try {
+            if ($error = $this->guardUrl($revokeUrl)) return $error;
             $this->httpClient->request('POST', $revokeUrl, ['headers' => ['Content-Type' => 'application/x-www-form-urlencoded'], 'body' => ['token' => $token, 'client_id' => $_ENV['OAUTH_' . strtoupper($provider) . '_CLIENT_ID'] ?? '', 'client_secret' => $_ENV['OAUTH_' . strtoupper($provider) . '_CLIENT_SECRET'] ?? '']]);
             foreach ($this->cache->listKeys() as $key) if (str_starts_with($key, 'oauth_token_' . $provider)) $this->cache->delete($key);
             return ['status' => 'success', 'message' => 'Token revoked', 'provider' => $provider];
@@ -118,4 +124,23 @@ class OAuthTool
 
     private function listProviders(): array { return ['status' => 'success', 'providers' => array_keys($this->providers), 'count' => count($this->providers)]; }
     private function getProviderConfig(string $provider): array { if (!isset($this->providers[$provider])) return ['status' => 'error', 'message' => 'Unknown provider: ' . $provider, 'available' => array_keys($this->providers)]; return ['status' => 'success', 'provider' => $provider, 'config' => $this->providers[$provider]]; }
+
+    /**
+     * H-3: Prueft eine URL gegen die OutboundRequestPolicy (SSRF-Schutz),
+     * bevor ein ausgehender Request gesendet wird. Gibt null zurueck, wenn
+     * die URL sicher ist, sonst ein Fehler-Array.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function guardUrl(string $url): ?array
+    {
+        if (null === $this->outboundRequestPolicy) {
+            return null;
+        }
+        if ($this->outboundRequestPolicy->isUrlAllowed($url)) {
+            return null;
+        }
+
+        return ['status' => 'error', 'message' => 'Request blockiert: URL verletzt die SSRF-Richtlinie (OutboundRequestPolicy).', 'url' => $url];
+    }
 }
