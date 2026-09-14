@@ -91,9 +91,15 @@ final class CapabilityResolver implements CapabilityResolverInterface
         $name = $step->getTarget();
 
         if ($this->toolRegistry->has($name)) {
+            // Available ohne ExecutionReference: die Ausfuehrung laeuft ueber
+            // den nativen Agent-Loop (ExecutionCoordinator::execute), der die
+            // Tools ueber seine native Toolbox kennt. Die Reference wird im
+            // weiteren Pipeline-Verlauf nicht ausgelesen, daher muss hier kein
+            // ToolInterface geholt werden (statische #[AsTool]-Tools wie
+            // tavily_search implementieren ToolInterface nicht).
             $this->logger->debug('CapabilityResolver: statisches Tool vorhanden', ['tool' => $name]);
 
-            return new CapabilityResult(CapabilityDecision::Available, $this->toolRegistry->get($name));
+            return new CapabilityResult(CapabilityDecision::Available);
         }
 
         $definition = $this->toolDefinitionRepo->findOneByNameForUser($name, $context->getUserIdentifier());
