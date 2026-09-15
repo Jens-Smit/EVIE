@@ -125,6 +125,54 @@ class SecretController extends AbstractController
         return $this->redirectToRoute('app_settings_secrets');
     }
 
+    #[Route('/settings/secrets/{keyName}/update', name: 'app_settings_secrets_update', methods: ['POST'])]
+    public function update(string $keyName, Request $request): Response
+    {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            throw $this->createAccessDeniedException('Authentifizierung erforderlich.');
+        }
+
+        $userIdentifier = $user->getUserIdentifier();
+        $value = trim((string) $request->request->get('value'));
+        $scope = trim((string) $request->request->get('scope', ''));
+
+        if (empty($value)) {
+            $this->addFlash('error', 'Der Wert darf nicht leer sein.');
+            return $this->redirectToRoute('app_settings_secrets');
+        }
+
+        if (!preg_match('/^[a-zA-Z0-9_-]+$/', $keyName)) {
+            $this->addFlash('error', 'Der Schl\u00fcsselname ist ung\u00fcltig.');
+            return $this->redirectToRoute('app_settings_secrets');
+        }
+
+        if (!$this->secretService->exists($keyName, $userIdentifier)) {
+            $this->addFlash('error', 'Das Secret existiert nicht und kann nicht aktualisiert werden.');
+            return $this->redirectToRoute('app_settings_secrets');
+        }
+
+        try {
+            $this->secretService->set($keyName, $value, $userIdentifier, $scope !== '' ? $scope : null);
+
+            $this->auditLogger->log('secret_update', null, null, 'Secret', [
+                'key_name' => $keyName,
+                'scope' => $scope,
+            ], 'success', 'Secret aktualisiert');
+
+            $this->addFlash('success', 'Secret wurde erfolgreich aktualisiert.');
+        } catch (\Exception $e) {
+            $this->auditLogger->log('secret_update', null, null, 'Secret', [
+                'key_name' => $keyName,
+                'error' => $e->getMessage(),
+            ], 'failed', 'Secret aktualisieren fehlgeschlagen');
+
+            $this->addFlash('error', 'Fehler beim Aktualisieren des Secrets: ' . $e->getMessage());
+        }
+
+        return $this->redirectToRoute('app_settings_secrets');
+    }
+
     #[Route('/api/secrets/check', name: 'app_api_secrets_check', methods: ['POST'])]
     public function checkSecret(Request $request): JsonResponse
     {

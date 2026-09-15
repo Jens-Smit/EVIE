@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\MessageHandler;
 
 use App\AI\Agent\OrchestratorDialogService;
+use App\AI\Platform\TenantPlatformContext;
 use App\AI\Pipeline\Execution\PipelineResult;
 use App\AI\Pipeline\PipelineInterface;
 use App\AI\Security\AuditLogger;
@@ -64,7 +65,7 @@ final class RunAgentGoalHandlerTest extends TestCase
             new PipelineResult(PipelineResult::TYPE_EXECUTED, 'handler-test-result')
         );
 
-        return new OrchestratorDialogService($pipeline);
+        return new OrchestratorDialogService($pipeline, new TenantPlatformContext());
     }
 
     private function createMockAuditLogRepository(): \App\Repository\AuditLogRepository&MockObject

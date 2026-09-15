@@ -20,6 +20,22 @@ services:
     # PSR Container Interface → Service Container (für SubAgentFactory)
     Psr\Container\ContainerInterface: '@service_container'
 
+    # Pro-Tenant API-Key-Aufloesung (Luecke 2): der im Frontend/Onboarding
+    # hinterlegte, verschluesselte Mistral-Key wird pro Tenant ausgelesen und
+    # ueber die offizielle Symfony-AI-Mistral-Factory in eine eigene Platform
+    # gebaut. Ohne Tenant-Secret wird transparent auf die env-basierte
+    # Default-Platform (ai.platform.mistral) delegiert. Symfony-AI-kompatibel,
+    # keine eigene Bridge, kein Konstruktor-Injection fuer Tools.
+    App\AI\Platform\TenantPlatformContext: ~
+    App\AI\Platform\TenantAwarePlatform:
+        decorates: ai.platform.mistral
+        arguments:
+            $defaultPlatform: '@.inner'
+            $secretService: '@App\Service\SecretService'
+            $tenantContext: '@App\AI\Platform\TenantPlatformContext'
+            $httpClient: '@http_client'
+            $logger: '@logger'
+
     # RAG Services
     App\AI\Rag\EmbeddingServiceInterface: '@App\AI\Rag\MistralEmbeddingService'
 
