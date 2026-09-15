@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\AI\Strategy;
 
 use App\AI\Agent\OrchestratorDialogService;
+use App\AI\Platform\TenantPlatformContext;
 use App\AI\Decision\DecisionManager;
 use App\AI\Pipeline\Execution\PipelineResult;
 use App\AI\Pipeline\PipelineInterface;
@@ -52,7 +53,7 @@ final class StrategyManagerTest extends TestCase
             new PipelineResult(PipelineResult::TYPE_EXECUTED, 'strategy-test-result')
         );
 
-        return new OrchestratorDialogService($pipeline);
+        return new OrchestratorDialogService($pipeline, new TenantPlatformContext());
     }
 
     public function testAnalyzeAndSuggestAdjustmentsWithNoGoals(): void

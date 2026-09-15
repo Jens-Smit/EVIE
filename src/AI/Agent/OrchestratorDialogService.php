@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\AI\Agent;
 
 use App\AI\Pipeline\PipelineInterface;
+use App\AI\Platform\TenantPlatformContext;
 
 /**
  * Duennen Fassade fuer den Dialog mit dem Orchestrator.
@@ -17,12 +18,17 @@ use App\AI\Pipeline\PipelineInterface;
  * in Phase 4 statt und niemals bei Konversation/Information/unclear
  * (Blueprint §5).
  *
+ * Vor jedem Aufruf wird der Tenant-Kontext gesetzt, damit der
+ * TenantAwarePlatform-Decorator den pro-Tenant API-Key aus dem
+ * SecretService aufloest (Luecke 2).
+ *
  * @see docs/architecture/orchestrator-pipeline.md
  */
 final class OrchestratorDialogService
 {
     public function __construct(
         private PipelineInterface $pipeline,
+        private TenantPlatformContext $tenantPlatformContext,
     ) {
     }
 
@@ -32,7 +38,12 @@ final class OrchestratorDialogService
      */
     public function ask(string $userMessage, string $userIdentifier): string
     {
-        $result = $this->pipeline->run($userMessage, $userIdentifier);
+        $this->tenantPlatformContext->setUserIdentifier($userIdentifier);
+        try {
+            $result = $this->pipeline->run($userMessage, $userIdentifier);
+        } finally {
+            $this->tenantPlatformContext->clear();
+        }
 
         return $result->getContent();
     }

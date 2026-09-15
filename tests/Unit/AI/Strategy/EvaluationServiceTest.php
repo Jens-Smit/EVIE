@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Unit\AI\Strategy;
 
 use App\AI\Agent\OrchestratorDialogService;
+use App\AI\Platform\TenantPlatformContext;
 use App\AI\Pipeline\Execution\PipelineResult;
 use App\AI\Pipeline\PipelineInterface;
 use App\AI\Strategy\EvaluationService;
@@ -48,7 +49,7 @@ final class EvaluationServiceTest extends TestCase
             new PipelineResult(PipelineResult::TYPE_EXECUTED, 'evaluation-test-result')
         );
 
-        return new OrchestratorDialogService($pipeline);
+        return new OrchestratorDialogService($pipeline, new TenantPlatformContext());
     }
 
     public function testEvaluateGoalWithGenericEvaluationSuccess(): void
