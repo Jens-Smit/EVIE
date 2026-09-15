@@ -245,6 +245,63 @@ final class SetupTaskAutonomousE2ETest extends KernelTestCase
         self::assertFalse($goal->isApproved());
     }
 
+    /**
+     * Test 4: Pro-Tenant API-Key aus DB-Secret (PR #65 Luecke 2 Happy-Path).
+     *
+     * Der im Frontend/Onboarding hinterlegte MISTRAL_API_KEY (verschluesselt
+     * in der DB via SecretService) wird vom TenantAwarePlatform-Decorator
+     * ausgelesen und ueber die offizielle MistralFactory in eine eigene
+     * Platform-Instanz gebaut. Dieser Test verifiziert mit echtem LLM, dass
+     * ein Platform-invoke erfolgreich ist, wenn der Tenant-Key in der DB liegt
+     * (nicht der env-Key-Pfad, den die anderen Tests abdecken).
+     *
+     * Er ruft PlatformInterface::invoke() direkt (nicht den Orchestrator),
+     * damit eine etwaige LLM-Exception nicht vom ExecutionCoordinator-
+     * Fallback verschluckt wird und die echte Fehlerursache sichtbar wird.
+     */
+    public function testPerTenantApiKeyFromSecretSucceedsWithRealLlm(): void
+    {
+        $envKey = $_ENV['MISTRAL_API_KEY'] ?? (getenv('MISTRAL_API_KEY') ?: '');
+        self::assertNotEmpty($envKey, 'MISTRAL_API_KEY muss gesetzt sein fuer diesen E2E-Test.');
+
+        $tenantUser = 'e2e-tenant-platform-user';
+
+        $userProfileRepo = static::getContainer()->get(UserProfileRepository::class);
+        $profile = new UserProfile();
+        $profile->setUserIdentifier($tenantUser);
+        $profile->setName($tenantUser);
+        $userProfileRepo->save($profile, true);
+
+        $secretService = static::getContainer()->get(SecretService::class);
+        $secretService->set('MISTRAL_API_KEY', $envKey, $tenantUser, 'llm');
+
+        try {
+            $platform = static::getContainer()->get(\Symfony\AI\Platform\PlatformInterface::class);
+            $tenantContext = static::getContainer()->get(\App\AI\Platform\TenantPlatformContext::class);
+            $tenantContext->setUserIdentifier($tenantUser);
+
+            $messages = new \Symfony\AI\Platform\Message\MessageBag(
+                \Symfony\AI\Platform\Message\Message::ofUser('Sag in einem kurzen Satz, was du bist.'),
+            );
+
+            $result = $platform->invoke('mistral-small-latest', $messages);
+            $content = $result->asText();
+
+            self::assertIsString($content);
+            self::assertNotEmpty($content, 'Leere LLM-Antwort - der pro-Tenant-Key-Pfad schlug fehl.');
+        } finally {
+            $tenantContext?->clear();
+            try {
+                $conn = $this->entityManager->getConnection();
+                $conn->executeStatement("DELETE FROM secrets WHERE user_identifier = '" . $tenantUser . "'");
+                $conn->executeStatement("DELETE FROM user_profiles WHERE user_identifier = '" . $tenantUser . "'");
+                $this->entityManager->clear();
+            } catch (\Throwable) {
+                // Tabellen existieren moeglicherweise nicht.
+            }
+        }
+    }
+
     private function hasMistralKey(): bool
     {
         $key = $_ENV['MISTRAL_API_KEY'] ?? (getenv('MISTRAL_API_KEY') ?: '');
