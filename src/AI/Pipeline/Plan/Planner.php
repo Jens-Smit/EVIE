@@ -55,20 +55,54 @@ final class Planner implements PlannerInterface
     {
         // unclear -> direkt clarify, ohne LLM-Aufruf.
         if ($intent === Intent::Unclear) {
+            $this->logger->debug('Planner: Intent=Unclear, clarify ohne LLM-Aufruf', [
+                'intent' => $intent->name,
+                'message' => $context->getMessage(),
+            ]);
             return new Plan([new Step(Step::TYPE_CLARIFY, '', [], false, 'Anfrage mehrdeutig')]);
         }
 
+        $this->logger->debug('Planner: Start Phase 3 (Plan)', [
+            'intent' => $intent->name,
+            'message' => $context->getMessage(),
+        ]);
+
         try {
             $prompt = $this->buildPrompt($context);
+            $this->logger->debug('Planner: Prompt an LLM gesendet', [
+                'prompt' => $prompt,
+                'model' => 'mistral-small-latest',
+            ]);
             $messages = new MessageBag(Message::ofUser($prompt));
             $response = $this->platform->invoke('mistral-small-latest', $messages)->asText();
+            $this->logger->debug('Planner: Rohe LLM-Antwort erhalten', [
+                'response' => $response,
+                'response_length' => strlen($response),
+            ]);
             $plan = $this->parsePlan($response);
 
             if ($plan !== null) {
+                $this->logger->debug('Planner: Plan erfolgreich geparst', [
+                    'steps' => count($plan->getSteps()),
+                    'summary' => $plan->getSummary(),
+                ]);
                 return $plan;
             }
+
+            $this->logger->error('Planner: JSON-Parsing fehlgeschlagen, verwende clarify-Fallback', [
+                'intent' => $intent->name,
+                'message' => $context->getMessage(),
+                'raw_response' => $response,
+                'json_error' => json_last_error_msg(),
+            ]);
         } catch (\Exception $e) {
-            $this->logger->warning('Planner: LLM fehlgeschlagen, verwende clarify-Fallback: ' . $e->getMessage());
+            $this->logger->error('Planner: LLM-Aufruf fehlgeschlagen, verwende clarify-Fallback', [
+                'exception' => $e::class,
+                'message' => $e->getMessage(),
+                'intent' => $intent->name,
+                'user_message' => $context->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
         }
 
         return new Plan([new Step(Step::TYPE_CLARIFY, '', [], false, 'Plan konnte nicht erstellt werden')]);
@@ -94,19 +128,37 @@ final class Planner implements PlannerInterface
     private function parsePlan(string $response): ?Plan
     {
         $data = json_decode($response, true);
-        if (!is_array($data) || !isset($data['steps']) || !is_array($data['steps'])) {
+        if (!is_array($data)) {
+            $this->logger->debug('Planner.parsePlan: Antwort ist kein gueltiges JSON', [
+                'json_error' => json_last_error_msg(),
+                'response' => $response,
+            ]);
+            return null;
+        }
+        if (!isset($data['steps']) || !is_array($data['steps'])) {
+            $this->logger->debug('Planner.parsePlan: Kein gueltiges steps-Feld', [
+                'top_level_keys' => array_keys($data),
+                'has_steps' => array_key_exists('steps', $data),
+                'steps_is_array' => isset($data['steps']) && is_array($data['steps']),
+            ]);
             return null;
         }
 
         $steps = [];
         foreach ($data['steps'] as $rawStep) {
             if (!is_array($rawStep)) {
+                $this->logger->debug('Planner.parsePlan: Step uebersprungen (kein Array)', [
+                    'raw_step' => $rawStep,
+                ]);
                 continue;
             }
             $steps[] = $this->buildStep($rawStep);
         }
 
         if (count($steps) === 0) {
+            $this->logger->debug('Planner.parsePlan: Keine gueltigen Steps nach Filterung', [
+                'raw_steps_count' => count($data['steps']),
+            ]);
             return null;
         }
 
