@@ -16,6 +16,7 @@ use App\AI\Pipeline\Plan\Step;
 use App\Entity\AgentGoal;
 use App\Repository\AgentGoalRepository;
 use App\Repository\UserProfileRepository;
+use Psr\Log\LoggerInterface;
 
 /**
  * Orchestriert die fuenf Phasen Goal -> Intent -> Plan -> Capability ->
@@ -39,6 +40,7 @@ final class Pipeline implements PipelineInterface
     private ExecutionCoordinatorInterface $executionCoordinator;
     private AgentGoalRepository $agentGoalRepository;
     private UserProfileRepository $userProfileRepository;
+    private LoggerInterface $logger;
 
     public function __construct(
         GoalResolverInterface $goalResolver,
@@ -47,7 +49,8 @@ final class Pipeline implements PipelineInterface
         CapabilityResolverInterface $capabilityResolver,
         ExecutionCoordinatorInterface $executionCoordinator,
         AgentGoalRepository $agentGoalRepository,
-        UserProfileRepository $userProfileRepository
+        UserProfileRepository $userProfileRepository,
+        LoggerInterface $logger
     ) {
         $this->goalResolver = $goalResolver;
         $this->intentClassifier = $intentClassifier;
@@ -56,25 +59,45 @@ final class Pipeline implements PipelineInterface
         $this->executionCoordinator = $executionCoordinator;
         $this->agentGoalRepository = $agentGoalRepository;
         $this->userProfileRepository = $userProfileRepository;
+        $this->logger = $logger;
     }
 
     public function run(string $message, string $userIdentifier): PipelineResult
     {
+        $this->logger->debug('Pipeline.run: Start', [
+            'user_identifier' => $userIdentifier,
+            'message' => $message,
+        ]);
         $context = PipelineContext::create($message, $userIdentifier);
 
         // Phase 1 — Goal
         $context = $context->withGoal($this->goalResolver->resolve($context));
+        $this->logger->debug('Pipeline.run: Phase 1 Goal aufgeloest', [
+            'goal' => $context->getGoal() !== null ? $context->getGoal()->getIdentifier() : null,
+            'goal_source' => $context->getGoal() !== null ? $context->getGoal()->getSource() : null,
+        ]);
 
         // Phase 2 — Intent (Exit-Gate: Dialog)
         $intent = $this->intentClassifier->classify($context);
         $context = $context->withIntent($intent);
+        $this->logger->debug('Pipeline.run: Phase 2 Intent klassifiziert', [
+            'intent' => $intent->name,
+        ]);
         if ($intent->isDialog()) {
+            $this->logger->debug('Pipeline.run: Exit-Gate Dialog (Intent ist dialogorientiert)');
             return $this->executionCoordinator->dialog($context);
         }
 
         // Phase 3 — Plan (Exit-Gate: clarify)
         $plan = $this->planner->plan($context, $intent);
+        $this->logger->debug('Pipeline.run: Phase 3 Plan erstellt', [
+            'is_clarification' => $plan->isClarification(),
+            'steps' => count($plan->getSteps()),
+        ]);
         if ($plan->isClarification()) {
+            $this->logger->debug('Pipeline.run: Exit-Gate clarify', [
+                'reason' => $plan->getSteps()[0]?->getReason(),
+            ]);
             return $this->executionCoordinator->clarify($context, $plan);
         }
 

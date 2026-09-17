@@ -22,6 +22,7 @@ use App\Repository\AgentGoalRepository;
 use App\Repository\UserProfileRepository;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\NullLogger;
 
 /**
  * Unit-Tests fuer die Pipeline-Orchestrierung (Phasen 1-5).
@@ -235,7 +236,8 @@ final class PipelineTest extends TestCase
             $this->capabilityResolver,
             $this->execution,
             $this->agentGoalRepository,
-            $this->userProfileRepository
+            $this->userProfileRepository,
+            new NullLogger()
         );
     }
 }

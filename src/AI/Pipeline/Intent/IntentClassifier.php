@@ -42,9 +42,16 @@ final class IntentClassifier implements IntentClassifierInterface
     {
         try {
             $prompt = $this->buildIntentClassificationPrompt($context->getMessage());
+            $this->logger->debug('IntentClassifier: Klassifizierungs-Prompt an LLM', [
+                'message' => $context->getMessage(),
+                'model' => 'mistral-small-latest',
+            ]);
             $messages = new MessageBag(Message::ofUser($prompt));
             $result = $this->platform->invoke('mistral-small-latest', $messages)->asText();
             $result = strtoupper(trim($result));
+            $this->logger->debug('IntentClassifier: Rohe LLM-Antwort', [
+                'raw_result' => $result,
+            ]);
 
             return match ($result) {
                 'INFORMATION' => Intent::Information,
@@ -54,7 +61,12 @@ final class IntentClassifier implements IntentClassifierInterface
                 default => Intent::Conversation,
             };
         } catch (\Exception $e) {
-            $this->logger->warning('Intent-Klassifizierung fehlgeschlagen, verwende Fallback Conversation: ' . $e->getMessage());
+            $this->logger->error('Intent-Klassifizierung fehlgeschlagen, verwende Fallback Conversation', [
+                'exception' => $e::class,
+                'message' => $e->getMessage(),
+                'user_message' => $context->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
             return Intent::Conversation;
         }
     }
