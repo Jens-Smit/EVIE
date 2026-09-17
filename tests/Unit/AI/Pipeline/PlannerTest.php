@@ -108,6 +108,28 @@ final class PlannerTest extends TestCase
         self::assertTrue($plan->isClarification());
     }
 
+    public function testMarkdownFencedJsonIsParsedSuccessfully(): void
+    {
+        $json = json_encode([
+            'summary' => 'Wetter abrufen',
+            'steps' => [
+                ['type' => 'tool', 'target' => 'weather', 'parameters' => ['city' => 'Berlin'], 'needs_capability' => false, 'reason' => 'Wetterdaten'],
+            ],
+        ], JSON_THROW_ON_ERROR);
+        $fenced = "```json\n" . $json . "\n```";
+
+        $this->platform->method('invoke')->willReturn(StubDeferredResult::withText($fenced));
+
+        $planner = $this->buildPlanner();
+        $plan = $planner->plan(PipelineContext::create('Wie ist das Wetter?', 'u'), Intent::Task);
+
+        self::assertFalse($plan->isClarification());
+        self::assertSame('Wetter abrufen', $plan->getSummary());
+        $steps = $plan->getSteps();
+        self::assertCount(1, $steps);
+        self::assertSame('weather', $steps[0]->getTarget());
+    }
+
     public function testLlmFailureFallsBackToClarify(): void
     {
         $this->platform->method('invoke')->willThrowException(new \RuntimeException('timeout'));
