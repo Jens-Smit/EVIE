@@ -127,7 +127,7 @@ final class Planner implements PlannerInterface
      */
     private function parsePlan(string $response): ?Plan
     {
-        $data = json_decode($response, true);
+        $data = json_decode($this->stripMarkdownFences($response), true);
         if (!is_array($data)) {
             $this->logger->debug('Planner.parsePlan: Antwort ist kein gueltiges JSON', [
                 'json_error' => json_last_error_msg(),
@@ -176,5 +176,24 @@ final class Planner implements PlannerInterface
         $reason = is_string($raw['reason'] ?? null) ? $raw['reason'] : null;
 
         return new Step($type, $target, $parameters, $needsCapability, $reason);
+    }
+
+    /**
+     * Entfernt umschließende Markdown-Code-Fences (```json ... ``` bzw.
+     * ``` ... ```), die LLMs häufig trotz „nur JSON“-Anweisung erzeugen,
+     * damit json_decode nicht an den Backticks scheitert.
+     */
+    private function stripMarkdownFences(string $response): string
+    {
+        $trimmed = trim($response);
+        if (!str_starts_with($trimmed, '```')) {
+            return $response;
+        }
+        $lines = explode("\n", $trimmed);
+        array_shift($lines);
+        if (count($lines) > 0 && str_starts_with(trim(end($lines)), '```')) {
+            array_pop($lines);
+        }
+        return trim(implode("\n", $lines));
     }
 }

@@ -96,7 +96,7 @@ final class Pipeline implements PipelineInterface
         ]);
         if ($plan->isClarification()) {
             $this->logger->debug('Pipeline.run: Exit-Gate clarify', [
-                'reason' => $plan->getSteps()[0]?->getReason(),
+                'reason' => $plan->getSteps()[0]->getReason(),
             ]);
             return $this->executionCoordinator->clarify($context, $plan);
         }
