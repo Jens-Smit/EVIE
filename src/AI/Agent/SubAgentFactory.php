@@ -268,8 +268,13 @@ class SubAgentFactory implements SubAgentFactoryInterface
      */
     private function registerToolDefinition(string $name, string $role): void
     {
+        $toolName = 'sub_agent_' . $name;
+        if ($this->toolDefinitionRepo->findOneBy(['name' => $toolName]) !== null) {
+            return;
+        }
+
         $toolDefinition = new ToolDefinition();
-        $toolDefinition->setName('sub_agent_' . $name);
+        $toolDefinition->setName($toolName);
         $toolDefinition->setDescription('Sub-Agent für ' . $role);
         $toolDefinition->setStatus('approved');
         $toolDefinition->setSchema([
@@ -288,8 +293,13 @@ class SubAgentFactory implements SubAgentFactoryInterface
      */
     private function registerAsTool(string $name, string $description, AgentInterface $agent): void
     {
+        $toolName = 'sub_agent_' . $name;
+        if ($this->toolDefinitionRepo->findOneBy(['name' => $toolName]) !== null) {
+            return;
+        }
+
         $toolDefinition = new ToolDefinition();
-        $toolDefinition->setName('sub_agent_' . $name);
+        $toolDefinition->setName($toolName);
         $toolDefinition->setDescription($description);
         $toolDefinition->setStatus('approved');
         $toolDefinition->setCategory(null);

@@ -62,6 +62,8 @@ final class SubAgentFactoryTest extends TestCase
     {
         $definition = $this->makeDefinition('researcher', config: ['model' => 'mistral-small', 'role' => 'data_analyst']);
 
+        // Tool wird nur registriert, wenn es nicht existiert (Duplikat-Schutz)
+        $this->toolRepo->expects(self::once())->method('findOneBy')->with(['name' => 'sub_agent_researcher'])->willReturn(null);
         $this->toolRepo->expects(self::once())->method('save');
 
         $agent = $this->factory->createFromDefinition($definition);
@@ -73,6 +75,7 @@ final class SubAgentFactoryTest extends TestCase
     {
         $definition = $this->makeDefinition('writer');
 
+        $this->toolRepo->expects(self::once())->method('findOneBy')->with(['name' => 'sub_agent_writer'])->willReturn(null);
         $this->toolRepo->expects(self::once())->method('save');
 
         $agent = $this->factory->createFromDefinition($definition);
@@ -84,6 +87,8 @@ final class SubAgentFactoryTest extends TestCase
     {
         $this->subAgentRepo->method('findOneByName')->willReturn(null);
 
+        // Duplikat-Schutz: findOneBy prüft ob sub_agent_custom_agent schon existiert
+        $this->toolRepo->expects(self::once())->method('findOneBy')->with(['name' => 'sub_agent_custom_agent'])->willReturn(null);
         $this->toolRepo->expects(self::once())->method('save');
 
         $agent = $this->factory->createByName('custom_agent');
@@ -96,6 +101,8 @@ final class SubAgentFactoryTest extends TestCase
         $definition = $this->makeDefinition('researcher');
         $this->subAgentRepo->method('findOneByName')->willReturn($definition);
 
+        // Tool wird nur registriert, wenn es nicht existiert
+        $this->toolRepo->expects(self::once())->method('findOneBy')->with(['name' => 'sub_agent_researcher'])->willReturn(null);
         $this->toolRepo->expects(self::once())->method('save');
 
         $agent = $this->factory->createByName('researcher');
@@ -108,6 +115,8 @@ final class SubAgentFactoryTest extends TestCase
         $definition = $this->makeDefinition('researcher');
         $this->subAgentRepo->method('findAllActive')->willReturn([$definition]);
 
+        // Tool wird nur registriert, wenn es nicht existiert
+        $this->toolRepo->expects(self::once())->method('findOneBy')->with(['name' => 'sub_agent_researcher'])->willReturn(null);
         $this->toolRepo->expects(self::once())->method('save');
 
         $agents = $this->factory->createAllFromDatabase();
@@ -136,6 +145,8 @@ final class SubAgentFactoryTest extends TestCase
 
     public function testCreateSubAgentReturnsAgentInterface(): void
     {
+        // Duplikat-Schutz: findOneBy prüft ob sub_agent_writer schon existiert
+        $this->toolRepo->expects(self::once())->method('findOneBy')->with(['name' => 'sub_agent_writer'])->willReturn(null);
         $this->toolRepo->expects(self::once())->method('save');
 
         $agent = $this->factory->createSubAgent('writer', 'code_assistant');
@@ -145,6 +156,8 @@ final class SubAgentFactoryTest extends TestCase
 
     public function testCreateSubAgentToolReturnsSubagentTool(): void
     {
+        // Duplikat-Schutz via registerToolDefinition
+        $this->toolRepo->expects(self::once())->method('findOneBy')->with(['name' => 'sub_agent_writer'])->willReturn(null);
         $this->toolRepo->expects(self::once())->method('save');
 
         $tool = $this->factory->createSubAgentTool('writer', 'code_assistant');
@@ -157,6 +170,8 @@ final class SubAgentFactoryTest extends TestCase
         $definition = $this->makeDefinition('researcher');
         $this->subAgentRepo->method('findAllActive')->willReturn([$definition]);
 
+        // Tool wird nur registriert, wenn es nicht existiert
+        $this->toolRepo->expects(self::once())->method('findOneBy')->with(['name' => 'sub_agent_researcher'])->willReturn(null);
         $this->toolRepo->expects(self::once())->method('save');
 
         $this->factory->registerAllFromDatabase();
@@ -187,6 +202,7 @@ final class SubAgentFactoryTest extends TestCase
 
     public function testCreateWebsiteResearchAgent(): void
     {
+        $this->toolRepo->expects(self::once())->method('findOneBy')->with(['name' => 'sub_agent_website_researcher'])->willReturn(null);
         $this->toolRepo->expects(self::once())->method('save');
         $agent = $this->factory->createWebsiteResearchAgent();
         self::assertInstanceOf(AgentInterface::class, $agent);
@@ -194,6 +210,7 @@ final class SubAgentFactoryTest extends TestCase
 
     public function testCreateDataAnalysisAgent(): void
     {
+        $this->toolRepo->expects(self::once())->method('findOneBy')->with(['name' => 'sub_agent_data_analyst'])->willReturn(null);
         $this->toolRepo->expects(self::once())->method('save');
         $agent = $this->factory->createDataAnalysisAgent();
         self::assertInstanceOf(AgentInterface::class, $agent);
@@ -201,6 +218,7 @@ final class SubAgentFactoryTest extends TestCase
 
     public function testCreateCodeAssistantAgent(): void
     {
+        $this->toolRepo->expects(self::once())->method('findOneBy')->with(['name' => 'sub_agent_code_assistant'])->willReturn(null);
         $this->toolRepo->expects(self::once())->method('save');
         $agent = $this->factory->createCodeAssistantAgent();
         self::assertInstanceOf(AgentInterface::class, $agent);
@@ -208,6 +226,7 @@ final class SubAgentFactoryTest extends TestCase
 
     public function testCreateDocumentProcessorAgent(): void
     {
+        $this->toolRepo->expects(self::once())->method('findOneBy')->with(['name' => 'sub_agent_document_processor'])->willReturn(null);
         $this->toolRepo->expects(self::once())->method('save');
         $agent = $this->factory->createDocumentProcessorAgent();
         self::assertInstanceOf(AgentInterface::class, $agent);
@@ -215,6 +234,7 @@ final class SubAgentFactoryTest extends TestCase
 
     public function testCreateCommunicationManagerAgent(): void
     {
+        $this->toolRepo->expects(self::once())->method('findOneBy')->with(['name' => 'sub_agent_communication_manager'])->willReturn(null);
         $this->toolRepo->expects(self::once())->method('save');
         $agent = $this->factory->createCommunicationManagerAgent();
         self::assertInstanceOf(AgentInterface::class, $agent);
@@ -222,6 +242,7 @@ final class SubAgentFactoryTest extends TestCase
 
     public function testCreateApiIntegrationAgent(): void
     {
+        $this->toolRepo->expects(self::once())->method('findOneBy')->with(['name' => 'sub_agent_api_integration'])->willReturn(null);
         $this->toolRepo->expects(self::once())->method('save');
         $agent = $this->factory->createApiIntegrationAgent();
         self::assertInstanceOf(AgentInterface::class, $agent);
@@ -229,6 +250,7 @@ final class SubAgentFactoryTest extends TestCase
 
     public function testCreateProjectManagerAgent(): void
     {
+        $this->toolRepo->expects(self::once())->method('findOneBy')->with(['name' => 'sub_agent_project_manager'])->willReturn(null);
         $this->toolRepo->expects(self::once())->method('save');
         $agent = $this->factory->createProjectManagerAgent();
         self::assertInstanceOf(AgentInterface::class, $agent);
@@ -236,6 +258,7 @@ final class SubAgentFactoryTest extends TestCase
 
     public function testCreateFinanceManagerAgent(): void
     {
+        $this->toolRepo->expects(self::once())->method('findOneBy')->with(['name' => 'sub_agent_finance_manager'])->willReturn(null);
         $this->toolRepo->expects(self::once())->method('save');
         $agent = $this->factory->createFinanceManagerAgent();
         self::assertInstanceOf(AgentInterface::class, $agent);
@@ -243,6 +266,7 @@ final class SubAgentFactoryTest extends TestCase
 
     public function testCreateHrManagerAgent(): void
     {
+        $this->toolRepo->expects(self::once())->method('findOneBy')->with(['name' => 'sub_agent_hr_manager'])->willReturn(null);
         $this->toolRepo->expects(self::once())->method('save');
         $agent = $this->factory->createHrManagerAgent();
         self::assertInstanceOf(AgentInterface::class, $agent);
@@ -250,6 +274,7 @@ final class SubAgentFactoryTest extends TestCase
 
     public function testCreateMarketingManagerAgent(): void
     {
+        $this->toolRepo->expects(self::once())->method('findOneBy')->with(['name' => 'sub_agent_marketing_manager'])->willReturn(null);
         $this->toolRepo->expects(self::once())->method('save');
         $agent = $this->factory->createMarketingManagerAgent();
         self::assertInstanceOf(AgentInterface::class, $agent);
@@ -257,6 +282,7 @@ final class SubAgentFactoryTest extends TestCase
 
     public function testCreateCeoAssistantAgent(): void
     {
+        $this->toolRepo->expects(self::once())->method('findOneBy')->with(['name' => 'sub_agent_ceo_assistant'])->willReturn(null);
         $this->toolRepo->expects(self::once())->method('save');
         $agent = $this->factory->createCeoAssistantAgent();
         self::assertInstanceOf(AgentInterface::class, $agent);
@@ -265,6 +291,8 @@ final class SubAgentFactoryTest extends TestCase
     public function testGetAvailableSubAgents(): void
     {
         $this->subAgentRepo->method('findAllActive')->willReturn([]);
+        // Jeder der 11 statischen Sub-Agenten prüft findOneBy (Duplikat-Schutz)
+        $this->toolRepo->method('findOneBy')->willReturn(null);
         $this->toolRepo->method('save');
 
         $agents = $this->factory->getAvailableSubAgents();
@@ -272,5 +300,23 @@ final class SubAgentFactoryTest extends TestCase
         self::assertArrayHasKey('website_researcher', $agents);
         self::assertArrayHasKey('ceo_assistant', $agents);
         self::assertCount(11, $agents);
+    }
+
+    public function testCreateSubAgentDoesNotDuplicateToolDefinition(): void
+    {
+        // Simuliere: Tool existiert bereits
+        $this->toolRepo->expects(self::once())->method('findOneBy')->with(['name' => 'sub_agent_duplicate_test'])->willReturn(new \App\Entity\ToolDefinition());
+        // Kein save() Aufruf, weil Duplikat erkannt wurde
+        $this->toolRepo->expects(self::never())->method('save');
+
+        $this->factory->createSubAgent('duplicate_test', 'test_role');
+    }
+
+    public function testCreateSubAgentToolDoesNotDuplicateToolDefinition(): void
+    {
+        $this->toolRepo->expects(self::once())->method('findOneBy')->with(['name' => 'sub_agent_duplicate_tool'])->willReturn(new \App\Entity\ToolDefinition());
+        $this->toolRepo->expects(self::never())->method('save');
+
+        $this->factory->createSubAgentTool('duplicate_tool', 'test_role');
     }
 }
