@@ -11,7 +11,7 @@
                 Subagenten
             </h1>
             <p class="text-sm text-content-subtle mt-1">
-                Erstellen und verwalten Sie spezielle Agenten fr verschiedene Aufgaben
+                Erstellen und verwalten Sie spezielle Agenten fuer verschiedene Aufgaben
             </p>
         </div>
     </div>
@@ -35,7 +35,7 @@
                                  focus:ring-2 focus:ring-primary focus:border-transparent"></textarea>
             </div>
             <div>
-                <label for="capabilities" class="block text-sm font-medium text-content mb-1">Fhigkeiten (JSON)</label>
+                <label for="capabilities" class="block text-sm font-medium text-content mb-1">Faehigkeiten (JSON)</label>
                 <textarea name="capabilities" id="capabilities" rows="2"
                           placeholder='["analyse", "zusammenfassen", "generieren"]'
                           class="w-full p-3 border border-border rounded-xl bg-white dark:bg-slate-700 text-content
@@ -48,13 +48,12 @@
         </form>
     </div>
 
-    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-border p-6">
+    {% if subAgents|length > 0 %}
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-border p-6 mb-6">
         <h2 class="text-lg font-semibold text-content mb-4">
             <i class="ph ph-list"></i>
             Meine Subagenten
         </h2>
-        
-        {% if subAgents|length > 0 %}
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {% for subAgent in subAgents %}
             <div class="bg-slate-50 dark:bg-slate-700 rounded-xl p-4 border border-border hover:border-primary/30 transition-colors">
@@ -80,23 +79,73 @@
                     </a>
                     <button 
                        class="btn btn-ghost btn-sm text-danger hover:bg-danger-soft"
-                       onclick="event.preventDefault(); if(confirm('Subagent l\u00f6schen?')) { fetch('{{ path('api_subagents_delete', {'id': subAgent.id}) }}', { method: 'DELETE' }).then(() => window.location.reload()); }">
+                       onclick="event.preventDefault(); if(confirm('Subagent loeschen?')) { fetch('{{ path('api_subagents_delete', {'id': subAgent.id}) }}', { method: 'DELETE' }).then(() => window.location.reload()); }">
                         <i class="ph ph-trash"></i>
-                        Lschen
+                        Loeschen
                     </button>
                 </div>
             </div>
             {% endfor %}
         </div>
-        {% else %}
-        <div class="bg-slate-50 dark:bg-slate-700 rounded-xl p-8 text-center border border-border">
-            <i class="ph ph-users-three text-3xl text-content-muted mb-4"></i>
-            <h3 class="text-lg font-semibold text-content mb-2">Keine Subagenten gefunden</h3>
-            <p class="text-content-subtle mb-4">
-                Erstellen Sie Ihren ersten Subagenten, um spezielle Aufgaben zu automatisieren.
-            </p>
+    </div>
+    {% endif %}
+
+    <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-border p-6">
+        <h2 class="text-lg font-semibold text-content mb-4">
+            <i class="ph ph-robot"></i>
+            System-Sub-Agenten
+        </h2>
+        <p class="text-sm text-content-subtle mb-4">
+            Diese Sub-Agenten sind Teil des EVIE-Kerns und stehen immer zur Verfuegung.
+        </p>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {% for sa in staticSubAgents %}
+            <div class="bg-slate-50 dark:bg-slate-700 rounded-xl p-4 border border-border">
+                <div class="flex justify-between items-start mb-2">
+                    <h3 class="text-lg font-semibold text-content">{{ sa.name }}</h3>
+                    <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
+                        System
+                    </span>
+                </div>
+                <p class="text-content-subtle mb-4">{{ sa.description }}</p>
+                <div class="flex gap-2">
+                    <button class="btn btn-primary btn-sm"
+                            onclick="document.getElementById('subAgentName').value='{{ sa.name }}'; document.getElementById('delegateModal').classList.remove('hidden')">
+                        <i class="ph ph-play-circle"></i>
+                        Delegieren
+                    </button>
+                </div>
+            </div>
+            {% endfor %}
         </div>
-        {% endif %}
+    </div>
+
+    <div id="delegateModal" class="hidden fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-xl shadow-xl p-6 max-w-md w-full">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-content">Aufgabe an Sub-Agent delegieren</h3>
+                <button onclick="document.getElementById('delegateModal').classList.add('hidden')" class="text-content-subtle hover:text-content">
+                    <i class="ph ph-x-circle text-xl"></i>
+                </button>
+            </div>
+            <form id="delegateTaskForm" class="space-y-4">
+                <input type="hidden" id="subAgentName" name="sub_agent_name">
+                <div>
+                    <label for="taskInput" class="block text-sm font-medium text-content mb-1">Aufgabe</label>
+                    <textarea id="taskInput" name="task" rows="3" required
+                              class="w-full p-3 border border-border rounded-xl bg-white dark:bg-slate-700 text-content focus:ring-2 focus:ring-primary focus:border-transparent"></textarea>
+                </div>
+                <div class="flex gap-2 justify-end">
+                    <button type="button" onclick="document.getElementById('delegateModal').classList.add('hidden')" class="btn btn-ghost">
+                        Abbrechen
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        <i class="ph ph-paper-plane-tilt"></i>
+                        Delegieren
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 </div>
 
@@ -125,6 +174,37 @@
                     window.location.reload();
                 } else {
                     alert('Fehler beim Erstellen des Subagenten');
+                }
+            }).catch(error => {
+                alert('Fehler: ' + error.message);
+            });
+        });
+
+        document.getElementById('delegateTaskForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            const subAgentName = document.getElementById('subAgentName').value;
+            const task = document.getElementById('taskInput').value;
+            
+            fetch('{{ path('htmx_subagents_delegate') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/x-www-form-urlencoded',
+                    'X-Requested-With': 'XMLHttpRequest'
+                },
+                body: new URLSearchParams({
+                    'sub_agent_name': subAgentName,
+                    'task': task
+                })
+            }).then(response => {
+                if (response.ok) {
+                    response.text().then(html => {
+                        const resultDiv = document.createElement('div');
+                        resultDiv.innerHTML = html;
+                        document.querySelector('#delegateModal .space-y-4').appendChild(resultDiv);
+                        document.getElementById('taskInput').value = '';
+                    });
+                } else {
+                    alert('Fehler bei der Delegierung');
                 }
             }).catch(error => {
                 alert('Fehler: ' + error.message);
