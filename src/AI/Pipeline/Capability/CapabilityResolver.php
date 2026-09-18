@@ -23,6 +23,8 @@ use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
  *             ToolDefinition (status approved/pending) via Repository ->
  *             Available/Pending; sonst Missing (ToolDefinitionGenerator + HITL).
  *  - subagent: SubAgentFactoryInterface::getAvailableSubAgents -> Available;
+ *             sonst Fallback auf ToolRegistry/ToolDefinition (der Planner
+ *             klassifiziert gelegentlich ein Tool fälschlich als subagent);
  *             sonst Missing (keine Generierung fuer Sub-Agenten).
  *  - clarify: direkt Available (keine Faehigkeit noetig).
  *
@@ -65,13 +67,13 @@ final class CapabilityResolver implements CapabilityResolverInterface
         }
 
         if ($step->getType() === Step::TYPE_SUBAGENT) {
-            return $this->resolveSubAgent($step);
+            return $this->resolveSubAgent($step, $context);
         }
 
         return $this->resolveTool($step, $context);
     }
 
-    private function resolveSubAgent(Step $step): CapabilityResult
+    private function resolveSubAgent(Step $step, PipelineContext $context): CapabilityResult
     {
         $subAgents = $this->subAgentFactory->getAvailableSubAgents();
         $name = $step->getTarget();
@@ -81,9 +83,13 @@ final class CapabilityResolver implements CapabilityResolverInterface
             return new CapabilityResult(CapabilityDecision::Available, $subAgents[$name]);
         }
 
-        $this->logger->info('CapabilityResolver: Sub-Agent fehlt', ['subagent' => $name]);
+        // Der Planner klassifiziert gelegentlich ein Tool (z. B.
+        // strategy_document) fälschlich als subagent. Bevor wir Missing
+        // melden, pruefen wir, ob das Target tatsaechlich ein Tool ist und
+        // fallen auf die Tool-Aufloesung zurueck (Blueprint §4.A Phase 4).
+        $this->logger->info('CapabilityResolver: Sub-Agent fehlt, pruefe Tool-Fallback', ['subagent' => $name]);
 
-        return new CapabilityResult(CapabilityDecision::Missing);
+        return $this->resolveTool($step, $context);
     }
 
     private function resolveTool(Step $step, PipelineContext $context): CapabilityResult

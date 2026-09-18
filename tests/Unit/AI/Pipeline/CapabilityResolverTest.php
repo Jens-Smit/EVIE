@@ -195,19 +195,67 @@ final class CapabilityResolverTest extends TestCase
         self::assertSame($agent, $result->getExecutionReference());
     }
 
-    public function testMissingSubAgentIsMissingWithoutGeneration(): void
+    public function testMissingSubAgentFallsBackToToolResolution(): void
     {
+        // Der Planner klassifiziert gelegentlich ein Tool (z. B.
+        // strategy_document) fälschlich als subagent. Ist das Target
+        // kein Sub-Agent, prueft der Resolver das ToolRegistry-Fallback.
         $this->subAgentFactory->method('getAvailableSubAgents')->willReturn([]);
+        $this->toolDefinitionRepo->method('findOneByNameForUser')->willReturn(null);
         $this->toolGenerator->expects(self::never())->method('generateToolDefinition');
         $this->dispatcher->expects(self::never())->method('dispatch');
 
         $resolver = $this->buildResolver();
         $result = $resolver->resolve(
-            new Step(Step::TYPE_SUBAGENT, 'nonexistent_agent', [], true),
+            new Step(Step::TYPE_SUBAGENT, 'nonexistent_agent', [], false),
             $this->context()
         );
 
+        // Weder Sub-Agent noch Tool vorhanden, needs_capability=false -> Missing.
         self::assertTrue($result->getDecision()->isMissing());
+    }
+
+    public function testMisclassifiedSubAgentResolvesAsStaticTool(): void
+    {
+        // Regression für strategy_document: der Planner gibt type=subagent
+        // an, aber das Target ist ein statisches #[AsTool]-Tool. Der
+        // Resolver fällt auf die ToolRegistry zurück und meldet Available.
+        $registry = new ToolRegistry([
+            new class implements \App\AI\Skills\Tool\ToolInterface {
+                public function getName(): string
+                {
+                    return 'strategy_document';
+                }
+
+                public function getDescription(): string
+                {
+                    return 'Speichert ein Strategiedokument.';
+                }
+
+                public function __invoke(array $parameters = []): array
+                {
+                    return [];
+                }
+            },
+        ]);
+        $this->subAgentFactory->method('getAvailableSubAgents')->willReturn([]);
+
+        $resolver = new CapabilityResolver(
+            $registry,
+            $this->toolDefinitionRepo,
+            $this->subAgentFactory,
+            $this->toolGenerator,
+            $this->dispatcher,
+            new NullLogger()
+        );
+
+        $result = $resolver->resolve(
+            new Step(Step::TYPE_SUBAGENT, 'strategy_document', ['action' => 'create'], false),
+            $this->context()
+        );
+
+        self::assertTrue($result->getDecision()->isAvailable());
+        self::assertNull($result->getExecutionReference());
     }
 
     private function buildResolver(): CapabilityResolver
