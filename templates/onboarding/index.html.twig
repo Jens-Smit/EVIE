@@ -4,7 +4,9 @@
 {% block title %}Onboarding - EVIE{% endblock %}
 
 {% block body %}
-<div class="max-w-2xl mx-auto" x-data="onboardingFlow" x-init="init()">
+<div class="max-w-6xl mx-auto" x-data="onboardingFlow" x-init="init()">
+  <div class="grid grid-cols-1 lg:grid-cols-5 gap-6">
+    <div class="lg:col-span-3">
     <div class="card p-8">
         <!-- Header -->
         <div class="flex items-center gap-4 mb-6">
@@ -213,8 +215,122 @@
                 </div>
             </div>
 
+            <!-- Freier Dialog (Brainstorming, Pflicht-Freitext) -->
+            <div x-show="currentType === 'freeform_dialog'" class="space-y-3">
+                <textarea x-model="textInput"
+                          class="w-full p-3 border border-border rounded-xl bg-surface-muted text-content focus:ring-2 focus:ring-primary focus:border-transparent"
+                          rows="5"
+                          placeholder="Was soll EVIE fuer dich tun? Beschreibe deine Aufgabe, Ziele, Alltag..."></textarea>
+                <div class="flex gap-2">
+                    <button @click="submitResponse(textInput)" class="btn btn-primary" :disabled="!textInput.trim()">
+                        <i class="ph ph-arrow-right"></i>
+                        Weiter
+                    </button>
+                </div>
+            </div>
+            <!-- Strategie-Review -->
+            <div x-show="currentType === 'strategy_review'" class="space-y-4">
+                <div class="bg-surface-muted rounded-xl p-4 space-y-2">
+                    <h3 class="font-semibold text-content" x-text="strategyDraft.title"></h3>
+                    <p class="text-sm text-content" x-text="strategyDraft.goal"></p>
+                    <div class="text-sm text-content-muted">
+                        <span class="font-medium">Erfolgsmetrik:</span> <span x-text="strategyDraft.success_metric"></span>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-content-muted mb-1">Geplante Schritte:</p>
+                        <ul class="text-sm text-content list-disc pl-5 space-y-0.5">
+                            <template x-for="(s, i) in strategyDraft.steps || []" :key="i">
+                                <li x-text="s"></li>
+                            </template>
+                        </ul>
+                    </div>
+                    <div>
+                        <p class="text-xs font-medium text-content-muted mb-1">Empfohlene Sub-Agenten:</p>
+                        <div class="flex flex-wrap gap-1">
+                            <template x-for="(s, i) in strategyDraft.sub_agents || []" :key="i">
+                                <span class="text-xs bg-primary-soft text-primary px-2 py-0.5 rounded-full" x-text="s"></span>
+                            </template>
+                        </div>
+                    </div>
+                </div>
+                <textarea x-model="textInput" rows="2"
+                          class="w-full p-3 border border-border rounded-xl bg-surface-muted text-content"
+                          placeholder="Optional: Korrektur/Freitext (leer lassen = Vorschlag bestaetigen)"></textarea>
+                <div class="flex gap-2">
+                    <button @click="submitResponse('confirm')" class="btn btn-primary">
+                        <i class="ph ph-check"></i>
+                        Strategie &uuml;bernehmen
+                    </button>
+                    <button @click="submitResponse(textInput)" class="btn btn-ghost" :disabled="!textInput.trim()">
+                        Korrektur senden
+                    </button>
+                </div>
+            </div>
+            <!-- Sub-Agent-Review -->
+            <div x-show="currentType === 'sub_agent_review'" class="space-y-4">
+                <div class="bg-surface-muted rounded-xl p-4">
+                    <p class="text-sm text-content mb-2">Diese Sub-Agenten werden fuer deine Strategie eingerichtet (Abwahl moeglich):</p>
+                    <div class="space-y-1">
+                        <template x-for="(label, name) in subAgentCatalog || {}" :key="name">
+                            <label class="flex items-center gap-2 text-sm text-content"
+                                   x-show="(strategyDraft.sub_agents || []).includes(name)">
+                                <input type="checkbox" :value="name" x-model="subAgentSelection">
+                                <span x-text="name + ' &ndash; ' + label"></span>
+                            </label>
+                        </template>
+                    </div>
+                </div>
+                <button @click="submitSubAgentSelection()" class="btn btn-primary">
+                    <i class="ph ph-robot"></i>
+                    Auswahl &uuml;bernehmen
+                </button>
+            </div>
+            <!-- Tool-Review -->
+            <div x-show="currentType === 'tool_review'" class="space-y-4">
+                <div class="bg-surface-muted rounded-xl p-4">
+                    <p class="text-sm text-content mb-2">
+                        Fuer Capability-Luecken werden Tool-Definitionen angelegt (Status <span class="font-medium">pending</span>, Freigabe nach dem Onboarding im Frontend):
+                    </p>
+                    <div x-show="!tools || tools.length === 0" class="text-sm text-content-muted">
+                        Keine zusaetzlichen Tools noetig &ndash; deine Faehigkeiten werden von bestehenden Sub-Agenten/Tools abgedeckt.
+                    </div>
+                    <table x-show="tools && tools.length > 0" class="w-full text-sm">
+                        <thead>
+                            <tr class="text-left text-xs text-content-muted border-b border-border">
+                                <th class="py-1 pr-2">Tool</th>
+                                <th class="py-1 pr-2">Security</th>
+                                <th class="py-1">Secrets</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <template x-for="(t, i) in tools || []" :key="i">
+                                <tr class="border-b border-border last:border-0">
+                                    <td class="py-1 pr-2 text-content" x-text="t.name"></td>
+                                    <td class="py-1 pr-2 text-content-muted" x-text="t.security_level"></td>
+                                    <td class="py-1 text-content-muted" x-text="(t.required_secrets || []).join(', ') || '&ndash;'"></td>
+                                </tr>
+                            </template>
+                        </tbody>
+                    </table>
+                </div>
+                <button @click="submitResponse('confirm')" class="btn btn-primary">
+                    <i class="ph ph-check"></i>
+                    Tools anlegen &amp; weiter
+                </button>
+            </div>
             <!-- Summary / Abschluss-Schritt -->
             <div x-show="currentType === 'summary'" class="space-y-4">
+                <!-- Readiness-Checkliste -->
+                <div class="bg-surface-muted rounded-xl p-4 space-y-1">
+                    <template x-for="(c, i) in readiness.checks || []" :key="i">
+                        <div class="flex items-center gap-2 text-sm"
+                             :class="c.passed ? 'text-success' : (c.blocking ? 'text-danger' : 'text-content-muted')">
+                            <i :class="c.passed ? 'ph ph-check-circle' : (c.blocking ? 'ph ph-x-circle' : 'ph ph-info')"></i>
+                            <span x-text="c.label"></span>
+                            <span x-show="!c.passed && c.blocking" class="text-xs">(Pflicht)</span>
+                        </div>
+                    </template>
+                </div>
                 <p class="text-content-muted">Deine Konfiguration wurde gespeichert. Du kannst jetzt loslegen.</p>
                 <button @click="submitResponse('confirm')"
                         class="btn btn-primary">
@@ -223,8 +339,21 @@
                 </button>
             </div>
 
-            <!-- Skip / Sp&auml;ter -->
-            <div class="pt-4 border-t border-border">
+            <!-- Abschluss: jederzeit verfuegbar (Sticky-Footer, G8) -->
+            <div class="pt-4 border-t border-border space-y-2">
+                <button @click="requestComplete()"
+                        class="btn btn-primary w-full"
+                        x-show="readiness.ready">
+                    <i class="ph ph-check-circle"></i>
+                    Onboarding abschlie&szlig;en
+                </button>
+                <button @click="requestComplete()"
+                        class="btn btn-primary w-full opacity-60"
+                        x-show="!readiness.ready"
+                        :disabled="loading">
+                    <i class="ph ph-check-circle"></i>
+                    Onboarding abschlie&szlig;en (Pflichtangaben fehlen)
+                </button>
                 <button @click="skipOnboarding()"
                         class="text-sm text-content-muted hover:text-content">
                     &Uuml;berspringen und sp&auml;ter durchf&uuml;hren
@@ -245,6 +374,40 @@
             </a>
         </div>
     </div>
+    </div>
+    <!-- Chat-Panel: freies Brainstorming waehrend des Onboardings -->
+    <aside class="lg:col-span-2 card p-6 flex flex-col h-fit lg:sticky lg:top-6">
+        <h2 class="text-lg font-semibold text-content flex items-center gap-2 mb-1">
+            <i class="ph ph-chats-circle text-primary"></i>
+            Brainstorming-Chat
+        </h2>
+        <p class="text-xs text-content-muted mb-4">
+            Schreib frei mit EVIE &uuml;ber deine Aufgabe. Erkenntnisse (Branche, Bereiche, Use-Cases) flie&szlig;en automatisch in den Onboarding-Kontext ein.
+        </p>
+        <div class="overflow-y-auto space-y-3 mb-4 max-h-72" x-ref="chatLog">
+            <template x-for="(m, i) in chatMessages" :key="i">
+                <div :class="m.role === 'user' ? 'flex justify-end' : 'flex justify-start'">
+                    <div :class="m.role === 'user'
+                        ? 'bg-primary text-white rounded-xl px-3 py-2 max-w-[85%] text-sm'
+                        : 'bg-surface-muted text-content rounded-xl px-3 py-2 max-w-[85%] text-sm'"
+                         x-text="m.text"></div>
+                </div>
+            </template>
+            <div x-show="chatLoading" class="text-xs text-content-muted flex items-center gap-2">
+                <span class="spinner" style="width:14px;height:14px;"></span> EVIE schreibt...
+            </div>
+        </div>
+        <div class="flex gap-2">
+            <input type="text" x-model="chatInput" @keydown.enter="sendChat()"
+                   class="flex-1 p-3 border border-border rounded-xl bg-surface-muted text-content focus:ring-2 focus:ring-primary focus:border-transparent"
+                   placeholder="z.B. Ich moechte meine Vertriebsmails automatisieren..."
+                   :disabled="chatLoading">
+            <button @click="sendChat()" class="btn btn-primary shrink-0" :disabled="chatLoading || !chatInput.trim()">
+                <i class="ph ph-paper-plane-tilt"></i>
+            </button>
+        </div>
+    </aside>
+  </div>
 </div>
 
 {% block javascripts %}
@@ -266,6 +429,14 @@
         textInput: '',
         multiSelected: [],
         multiFreetext: '',
+        strategyDraft: {},
+        subAgentCatalog: {},
+        subAgentSelection: [],
+        tools: null,
+        readiness: { ready: false, checks: [], missing_blocking: [] },
+        chatMessages: [],
+        chatInput: '',
+        chatLoading: false,
         emailConfig: {
             smtp_host: '', smtp_port: '', smtp_user: '', smtp_pass: '', smtp_encryption: 'tls',
             imap_host: '', imap_port: '', imap_user: '', imap_pass: '', imap_encryption: 'ssl',
@@ -382,6 +553,82 @@
             // Bei Validierungsfehler:aktuellen Schritt beibehalten, nur Loading entfernen.
         },
 
+        async sendChat() {
+            const message = this.chatInput.trim();
+            if (!message || this.chatLoading) return;
+            this.chatMessages.push({ role: 'user', text: message });
+            this.chatInput = '';
+            this.chatLoading = true;
+            try {
+                const res = await fetch('{{ path('app_onboarding_chat') }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({ message: message })
+                });
+                const data = await res.json();
+                this.chatMessages.push({ role: 'agent', text: data.response || '(keine Antwort)' });
+                if (data.step) this.updateStep(data.step);
+                this.$nextTick(() => this.$refs.chatLog && (this.$refs.chatLog.scrollTop = this.$refs.chatLog.scrollHeight));
+            } catch (e) {
+                this.chatMessages.push({ role: 'agent', text: 'Chat fehlgeschlagen. Bitte erneut versuchen.' });
+            } finally {
+                this.chatLoading = false;
+            }
+        },
+        openChatHint() {
+            this.chatMessages.push({ role: 'agent', text: 'Schreib mir hier einfach, was EVIE fuer dich tun soll.' });
+        },
+        async submitSubAgentSelection() {
+            const selected = this.subAgentSelection.length > 0
+                ? this.subAgentSelection.join(',')
+                : 'confirm';
+            await this.submitResponse(selected);
+        },
+        async requestComplete() {
+            this.loading = true;
+            this.currentError = '';
+            try {
+                const res = await fetch('{{ path('app_onboarding_complete') }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({})
+                });
+                const data = await res.json();
+                if (res.ok && data.status === 'completed') {
+                    this.completed = true;
+                    return;
+                }
+                if (res.status === 422) {
+                    this.readiness = data.readiness || this.readiness;
+                    const blocking = (this.readiness.checks || []).filter(c => c.blocking && !c.passed).map(c => c.label);
+                    this.currentError = 'Es fehlen noch Pflichtangaben: ' + blocking.join(', ');
+                    if (confirm('Ohne LLM-API-Key und Aufgabe ist EVIE nicht funktionsfaehig.\n\nTrotzdem abschliessen (Skip)?')) {
+                        await this.forceComplete();
+                    }
+                    return;
+                }
+                this.currentError = data.error || 'Abschluss fehlgeschlagen.';
+            } catch (e) {
+                this.currentError = 'Abschluss fehlgeschlagen.';
+            } finally {
+                this.loading = false;
+            }
+        },
+        async forceComplete() {
+            try {
+                const res = await fetch('{{ path('app_onboarding_complete') }}', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
+                    body: JSON.stringify({ force: true })
+                });
+                const data = await res.json();
+                if (res.ok && data.status === 'completed') {
+                    this.completed = true;
+                }
+            } catch (e) {
+                this.currentError = 'Abschluss fehlgeschlagen.';
+            }
+        },
         async skipOnboarding() {
             if (!confirm('M\u00f6chtest du das Onboarding wirklich \u00fcberspringen? Du kannst es sp\u00e4ter in den Einstellungen nachholen.')) {
                 return;
@@ -402,6 +649,11 @@
                 this.completed = true;
                 return;
             }
+            this.strategyDraft = data.strategy_draft || this.strategyDraft || {};
+            this.subAgentCatalog = data.sub_agent_catalog || {};
+            this.tools = data.tools !== undefined ? data.tools : this.tools;
+            this.readiness = data.readiness || this.readiness;
+            this.subAgentSelection = (this.strategyDraft.sub_agents || []).slice();
             this.currentStep = data.current_step ?? 0;
             this.totalSteps = data.total_steps ?? (this.currentStep + 1);
             this.currentPhase = data.phase ?? '';
