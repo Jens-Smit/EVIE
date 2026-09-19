@@ -26,12 +26,28 @@ final class OrchestratorDialogFacadeTest extends TestCase
         $pipeline = $this->createMock(PipelineInterface::class);
         $pipeline->expects(self::once())
             ->method('run')
-            ->with('moin', 'user-1')
+            ->with('moin', 'user-1', null)
             ->willReturn(new PipelineResult(PipelineResult::TYPE_DIALOG, 'Hallo von der Pipeline'));
 
         $service = new OrchestratorDialogService($pipeline, new TenantPlatformContext());
         $result = $service->ask('moin', 'user-1');
         self::assertSame('Hallo von der Pipeline', $result);
+    }
+
+    public function testAskPassesSystemContextToPipeline(): void
+    {
+        // Luecke 5: der persistierte Konversationskontext wird an die
+        // Pipeline durchgereicht und dort als SystemMessage eingebaut.
+        $pipeline = $this->createMock(PipelineInterface::class);
+        $pipeline->expects(self::once())
+            ->method('run')
+            ->with('Folgefrage', 'user-3', '## Bisheriger Konversationsverlauf...')
+            ->willReturn(new PipelineResult(PipelineResult::TYPE_DIALOG, 'Kontext aware Antwort'));
+
+        $service = new OrchestratorDialogService($pipeline, new TenantPlatformContext());
+        $result = $service->ask('Folgefrage', 'user-3', '## Bisheriger Konversationsverlauf...');
+
+        self::assertSame('Kontext aware Antwort', $result);
     }
 
     public function testAskReturnsExecutedResultContent(): void

@@ -62,13 +62,13 @@ final class Pipeline implements PipelineInterface
         $this->logger = $logger;
     }
 
-    public function run(string $message, string $userIdentifier): PipelineResult
+    public function run(string $message, string $userIdentifier, ?string $systemContext = null): PipelineResult
     {
         $this->logger->debug('Pipeline.run: Start', [
             'user_identifier' => $userIdentifier,
             'message' => $message,
         ]);
-        $context = PipelineContext::create($message, $userIdentifier);
+        $context = PipelineContext::create($message, $userIdentifier, $systemContext);
 
         // Phase 1 — Goal
         $context = $context->withGoal($this->goalResolver->resolve($context));
@@ -146,12 +146,39 @@ final class Pipeline implements PipelineInterface
         $goal->setUserIdentifier($context->getUserIdentifier());
         $goal->setTitle(mb_substr($summary, 0, 255));
         $goal->setDescription($context->getMessage());
+        // Plan-Steps als Strategie persistieren, damit die Ordnungs- und
+        // Delegationsinformation zwischen Pipeline-Lauf und Worker-
+        // Ausfuehrung erhalten bleibt (Luecke 2, Blueprint §5).
+        $goal->setCapabilityConstraints($this->extractPlanSteps($plan));
         $goal->setStatus('paused');
         $goal->setRequiresApproval(true);
         $goal->setIsApproved(false);
         $goal->setUserProfile($userProfile);
 
         $this->agentGoalRepository->save($goal, true);
+    }
+
+    /**
+     * Serialisiert die Plan-Steps fuer die Persistenz im AgentGoal
+     * (capabilityConstraints-Feld). Enthaelt type, target, parameters und
+     * reason jedes Schritts; die ExecutionReference ist bewusst nicht
+     * Teil der Serialisierung (nicht DB-faehig).
+     *
+     * @return list<array{type: string, target: string, parameters: array<string, mixed>, reason: string|null}>
+     */
+    private function extractPlanSteps(Plan $plan): array
+    {
+        $steps = [];
+        foreach ($plan->getSteps() as $step) {
+            $steps[] = [
+                'type' => $step->getType(),
+                'target' => $step->getTarget(),
+                'parameters' => $step->getParameters(),
+                'reason' => $step->getReason(),
+            ];
+        }
+
+        return $steps;
     }
 
     /**

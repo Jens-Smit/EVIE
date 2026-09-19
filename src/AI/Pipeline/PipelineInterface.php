@@ -14,5 +14,5 @@ namespace App\AI\Pipeline;
  */
 interface PipelineInterface
 {
-    public function run(string $message, string $userIdentifier): Execution\PipelineResult;
+    public function run(string $message, string $userIdentifier, ?string $systemContext = null): Execution\PipelineResult;
 }

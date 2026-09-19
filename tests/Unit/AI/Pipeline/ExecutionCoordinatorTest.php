@@ -16,6 +16,7 @@ use App\Tests\Stub\StubAgent;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
 use Symfony\AI\Agent\AgentInterface;
+use Symfony\AI\Platform\Message\Role;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 
 /**
@@ -52,6 +53,28 @@ final class ExecutionCoordinatorTest extends TestCase
 
         self::assertSame(PipelineResult::TYPE_DIALOG, $result->getType());
         self::assertSame('Hallo, ich bin EVIE.', $result->getContent());
+    }
+
+    public function testDialogIncludesSystemContextAsSystemMessage(): void
+    {
+        // Luecke 5: persistierter Konversationskontext wird als SystemMessage
+        // vor die User-Nachricht gehaengt.
+        $agent = new StubAgent('Kontext-Antwort');
+        $coordinator = $this->buildCoordinator($agent);
+
+        $context = PipelineContext::create('Folgefrage', 'u', '## Bisheriger Verlauf: Nutzer fragte nach Wetter');
+        $result = $coordinator->dialog($context);
+
+        self::assertSame(PipelineResult::TYPE_DIALOG, $result->getType());
+        self::assertSame('Kontext-Antwort', $result->getContent());
+
+        $bag = $agent->getSentMessages()[0];
+        $messages = $bag->getMessages();
+        self::assertCount(2, $messages);
+        self::assertSame(Role::System, $messages[0]->getRole());
+        $systemContent = $messages[0]->getContent();
+        self::assertIsString($systemContent);
+        self::assertStringContainsString('Bisheriger Verlauf', $systemContent);
     }
 
     public function testDialogFallsBackOnLlmFailure(): void

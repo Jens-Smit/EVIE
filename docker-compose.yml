@@ -21,6 +21,9 @@ services:
       - MESSENGER_TRANSPORT_DSN_FAILED=doctrine://default?queue_name=failed
       - MCP_FILESYSTEM_URL=http://mcp-filesystem:8123
       - MCP_PLAYWRIGHT_URL=http://mcp-playwright:8931/mcp
+      - MERCURE_URL=http://mercure:80/.well-known/mercure
+      - MERCURE_PUBLIC_URL=http://localhost:3000/.well-known/mercure
+      - MERCURE_JWT_SECRET=${MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
     depends_on:
       - postgres
       - mcp-filesystem
@@ -52,8 +55,60 @@ services:
       - MESSENGER_TRANSPORT_DSN_STREAMING=doctrine://default
       - MESSENGER_TRANSPORT_DSN_HITL=doctrine://default
       - MESSENGER_TRANSPORT_DSN_FAILED=doctrine://default?queue_name=failed
+      - MERCURE_URL=http://mercure:80/.well-known/mercure
+      - MERCURE_PUBLIC_URL=http://localhost:3000/.well-known/mercure
+      - MERCURE_JWT_SECRET=${MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
     depends_on:
       - postgres
+    networks: [mcp_isolated]
+
+  scheduler:
+    # Dev-Scheduler: pollt faellige AgentGoals und dispatcht sie an den
+    # Messenger (ersetzt externes Cron, Blueprint Luecke 2 / Phase 5).
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: evie_scheduler
+    restart: unless-stopped
+    volumes:
+      - .:/var/www/html
+    command: ["php", "bin/console", "app:agent:run-goals", "--loop=60"]
+    environment:
+      - APP_ENV=dev
+      - APP_DEBUG=true
+      - APP_SECRET=${APP_SECRET:-dev_secret_change_me}
+      - DATABASE_URL=postgresql://evie:evie_password@postgres:5432/evie?serverVersion=15&charset=utf8
+      - PGVECTOR_URL=postgresql://evie:evie_password@postgres:5432/evie?serverVersion=15&charset=utf8
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
+      - MESSENGER_TRANSPORT_DSN=doctrine://default
+      - MESSENGER_TRANSPORT_DSN_TOOLS=doctrine://default
+      - MESSENGER_TRANSPORT_DSN_STREAMING=doctrine://default
+      - MESSENGER_TRANSPORT_DSN_HITL=doctrine://default
+      - MESSENGER_TRANSPORT_DSN_FAILED=doctrine://default?queue_name=failed
+    depends_on:
+      - postgres
+    networks: [mcp_isolated]
+
+  mercure:
+    # Mercure-Hub fuer Echtzeit-Streaming (Blueprint Punkt 4): SSE-Push an
+    # das Frontend. Pinned auf v0.24.x, weil symfony/mercure v0.8/v0.9 das
+    # 0.x-Protokoll nutzt (topic=-Parameter, legacy mercure-JWT-Claim);
+    # Mercure 1.0 hat beides entfernt (match=-Parameter, OAuth-Claims).
+    # Dev-Command laedt die permissive dev.Caddyfile des Images (anonymes
+    # Subscribe, Debug-UI). Port 3000 analog zur mercure.yaml-Default-URL.
+    image: dunglas/mercure:v0.24.2
+    container_name: evie_mercure
+    restart: unless-stopped
+    command: ["/usr/bin/caddy", "run", "--config", "/etc/caddy/dev.Caddyfile"]
+    environment:
+      - SERVER_NAME=:80
+      - MERCURE_PUBLISHER_JWT_KEY=${MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
+      - MERCURE_SUBSCRIBER_JWT_KEY=${MERCURE_JWT_SECRET:-!ChangeThisMercureHubJWTSecretKey!}
+    ports:
+      - "3000:80"
+    volumes:
+      - mercure_data:/data
+      - mercure_config:/config
     networks: [mcp_isolated]
 
   nginx:
@@ -117,3 +172,5 @@ networks:
 
 volumes:
   evie-db-data:
+  mercure_data:
+  mercure_config:

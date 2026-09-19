@@ -23,6 +23,31 @@ final class AgentGoalTest extends TestCase
         self::assertFalse($goal->isApproved());
     }
 
+    public function testCalculateNextRunAtWithoutCronIsImmediatelyDue(): void
+    {
+        // Ohne Cron-Expression ist das Goal sofort faellig (Fix A), damit
+        // SetupTask-Goals nach Freigabe+Aktivierung vom Scheduler dispatch
+        // werden und nicht dauerhaft ungefaellig warten.
+        $goal = new AgentGoal();
+        $goal->setCronExpression(null);
+
+        $nextRunAt = $goal->calculateNextRunAt();
+
+        self::assertNotNull($nextRunAt);
+        self::assertLessThanOrEqual(new DateTimeImmutable(), $nextRunAt);
+    }
+
+    public function testCalculateNextRunAtWithCronReturnsFutureDate(): void
+    {
+        $goal = new AgentGoal();
+        $goal->setCronExpression('0 8 * * *');
+
+        $nextRunAt = $goal->calculateNextRunAt();
+
+        self::assertNotNull($nextRunAt);
+        self::assertGreaterThan(new DateTimeImmutable(), $nextRunAt);
+    }
+
     public function testGettersAndSetters(): void
     {
         $goal = new AgentGoal();
@@ -162,8 +187,9 @@ final class AgentGoalTest extends TestCase
 
     public function testCalculateNextRunAtWithoutCron(): void
     {
+        // Fix A: ohne Cron ist das Goal sofort faellig statt nie faellig.
         $goal = new AgentGoal();
-        self::assertNull($goal->calculateNextRunAt());
+        self::assertNotNull($goal->calculateNextRunAt());
     }
 
     public function testCalculateNextRunAtWithInvalidCron(): void

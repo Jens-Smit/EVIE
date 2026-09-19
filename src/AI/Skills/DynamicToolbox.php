@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace App\AI\Skills;
 
+use App\AI\Agent\SubAgentFactoryInterface;
 use App\Repository\ToolDefinitionRepository;
 use App\Security\UserContext;
 use Symfony\AI\Agent\Toolbox\ToolboxInterface;
 use Symfony\AI\Agent\Toolbox\ToolResult;
+use Symfony\AI\Platform\Message\Message;
+use Symfony\AI\Platform\Message\MessageBag;
 use Symfony\AI\Platform\Result\ToolCall;
 use Symfony\AI\Platform\Tool\ExecutionReference;
 use Symfony\AI\Platform\Tool\Tool;
@@ -36,6 +39,8 @@ use Symfony\AI\Platform\Tool\Tool;
  */
 final class DynamicToolbox implements ToolboxInterface
 {
+    private const SUB_AGENT_PREFIX = 'sub_agent_';
+
     private const EXECUTOR_MAP = [
         'api' => 'App\\AI\\Skills\\Executor\\GenericApiExecutor',
         'database' => 'App\\AI\\Skills\\Executor\\GenericDatabaseExecutor',
@@ -48,6 +53,7 @@ final class DynamicToolbox implements ToolboxInterface
         private readonly ToolboxInterface $innerToolbox,
         private readonly ToolDefinitionRepository $toolDefinitionRepository,
         private readonly UserContext $userContext,
+        private readonly ?SubAgentFactoryInterface $subAgentFactory = null,
     ) {
     }
 
@@ -64,7 +70,35 @@ final class DynamicToolbox implements ToolboxInterface
 
     public function execute(ToolCall $toolCall): ToolResult
     {
+        // Sub-Agent-Delegation (Blueprint 4.B Multi-Agent): dynamische
+        // sub_agent_*-Tools sind in der inneren Toolbox nicht registriert
+        // und wurden bisher stillschweigend nicht ausgefuehrt. Hier wird
+        // der Sub-Agent nativ ueber die SubAgentFactory aufgerufen und
+        // dessen Antwort als ToolResult zurueckgegeben.
+        if (str_starts_with($toolCall->getName(), self::SUB_AGENT_PREFIX) && $this->subAgentFactory !== null) {
+            return $this->executeSubAgent($toolCall);
+        }
+
         return $this->innerToolbox->execute($toolCall);
+    }
+
+    private function executeSubAgent(ToolCall $toolCall): ToolResult
+    {
+        $subAgentName = substr($toolCall->getName(), strlen(self::SUB_AGENT_PREFIX));
+        $arguments = $toolCall->getArguments();
+        $task = $arguments['task'] ?? $arguments['prompt'] ?? '';
+        $task = is_string($task) && $task !== '' ? $task : 'Verarbeite die uebergebenen Parameter.';
+
+        try {
+            $subAgent = $this->subAgentFactory->createByName($subAgentName);
+            $messages = new MessageBag(Message::ofUser($task));
+            $result = $subAgent->call($messages);
+            $content = $result->getContent();
+
+            return new ToolResult($toolCall, is_string($content) ? $content : json_encode($content));
+        } catch (\Throwable $e) {
+            return new ToolResult($toolCall, 'Sub-Agent Fehler: ' . $e->getMessage());
+        }
     }
 
     /**

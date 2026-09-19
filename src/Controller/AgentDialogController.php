@@ -67,6 +67,9 @@ final class AgentDialogController extends AbstractController
         }
 
         $userMessage = $payload['message'] ?? null;
+        $conversationId = isset($payload['conversation_id'])
+            ? (int) $payload['conversation_id']
+            : ($request->query->get('conversation_id') !== null ? (int) $request->query->get('conversation_id') : null);
 
         // P0-5 IDOR-Schutz: der Tenant-Identifier wird ausschliesslich aus
         // dem authentifizierten User bezogen, niemals aus dem Request-Body.
@@ -100,11 +103,18 @@ final class AgentDialogController extends AbstractController
         }
 
         $systemPrompt = $this->contextStore->createSystemPromptWithContext($userProfile, $userMessage);
+
+        // Dialog-Kontext (Luecke 5): Ist eine conversation_id gesetzt, wird
+        // die zugehoerige Historie als Kontext in den System-Prompt eingebaut,
+        // damit der Agent den Verlauf einer Konversation nicht verliert.
+        if ($conversationId !== null && $conversationId > 0) {
+            $systemPrompt .= $this->buildConversationContext($conversationId, $userIdentifier);
+        }
         $this->logger->debug('AgentDialogController::dialog - System-Prompt:', ['prompt' => $systemPrompt]);
 
         try {
             // NUTZE OrchestratorDialogService statt direkten Agent-Aufruf
-            $response = $this->orchestratorDialogService->ask($userMessage, $userIdentifier);
+            $response = $this->orchestratorDialogService->ask($userMessage, $userIdentifier, $systemPrompt);
 
             $this->logger->debug('AgentDialogController::dialog - Ergebnis:', [
                 'content' => $response,
@@ -164,6 +174,40 @@ final class AgentDialogController extends AbstractController
                 'error' => 'Ein Fehler ist aufgetreten: ' . $e->getMessage(),
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
+    }
+
+    /**
+     * Baut den Konversations-Kontext aus der AgentHistory (Luecke 5).
+     * Lädt die letzten Dialogrunden und formatiert sie als Verlauf.
+     * Fremde Tenant-Daten werden über die IDOR-Prüfung ausgeschlossen.
+     */
+    private function buildConversationContext(int $conversationId, string $userIdentifier): string
+    {
+        $entry = $this->historyRepo->find($conversationId);
+
+        if ($entry === null) {
+            return '';
+        }
+
+        // IDOR-Schutz: nur eigene Konversationen fortsetzen.
+        $entryUser = $entry->getUser();
+        if ($entryUser === null || $entryUser->getUserIdentifier() !== $userIdentifier) {
+            return '';
+        }
+
+        $details = json_decode($entry->getDetails() ?? '{}', true) ?? [];
+        $context = "\n## Bisheriger Konversationsverlauf:\n";
+
+        if (isset($details['input']['message'])) {
+            $context .= sprintf("Nutzer: %s\n", (string) $details['input']['message']);
+        }
+        if (isset($details['output']['response'])) {
+            $context .= sprintf("Agent: %s\n", (string) $details['output']['response']);
+        } elseif (isset($details['output']['error'])) {
+            $context .= sprintf("Agent (Fehler): %s\n", (string) $details['output']['error']);
+        }
+
+        return $context . "\nBeantworte die folgende Nutzer-Nachricht in Anbetracht dieses Verlaufs.\n";
     }
 
     /**

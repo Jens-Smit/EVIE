@@ -35,12 +35,16 @@ final class OrchestratorDialogService
     /**
      * Sendet eine Nachricht an den Orchestrator und liefert die finale
      * Nutzerantwort aus der Pipeline.
+     *
+     * Der optionale SystemContext (z.B. persistierter Konversationsverlauf,
+     * Luecke 5) wird als SystemMessage vor die User-Nachricht gehaengt, ohne
+     * die Phasenlogik der Pipeline zu aendern.
      */
-    public function ask(string $userMessage, string $userIdentifier): string
+    public function ask(string $userMessage, string $userIdentifier, ?string $systemContext = null): string
     {
         $this->tenantPlatformContext->setUserIdentifier($userIdentifier);
         try {
-            $result = $this->pipeline->run($userMessage, $userIdentifier);
+            $result = $this->pipeline->run($userMessage, $userIdentifier, $systemContext);
         } finally {
             $this->tenantPlatformContext->clear();
         }

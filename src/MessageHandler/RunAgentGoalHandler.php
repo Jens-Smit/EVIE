@@ -133,13 +133,31 @@ class RunAgentGoalHandler
             $prompt .= sprintf("Beschreibung: %s\n\n", $goal->getDescription());
         }
 
-        // Füge Capability Constraints hinzu
+        // Persistierte Plan-Steps (Luecke 2) oder klassische Capability-
+        // Constraints einfuegen. SetupTask-Goals tragen ihre Strategie als
+        // serialisierte Schrittliste in capabilityConstraints.
         if (!empty($capabilityConstraints)) {
-            $prompt .= "Einschränkungen:\n";
-            foreach ($capabilityConstraints as $constraint) {
-                $prompt .= sprintf("- %s\n", $constraint);
+            if ($this->isPlanSteps($capabilityConstraints)) {
+                $prompt .= "Geplante Schritte (in dieser Reihenfolge ausfuehren):\n";
+                foreach ($capabilityConstraints as $step) {
+                    $reason = is_string($step['reason'] ?? null) && $step['reason'] !== ''
+                        ? sprintf(' (%s)', $step['reason'])
+                        : '';
+                    $prompt .= sprintf(
+                        "- [%s] %s%s\n",
+                        (string) ($step['type'] ?? 'tool'),
+                        (string) ($step['target'] ?? ''),
+                        $reason
+                    );
+                }
+                $prompt .= "\n";
+            } else {
+                $prompt .= "Einschränkungen:\n";
+                foreach ($capabilityConstraints as $constraint) {
+                    $prompt .= sprintf("- %s\n", $constraint);
+                }
+                $prompt .= "\n";
             }
-            $prompt .= "\n";
         }
 
         $prompt .= "\nWICHTIG:\n";
@@ -149,6 +167,25 @@ class RunAgentGoalHandler
         $prompt .= "- Wenn du nicht weiterkommst, dokumentiere was du versucht hast\n";
 
         return $prompt;
+    }
+
+
+    /**
+     * Erkennt, ob capabilityConstraints eine serialisierte Plan-Step-
+     * Liste ist (SetupTask-Goals) oder klassische String-Constraints.
+     *
+     * @param array<int, mixed> $constraints
+     */
+    private function isPlanSteps(array $constraints): bool
+    {
+        foreach ($constraints as $constraint) {
+            if (!is_array($constraint)
+                || !isset($constraint['type'], $constraint['target'])) {
+                return false;
+            }
+        }
+
+        return $constraints !== [];
     }
 
     /**
@@ -184,10 +221,15 @@ class RunAgentGoalHandler
      */
     private function updateGoalAfterExecution(AgentGoal $goal): void
     {
-        // Berechne nächstes Laufdatum
+        // Bei Cron-Expressions wird der naechste Lauf berechnet. Ohne Cron
+        // (z.B. SetupTask-Goals) wird nextRunAt nach der Ausfuehrung auf
+        // null gesetzt, damit faellige Einmal-Ausfuehrungen nicht erneut
+        // durch den Scheduler dispatch werden.
         $nextRunAt = $goal->calculateNextRunAt();
-        if (null !== $nextRunAt) {
+        if ($goal->getCronExpression() !== null && null !== $nextRunAt) {
             $goal->setNextRunAt($nextRunAt);
+        } elseif ($goal->getCronExpression() === null) {
+            $goal->setNextRunAt(null);
         }
 
         $this->agentGoalRepo->save($goal, true);

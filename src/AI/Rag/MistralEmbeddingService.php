@@ -2,17 +2,19 @@
 
 namespace App\AI\Rag;
 
+use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
 
 class MistralEmbeddingService implements EmbeddingServiceInterface
 {
     private const API_URL = 'https://api.mistral.ai/v1/embeddings';
-    private const MODEL = 'mistral-embedding';
+    private const MODEL = 'mistral-embed';
     private const DIMENSION = 1024;
 
     public function __construct(
         private HttpClientInterface $httpClient,
-        private string $apiKey
+        private string $apiKey,
+        private ?LoggerInterface $logger = null,
     ) {
     }
 
@@ -31,9 +33,13 @@ class MistralEmbeddingService implements EmbeddingServiceInterface
             ]);
 
             $data = json_decode($response->getContent(), true);
-            return $data['data'][0]['embedding'] ?? [];
+            $vector = $data['data'][0]['embedding'] ?? [];
+            if ($vector === []) {
+                $this->logFailure('Leere Embedding-Antwort von Mistral');
+            }
+            return $vector;
         } catch (\Exception $e) {
-            // Fallback: Dummy-Vektor für Entwicklung
+            $this->logFailure($e->getMessage());
             return array_fill(0, self::DIMENSION, 0.0);
         }
     }
@@ -59,7 +65,7 @@ class MistralEmbeddingService implements EmbeddingServiceInterface
             }
             return $embeddings;
         } catch (\Exception $e) {
-            // Fallback
+            $this->logFailure($e->getMessage());
             return array_fill(0, count($texts), array_fill(0, self::DIMENSION, 0.0));
         }
     }
@@ -72,5 +78,13 @@ class MistralEmbeddingService implements EmbeddingServiceInterface
     public function getModelName(): string
     {
         return self::MODEL;
+    }
+
+    private function logFailure(string $message): void
+    {
+        $this->logger?->error('Mistral-Embedding fehlgeschlagen - RAG-Kontextsuche liefert keine Treffer', [
+            'model' => self::MODEL,
+            'error' => $message,
+        ]);
     }
 }

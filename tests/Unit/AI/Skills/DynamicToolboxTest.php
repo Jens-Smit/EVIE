@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\AI\Skills;
 
+use App\AI\Agent\SubAgentFactoryInterface;
 use App\AI\Skills\DynamicToolbox;
 use App\Entity\ToolDefinition;
 use App\Repository\ToolDefinitionRepository;
 use App\Security\UserContext;
+use App\Tests\Stub\StubAgent;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
@@ -15,6 +17,10 @@ use PHPUnit\Framework\TestCase;
 use Symfony\AI\Agent\Toolbox\ToolResult;
 use Symfony\AI\Platform\Result\ToolCall;
 use Symfony\AI\Platform\Tool\ExecutionReference;
+use Symfony\AI\Agent\AgentInterface;
+use Symfony\AI\Platform\Message\MessageBag;
+use Symfony\AI\Platform\Message\UserMessage;
+use Symfony\AI\Platform\Result\ResultInterface;
 use Symfony\AI\Platform\Tool\Tool;
 use Symfony\AI\Agent\Toolbox\ToolboxInterface;
 
@@ -162,6 +168,77 @@ final class DynamicToolboxTest extends TestCase
         $tools = $toolbox->getTools();
         self::assertCount(1, $tools);
         self::assertSame('new_tool', $tools[0]->getName());
+    }
+
+    public function testExecuteSubAgentToolDelegatesToSubAgent(): void
+    {
+        // Fix C: sub_agent_*-ToolCalls werden nativ ueber die SubAgentFactory
+        // ausgefuehrt statt stillschweigend im GenericExecutor zu verpuffen.
+        $toolCall = new ToolCall('call-1', 'sub_agent_website_researcher', ['task' => 'Analysiere example.com']);
+
+        $agent = new StubAgent(['Recherche abgeschlossen']);
+
+        $factory = $this->createMock(SubAgentFactoryInterface::class);
+        $factory->method('createByName')
+            ->with('website_researcher')
+            ->willReturn($agent);
+
+        $inner = $this->createMock(ToolboxInterface::class);
+        $inner->expects(self::never())->method('execute');
+
+        $repo = $this->createMock(ToolDefinitionRepository::class);
+        $toolbox = new DynamicToolbox($inner, $repo, $this->createUserContext(), $factory);
+
+        $toolResult = $toolbox->execute($toolCall);
+
+        self::assertSame('Recherche abgeschlossen', $toolResult->getResult());
+        self::assertCount(1, $agent->getSentMessages());
+        self::assertStringContainsString('Analysiere example.com', (string) $agent->getSentMessages()[0]->getMessages()[0]->asText());
+    }
+
+    public function testExecuteSubAgentToolWithoutFactoryFallsBackToInnerToolbox(): void
+    {
+        $toolCall = new ToolCall('call-2', 'sub_agent_data_analyst', ['task' => 'Analysiere Daten']);
+        $expectedResult = new ToolResult($toolCall, 'OK');
+
+        $inner = $this->createMock(ToolboxInterface::class);
+        $inner->expects(self::once())
+            ->method('execute')
+            ->with(self::identicalTo($toolCall))
+            ->willReturn($expectedResult);
+
+        $repo = $this->createMock(ToolDefinitionRepository::class);
+        $toolbox = new DynamicToolbox($inner, $repo, $this->createUserContext());
+
+        self::assertSame($expectedResult, $toolbox->execute($toolCall));
+    }
+
+    public function testExecuteSubAgentToolReturnsErrorResultOnFailure(): void
+    {
+        $toolCall = new ToolCall('call-3', 'sub_agent_data_analyst', ['task' => 'Failing task']);
+
+        $agent = new class () implements AgentInterface {
+            public function call(string|MessageBag|UserMessage $input, array $options = []): ResultInterface
+            {
+                throw new \RuntimeException('LLM offline');
+            }
+
+            public function getName(): string
+            {
+                return 'failing_agent';
+            }
+        };
+
+        $factory = $this->createMock(SubAgentFactoryInterface::class);
+        $factory->method('createByName')->willReturn($agent);
+
+        $inner = $this->createMock(ToolboxInterface::class);
+        $repo = $this->createMock(ToolDefinitionRepository::class);
+        $toolbox = new DynamicToolbox($inner, $repo, $this->createUserContext(), $factory);
+
+        $toolResult = $toolbox->execute($toolCall);
+
+        self::assertStringContainsString('Sub-Agent Fehler', (string) $toolResult->getResult());
     }
 
     private function createUserContext(): UserContext
