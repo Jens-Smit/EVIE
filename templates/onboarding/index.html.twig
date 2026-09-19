@@ -89,6 +89,10 @@
                         <i class="ph ph-arrow-right"></i>
                         Weiter (<span x-text="multiSelected.length + freetextItems().length"></span> ausgewaehlt)
                     </button>
+                    <button x-show="!currentRequired" @click="submitMultiselectSkip()"
+                            class="btn btn-ghost">
+                        Ohne Auswahl weiter
+                    </button>
                 </div>
             </div>
 
@@ -497,6 +501,10 @@
                 return;
             }
             await this.submitResponse(items);
+        },
+
+        async submitMultiselectSkip() {
+            await this.submitResponse([]);
         },
 
         async submitResponse(response) {
