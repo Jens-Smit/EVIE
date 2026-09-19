@@ -72,7 +72,9 @@ final class ExecutionCoordinatorTest extends TestCase
         $messages = $bag->getMessages();
         self::assertCount(2, $messages);
         self::assertSame(Role::System, $messages[0]->getRole());
-        self::assertStringContainsString('Bisheriger Verlauf', $messages[0]->asText());
+        $systemContent = $messages[0]->getContent();
+        self::assertIsString($systemContent);
+        self::assertStringContainsString('Bisheriger Verlauf', $systemContent);
     }
 
     public function testDialogFallsBackOnLlmFailure(): void

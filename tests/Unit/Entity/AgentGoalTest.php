@@ -187,8 +187,9 @@ final class AgentGoalTest extends TestCase
 
     public function testCalculateNextRunAtWithoutCron(): void
     {
+        // Fix A: ohne Cron ist das Goal sofort faellig statt nie faellig.
         $goal = new AgentGoal();
-        self::assertNull($goal->calculateNextRunAt());
+        self::assertNotNull($goal->calculateNextRunAt());
     }
 
     public function testCalculateNextRunAtWithInvalidCron(): void

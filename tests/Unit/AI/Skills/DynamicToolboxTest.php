@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\AI\Skills;
 
+use App\AI\Agent\SubAgentFactoryInterface;
 use App\AI\Skills\DynamicToolbox;
 use App\Entity\ToolDefinition;
 use App\Repository\ToolDefinitionRepository;
@@ -15,6 +16,9 @@ use PHPUnit\Framework\TestCase;
 use Symfony\AI\Agent\Toolbox\ToolResult;
 use Symfony\AI\Platform\Result\ToolCall;
 use Symfony\AI\Platform\Tool\ExecutionReference;
+use Symfony\AI\Agent\AgentInterface;
+use Symfony\AI\Platform\Message\MessageBag;
+use Symfony\AI\Platform\Result\ResultInterface;
 use Symfony\AI\Platform\Tool\Tool;
 use Symfony\AI\Agent\Toolbox\ToolboxInterface;
 
@@ -170,18 +174,18 @@ final class DynamicToolboxTest extends TestCase
         // ausgefuehrt statt stillschweigend im GenericExecutor zu verpuffen.
         $toolCall = new ToolCall('call-1', 'sub_agent_website_researcher', ['task' => 'Analysiere example.com']);
 
-        $result = $this->createMock(Symfony\AI\Platform\Result\ResultInterface::class);
+        $result = $this->createMock(ResultInterface::class);
         $result->method('getContent')->willReturn('Recherche abgeschlossen');
 
-        $agent = $this->createMock(Symfony\AI\Agent\AgentInterface::class);
+        $agent = $this->createMock(AgentInterface::class);
         $agent->expects(self::once())
             ->method('call')
-            ->with(self::callback(static function (Symfony\AI\Platform\Message\MessageBag $bag): bool {
+            ->with(self::callback(static function (MessageBag $bag): bool {
                 return str_contains((string) $bag->getMessages()[0]->asText(), 'Analysiere example.com');
             }))
             ->willReturn($result);
 
-        $factory = $this->createMock(App\AI\Agent\SubAgentFactoryInterface::class);
+        $factory = $this->createMock(SubAgentFactoryInterface::class);
         $factory->method('createByName')
             ->with('website_researcher')
             ->willReturn($agent);
@@ -218,10 +222,10 @@ final class DynamicToolboxTest extends TestCase
     {
         $toolCall = new ToolCall('call-3', 'sub_agent_data_analyst', ['task' => 'Failing task']);
 
-        $agent = $this->createMock(Symfony\AI\Agent\AgentInterface::class);
+        $agent = $this->createMock(AgentInterface::class);
         $agent->method('call')->willThrowException(new \RuntimeException('LLM offline'));
 
-        $factory = $this->createMock(App\AI\Agent\SubAgentFactoryInterface::class);
+        $factory = $this->createMock(SubAgentFactoryInterface::class);
         $factory->method('createByName')->willReturn($agent);
 
         $inner = $this->createMock(ToolboxInterface::class);
