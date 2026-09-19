@@ -32,7 +32,12 @@ Phase D  Capability-Aufbau
         |
 Phase E  Credentials
    tool_secret_{toolId}_{key}: Scope tool:{toolDefinitionId}
-   email_combined: Scope email:{area}
+   email_main (optional, zuerst): Haupt-Adresse, Scope email:main,
+   Standard-Key-Namen (MAILER_DSN/IMAP_DSN/MAILER_FROM)
+   email_main_areas: Bereiche, die die Haupt-Adresse nutzen
+   email_extra_areas: Bereiche mit eigener Adresse
+   email_account_{area}: eigene Masken nur fuer Extra-Bereiche,
+   Key-Suffix _AREA (z.B. MAILER_DSN_SALES), Scope email:{area}
    Fallback: IntegrationRequirementMapper ohne Tool-Anlage
         |
 Phase F  Abschluss
@@ -98,9 +103,17 @@ Phase F  Abschluss
 - Tool-getrieben: pro `ToolDefinition` mit `requiredSecrets` erzeugt der
   StepProvider `tool_secret_*`-Schritte; `applyStepSideEffects()` speichert die
   Secrets über den `SecretService` mit Scope `tool:{toolDefinitionId}`.
-- E-Mail-Fähigkeiten nutzen die bestehende `email_combined`-Maske
-  (Scope `email:{area}`).
-- Ohne Tool-Anlage greift der `IntegrationRequirementMapper` als Fallback.
+- E-Mail ist komplett optional und folgt einer festen Reihenfolge: zuerst die
+  Haupt-Adresse (`email_main`, überspringbar, Standard-Key-Namen, Scope
+  `email:main`), dann welche Bereiche sie nutzen sollen
+  (`email_main_areas`), dann für welche Bereiche eigene Adressen gewünscht
+  sind (`email_extra_areas`) – eigene Masken erscheinen nur für die
+  gewählten Extra-Bereiche (Key-Suffix `_AREA`, Scope `email:{area}`, jede
+  einzeln überspringbar). Übersprungene Bereiche werden als
+  `email_skipped_areas` markiert und blockieren den Flow nicht.
+- Ohne Tool-Anlage greift der `IntegrationRequirementMapper` als Fallback;
+  wurde die Haupt-Adresse bereits erfasst oder übersprungen, filtert der
+  Fallback den `email_combined`-Schritt heraus (keine doppelte Maske).
 
 ## Pro-Tenant API-Keys für LLM und RAG-Embeddings
 
