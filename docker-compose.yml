@@ -40,6 +40,32 @@ services:
     volumes:
       - .:/var/www/html
     command: ["php", "bin/console", "messenger:consume", "async", "async_tools", "streaming", "hitl_approvals", "--limit=100", "--memory-limit=128M", "--time-limit=3600"]
+  scheduler:
+    # Dev-Scheduler: pollt faellige AgentGoals und dispatcht sie an den
+    # Messenger (ersetzt externes Cron, Blueprint Luecke 2 / Phase 5).
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    container_name: evie_scheduler
+    restart: unless-stopped
+    volumes:
+      - .:/var/www/html
+    command: ["php", "bin/console", "app:agent:run-goals", "--loop=60"]
+    environment:
+      - APP_ENV=dev
+      - APP_DEBUG=true
+      - APP_SECRET=${APP_SECRET:-dev_secret_change_me}
+      - DATABASE_URL=postgresql://evie:evie_password@postgres:5432/evie?serverVersion=15&charset=utf8
+      - PGVECTOR_URL=postgresql://evie:evie_password@postgres:5432/evie?serverVersion=15&charset=utf8
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY:-}
+      - MESSENGER_TRANSPORT_DSN=doctrine://default
+      - MESSENGER_TRANSPORT_DSN_TOOLS=doctrine://default
+      - MESSENGER_TRANSPORT_DSN_STREAMING=doctrine://default
+      - MESSENGER_TRANSPORT_DSN_HITL=doctrine://default
+      - MESSENGER_TRANSPORT_DSN_FAILED=doctrine://default?queue_name=failed
+    depends_on:
+      - postgres
+    networks: [mcp_isolated]
     environment:
       - APP_ENV=dev
       - APP_DEBUG=true

@@ -126,6 +126,17 @@ class AgentGoalRepository extends ServiceEntityRepository
      */
     public function updateNextRunAt(AgentGoal $goal): void
     {
+        // Ohne Cron-Expression wird nextRunAt auf null gesetzt, damit
+        // Einmal-Ausfuehrungen (z.B. SetupTask-Goals) nach dem Dispatch
+        // nicht erneut als faellig erkannt werden.
+        if ($goal->getCronExpression() === null) {
+            $goal->setNextRunAt(null);
+            $goal->setUpdatedAt(new DateTimeImmutable());
+            $this->getEntityManager()->flush();
+
+            return;
+        }
+
         $nextRunAt = $goal->calculateNextRunAt();
         if (null !== $nextRunAt) {
             $goal->setNextRunAt($nextRunAt);

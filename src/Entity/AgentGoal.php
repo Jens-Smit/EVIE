@@ -317,7 +317,10 @@ class AgentGoal
     public function calculateNextRunAt(): ?DateTimeImmutable
     {
         if (null === $this->cronExpression) {
-            return null;
+            // Ohne Cron-Expression ist das Goal sofort nach Aktivierung und
+            // Freigabe faellig (Einmal-Ausfuehrung), damit SetupTask-Goals
+            // nicht dauerhaft ungefaellig in der Queue warten.
+            return new DateTimeImmutable();
         }
 
         try {

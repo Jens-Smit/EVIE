@@ -58,7 +58,7 @@ final class ExecutionCoordinator implements ExecutionCoordinatorInterface
         // Orchestrator-Agent antwortet dialogorientiert (sein Prompt
         // erzeugt type 'dialog'); keine Tool-Generierung.
         try {
-            $messages = new MessageBag(Message::ofUser($context->getMessage()));
+            $messages = $this->buildMessageBag($context);
             $result = $this->llmRetryExecutor->callAgentWithRetry($this->orchestratorAgent, $messages);
             $content = $result->getContent();
 
@@ -136,7 +136,7 @@ final class ExecutionCoordinator implements ExecutionCoordinatorInterface
         // Textantwort.
         try {
             $prompt = $this->buildExecutionPrompt($context, $plan);
-            $messages = new MessageBag(Message::ofUser($prompt));
+            $messages = $this->buildMessageBag($context, $prompt);
             $result = $this->llmRetryExecutor->callAgentWithRetry($this->orchestratorAgent, $messages);
             $content = $result->getContent();
 
@@ -153,6 +153,23 @@ final class ExecutionCoordinator implements ExecutionCoordinatorInterface
                 'Bei der Ausfuehrung ist ein Fehler aufgetreten: ' . $e->getMessage()
             );
         }
+    }
+
+    /**
+     * Baut den MessageBag mit optionalem persistierten System-Kontext
+     * (Luecke 5: Konversationsverlauf). Ohne Kontext verhaelt sich der
+     * Agent-Call identisch zum bisherigen Verhalten.
+     */
+    private function buildMessageBag(PipelineContext $context, ?string $userPrompt = null): MessageBag
+    {
+        $messages = [];
+        $systemContext = $context->getSystemContext();
+        if ($systemContext !== null && $systemContext !== '') {
+            $messages[] = Message::forSystem($systemContext);
+        }
+        $messages[] = Message::ofUser($userPrompt ?? $context->getMessage());
+
+        return new MessageBag(...$messages);
     }
 
     private function buildExecutionPrompt(PipelineContext $context, Plan $plan): string

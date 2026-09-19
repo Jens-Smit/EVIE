@@ -22,20 +22,32 @@ final class PipelineContext
 {
     private string $message;
     private string $userIdentifier;
+    private ?string $systemContext;
     private ?Goal $goal;
     private ?Intent $intent;
 
-    private function __construct(string $message, string $userIdentifier)
+    private function __construct(string $message, string $userIdentifier, ?string $systemContext = null)
     {
         $this->message = $message;
         $this->userIdentifier = $userIdentifier;
+        $this->systemContext = $systemContext;
         $this->goal = null;
         $this->intent = null;
     }
 
-    public static function create(string $message, string $userIdentifier): self
+    public static function create(string $message, string $userIdentifier, ?string $systemContext = null): self
     {
-        return new self($message, $userIdentifier);
+        return new self($message, $userIdentifier, $systemContext);
+    }
+
+    /**
+     * Persistenter System-Kontext (z.B. Konversationsverlauf aus der
+     * AgentHistory, Luecke 5). Wird in Phase 5 als SystemMessage in den
+     * Prompt eingebaut, ohne die Phasenlogik zu aendern.
+     */
+    public function getSystemContext(): ?string
+    {
+        return $this->systemContext;
     }
 
     public function getMessage(): string

@@ -164,6 +164,75 @@ final class DynamicToolboxTest extends TestCase
         self::assertSame('new_tool', $tools[0]->getName());
     }
 
+    public function testExecuteSubAgentToolDelegatesToSubAgent(): void
+    {
+        // Fix C: sub_agent_*-ToolCalls werden nativ ueber die SubAgentFactory
+        // ausgefuehrt statt stillschweigend im GenericExecutor zu verpuffen.
+        $toolCall = new ToolCall('call-1', 'sub_agent_website_researcher', ['task' => 'Analysiere example.com']);
+
+        $result = $this->createMock(Symfony\AI\Platform\Result\ResultInterface::class);
+        $result->method('getContent')->willReturn('Recherche abgeschlossen');
+
+        $agent = $this->createMock(Symfony\AI\Agent\AgentInterface::class);
+        $agent->expects(self::once())
+            ->method('call')
+            ->with(self::callback(static function (Symfony\AI\Platform\Message\MessageBag $bag): bool {
+                return str_contains((string) $bag->getMessages()[0]->asText(), 'Analysiere example.com');
+            }))
+            ->willReturn($result);
+
+        $factory = $this->createMock(App\AI\Agent\SubAgentFactoryInterface::class);
+        $factory->method('createByName')
+            ->with('website_researcher')
+            ->willReturn($agent);
+
+        $inner = $this->createMock(ToolboxInterface::class);
+        $inner->expects(self::never())->method('execute');
+
+        $repo = $this->createMock(ToolDefinitionRepository::class);
+        $toolbox = new DynamicToolbox($inner, $repo, $this->createUserContext(), $factory);
+
+        $toolResult = $toolbox->execute($toolCall);
+
+        self::assertSame('Recherche abgeschlossen', $toolResult->getResult());
+    }
+
+    public function testExecuteSubAgentToolWithoutFactoryFallsBackToInnerToolbox(): void
+    {
+        $toolCall = new ToolCall('call-2', 'sub_agent_data_analyst', ['task' => 'Analysiere Daten']);
+        $expectedResult = new ToolResult($toolCall, 'OK');
+
+        $inner = $this->createMock(ToolboxInterface::class);
+        $inner->expects(self::once())
+            ->method('execute')
+            ->with(self::identicalTo($toolCall))
+            ->willReturn($expectedResult);
+
+        $repo = $this->createMock(ToolDefinitionRepository::class);
+        $toolbox = new DynamicToolbox($inner, $repo, $this->createUserContext());
+
+        self::assertSame($expectedResult, $toolbox->execute($toolCall));
+    }
+
+    public function testExecuteSubAgentToolReturnsErrorResultOnFailure(): void
+    {
+        $toolCall = new ToolCall('call-3', 'sub_agent_data_analyst', ['task' => 'Failing task']);
+
+        $agent = $this->createMock(Symfony\AI\Agent\AgentInterface::class);
+        $agent->method('call')->willThrowException(new \RuntimeException('LLM offline'));
+
+        $factory = $this->createMock(App\AI\Agent\SubAgentFactoryInterface::class);
+        $factory->method('createByName')->willReturn($agent);
+
+        $inner = $this->createMock(ToolboxInterface::class);
+        $repo = $this->createMock(ToolDefinitionRepository::class);
+        $toolbox = new DynamicToolbox($inner, $repo, $this->createUserContext(), $factory);
+
+        $toolResult = $toolbox->execute($toolCall);
+
+        self::assertStringContainsString('Sub-Agent Fehler', (string) $toolResult->getResult());
+    }
+
     private function createUserContext(): UserContext
     {
         $requestStack = new RequestStack();

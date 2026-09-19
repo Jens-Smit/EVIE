@@ -120,6 +120,11 @@ services:
     # fehlerhaften Dienst gepoltert wird.
     <<: *worker-base
     command: ["php", "bin/console", "messenger:consume", "failed", "--limit=10", "--memory-limit=128M", "--time-limit=3600", "--sleep=30"]
+  scheduler:
+    # Prod-Scheduler: pollt faellige AgentGoals und dispatcht sie an den
+    # Messenger (ersetzt externes Cron, Blueprint Luecke 2 / Phase 5).
+    <<: *worker-base
+    command: ["php", "bin/console", "app:agent:run-goals", "--loop=60"]
 
   nginx:
     # Prod-Nginx mit eigener Config (kein Dev-default.conf-Mount).

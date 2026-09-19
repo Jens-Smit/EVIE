@@ -213,10 +213,17 @@ final class PipelineTest extends TestCase
         // AgentGoal muss persistiert werden (Luecke 2).
         $this->agentGoalRepository->expects(self::once())->method('save')
             ->with(self::callback(function (\App\Entity\AgentGoal $goal): bool {
+                $constraints = $goal->getCapabilityConstraints();
+
                 return $goal->getStatus() === 'paused'
                     && $goal->isRequiresApproval() === true
                     && $goal->isApproved() === false
-                    && $goal->getTitle() === 'Businessplan erstellen';
+                    && $goal->getTitle() === 'Businessplan erstellen'
+                    // Plan-Steps werden als Strategie mitpersistiert (Fix B).
+                    && is_array($constraints)
+                    && isset($constraints[0]['type'], $constraints[0]['target'])
+                    && $constraints[0]['type'] === Step::TYPE_TOOL
+                    && $constraints[0]['target'] === 'strategy_document';
             }), true);
 
         $expected = new PipelineResult(PipelineResult::TYPE_EXECUTED, 'Done');
