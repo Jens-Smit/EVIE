@@ -104,10 +104,20 @@ class OnboardingSettingsTest extends WebTestCase
     {
         $this->createUserAndLogin('completeep@beispiel.de', 'CompleteEpPass123');
 
+        // Ohne Pflichtangaben verweigert der Readiness-Checker den Abschluss (G8).
         $this->client->request('POST', '/onboarding/complete', [], [], [
             'HTTP_X-Requested-With' => 'XMLHttpRequest',
         ]);
+        $this->assertResponseStatusCodeSame(422);
+        $response = json_decode($this->client->getResponse()->getContent(), true);
+        $this->assertSame('readiness_failed', $response['status']);
+        $this->assertFalse($response['readiness']['ready']);
 
+        // Expliziter Skip (force=true) schliesst das Onboarding ab.
+        $this->client->request('POST', '/onboarding/complete', [], [], [
+            'HTTP_X-Requested-With' => 'XMLHttpRequest',
+            'CONTENT_TYPE' => 'application/json',
+        ], json_encode(['force' => true]));
         $this->assertResponseIsSuccessful();
         $response = json_decode($this->client->getResponse()->getContent(), true);
         $this->assertSame('completed', $response['status']);

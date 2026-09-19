@@ -7,13 +7,19 @@ namespace App\Tests\Unit\AI\Onboarding;
 use App\AI\Onboarding\ContextStoreManager;
 use App\AI\Onboarding\IntegrationRequirementMapper;
 use App\AI\Onboarding\OnboardingFlowManager;
+use App\AI\Onboarding\OnboardingReadinessChecker;
 use App\AI\Onboarding\OnboardingStepProvider;
+use App\AI\Onboarding\OnboardingStrategyService;
 use App\Entity\UserProfile;
+use App\Repository\AgentGoalRepository;
+use App\Repository\SubAgentDefinitionRepository;
 use App\Repository\UserProfileRepository;
 use App\Service\SecretService;
 use App\Tests\Stub\StubAgent;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\NullLogger;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
  * Unit-Tests fuer den dynamischen, verzweigenden Onboarding-Flow.
@@ -31,6 +37,8 @@ final class OnboardingFlowManagerTest extends TestCase
     private SecretService&MockObject $secretService;
     private OnboardingStepProvider $stepProvider;
     private IntegrationRequirementMapper $requirementMapper;
+    private AgentGoalRepository&MockObject $goalRepo;
+    private SubAgentDefinitionRepository&MockObject $subAgentDefinitionRepo;
     private array $context = [];
 
     protected function setUp(): void
@@ -41,19 +49,36 @@ final class OnboardingFlowManagerTest extends TestCase
         $this->secretService = $this->createMock(SecretService::class);
         $this->stepProvider = new OnboardingStepProvider();
         $this->requirementMapper = new IntegrationRequirementMapper();
+        $this->goalRepo = $this->createMock(AgentGoalRepository::class);
+        $this->subAgentDefinitionRepo = $this->createMock(SubAgentDefinitionRepository::class);
         $this->context = [];
 
         $this->contextStore->method('saveContext')->willReturnCallback(function (string $id, array $ctx): void {
             $this->context = $ctx;
         });
 
-        $this->manager = new OnboardingFlowManager(
+        $this->manager = $this->buildManager();
+    }
+
+    private function buildManager(): OnboardingFlowManager
+    {
+        $strategyService = new OnboardingStrategyService(
+            $this->onboardingAgent,
+            $this->goalRepo,
+            $this->subAgentDefinitionRepo,
+            new NullLogger()
+        );
+
+        return new OnboardingFlowManager(
             $this->contextStore,
             $this->userProfileRepo,
             $this->onboardingAgent,
             $this->stepProvider,
             $this->requirementMapper,
-            $this->secretService
+            $this->secretService,
+            $strategyService,
+            new OnboardingReadinessChecker(),
+            $this->createMock(EventDispatcherInterface::class)
         );
     }
 
@@ -66,14 +91,7 @@ final class OnboardingFlowManagerTest extends TestCase
             $this->context = $ctx;
         });
 
-        $this->manager = new OnboardingFlowManager(
-            $this->contextStore,
-            $this->userProfileRepo,
-            $this->onboardingAgent,
-            $this->stepProvider,
-            $this->requirementMapper,
-            $this->secretService
-        );
+        $this->manager = $this->buildManager();
     }
 
     public function testStartOnboardingReturnsFirstPhaseStep(): void
@@ -82,8 +100,8 @@ final class OnboardingFlowManagerTest extends TestCase
         self::assertSame('in_progress', $result['status']);
         self::assertSame('llm_provider', $result['step_id']);
         self::assertSame('KI-Settings', $result['phase']);
-        // Basis-Schritte (4) + Abschluss (1) = 5 ohne Verzweigung/Schnittstellen.
-        self::assertSame(5, $result['total_steps']);
+        // Basis-Schritte: 3 KI-Settings + mission_statement + goal + Abschluss = 6.
+        self::assertSame(6, $result['total_steps']);
         self::assertArrayHasKey('mistral', $result['options']);
         self::assertArrayHasKey('gemini', $result['options']);
     }
@@ -148,10 +166,10 @@ final class OnboardingFlowManagerTest extends TestCase
         $this->manager->processResponse('user-123', 'mistral-small-latest');
         $this->manager->processResponse('user-123', 'test-key');
 
-        // Nach dem API-Key-Schritt folgt die goal-Frage (Ziel-Verzweigung).
+        // Nach dem API-Key-Schritt folgt die offene Aufgaben-Frage (Phase B).
         $result = $this->manager->getNextStep('user-123');
-        self::assertSame('goal', $result['step_id']);
-        self::assertArrayHasKey('manage_company', $result['options']);
+        self::assertSame('mission_statement', $result['step_id']);
+        self::assertSame('freeform_dialog', $result['type']);
     }
 
     public function testManageCompanyBranchAsksIndustryThenAreas(): void
@@ -165,6 +183,7 @@ final class OnboardingFlowManagerTest extends TestCase
         $this->manager->processResponse('user-123', 'mistral');
         $this->manager->processResponse('user-123', 'mistral-small-latest');
         $this->manager->processResponse('user-123', 'key');
+        $this->manager->processResponse('user-123', 'Firmenkommunikation und Vertrieb managen');
         $this->manager->processResponse('user-123', 'manage_company');
 
         $result = $this->manager->getNextStep('user-123');
@@ -188,6 +207,7 @@ final class OnboardingFlowManagerTest extends TestCase
         $this->manager->processResponse('user-123', 'mistral');
         $this->manager->processResponse('user-123', 'mistral-small-latest');
         $this->manager->processResponse('user-123', 'key');
+        $this->manager->processResponse('user-123', 'Firmenkommunikation und Vertrieb managen');
         $this->manager->processResponse('user-123', 'manage_company');
         $this->manager->processResponse('user-123', 'software_it');
         $this->manager->processResponse('user-123', ['sales', 'support']);
@@ -210,6 +230,7 @@ final class OnboardingFlowManagerTest extends TestCase
         $this->manager->processResponse('user-123', 'mistral');
         $this->manager->processResponse('user-123', 'mistral-small-latest');
         $this->manager->processResponse('user-123', 'key');
+        $this->manager->processResponse('user-123', 'Firmenkommunikation und Vertrieb managen');
         $this->manager->processResponse('user-123', 'manage_company');
         $this->manager->processResponse('user-123', 'software_it');
         $this->manager->processResponse('user-123', ['sales']);
@@ -243,6 +264,7 @@ final class OnboardingFlowManagerTest extends TestCase
         $this->manager->processResponse('user-123', 'mistral');
         $this->manager->processResponse('user-123', 'mistral-small-latest');
         $this->manager->processResponse('user-123', 'key');
+        $this->manager->processResponse('user-123', 'Unterstuetzung im Arbeitsalltag');
         $this->manager->processResponse('user-123', 'assist_work');
 
         $result = $this->manager->getNextStep('user-123');
@@ -261,11 +283,24 @@ final class OnboardingFlowManagerTest extends TestCase
         $this->manager->processResponse('user-123', 'mistral');
         $this->manager->processResponse('user-123', 'mistral-small-latest');
         $this->manager->processResponse('user-123', 'key');
+        $this->manager->processResponse('user-123', 'Unterstuetzung im Arbeitsalltag');
         $this->manager->processResponse('user-123', 'assist_work');
         $this->manager->processResponse('user-123', ['research']);
 
-        // Nach use_cases mit research erscheint der Tavily-Integrationsschritt.
-        $status = $this->manager->getOnboardingStatus('user-123');
+        // Nach der Profilverzweigung folgt Phase C: Strategie-Review.
+        $result = $this->manager->getNextStep('user-123');
+        self::assertSame('strategy_review', $result['step_id']);
+        self::assertNotNull($result['strategy_draft']);
+
+        // Nach Bestaetigung folgen Sub-Agent-/Tool-Review, dann (Fallback)
+        // der Tavily-Integrationsschritt aus dem RequirementMapper.
+        $this->manager->processResponse('user-123', 'confirm');
+        $result = $this->manager->getNextStep('user-123');
+        self::assertSame('sub_agent_review', $result['step_id']);
+        $this->manager->processResponse('user-123', 'confirm');
+        $result = $this->manager->getNextStep('user-123');
+        self::assertSame('tool_review', $result['step_id']);
+        $this->manager->processResponse('user-123', 'confirm');
         $result = $this->manager->getNextStep('user-123');
         self::assertSame('integration_tavily_api_key', $result['step_id']);
     }
@@ -281,6 +316,7 @@ final class OnboardingFlowManagerTest extends TestCase
         $this->manager->processResponse('user-123', 'mistral');
         $this->manager->processResponse('user-123', 'mistral-small-latest');
         $this->manager->processResponse('user-123', 'key');
+        $this->manager->processResponse('user-123', 'Etwas ganz anderes');
         $this->manager->processResponse('user-123', 'other');
 
         $result = $this->manager->getNextStep('user-123');
@@ -297,12 +333,16 @@ final class OnboardingFlowManagerTest extends TestCase
         $this->userProfileRepo->method('findOneBy')->willReturn($profile);
         $this->userProfileRepo->expects(self::atLeastOnce())->method('save');
 
-        // KI-Settings + 'other' goal + freetext -> summary -> completed.
+        // KI-Settings + mission + goal + freetext -> Strategie -> Reviews -> summary -> completed.
         $this->manager->processResponse('user-123', 'mistral');
         $this->manager->processResponse('user-123', 'mistral-small-latest');
         $this->manager->processResponse('user-123', 'key');
+        $this->manager->processResponse('user-123', 'Etwas ganz anderes');
         $this->manager->processResponse('user-123', 'other');
         $this->manager->processResponse('user-123', 'just exploring');
+        $this->manager->processResponse('user-123', 'confirm');
+        $this->manager->processResponse('user-123', 'confirm');
+        $this->manager->processResponse('user-123', 'confirm');
 
         $result = $this->manager->getNextStep('user-123');
         self::assertSame('summary', $result['step_id']);
@@ -310,6 +350,34 @@ final class OnboardingFlowManagerTest extends TestCase
         self::assertSame('completed', $completion['status']);
         $onb = $profile->getOnboardingData();
         self::assertTrue($onb['completed']);
+    }
+
+    public function testChatIngestsExtractedContextWithoutConsumingSteps(): void
+    {
+        $this->setUpStatefulContext();
+        $this->manager->startOnboarding('user-123');
+
+        $ingested = $this->manager->ingestExtracted('user-123', [
+            'goal' => 'assist_work',
+            'use_cases' => ['research', 'data_analysis'],
+            'mission_statement' => '  Recherche und Auswertungen automatisieren  ',
+        ]);
+
+        self::assertSame('assist_work', $ingested['goal']);
+        self::assertSame(['research', 'data_analysis'], $ingested['use_cases']);
+        self::assertSame('Recherche und Auswertungen automatisieren', $ingested['mission_statement']);
+
+        $result = $this->manager->getNextStep('user-123');
+        self::assertNotSame('mission_statement', $result['step_id']);
+        self::assertSame('Recherche und Auswertungen automatisieren', $result['context']['mission_statement']);
+    }
+
+    public function testReadinessCheckerBlocksCompletionWithoutLlmKey(): void
+    {
+        $readiness = $this->manager->getReadiness('user-123');
+        self::assertFalse($readiness['ready']);
+        self::assertContains('llm_provider', $readiness['missing_blocking']);
+        self::assertContains('strategy_confirmed', $readiness['missing_blocking']);
     }
 
     public function testGetOnboardingStatusNotStartedWithoutProfile(): void
