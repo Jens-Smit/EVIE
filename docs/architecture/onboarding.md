@@ -102,6 +102,19 @@ Phase F  Abschluss
   (Scope `email:{area}`).
 - Ohne Tool-Anlage greift der `IntegrationRequirementMapper` als Fallback.
 
+## Pro-Tenant API-Keys für LLM und RAG-Embeddings
+
+- Der im Onboarding hinterlegte Mistral-Key wird pro Tenant verschlüsselt im
+  `SecretService` gespeichert.
+- Chat/LLM-Calls lösen ihn über die `TenantAwarePlatform` auf (bereits
+  vorhanden); Onboarding-eigene LLM-Aufrufe (Chat-Extraktion, Strategie-
+  Entwurf, Abschluss-Benachrichtigung) setzen dafür den Tenant-Identifier im
+  `TenantPlatformContext` (analog `OrchestratorDialogService::ask()`).
+- RAG-Embeddings nutzen denselben Key über den `TenantAwareEmbeddingService`
+  Decorator: mit Tenant-Secret wird eine eigene `MistralEmbeddingService`-
+  Instanz mit dem DB-Key gebaut, ohne Tenant-Secret wird transparent an die
+  env-basierte Default-Instanz delegiert (CI, System-Requests).
+
 ## Abschluss & HITL-Übergang (Phase F)
 
 - `OnboardingReadinessChecker` prüft blockierende Pflichtangaben (LLM-Provider,

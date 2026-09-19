@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\AI\Onboarding;
 
+use App\AI\Platform\TenantPlatformContext;
 use App\Entity\AgentGoal;
 use App\Entity\SubAgentDefinition;
 use App\Repository\AgentGoalRepository;
@@ -77,12 +78,24 @@ final class OnboardingStrategyService
         'it' => ['api_integration'],
     ];
 
+    private AgentInterface $onboardingAgent;
+    private AgentGoalRepository $goalRepo;
+    private SubAgentDefinitionRepository $subAgentDefinitionRepo;
+    private LoggerInterface $logger;
+    private ?TenantPlatformContext $tenantPlatformContext = null;
+
     public function __construct(
-        private AgentInterface $onboardingAgent,
-        private AgentGoalRepository $goalRepo,
-        private SubAgentDefinitionRepository $subAgentDefinitionRepo,
-        private LoggerInterface $logger,
+        AgentInterface $onboardingAgent,
+        AgentGoalRepository $goalRepo,
+        SubAgentDefinitionRepository $subAgentDefinitionRepo,
+        LoggerInterface $logger,
+        ?TenantPlatformContext $tenantPlatformContext = null
     ) {
+        $this->onboardingAgent = $onboardingAgent;
+        $this->goalRepo = $goalRepo;
+        $this->subAgentDefinitionRepo = $subAgentDefinitionRepo;
+        $this->logger = $logger;
+        $this->tenantPlatformContext = $tenantPlatformContext;
     }
 
     /**
@@ -263,6 +276,31 @@ final class OnboardingStrategyService
      *
      * @return array<string, mixed>
      */
+    /**
+     * Fuehrt den LLM-Abruf im Tenant-Kontext aus, damit die
+     * TenantAwarePlatform den pro-Tenant-API-Key aus dem SecretService
+     * nutzt. Ohne Kontext-Service (Unit-Tests) unveraendert.
+     *
+     * @template T
+     *
+     * @param callable():T $callback
+     *
+     * @return T
+     */
+    private function withTenantContext(string $userIdentifier, callable $callback): mixed
+    {
+        if ($this->tenantPlatformContext === null) {
+            return $callback();
+        }
+
+        $this->tenantPlatformContext->setUserIdentifier($userIdentifier);
+        try {
+            return $callback();
+        } finally {
+            $this->tenantPlatformContext->clear();
+        }
+    }
+
     private function requestLlmDraft(string $userIdentifier, string $mission, array $onboardingData, array $heuristic): array
     {
         $payload = [
@@ -289,7 +327,7 @@ final class OnboardingStrategyService
             Message::ofUser(json_encode($payload, \JSON_THROW_ON_ERROR))
         );
 
-        $result = $this->onboardingAgent->call($messages);
+        $result = $this->withTenantContext($userIdentifier, fn () => $this->onboardingAgent->call($messages));
         $content = $result->getContent();
 
         $decoded = json_decode($content, true);

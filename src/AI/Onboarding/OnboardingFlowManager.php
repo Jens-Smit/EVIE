@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\AI\Onboarding;
 
+use App\AI\Platform\TenantPlatformContext;
 use App\AI\Skills\ToolDefinitionGenerator;
 use App\Entity\UserProfile;
 use App\Event\PendingToolApprovalEvent;
@@ -54,6 +55,7 @@ class OnboardingFlowManager
     private OnboardingReadinessChecker $readinessChecker;
     private EventDispatcherInterface $eventDispatcher;
     private ?ToolDefinitionGenerator $toolDefinitionGenerator = null;
+    private ?TenantPlatformContext $tenantPlatformContext = null;
 
     /**
      * @param ContextStoreManager           $contextStore       Verwaltet den Benutzerkontext
@@ -64,6 +66,7 @@ class OnboardingFlowManager
      * @param SecretService                 $secretService      Verschluesselte Ablage von API-Keys/E-Mail-Zugangsdaten
      * @param OnboardingStrategyService     $strategyService    Strategie-Entwurf/Persistenz + Sub-Agent-Anlage
      * @param OnboardingReadinessChecker    $readinessChecker  Konsistenzpruefung vor Abschluss
+     * @param TenantPlatformContext|null    $tenantPlatformContext Tenant-Kontext fuer pro-Tenant LLM-Keys (optional, Tests)
      */
     public function __construct(
         ContextStoreManager $contextStore,
@@ -76,7 +79,8 @@ class OnboardingFlowManager
         OnboardingReadinessChecker $readinessChecker,
         EventDispatcherInterface $eventDispatcher,
         ?ToolDefinitionGenerator $toolDefinitionGenerator = null,
-        ?ApiKeyValidator $apiKeyValidator = null
+        ?ApiKeyValidator $apiKeyValidator = null,
+        ?TenantPlatformContext $tenantPlatformContext = null
     ) {
         $this->contextStore = $contextStore;
         $this->userProfileRepo = $userProfileRepo;
@@ -89,6 +93,7 @@ class OnboardingFlowManager
         $this->eventDispatcher = $eventDispatcher;
         $this->toolDefinitionGenerator = $toolDefinitionGenerator;
         $this->apiKeyValidator = $apiKeyValidator;
+        $this->tenantPlatformContext = $tenantPlatformContext;
     }
 
     /**
@@ -217,7 +222,7 @@ class OnboardingFlowManager
                 Message::forSystem($systemPrompt),
                 Message::ofUser($extractPayload)
             );
-            $result = $this->onboardingAgent->call($messages);
+            $result = $this->withTenantContext($userIdentifier, fn () => $this->onboardingAgent->call($messages));
             $decoded = json_decode($result->getContent(), true);
             if (is_array($decoded)) {
                 $responseText = (string) ($decoded['message'] ?? '');
@@ -1213,6 +1218,33 @@ class OnboardingFlowManager
     }
 
     /**
+     * Fuehrt einen Onboarding-Agent-Aufruf im Tenant-Kontext aus, damit
+     * TenantAwarePlatform/TenantAwareEmbeddingService den pro-Tenant-
+     * Mistral-Key aus dem SecretService nutzen (analog
+     * OrchestratorDialogService::ask()). Ohne Kontext-Service (Unit-Tests)
+     * wird der Aufruf unverändert ausgefuehrt.
+     *
+     * @template T
+     *
+     * @param callable():T $callback
+     *
+     * @return T
+     */
+    private function withTenantContext(string $userIdentifier, callable $callback): mixed
+    {
+        if ($this->tenantPlatformContext === null) {
+            return $callback();
+        }
+
+        $this->tenantPlatformContext->setUserIdentifier($userIdentifier);
+        try {
+            return $callback();
+        } finally {
+            $this->tenantPlatformContext->clear();
+        }
+    }
+
+    /**
      * Informiert den onboarding-Agent ueber den Abschluss (optional).
      */
     private function notifyAgentOfCompletion(string $userIdentifier, UserProfile $userProfile): void
@@ -1229,7 +1261,7 @@ class OnboardingFlowManager
                 Message::ofUser(json_encode($completionNotification, \JSON_THROW_ON_ERROR))
             );
 
-            $this->onboardingAgent->call($messages);
+            $this->withTenantContext($userIdentifier, fn () => $this->onboardingAgent->call($messages));
         } catch (\Exception $e) {
             // Abschluss-Benachrichtigung ist optional; Fehler nicht fatal.
         }

@@ -37,11 +37,23 @@ services:
             $logger: '@logger'
 
     # RAG Services
-    App\AI\Rag\EmbeddingServiceInterface: '@App\AI\Rag\MistralEmbeddingService'
+    App\AI\Rag\EmbeddingServiceInterface: '@App\AI\Rag\TenantAwareEmbeddingService'
 
     App\AI\Rag\MistralEmbeddingService:
         arguments:
             $apiKey: '%env(MISTRAL_API_KEY)%'
+
+    # Pro-Tenant API-Keys auch fuer RAG-Embeddings: der im Onboarding
+    # hinterlegte Mistral-Key wird pro Tenant aus dem SecretService
+    # aufgeloest (analog TenantAwarePlatform); ohne Tenant-Secret wird an
+    # die env-basierte Default-Instanz delegiert.
+    App\AI\Rag\TenantAwareEmbeddingService:
+        arguments:
+            $defaultService: '@App\AI\Rag\MistralEmbeddingService'
+            $secretService: '@App\Service\SecretService'
+            $tenantContext: '@App\AI\Platform\TenantPlatformContext'
+            $httpClient: '@http_client'
+            $logger: '@logger'
 
     # Security Services
     App\Security\UserProvider: ~
@@ -102,6 +114,7 @@ services:
             $eventDispatcher: '@event_dispatcher'
             $toolDefinitionGenerator: '@App\AI\Skills\ToolDefinitionGenerator'
             $apiKeyValidator: '@App\Service\ApiKeyValidator'
+            $tenantPlatformContext: '@App\AI\Platform\TenantPlatformContext'
     App\AI\Onboarding\OnboardingStepProvider: ~
     App\AI\Onboarding\IntegrationRequirementMapper: ~
     # Onboarding-Strategie (Phase C-F): entwirft die initiale Strategie aus
@@ -111,6 +124,7 @@ services:
     App\AI\Onboarding\OnboardingStrategyService:
         arguments:
             $onboardingAgent: '@ai.agent.onboarding'
+            $tenantPlatformContext: '@App\AI\Platform\TenantPlatformContext'
     App\AI\Onboarding\OnboardingReadinessChecker: ~
     # API-Key-Validierung waehrend Onboarding: echter HTTP-Check gegen die
     # Anbieter-API (Mistral/Gemini/Tavily). Autowired via HttpClientInterface.
