@@ -106,7 +106,8 @@ class ResponsiveDesignTest extends WebTestCase
 
         $this->assertResponseIsSuccessful();
         $html = $crawler->html();
-        $this->assertStringContainsString('max-w-2xl', $html, 'Onboarding sollte max-w-2xl enthalten.');
+        $this->assertStringContainsString('max-w-6xl', $html, 'Onboarding sollte max-w-6xl enthalten.');
+        $this->assertStringContainsString('grid-cols-1 lg:grid-cols-5', $html, 'Onboarding sollte das responsive Zwei-Spalten-Layout (Wizard + Chat) enthalten.');
     }
 
     public function testAllPagesHaveViewportMetaTag(): void
