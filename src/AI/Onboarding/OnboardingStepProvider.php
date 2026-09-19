@@ -17,19 +17,27 @@ namespace App\AI\Onboarding;
  *     2. LLM-Modell waehlen (provider-abhaengig)
  *     3. LLM API-Key erfassen (als Secret, mit Live-Validierung)
  *
- *   Phase B - Ziel & Verzweigung (dynamisch):
- *     4. Hauptziel: Was soll EVIE fuer dich tun?
- *        - "Mein Unternehmen managen"  -> Branche -> Bereiche (multiselect)
- *        - "Mich bei meiner Arbeit unterstützen" -> Use-Cases (multiselect)
- *        - "Etwas anderes" -> Freitext
- *     5. (nur bei "Unternehmen managen") Branche
- *     6. (nur bei "Unternehmen managen") Bereiche (multiselect + freetext)
- *     7. Pro gewaehltem Bereich: E-Mail-Konto konfigurieren (kombiniert SMTP+IMAP,
- *        wiederholbar -> mehrere Konten pro Bereich)
- *     8. Tavily-API-Key (bei Recherche-Use-Case)
- *     9. "Weitere Bereiche/Konfiguration hinzufuegen?" -> Loop oder Abschluss
+ *   Phase B - Aufgabe & Brainstorming (frei, LLM-gefuehrt im Chat):
+ *     4. mission_statement: "Was soll EVIE fuer dich tun?" (Freitext,
+ *        Pflicht). Vorschlags-Chips (goal/use_cases/business_areas) sind
+ *        optional; die Chat-Phase kann dieselben Kontextfelder befuellen.
+ *     5. Profil-Verzweigung (optional, als Rueckfallebene):
+ *        - Branche -> Bereiche (multiselect) -> E-Mail-Konto pro Bereich
+ *        - Use-Cases (multiselect)
  *
- *   Phase C - Abschluss/Zusammenfassung.
+ *   Phase C - Strategie-Entwicklung:
+ *     6. strategy_review: LLM-Strategie-Vorschlag bestaetigen/korrigieren
+ *
+ *   Phase D - Capability-Aufbau:
+ *     7. sub_agent_review: empfohlene Sub-Agenten abwaehlen/bestaetigen
+ *     8. tool_review: erzeugte Tool-Definitionen bestaetigen
+ *
+ *   Phase E - Credentials fuer Phase D:
+ *     9. Pro ToolDefinition mit requiredSecrets: Secret-Schritt mit
+ *        Scope tool:{toolDefinitionId}; E-Mail-Konten via email_combined.
+ *
+ *   Phase F - Abschluss/Zusammenfassung (Button jederzeit verfuegbar,
+ *        Konsistenzpruefung via OnboardingReadinessChecker).
  *
  * Der Provider ist rein datengetrieben und enthaelt KEINE Konstruktor-
  * Injection (Projektvorgabe fuer Tools/Services dieser Schicht). Das
@@ -141,16 +149,43 @@ final class OnboardingStepProvider
                 'field' => 'llm_api_key',
                 'help' => 'Ohne gueltigen API-Key kann EVIE keine KI-Anfragen ausfuehren. Der Key wird live gegen die Anbieter-API validiert.',
             ],
-            [
-                'id' => 'goal',
-                'phase' => 'Ziel',
-                'question' => 'Was moechtest du mit EVIE erreichen?',
-                'type' => 'multiple_choice',
-                'field' => 'goal',
-                'options' => self::GOALS,
-                'help' => 'Deine Antwort bestimmt, welche weiteren Fragen EVIE stellt.',
-            ],
         ];
+    }
+
+    /**
+     * Basis-Schritte inkl. Phase B Einstieg: die offene Aufgaben-Frage
+     * (mission_statement) ersetzt den Choice-Zwang; goal bleibt als
+     * optionale Vorschlags-Auswahl erhaeltlich (Rueckfallebene fuer reine
+     * Chip-Nutzung ohne Chat).
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function baseStepsWithMission(): array
+    {
+        $steps = $this->baseSteps();
+
+        $steps[] = [
+            'id' => 'mission_statement',
+            'phase' => 'Aufgabe & Brainstorming',
+            'question' => 'Was soll EVIE fuer dich tun? Beschreibe frei, was du erreichen moechtest – je konkreter, desto besser kann EVIE eine Strategie ableiten. Im Chat-Panel kannst du jederzeit weiter brainstormen.',
+            'type' => 'freeform_dialog',
+            'field' => 'mission_statement',
+            'help' => 'Freitext, Pflicht. Vorschlaege: Unternehmen managen, bei der Arbeit unterstuetzen, Recherche, Automatisierung, Code-Unterstützung ...',
+            'required' => true,
+        ];
+
+        $steps[] = [
+            'id' => 'goal',
+            'phase' => 'Aufgabe & Brainstorming',
+            'question' => 'Welcher Beschreibung kommt deiner Aufgabe am naechsten? (Optional – dient als Vorschlag fuer Profil und Strategie.)',
+            'type' => 'multiple_choice',
+            'field' => 'goal',
+            'options' => self::GOALS,
+            'help' => 'Deine Antwort personalisiert Rueckfragen und die Strategie. Du kannst diese Frage auch ueberspringen und frei im Chat beschreiben.',
+            'required' => false,
+        ];
+
+        return $steps;
     }
 
     /**
@@ -181,9 +216,13 @@ final class OnboardingStepProvider
     }
 
     /**
-     * Vollstaendige, dynamische Schrittliste bestehend aus Basis-Schritten,
-     * verzweigten Bedarfsfragen (Ziel/Branche/Bereiche/E-Mail-Konten) und
-     * Abschluss. Die Verzweigung ergibt sich aus dem onboarding_data-Kontext.
+     * Vollstaendige, dynamische Schrittliste (Phasen A-F):
+     *   A: KI-Settings (baseSteps)
+     *   B: mission_statement + optionale Profil-Verzweigung (branchSteps)
+     *   C: strategy_review (Strategie bestaetigen)
+     *   D: sub_agent_review + tool_review
+     *   E: tool-getriebene Credential-Schritte + Fallback-Integrations-Mapper
+     *   F: summary
      *
      * @param array<string, mixed> $context  Vollstaendiges onboarding_data-Array
      *
@@ -191,22 +230,136 @@ final class OnboardingStepProvider
      */
     public function allSteps(array $context, IntegrationRequirementMapper $mapper): array
     {
-        $base = $this->baseSteps();
+        $base = $this->baseStepsWithMission();
         $branch = $this->branchSteps($context);
-        $useCases = $this->useCasesFromContext($context);
-        $integrations = $this->integrationSteps($useCases, $mapper);
+        $strategy = $this->strategySteps($context);
+        $capability = $this->capabilitySteps($context);
+        $credentials = $this->credentialSteps($context, $mapper);
 
         $completion = [
             [
                 'id' => 'summary',
                 'phase' => 'Abschluss',
-                'question' => 'Vielen Dank! Deine Angaben wurden gespeichert. Du kannst EVIE jetzt nutzen.',
+                'question' => 'Vielen Dank! Pruefe die Zusammenfassung und schliesse das Onboarding ab.',
                 'type' => 'summary',
                 'field' => 'summary',
             ],
         ];
 
-        return array_merge($base, $branch, $integrations, $completion);
+        return array_merge($base, $branch, $strategy, $capability, $credentials, $completion);
+    }
+
+    /**
+     * Phase C: Strategie-Review. Erscheint, sobald die Aufgabenbeschreibung
+     * (mission_statement) vorliegt und noch keine Strategie bestaetigt wurde.
+     *
+     * @param array<string, mixed> $context
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function strategySteps(array $context): array
+    {
+        $mission = trim((string) ($context['mission_statement'] ?? ''));
+        if ($mission === '' || ($context['strategy_confirmed'] ?? false) === true) {
+            return [];
+        }
+
+        $steps = [
+            [
+                'id' => 'strategy_review',
+                'phase' => 'Strategie',
+                'question' => 'Hier ist EVIEs Strategie-Vorschlag. Du kannst ihn bestaetigen (Antwort: confirm) oder per Freitext korrigieren.',
+                'type' => 'strategy_review',
+                'field' => 'strategy_confirmation',
+                'help' => 'Bestaetigen uebernimmt die Strategie als initiales Ziel (AgentGoal). Korrekturen werden in den Vorschlag gemerged.',
+                'required' => true,
+            ],
+        ];
+
+        return $steps;
+    }
+
+    /**
+     * Phase D: Sub-Agent- und Tool-Review nach bestätigter Strategie.
+     *
+     * @param array<string, mixed> $context
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function capabilitySteps(array $context): array
+    {
+        if (($context['strategy_confirmed'] ?? false) !== true) {
+            return [];
+        }
+
+        $steps = [];
+
+        if (!isset($context['sub_agents_confirmed'])) {
+            $steps[] = [
+                'id' => 'sub_agent_review',
+                'phase' => 'Sub-Agenten',
+                'question' => 'EVIE empfiehlt diese Sub-Agenten fuer deine Strategie. Bestaetige die Auswahl (confirm) oder nenne abzuwaehlende Rollen als Freitext.',
+                'type' => 'sub_agent_review',
+                'field' => 'sub_agents_confirmation',
+                'help' => 'Es werden nur Rollen aus dem existierenden Katalog angelegt; nichts wird erfunden.',
+                'required' => true,
+            ];
+        }
+
+        if (!isset($context['tools_confirmed'])) {
+            $steps[] = [
+                'id' => 'tool_review',
+                'phase' => 'Tools',
+                'question' => 'Fuer Capability-Lücken erzeugt EVIE Tool-Definitionen (Status pending, Freigabe nach Abschluss). Bestaetige (confirm) oder passe per Freitext an.',
+                'type' => 'tool_review',
+                'field' => 'tools_confirmation',
+                'help' => 'Neue Tools starten immer als pending mit requiresHitl und muessen im Frontend freigegeben werden.',
+                'required' => true,
+            ];
+        }
+
+        return $steps;
+    }
+
+    /**
+     * Phase E: Credential-Schritte. Tool-getrieben: pro ToolDefinition mit
+     * requiredSecrets ein secret-Schritt (Scope tool:{id}); E-Mail-Faehigkeiten
+     * erzeugen email_combined-Schritte. Der IntegrationRequirementMapper bleibt
+     * als Fallback, wenn keine Tools angelegt wurden (reine Use-Case-Kunden).
+     *
+     * @param array<string, mixed> $context
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function credentialSteps(array $context, IntegrationRequirementMapper $mapper): array
+    {
+        if (!empty($context['tool_secrets'])) {
+            $steps = [];
+            foreach ($context['tool_secrets'] as $entry) {
+                $toolId = (int) ($entry['tool_id'] ?? 0);
+                $keyName = (string) ($entry['key'] ?? '');
+                $label = (string) ($entry['label'] ?? $keyName);
+                if ($toolId <= 0 || $keyName === '' || ($entry['done'] ?? false)) {
+                    continue;
+                }
+                $steps[] = [
+                    'id' => 'tool_secret_' . $toolId . '_' . $keyName,
+                    'phase' => 'Schnittstellen',
+                    'question' => sprintf('API-Key/Zugangsdaten fuer Tool "%s" hinterlegen.', $label),
+                    'type' => 'secret',
+                    'field' => $keyName,
+                    'tool_id' => $toolId,
+                    'help' => 'Wird verschluesselt mit Scope tool:{toolDefinitionId} gespeichert, damit nur dieses Tool ihn aufloesen kann.',
+                    'required' => false,
+                ];
+            }
+
+            return $steps;
+        }
+
+        $useCases = $this->useCasesFromContext($context);
+
+        return $this->integrationSteps($useCases, $mapper);
     }
 
     /**
@@ -222,7 +375,8 @@ final class OnboardingStepProvider
         $goal = $context['goal'] ?? null;
         $goal = is_array($goal) ? ($goal[0] ?? null) : $goal;
 
-        // Freitext bei "etwas anderes"
+        // Freitext bei "etwas anderes" (optionale Rueckfallebene; die
+        // Chat-Phase kann goal_detail ebenfalls liefern).
         if ($goal === 'other' && !isset($context['goal_detail'])) {
             $steps[] = [
                 'id' => 'goal_detail',
@@ -230,7 +384,8 @@ final class OnboardingStepProvider
                 'question' => 'Bitte beschreibe kurz, was du mit EVIE erreichen moechtest.',
                 'type' => 'text',
                 'field' => 'goal_detail',
-                'help' => 'Freitext-Antwort.',
+                'help' => 'Freitext-Antwort. Optional, wenn du deine Aufgabe bereits frei beschrieben hast.',
+                'required' => false,
             ];
         }
 

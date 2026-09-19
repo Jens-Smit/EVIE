@@ -97,9 +97,21 @@ services:
             $stepProvider: '@App\AI\Onboarding\OnboardingStepProvider'
             $requirementMapper: '@App\AI\Onboarding\IntegrationRequirementMapper'
             $secretService: '@App\Service\SecretService'
+            $strategyService: '@App\AI\Onboarding\OnboardingStrategyService'
+            $readinessChecker: '@App\AI\Onboarding\OnboardingReadinessChecker'
+            $eventDispatcher: '@event_dispatcher'
+            $toolDefinitionGenerator: '@App\AI\Skills\ToolDefinitionGenerator'
             $apiKeyValidator: '@App\Service\ApiKeyValidator'
     App\AI\Onboarding\OnboardingStepProvider: ~
     App\AI\Onboarding\IntegrationRequirementMapper: ~
+    # Onboarding-Strategie (Phase C-F): entwirft die initiale Strategie aus
+    # dem Brainstorming, persistiert sie als aktive AgentGoal und legt nur
+    # Katalog-Sub-Agenten an. Der onboarding-Agent wird explizit verdrahtet
+    # (mehrere AgentInterface-Services).
+    App\AI\Onboarding\OnboardingStrategyService:
+        arguments:
+            $onboardingAgent: '@ai.agent.onboarding'
+    App\AI\Onboarding\OnboardingReadinessChecker: ~
     # API-Key-Validierung waehrend Onboarding: echter HTTP-Check gegen die
     # Anbieter-API (Mistral/Gemini/Tavily). Autowired via HttpClientInterface.
     App\Service\ApiKeyValidator:

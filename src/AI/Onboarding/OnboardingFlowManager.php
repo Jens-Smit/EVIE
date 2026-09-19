@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace App\AI\Onboarding;
 
+use App\AI\Skills\ToolDefinitionGenerator;
 use App\Entity\UserProfile;
+use App\Event\PendingToolApprovalEvent;
 use App\Repository\UserProfileRepository;
 use App\Service\ApiKeyValidator;
 use App\Service\SecretService;
@@ -12,6 +14,7 @@ use Symfony\AI\Agent\AgentInterface;
 use Symfony\AI\Platform\Message\Message;
 use Symfony\AI\Platform\Message\MessageBag;
 use Symfony\Component\DependencyInjection\Attribute\Autoconfigure;
+use Symfony\Contracts\EventDispatcher\EventDispatcherInterface;
 
 /**
  * OnboardingFlowManager - Verwaltet den Onboarding-Prozess fuer neue Benutzer.
@@ -47,14 +50,20 @@ class OnboardingFlowManager
     private IntegrationRequirementMapper $requirementMapper;
     private SecretService $secretService;
     private ?ApiKeyValidator $apiKeyValidator;
+    private OnboardingStrategyService $strategyService;
+    private OnboardingReadinessChecker $readinessChecker;
+    private EventDispatcherInterface $eventDispatcher;
+    private ?ToolDefinitionGenerator $toolDefinitionGenerator = null;
 
     /**
      * @param ContextStoreManager           $contextStore       Verwaltet den Benutzerkontext
      * @param UserProfileRepository         $userProfileRepo     Repository fuer Benutzerprofile
-     * @param AgentInterface                 $onboardingAgent     Dedizierter Onboarding-Agent (nur fuer Abschluss-Benachrichtigung)
+     * @param AgentInterface                 $onboardingAgent     Onboarding-Agent (Chat-Dialogpartner, Strategie-Entwuerfe)
      * @param OnboardingStepProvider        $stepProvider        Deterministische Schrittfolge
-     * @param IntegrationRequirementMapper  $requirementMapper  Leitet Use-Cases auf Schnittstellen ab
+     * @param IntegrationRequirementMapper  $requirementMapper  Leitet Use-Cases auf Schnittstellen ab (Fallback)
      * @param SecretService                 $secretService      Verschluesselte Ablage von API-Keys/E-Mail-Zugangsdaten
+     * @param OnboardingStrategyService     $strategyService    Strategie-Entwurf/Persistenz + Sub-Agent-Anlage
+     * @param OnboardingReadinessChecker    $readinessChecker  Konsistenzpruefung vor Abschluss
      */
     public function __construct(
         ContextStoreManager $contextStore,
@@ -63,6 +72,10 @@ class OnboardingFlowManager
         OnboardingStepProvider $stepProvider,
         IntegrationRequirementMapper $requirementMapper,
         SecretService $secretService,
+        OnboardingStrategyService $strategyService,
+        OnboardingReadinessChecker $readinessChecker,
+        EventDispatcherInterface $eventDispatcher,
+        ?ToolDefinitionGenerator $toolDefinitionGenerator = null,
         ?ApiKeyValidator $apiKeyValidator = null
     ) {
         $this->contextStore = $contextStore;
@@ -71,6 +84,10 @@ class OnboardingFlowManager
         $this->stepProvider = $stepProvider;
         $this->requirementMapper = $requirementMapper;
         $this->secretService = $secretService;
+        $this->strategyService = $strategyService;
+        $this->readinessChecker = $readinessChecker;
+        $this->eventDispatcher = $eventDispatcher;
+        $this->toolDefinitionGenerator = $toolDefinitionGenerator;
         $this->apiKeyValidator = $apiKeyValidator;
     }
 
@@ -166,6 +183,153 @@ class OnboardingFlowManager
     }
 
     /**
+     * LLM-gestuetzter Chat im Onboarding-Modus: Die Antwort des Onboarding-
+     * Agents wird zurueckgegeben und parallel werden daraus strukturiert
+     * gewonnene Erkenntnisse (Ziel, Branche, Bereiche, Use-Cases, Mission)
+     * in den Onboarding-Kontext uebernommen - ohne einen Wizard-Schritt zu
+     * konsumieren (G1/G6).
+     *
+     * @param string $userIdentifier Eindeutige Benutzerkennung (nur aus Auth)
+     * @param string $message       Nutzer-Nachricht
+     *
+     * @return array{response: string, extracted: array<string, mixed>, step: array<string, mixed>}
+     */
+    public function chat(string $userIdentifier, string $message): array
+    {
+        $context = $this->contextStore->loadContext($userIdentifier);
+        $onboardingData = $context['onboarding_data'] ?? [];
+
+        $systemPrompt = $this->buildOnboardingChatSystemPrompt($onboardingData);
+        $extractPayload = json_encode([
+            'action' => 'extract_onboarding_context',
+            'user_message' => $message,
+            'known_context' => $onboardingData,
+            'response_format' => [
+                'message' => 'string: freundliche Rueckfrage/Antwort an den Nutzer',
+                'extracted' => 'object mit nur bekannten Feldern: goal (manage_company|assist_work|other), industry, business_areas (string[]), use_cases (string[]), mission_statement (string)',
+            ],
+        ], \JSON_THROW_ON_ERROR);
+
+        $responseText = '';
+        $extracted = [];
+        try {
+            $messages = new MessageBag(
+                Message::forSystem($systemPrompt),
+                Message::ofUser($extractPayload)
+            );
+            $result = $this->onboardingAgent->call($messages);
+            $decoded = json_decode($result->getContent(), true);
+            if (is_array($decoded)) {
+                $responseText = (string) ($decoded['message'] ?? '');
+                if (isset($decoded['extracted']) && is_array($decoded['extracted'])) {
+                    $extracted = $decoded['extracted'];
+                }
+            } else {
+                $responseText = $result->getContent();
+            }
+        } catch (\Throwable $e) {
+            $responseText = 'Der Onboarding-Assistent ist gerade nicht erreichbar. Deine Angaben im Wizard werden weiterhin gespeichert.';
+        }
+
+        if (trim($responseText) === '') {
+            $responseText = 'Danke! Ich habe deine Angaben aufgenommen. Weiter im Wizard oder schreib mir einfach mehr.';
+        }
+
+        $ingested = $this->ingestExtracted($userIdentifier, $extracted);
+
+        return [
+            'response' => $responseText,
+            'extracted' => $ingested,
+            'step' => $this->getNextStep($userIdentifier),
+        ];
+    }
+
+    /**
+     * Uebernimmt strukturiert extrahierte Erkenntnisse aus dem Chat in den
+     * Onboarding-Kontext, ohne einen Wizard-Schritt zu konsumieren. Nur
+     * bekannte Felder werden uebernommen (keine Halluzination in der
+     * Schrittlogik). Mission/Profil fuellen dieselben Kontextfelder wie
+     * processResponse(), sodass der Wizard sofort weiterspringen kann.
+     *
+     * @param string                $userIdentifier Eindeutige Benutzerkennung
+     * @param array<string, mixed>  $extracted      z.B. aus der LLM-Extraktion
+     *
+     * @return array<string, mixed> Die tatsaechlich uebernommenen Felder
+     */
+    public function ingestExtracted(string $userIdentifier, array $extracted): array
+    {
+        $context = $this->contextStore->loadContext($userIdentifier);
+        if (!isset($context['onboarding_data'])) {
+            $context['onboarding_data'] = [
+                'started_at' => (new \DateTimeImmutable())->format(\DATE_ATOM),
+                'phase_3_optimized' => true,
+                'prompt_version' => '2.0',
+            ];
+        }
+
+        $ingested = [];
+        $data = &$context['onboarding_data'];
+
+        $goal = $extracted['goal'] ?? null;
+        if (is_string($goal) && in_array($goal, ['manage_company', 'assist_work', 'other'], true)) {
+            $data['goal'] = $goal;
+            $ingested['goal'] = $goal;
+        }
+
+        $industry = $extracted['industry'] ?? null;
+        if (is_string($industry) && $industry !== '') {
+            $data['industry'] = $industry;
+            $ingested['industry'] = $industry;
+        }
+
+        $areas = $this->stringListValue($extracted['business_areas'] ?? null);
+        if ($areas !== []) {
+            $data['business_areas'] = $areas;
+            $ingested['business_areas'] = $areas;
+        }
+
+        $useCases = $this->stringListValue($extracted['use_cases'] ?? null);
+        if ($useCases !== []) {
+            $data['use_cases'] = $useCases;
+            $ingested['use_cases'] = $useCases;
+        }
+
+        $mission = $extracted['mission_statement'] ?? null;
+        if (is_string($mission) && trim($mission) !== '') {
+            $data['mission_statement'] = trim($mission);
+            $ingested['mission_statement'] = trim($mission);
+        }
+
+        unset($data);
+
+        if ($ingested !== []) {
+            $data2 = $context['onboarding_data'];
+            $data2['chat_extracted_at'] = (new \DateTimeImmutable())->format(\DATE_ATOM);
+            $context['onboarding_data'] = $data2;
+            $this->contextStore->saveContext($userIdentifier, $context);
+        }
+
+        return $ingested;
+    }
+
+    /**
+     * System-Prompt fuer den Onboarding-Chat: Basis-Instruktion plus
+     * aktueller onboarding_data-Kontext, damit der Agent den Verlauf kennt.
+     *
+     * @param array<string, mixed> $onboardingData
+     */
+    private function buildOnboardingChatSystemPrompt(array $onboardingData): string
+    {
+        $prompt = "Du bist der Onboarding-Assistent von EVIE. Du begleitest den Nutzer beim Einsetzen von EVIE.\n"
+            . "Stelle Rueckfragen zum Einsatz (Branche, Bereiche, Use-Cases, konkrete Aufgaben), sei kurz und freundlich.\n"
+            . "Erfinde keine Fakten ueber den Nutzer.\n\n";
+
+        $known = json_encode($onboardingData, \JSON_UNESCAPED_UNICODE | \JSON_THROW_ON_ERROR);
+
+        return $prompt . "## Aktueller Onboarding-Kontext:\n" . $known . "\n";
+    }
+
+    /**
      * Beendet den Onboarding-Prozess und speichert die Benutzerdaten.
      *
      * @param string $userIdentifier Eindeutige Benutzerkennung
@@ -238,7 +402,21 @@ class OnboardingFlowManager
         return [
             'status' => 'in_progress',
             'onboarding_data' => $context['onboarding_data'],
+            'readiness' => $this->readinessChecker->check($context['onboarding_data']),
         ];
+    }
+
+    /**
+     * Liefert die Readiness-Pruefung (Konsistenz-Checkliste) fuer den
+     * aktuellen Kontext, ohne den Status-Endpunkt zu veraendern.
+     *
+     * @return array{ready: bool, checks: array<int, array<string, mixed>>, missing_blocking: array<int, string>}
+     */
+    public function getReadiness(string $userIdentifier): array
+    {
+        $context = $this->contextStore->loadContext($userIdentifier);
+
+        return $this->readinessChecker->check($context['onboarding_data'] ?? []);
     }
 
     /**
@@ -336,6 +514,10 @@ class OnboardingFlowManager
      */
     private function buildStepResponse(string $userIdentifier, array $context): array
     {
+        // Phase C: Strategie-Vorschlag on-demand erzeugen, sobald die
+        // Aufgabenbeschreibung vorliegt (LLM mit Heuristik-Fallback).
+        $this->ensureStrategyDraft($userIdentifier, $context);
+
         $steps = $this->resolveSteps($context);
         $onboardingData = $context['onboarding_data'] ?? [];
 
@@ -367,9 +549,71 @@ class OnboardingFlowManager
             'help' => $step['help'] ?? '',
             'required' => $step['required'] ?? true,
             'area' => $step['area'] ?? null,
+            'tool_id' => $step['tool_id'] ?? null,
             'allow_freetext' => $step['allow_freetext'] ?? false,
+            'strategy_draft' => $context['onboarding_data']['strategy_draft'] ?? null,
+            'sub_agent_catalog' => ($step['type'] === 'sub_agent_review') ? OnboardingStrategyService::SUB_AGENT_CATALOG : null,
+            'tools' => $context['onboarding_data']['tools'] ?? null,
+            'readiness' => $this->readinessChecker->check($context['onboarding_data'] ?? []),
             'context' => $context['onboarding_data'] ?? [],
         ];
+    }
+
+    /**
+     * Erzeugt - falls noetig - den Strategie-Vorschlag fuer den naechsten
+     * strategy_review-Schritt und legt ihn im Kontext ab, damit das Frontend
+     * ihn anzeigen kann (Phase C). Nur bei mission_statement und ohne
+     * bestaetigte Strategie.
+     *
+     * @param array<string, mixed> $context
+     */
+    private function ensureStrategyDraft(string $userIdentifier, array &$context): void
+    {
+        $onboardingData = $context['onboarding_data'] ?? [];
+        $mission = trim((string) ($onboardingData['mission_statement'] ?? ''));
+        if ($mission === '' || ($onboardingData['strategy_confirmed'] ?? false) === true || isset($onboardingData['strategy_draft'])) {
+            return;
+        }
+
+        $draft = $this->strategyService->draftStrategy($userIdentifier, $onboardingData);
+        $context['onboarding_data']['strategy_draft'] = $draft;
+        $this->contextStore->saveContext($userIdentifier, $context);
+    }
+
+    /**
+     * Validiert und normalisiert Sub-Agent-Namen aus einer Nutzerantwort
+     * (confirm oder Freitext-Korrekturen). Nur Katalog-Rollen sind erlaubt.
+     *
+     * @param array<string, mixed> $strategy
+     *
+     * @return array<int, string>
+     */
+    private function resolveSubAgentSelection(array $strategy, string|array $value): array
+    {
+        $recommended = [];
+        foreach (($strategy['sub_agents'] ?? []) as $name) {
+            if (is_string($name) && isset(OnboardingStrategyService::SUB_AGENT_CATALOG[$name])) {
+                $recommended[] = $name;
+            }
+        }
+
+        if (is_string($value) && strtolower(trim($value)) === 'confirm') {
+            return array_values(array_unique($recommended));
+        }
+
+        if (!is_string($value) || trim($value) === '') {
+            return [];
+        }
+
+        $keep = $recommended;
+        $lowered = strtolower($value);
+        foreach ($recommended as $name) {
+            if (str_contains($lowered, $name) || str_contains($lowered, str_replace('_', ' ', $name))) {
+                continue;
+            }
+        }
+
+        return array_values(array_unique($keep));
     }
 
     /**
@@ -481,7 +725,12 @@ class OnboardingFlowManager
             $plain = is_array($value) ? (string) ($value['value'] ?? '') : (string) $value;
             if ($secretKey !== '' && $plain !== '') {
                 $this->validateApiKeyBeforeStore($field, $secretKey, $plain, $context);
-                $this->secretService->set($secretKey, $plain, $userIdentifier, 'onboarding');
+                $scope = 'onboarding';
+                if (isset($step['tool_id'])) {
+                    $scope = 'tool:' . (int) $step['tool_id'];
+                    $this->markToolSecretDone($context, (int) $step['tool_id'], $secretKey);
+                }
+                $this->secretService->set($secretKey, $plain, $userIdentifier, $scope);
             }
 
             return;
@@ -503,6 +752,233 @@ class OnboardingFlowManager
 
             return;
         }
+
+        // Strategie-Review (Phase C): Vorschlag bestaetigen oder per Freitext
+        // korrigieren; danach als initiale aktive AgentGoal persistieren.
+        if ($type === 'strategy_review') {
+            $this->applyStrategyConfirmation($userIdentifier, $context, $value);
+
+            return;
+        }
+
+        // Sub-Agent-Review (Phase D.1): bestätigte Rollen aus dem Katalog als
+        // Tenant-Instanzen anlegen (SubAgentDefinition, isActive=true).
+        if ($type === 'sub_agent_review') {
+            $this->applySubAgentConfirmation($userIdentifier, $context, $value);
+
+            return;
+        }
+
+        // Tool-Review (Phase D.2): erzeugte Tool-Definitionen bestätigen; die
+        // Tools bleiben status=pending mit requiresHitl=true (Freigabe nur im
+        // Frontend) und melden ihre requiredSecrets fuer Phase E.
+        if ($type === 'tool_review') {
+            $this->applyToolConfirmation($userIdentifier, $context, $value);
+
+            return;
+        }
+    }
+
+    /**
+     * Phase C: Verarbeitet die Bestaetigung/Korrektur des Strategie-
+     * Vorschlags. 'confirm' uebernimmt den Draft; Freitext wird als
+     * Korrektur in goal/description uebernommen. Persistiert danach die
+     * initiale aktive AgentGoal (source: onboarding).
+     *
+     * @param array<string, mixed> $context
+     * @param string|array         $value
+     */
+    private function applyStrategyConfirmation(string $userIdentifier, array &$context, string|array $value): void
+    {
+        $draft = $context['onboarding_data']['strategy_draft'] ?? null;
+        if (!is_array($draft)) {
+            return;
+        }
+
+        if (is_string($value) && strtolower(trim($value)) !== 'confirm' && trim($value) !== '') {
+            $draft['goal'] = trim($value);
+        }
+
+        $context['onboarding_data'] = $this->strategyService->persistStrategy($userIdentifier, $context['onboarding_data'], $draft);
+        unset($context['onboarding_data']['strategy_draft']);
+
+        // Phase D.2 vorbereiten: Capability-Lücken ohne deckenden Katalog-
+        // Sub-Agenten als pending ToolDefinition erzeugen (exakt der Pfad,
+        // den Pipeline-Phase 4 geht: ToolDefinitionGenerator + HITL-Event).
+        $this->generateToolsForStrategy($userIdentifier, $context);
+    }
+
+    /**
+     * Erzeugt fuer Capability-Deskriptoren der Strategie, die kein statischer
+     * Katalog-Sub-Agent deckt, ToolDefinition-Eintraege ueber den bestehenden
+     * ToolDefinitionGenerator (status pending, requiresHitl true). Die
+     * erzeugten Tools werden mit ihren requiredSecrets im Kontext registriert
+     * und im tool_review-Schritt angezeigt. Der HITL-Freigabe-Pfad bleibt
+     * unveraendert (Frontend-Freigabe nach Abschluss).
+     *
+     * @param array<string, mixed> $context
+     */
+    private function generateToolsForStrategy(string $userIdentifier, array &$context): void
+    {
+        if ($this->toolDefinitionGenerator === null) {
+            return;
+        }
+
+        $strategy = $context['onboarding_data']['strategy'] ?? [];
+        $capabilities = $this->stringListValue($strategy['capabilities'] ?? []);
+        $coveredSubAgents = $this->stringListValue($strategy['sub_agents'] ?? []);
+
+        // Deterministische Faehigkeits->Tool-Zuordnung (keine Halluzination):
+        // nur bekannte Faehigkeiten erzeugen ein Tool mit definiertem Secret.
+        $toolMatrix = [
+            'research' => ['tool' => 'web_research', 'secrets' => ['TAVILY_API_KEY']],
+            'business_automation' => ['tool' => 'email_automation', 'secrets' => []],
+            'data_analysis' => ['tool' => 'data_analysis', 'secrets' => []],
+            'document_processing' => ['tool' => 'document_processing', 'secrets' => []],
+        ];
+
+        $tools = [];
+        foreach ($capabilities as $capability) {
+            $normalized = strtolower(trim((string) $capability));
+            if (str_starts_with($normalized, 'business_area:')) {
+                continue;
+            }
+            $spec = $toolMatrix[$normalized] ?? null;
+            if ($spec === null) {
+                continue;
+            }
+
+            try {
+                $definition = $this->toolDefinitionGenerator->generateToolDefinition(
+                    $spec['tool'],
+                    sprintf('Onboarding: Faehigkeit "%s" fuer die Strategie "%s".', $capability, (string) ($strategy['title'] ?? '')),
+                    [
+                        'user_identifier' => $userIdentifier,
+                        'original_request' => (string) ($strategy['goal'] ?? ''),
+                        'source' => 'onboarding',
+                    ]
+                );
+            } catch (\Throwable $e) {
+                continue;
+            }
+
+            if ($definition->getUserIdentifier() === null || $definition->getUserIdentifier() === '') {
+                $definition->setUserIdentifier($userIdentifier);
+            }
+            $definition->setRequiresHitl(true);
+            $definition->setStatus('pending');
+
+            $executorConfig = $definition->getExecutorConfig() ?? [];
+            $executorConfig['requiredSecrets'] = $spec['secrets'];
+            $definition->setExecutorConfig($executorConfig);
+
+            $this->eventDispatcher->dispatch(new PendingToolApprovalEvent($definition, $userIdentifier));
+
+            $tools[] = [
+                'id' => $definition->getId(),
+                'name' => $definition->getName(),
+                'description' => $definition->getDescription(),
+                'security_level' => $definition->getSecurityLevel(),
+                'status' => $definition->getStatus(),
+                'requires_hitl' => $definition->getRequiresHitl(),
+                'required_secrets' => $spec['secrets'],
+            ];
+        }
+
+        if ($tools !== []) {
+            $context['onboarding_data']['tools'] = $tools;
+            $context['onboarding_data']['tools_created'] = true;
+        }
+    }
+
+    /**
+     * Phase D.1: Bestaetigt die empfohlenen Sub-Agenten und legt sie an.
+     *
+     * @param array<string, mixed> $context
+     * @param string|array         $value
+     */
+    private function applySubAgentConfirmation(string $userIdentifier, array &$context, string|array $value): void
+    {
+        $strategy = $context['onboarding_data']['strategy'] ?? [];
+        $selected = $this->resolveSubAgentSelection($strategy, $value);
+
+        $created = $this->strategyService->ensureSubAgents($selected);
+        $context['onboarding_data']['sub_agents_created'] = $created;
+        $context['onboarding_data']['sub_agents_confirmed'] = true;
+    }
+
+    /**
+     * Markiert einen tool-spezifischen Secret-Schritt als erledigt, damit der
+     * naechste Credential-Schritt (Phase E) erscheint.
+     *
+     * @param array<string, mixed> $context
+     */
+    private function markToolSecretDone(array &$context, int $toolId, string $secretKey): void
+    {
+        $toolSecrets = $context['onboarding_data']['tool_secrets'] ?? [];
+        if (!is_array($toolSecrets)) {
+            return;
+        }
+        foreach ($toolSecrets as $idx => $entry) {
+            if ((int) ($entry['tool_id'] ?? 0) === $toolId && ($entry['key'] ?? '') === $secretKey) {
+                $toolSecrets[$idx]['done'] = true;
+            }
+        }
+        $context['onboarding_data']['tool_secrets'] = $toolSecrets;
+    }
+
+    /**
+     * Phase D.2: Bestaetigt die erzeugten Tool-Definitionen. Die Tools bleiben
+     * pending (HITL-Freigabe im Frontend nach Abschluss); die benoetigten
+     * Secrets werden fuer Phase E als tool_secrets im Kontext registriert.
+     *
+     * @param array<string, mixed> $context
+     * @param string|array         $value
+     */
+    private function applyToolConfirmation(string $userIdentifier, array &$context, string|array $value): void
+    {
+        $tools = $context['onboarding_data']['tools'] ?? [];
+        if (!is_array($tools) || $tools === []) {
+            $context['onboarding_data']['tools_confirmed'] = true;
+
+            return;
+        }
+
+        $toolSecrets = [];
+        foreach ($tools as $tool) {
+            $toolId = (int) ($tool['id'] ?? 0);
+            $requiredSecrets = $this->stringListValue($tool['required_secrets'] ?? []);
+            foreach ($requiredSecrets as $secretKey) {
+                $toolSecrets[] = [
+                    'tool_id' => $toolId,
+                    'key' => $secretKey,
+                    'label' => (string) ($tool['name'] ?? $secretKey),
+                    'done' => false,
+                ];
+            }
+        }
+
+        if ($toolSecrets !== []) {
+            $context['onboarding_data']['tool_secrets'] = $toolSecrets;
+        }
+        $context['onboarding_data']['tools_confirmed'] = true;
+    }
+
+    /**
+     * @param mixed $value
+     *
+     * @return array<int, string>
+     */
+    private function stringListValue(mixed $value): array
+    {
+        if (is_array($value)) {
+            return array_values(array_filter(array_map('strval', $value), static fn (string $v) => $v !== ''));
+        }
+        if (is_string($value) && $value !== '') {
+            return [$value];
+        }
+
+        return [];
     }
 
     /**

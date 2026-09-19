@@ -171,22 +171,77 @@ class OnboardingController extends AbstractController
         return $this->json($result, $result['valid'] ? Response::HTTP_OK : Response::HTTP_UNPROCESSABLE_ENTITY);
     }
 
-    #[Route('/onboarding/complete', name: 'app_onboarding_complete', methods: ['POST'])]
-    public function complete(): JsonResponse
+    /**
+     * Chat im Onboarding-Modus (G6): Der Onboarding-Agent wird zum
+     * gefuehrten Dialog-Partner; LLM-gewonnene Erkenntnisse fliessen ohne
+     * Wizard-Schritt-Verbrauch zurueck in den Onboarding-Kontext.
+     * Der Tenant-Identifier kommt ausschliesslich aus dem authentifizierten
+     * User (P0-5 IDOR-Muster).
+     */
+    #[Route('/onboarding/chat', name: 'app_onboarding_chat', methods: ['POST'])]
+    public function chat(Request $request): JsonResponse
     {
         $user = $this->getUser();
         if (!$user instanceof User) {
             return $this->json(['error' => 'Nicht authentifiziert'], Response::HTTP_UNAUTHORIZED);
         }
 
+        $data = $request->getContentTypeFormat() === 'json' ? $request->toArray() : $request->request->all();
+        $message = trim((string) ($data['message'] ?? ''));
+        if ($message === '') {
+            return $this->json(
+                ['error' => 'Feld "message" ist erforderlich.'],
+                Response::HTTP_BAD_REQUEST
+            );
+        }
+
+        try {
+            $result = $this->onboardingFlowManager->chat($user->getUserIdentifier(), $message);
+
+            return $this->json($result);
+        } catch (\Throwable $e) {
+            return $this->json([
+                'error' => 'Onboarding-Chat konnte nicht verarbeitet werden.',
+                'detail' => $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    #[Route('/onboarding/complete', name: 'app_onboarding_complete', methods: ['POST'])]
+    public function complete(Request $request): JsonResponse
+    {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            return $this->json(['error' => 'Nicht authentifiziert'], Response::HTTP_UNAUTHORIZED);
+        }
+
+        $userIdentifier = $user->getUserIdentifier();
+
+        // Konsistenzpruefung vor Abschluss (G8): der Readiness-Checker listet
+        // fehlende Pflichtangaben auf. Ein harter Skip (force=true) ist nur
+        // mit expliziter Bestaetigung des Nutzers moeglich.
+        $readiness = $this->onboardingFlowManager->getReadiness($userIdentifier);
+        $data = $request->getContentTypeFormat() === 'json' ? $request->toArray() : $request->request->all();
+        $force = ($data['force'] ?? false) === true;
+
+        if (!($readiness['ready'] ?? false) && !$force) {
+            return $this->json([
+                'status' => 'readiness_failed',
+                'readiness' => $readiness,
+                'message' => 'Es fehlen noch Pflichtangaben. Ohne LLM-API-Key ist EVIE nicht funktionsfaehig.',
+            ], Response::HTTP_UNPROCESSABLE_ENTITY);
+        }
+
+        $result = $this->onboardingFlowManager->completeOnboarding($userIdentifier);
+
         $user->setOnboardingComplete(true);
         $this->entityManager->persist($user);
         $this->entityManager->flush();
 
-        return $this->json([
-            'status' => 'completed',
-            'redirect' => $this->generateUrl('app_dashboard'),
-        ]);
+        $result['redirect'] = $this->generateUrl('app_dashboard');
+        $result['readiness'] = $readiness;
+
+        return $this->json($result);
     }
 
     #[Route('/onboarding/status', name: 'app_onboarding_status', methods: ['GET'])]
