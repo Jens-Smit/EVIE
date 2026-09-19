@@ -22,6 +22,8 @@ use Symfony\Component\Messenger\MessageBusInterface;
 )]
 class RunAgentGoalsCommand extends Command
 {
+    private bool $shouldRun = true;
+
     public function __construct(
         private AgentGoalRepository $agentGoalRepo,
         private MessageBusInterface $messageBus,
@@ -150,11 +152,35 @@ class RunAgentGoalsCommand extends Command
     {
         $io->title(sprintf('EVIE Scheduler - Poll-Intervall: %d Sekunden', $interval));
 
-        while (true) {
+        if (function_exists('pcntl_signal')) {
+            pcntl_signal(SIGTERM, function () use ($io): void {
+                $io->writeln('SIGTERM empfangen - Scheduler wird beendet.');
+                $this->shouldRun = false;
+            });
+            pcntl_signal(SIGINT, function () use ($io): void {
+                $io->writeln('SIGINT empfangen - Scheduler wird beendet.');
+                $this->shouldRun = false;
+            });
+        }
+
+        while ($this->shouldRun) {
+            if (function_exists('pcntl_signal_dispatch')) {
+                pcntl_signal_dispatch();
+            }
+
             $this->dispatchDueGoals($io);
 
-            sleep($interval);
+            $slept = 0;
+            while ($this->shouldRun && $slept < $interval) {
+                sleep(1);
+                $slept++;
+                if (function_exists('pcntl_signal_dispatch')) {
+                    pcntl_signal_dispatch();
+                }
+            }
         }
+
+        $io->success('Scheduler beendet.');
 
         return Command::SUCCESS;
     }
