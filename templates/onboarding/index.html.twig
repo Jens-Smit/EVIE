@@ -140,7 +140,11 @@
             <div x-show="currentType === 'email_combined'" class="space-y-4">
                 <div x-show="currentArea" class="text-xs text-info bg-info-soft px-3 py-2 rounded-lg">
                     <i class="ph ph-envelope-simple-open"></i>
-                    Bereich: <span x-text="currentAreaLabel"></span> &mdash; du kannst pro Bereich eine eigene Adresse hinterlegen.
+                    Eigene Adresse f&uuml;r Bereich: <span x-text="currentAreaLabel"></span> &mdash; optional, du kannst auch die Haupt-Adresse weiter nutzen oder &uuml;berspringen.
+                </div>
+                <div x-show="!currentArea" class="text-xs text-info bg-info-soft px-3 py-2 rounded-lg">
+                    <i class="ph ph-envelope-simple-open"></i>
+                    Haupt-E-Mail-Adresse (optional) &mdash; im n&auml;chsten Schritt legst du fest, welche Bereiche sie nutzen sollen.
                 </div>
 
                 <div class="space-y-3">
@@ -199,7 +203,7 @@
                 </div>
 
                 <p class="text-xs text-content-muted">
-                    Die Zugangsdaten werden verschl&uuml;sselt als Secret gespeichert. Verschiedene Bereiche koennen verschiedene Adressen nutzen.
+                    Die Zugangsdaten werden verschl&uuml;sselt als Secret gespeichert. Bereiche ohne eigene Adresse nutzen die Haupt-Adresse.
                 </p>
                 <div class="flex gap-2">
                     <button @click="submitEmailCombined()"

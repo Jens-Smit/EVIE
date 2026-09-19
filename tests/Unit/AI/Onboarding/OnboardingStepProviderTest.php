@@ -118,4 +118,98 @@ final class OnboardingStepProviderTest extends TestCase
         ]);
         self::assertTrue($ready['ready']);
     }
+
+    public function testManageCompanyAsksMainEmailFirstThenAreaAssignments(): void
+    {
+        $context = [
+            'goal' => 'manage_company',
+            'industry' => 'software_it',
+            'business_areas' => ['sales', 'support', 'marketing'],
+        ];
+        $steps = $this->provider->allSteps($context, $this->mapper);
+        $ids = array_map(static fn (array $s) => $s['id'], $steps);
+
+        $mainIdx = array_search('email_main', $ids, true);
+        $mainAreasIdx = array_search('email_main_areas', $ids, true);
+        $extraAreasIdx = array_search('email_extra_areas', $ids, true);
+
+        self::assertNotFalse($mainIdx);
+        self::assertFalse($mainAreasIdx, 'email_main_areas erst nach email_main');
+        self::assertFalse($extraAreasIdx, 'email_extra_areas erst nach email_main');
+
+        $main = $steps[$mainIdx];
+        self::assertSame('email_combined', $main['type']);
+        self::assertFalse($main['required']);
+    }
+
+    public function testAreaAssignmentsAndExtraAreasFollowAnsweredMainEmail(): void
+    {
+        $context = [
+            'goal' => 'manage_company',
+            'industry' => 'software_it',
+            'business_areas' => ['sales', 'support', 'marketing'],
+            'email_main' => ['smtp_host' => 'smtp.example.com'],
+        ];
+        $steps = $this->provider->allSteps($context, $this->mapper);
+        $ids = array_map(static fn (array $s) => $s['id'], $steps);
+
+        self::assertNotContains('email_main', $ids);
+        $mainAreasIdx = array_search('email_main_areas', $ids, true);
+        $extraAreasIdx = array_search('email_extra_areas', $ids, true);
+        self::assertNotFalse($mainAreasIdx);
+        self::assertNotFalse($extraAreasIdx);
+        self::assertGreaterThan($mainAreasIdx, $extraAreasIdx);
+
+        // Noch keine eigenen Bereichs-Masken, solange keine Extra-Bereiche gewaehlt.
+        self::assertNotContains('email_account_sales', $ids);
+        self::assertNotContains('email_account_marketing', $ids);
+    }
+
+    public function testOwnAreaMasksOnlyForChosenExtraAreas(): void
+    {
+        $context = [
+            'goal' => 'manage_company',
+            'industry' => 'software_it',
+            'business_areas' => ['sales', 'support', 'marketing'],
+            'email_main' => ['smtp_host' => 'smtp.example.com'],
+            'email_main_areas' => ['sales', 'support'],
+            'email_extra_areas' => ['marketing'],
+        ];
+        $steps = $this->provider->allSteps($context, $this->mapper);
+        $ids = array_map(static fn (array $s) => $s['id'], $steps);
+
+        self::assertContains('email_account_marketing', $ids);
+        self::assertNotContains('email_account_sales', $ids);
+        self::assertNotContains('email_account_support', $ids);
+    }
+
+    public function testSkippedExtraAreaDoesNotReappear(): void
+    {
+        $context = [
+            'goal' => 'manage_company',
+            'industry' => 'software_it',
+            'business_areas' => ['sales'],
+            'email_main' => ['smtp_host' => 'smtp.example.com'],
+            'email_main_areas' => [],
+            'email_extra_areas' => ['sales'],
+            'email_skipped_areas' => ['sales'],
+        ];
+        $steps = $this->provider->allSteps($context, $this->mapper);
+        $ids = array_map(static fn (array $s) => $s['id'], $steps);
+
+        self::assertNotContains('email_account_sales', $ids);
+    }
+
+    public function testMapperFallbackSkipsEmailWhenMainEmailAnswered(): void
+    {
+        $context = [
+            'goal' => 'assist_work',
+            'use_cases' => ['business_automation'],
+            'email_main' => ['smtp_host' => 'smtp.example.com'],
+        ];
+        $steps = $this->provider->credentialSteps($context, $this->mapper);
+        $ids = array_map(static fn (array $s) => $s['id'], $steps);
+
+        self::assertNotContains('integration_email_combined', $ids);
+    }
 }

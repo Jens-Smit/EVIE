@@ -196,7 +196,7 @@ final class OnboardingFlowManagerTest extends TestCase
         self::assertTrue($result['allow_freetext']);
     }
 
-    public function testEmailAccountStepPerAreaAfterAreasMultiselect(): void
+    public function testEmailMainStepIsFirstAfterAreasMultiselect(): void
     {
         $this->setUpStatefulContext();
         $this->manager->startOnboarding('user-123');
@@ -213,10 +213,127 @@ final class OnboardingFlowManagerTest extends TestCase
         $this->manager->processResponse('user-123', ['sales', 'support']);
 
         $result = $this->manager->getNextStep('user-123');
-        // Erster E-Mail-Konto-Schritt fuer den ersten Bereich.
-        self::assertSame('email_account_sales', $result['step_id']);
+        // Haupt-E-Mail-Adresse wird zuerst (optional) abgefragt.
+        self::assertSame('email_main', $result['step_id']);
         self::assertSame('email_combined', $result['type']);
-        self::assertSame('sales', $result['area']);
+        self::assertNull($result['area']);
+        self::assertFalse($result['required']);
+    }
+
+    public function testEmailMainAreasMultiselectFollowsMainAddress(): void
+    {
+        $this->setUpStatefulContext();
+        $this->manager->startOnboarding('user-123');
+        $profile = new UserProfile();
+        $profile->setUserIdentifier('user-123');
+        $this->userProfileRepo->method('findOneBy')->willReturn($profile);
+
+        $this->manager->processResponse('user-123', 'mistral');
+        $this->manager->processResponse('user-123', 'mistral-small-latest');
+        $this->manager->processResponse('user-123', 'key');
+        $this->manager->processResponse('user-123', 'Firmenkommunikation und Vertrieb managen');
+        $this->manager->processResponse('user-123', 'manage_company');
+        $this->manager->processResponse('user-123', 'software_it');
+        $this->manager->processResponse('user-123', ['sales', 'support']);
+        $this->manager->processResponse('user-123', [
+            'smtp_host' => 'smtp.example.com', 'smtp_port' => '587',
+            'smtp_user' => 'main@example.com', 'smtp_pass' => 'pass',
+            'from' => 'main@example.com',
+            'imap_host' => 'imap.example.com', 'imap_port' => '993',
+        ]);
+
+        $result = $this->manager->getNextStep('user-123');
+        self::assertSame('email_main_areas', $result['step_id']);
+        self::assertSame('multiselect', $result['type']);
+        self::assertFalse($result['required']);
+    }
+
+    public function testEmailExtraAreasMultiselectThenOwnMaskOnlyForChosenArea(): void
+    {
+        $this->setUpStatefulContext();
+        $this->manager->startOnboarding('user-123');
+        $profile = new UserProfile();
+        $profile->setUserIdentifier('user-123');
+        $this->userProfileRepo->method('findOneBy')->willReturn($profile);
+
+        $this->manager->processResponse('user-123', 'mistral');
+        $this->manager->processResponse('user-123', 'mistral-small-latest');
+        $this->manager->processResponse('user-123', 'key');
+        $this->manager->processResponse('user-123', 'Firmenkommunikation und Vertrieb managen');
+        $this->manager->processResponse('user-123', 'manage_company');
+        $this->manager->processResponse('user-123', 'software_it');
+        $this->manager->processResponse('user-123', ['sales', 'support', 'marketing']);
+        $this->manager->processResponse('user-123', [
+            'smtp_host' => 'smtp.example.com', 'smtp_port' => '587',
+            'smtp_user' => 'main@example.com', 'smtp_pass' => 'pass',
+            'from' => 'main@example.com',
+            'imap_host' => 'imap.example.com', 'imap_port' => '993',
+        ]);
+        $this->manager->processResponse('user-123', ['sales', 'support']);
+        $this->manager->processResponse('user-123', ['marketing']);
+
+        $result = $this->manager->getNextStep('user-123');
+        // Eigene Maske nur fuer den gewaehlten Extra-Bereich (marketing),
+        // nicht fuer sales/support (nutzen die Haupt-Adresse).
+        self::assertSame('email_account_marketing', $result['step_id']);
+        self::assertSame('email_combined', $result['type']);
+        self::assertSame('marketing', $result['area']);
+    }
+
+    public function testEmailMainCanBeSkippedWithoutBlockingFlow(): void
+    {
+        $this->setUpStatefulContext();
+        $this->manager->startOnboarding('user-123');
+        $profile = new UserProfile();
+        $profile->setUserIdentifier('user-123');
+        $this->userProfileRepo->method('findOneBy')->willReturn($profile);
+
+        $this->manager->processResponse('user-123', 'mistral');
+        $this->manager->processResponse('user-123', 'mistral-small-latest');
+        $this->manager->processResponse('user-123', 'key');
+        $this->manager->processResponse('user-123', 'Firmenkommunikation und Vertrieb managen');
+        $this->manager->processResponse('user-123', 'manage_company');
+        $this->manager->processResponse('user-123', 'software_it');
+        $this->manager->processResponse('user-123', ['sales']);
+
+        $this->secretService->expects(self::never())->method('set');
+        $this->manager->processResponse('user-123', '');
+
+        $result = $this->manager->getNextStep('user-123');
+        // Nach dem Skip folgen trotzdem die Zuordnungs-Fragen.
+        self::assertSame('email_main_areas', $result['step_id']);
+    }
+
+    public function testSkippedAreaEmailMarksAreaAsSkippedAndMovesOn(): void
+    {
+        $this->setUpStatefulContext();
+        $this->manager->startOnboarding('user-123');
+        $profile = new UserProfile();
+        $profile->setUserIdentifier('user-123');
+        $this->userProfileRepo->method('findOneBy')->willReturn($profile);
+
+        $this->manager->processResponse('user-123', 'mistral');
+        $this->manager->processResponse('user-123', 'mistral-small-latest');
+        $this->manager->processResponse('user-123', 'key');
+        $this->manager->processResponse('user-123', 'Firmenkommunikation und Vertrieb managen');
+        $this->manager->processResponse('user-123', 'manage_company');
+        $this->manager->processResponse('user-123', 'software_it');
+        $this->manager->processResponse('user-123', ['sales', 'support']);
+        $this->manager->processResponse('user-123', [
+            'smtp_host' => 'smtp.example.com', 'smtp_user' => 'main@example.com',
+            'smtp_pass' => 'pass', 'from' => 'main@example.com',
+            'imap_host' => 'imap.example.com',
+        ]);
+        $this->manager->processResponse('user-123', ['sales']);
+        $this->manager->processResponse('user-123', ['support']);
+
+        $this->secretService->expects(self::never())->method('set');
+        $this->manager->processResponse('user-123', '');
+
+        $result = $this->manager->getNextStep('user-123');
+        // Nach dem Skip des Extra-Bereichs erscheint add_more, nicht erneut
+        // die support-Maske.
+        self::assertSame('add_more', $result['step_id']);
     }
 
     public function testCombinedEmailStoresSmtpAndImapSecretsScopedToArea(): void
@@ -234,13 +351,23 @@ final class OnboardingFlowManagerTest extends TestCase
         $this->manager->processResponse('user-123', 'manage_company');
         $this->manager->processResponse('user-123', 'software_it');
         $this->manager->processResponse('user-123', ['sales']);
+        $this->manager->processResponse('user-123', [
+            'smtp_host' => 'smtp.example.com', 'smtp_user' => 'main@example.com',
+            'smtp_pass' => 'pass', 'from' => 'main@example.com',
+            'imap_host' => 'imap.example.com',
+        ]);
+        $this->manager->processResponse('user-123', []);
+        $this->manager->processResponse('user-123', ['sales']);
 
-        // Kombinierte SMTP+IMAP-Eingabe.
+        // Kombinierte SMTP+IMAP-Eingabe fuer den Extra-Bereich: Key-Suffix
+        // _SALES verhindert Ueberschreiben der Haupt-Adress-Secrets.
+        $keys = [];
         $this->secretService->expects(self::exactly(3))
             ->method('set')
-            ->willReturnCallback(function (string $key, string $value, string $user, ?string $scope) {
+            ->willReturnCallback(function (string $key, string $value, string $user, ?string $scope) use (&$keys) {
                 self::assertSame('user-123', $user);
                 self::assertSame('email:sales', $scope);
+                $keys[] = $key;
                 return null;
             });
 
@@ -251,6 +378,49 @@ final class OnboardingFlowManagerTest extends TestCase
             'imap_host' => 'imap.example.com', 'imap_port' => '993',
             'imap_encryption' => 'ssl',
         ]);
+
+        self::assertContains('MAILER_DSN_SALES', $keys);
+        self::assertContains('IMAP_DSN_SALES', $keys);
+        self::assertContains('MAILER_FROM_SALES', $keys);
+    }
+
+    public function testMainEmailStoresStandardSecretKeysWithMainScope(): void
+    {
+        $this->setUpStatefulContext();
+        $this->manager->startOnboarding('user-123');
+        $profile = new UserProfile();
+        $profile->setUserIdentifier('user-123');
+        $this->userProfileRepo->method('findOneBy')->willReturn($profile);
+
+        $this->manager->processResponse('user-123', 'mistral');
+        $this->manager->processResponse('user-123', 'mistral-small-latest');
+        $this->manager->processResponse('user-123', 'key');
+        $this->manager->processResponse('user-123', 'Firmenkommunikation und Vertrieb managen');
+        $this->manager->processResponse('user-123', 'manage_company');
+        $this->manager->processResponse('user-123', 'software_it');
+        $this->manager->processResponse('user-123', ['sales']);
+
+        $keys = [];
+        $this->secretService->expects(self::exactly(3))
+            ->method('set')
+            ->willReturnCallback(function (string $key, string $value, string $user, ?string $scope) use (&$keys) {
+                self::assertSame('user-123', $user);
+                self::assertSame('email:main', $scope);
+                $keys[] = $key;
+                return null;
+            });
+
+        $this->manager->processResponse('user-123', [
+            'smtp_host' => 'smtp.example.com', 'smtp_port' => '587',
+            'smtp_user' => 'main@example.com', 'smtp_pass' => 'pass',
+            'smtp_encryption' => 'tls', 'from' => 'main@example.com',
+            'imap_host' => 'imap.example.com', 'imap_port' => '993',
+            'imap_encryption' => 'ssl',
+        ]);
+
+        self::assertContains('MAILER_DSN', $keys);
+        self::assertContains('IMAP_DSN', $keys);
+        self::assertContains('MAILER_FROM', $keys);
     }
 
     public function testAssistWorkBranchAsksUseCasesMultiselect(): void

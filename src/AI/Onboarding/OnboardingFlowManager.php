@@ -494,10 +494,12 @@ class OnboardingFlowManager
             // Der summary-Schritt ist der Abschluss; er gilt als unbeantwortet,
             // bis er bestaetigt wird (Feld 'summary' wird auf 'confirm' gesetzt).
             // email_account-Schritte sind pro Bereich wiederholbar; sie gelten
-            // als beantwortet, sobald der Bereich in email_configured_areas steht.
+            // als beantwortet, sobald der Bereich konfiguriert (email_configured_areas)
+            // oder explizit uebersprungen (email_skipped_areas) wurde.
             if ($field === 'email_account' && isset($step['area'])) {
                 $configured = $this->toArray($onboardingData['email_configured_areas'] ?? []);
-                if (in_array($step['area'], $configured, true)) {
+                $skipped = $this->toArray($onboardingData['email_skipped_areas'] ?? []);
+                if (in_array($step['area'], $configured, true) || in_array($step['area'], $skipped, true)) {
                     continue;
                 }
                 return $step;
@@ -749,10 +751,25 @@ class OnboardingFlowManager
         }
 
         // Kombinierte E-Mail-Maske (SMTP + IMAP in einem Schritt). Leitet beide
-        // DSNs ab und speichert sie pro Bereich (scope) als Secret. Unterstuetzt
-        // mehrere E-Mail-Konten (z.B. Vertrieb und Support mit eigenen Adressen).
+        // DSNs ab und speichert sie als Secret: Haupt-Adresse mit Scope
+        // email:main (Standard-Key-Namen), Bereichsadressen mit Scope
+        // email:{area} und Key-Suffix _AREA (ueberschreiben sich nicht).
+        // Jede Maske ist optional: leere Antworten werden nicht als Secret
+        // gespeichert, sondern nur als beantwortet bzw. uebersprungen markiert.
         if ($type === 'email_combined') {
             $area = $step['area'] ?? null;
+            if ($value === '' || $value === []) {
+                if ($area !== null) {
+                    $skipped = $this->toArray($context['onboarding_data']['email_skipped_areas'] ?? []);
+                    if (!in_array($area, $skipped, true)) {
+                        $skipped[] = $area;
+                        $context['onboarding_data']['email_skipped_areas'] = $skipped;
+                    }
+                }
+
+                return;
+            }
+
             $this->storeEmailCombined($userIdentifier, $value, $area, $context);
 
             return;
@@ -1038,8 +1055,11 @@ class OnboardingFlowManager
 
     /**
      * Speichert eine kombinierte E-Mail-Verbindung (SMTP + IMAP) aus einer
-     * Maske als verschluesselte Secrets. Unterstuetzt mehrere Konten pro
-     * Bereich (scope), z.B. getrennte Adressen fuer Vertrieb und Support.
+     * Maske als verschluesselte Secrets. Die Haupt-Adresse wird mit den
+     * Standard-Key-Namen (MAILER_DSN/IMAP_DSN/MAILER_FROM) und Scope
+     * email:main gespeichert; Bereichsadressen mit Key-Suffix _AREA und
+     * Scope email:{area}, damit sich mehrere Adressen nicht ueberschreiben
+     * (SecretService keyed nach keyName je Tenant).
      *
      * @param string|array $value Array mit smtp.* und imap.* Schluesseln
      * @param array<string, mixed> $context
@@ -1049,6 +1069,9 @@ class OnboardingFlowManager
         if (!is_array($value)) {
             return;
         }
+
+        $suffix = $area !== null ? '_' . strtoupper($area) : '';
+        $scope = $area !== null ? 'email:' . $area : 'email:main';
 
         $smtpHost = (string) ($value['smtp_host'] ?? $value['host'] ?? '');
         if ($smtpHost !== '') {
@@ -1060,8 +1083,7 @@ class OnboardingFlowManager
                 'encryption' => $value['smtp_encryption'] ?? $value['encryption'] ?? 'tls',
             ]);
             if ($smtpDsn !== '') {
-                $scope = $area !== null ? 'email:' . $area : 'onboarding';
-                $this->secretService->set('MAILER_DSN', $smtpDsn, $userIdentifier, $scope);
+                $this->secretService->set('MAILER_DSN' . $suffix, $smtpDsn, $userIdentifier, $scope);
             }
         }
 
@@ -1075,15 +1097,13 @@ class OnboardingFlowManager
                 'encryption' => $value['imap_encryption'] ?? 'ssl',
             ]);
             if ($imapDsn !== '') {
-                $scope = $area !== null ? 'email:' . $area : 'onboarding';
-                $this->secretService->set('IMAP_DSN', $imapDsn, $userIdentifier, $scope);
+                $this->secretService->set('IMAP_DSN' . $suffix, $imapDsn, $userIdentifier, $scope);
             }
         }
 
         $from = (string) ($value['from'] ?? $value['smtp_user'] ?? '');
         if ($from !== '') {
-            $scope = $area !== null ? 'email:' . $area : 'onboarding';
-            $this->secretService->set('MAILER_FROM', $from, $userIdentifier, $scope);
+            $this->secretService->set('MAILER_FROM' . $suffix, $from, $userIdentifier, $scope);
         }
 
         // Bereich als konfiguriert markieren, damit der naechste E-Mail-Schritt

@@ -357,7 +357,16 @@ final class OnboardingStepProvider
             return $steps;
         }
 
+        // Hat der Nutzer den E-Mail-Teil bereits durchlaufen (Haupt-Adresse
+        // erfasst oder uebersprungen), filtert der Mapper-Fallback den
+        // email_combined-Schritt heraus, damit keine doppelte Maske erscheint.
         $useCases = $this->useCasesFromContext($context);
+        if (array_key_exists('email_main', $context)) {
+            $useCases = array_values(array_filter(
+                $useCases,
+                fn (string $useCase): bool => $useCase !== 'business_automation' && $useCase !== 'project_management'
+            ));
+        }
 
         return $this->integrationSteps($useCases, $mapper);
     }
@@ -416,11 +425,57 @@ final class OnboardingStepProvider
                 ];
             }
 
-            // E-Mail-Konten pro gewaehltem Bereich (wiederholbar)
+            // E-Mail ist optional: Haupt-Adresse zuerst, dann Bereichs-
+            // Zuordnung; separate Adressen nur fuer explizit gewaehlte Bereiche.
             $areas = $this->toArray($context['business_areas'] ?? []);
+            if (!array_key_exists('email_main', $context)) {
+                $steps[] = [
+                    'id' => 'email_main',
+                    'phase' => 'E-Mail',
+                    'question' => 'Moechtest du eine Haupt-E-Mail-Adresse hinterlegen (SMTP + IMAP)? Du kannst diesen Schritt auch ueberspringen.',
+                    'type' => 'email_combined',
+                    'field' => 'email_main',
+                    'help' => 'Optional. Die Haupt-Adresse kann von mehreren Bereichen gemeinsam genutzt werden.',
+                    'required' => false,
+                ];
+            }
+
+            $mainAnswered = array_key_exists('email_main', $context);
+            if ($mainAnswered && !isset($context['email_main_areas'])) {
+                $steps[] = [
+                    'id' => 'email_main_areas',
+                    'phase' => 'E-Mail',
+                    'question' => 'Welche Bereiche sollen mit der Haupt-E-Mail-Adresse arbeiten?',
+                    'type' => 'multiselect',
+                    'field' => 'email_main_areas',
+                    'options' => self::BUSINESS_AREAS,
+                    'help' => 'Mehrfachauswahl; alle hier gewaehlten Bereiche nutzen die Haupt-Adresse. Ueberspringen = kein Bereich nutzt sie.',
+                    'allow_freetext' => true,
+                    'required' => false,
+                ];
+            }
+
+            if ($mainAnswered && !isset($context['email_extra_areas'])) {
+                $steps[] = [
+                    'id' => 'email_extra_areas',
+                    'phase' => 'E-Mail',
+                    'question' => 'Moechtest du fuer bestimmte Bereiche eigene E-Mail-Adressen hinterlegen (z.B. eine separate Vertriebs-Adresse)?',
+                    'type' => 'multiselect',
+                    'field' => 'email_extra_areas',
+                    'options' => self::BUSINESS_AREAS,
+                    'help' => 'Mehrfachauswahl der Bereiche mit eigener Adresse. Ueberspringen = alle Bereiche nutzen die Haupt-Adresse bzw. keine.',
+                    'allow_freetext' => true,
+                    'required' => false,
+                ];
+            }
+
+            // Eigene E-Mail-Masken nur fuer die explizit gewaehlten
+            // Extra-Bereiche (jede einzeln ueberspringbar).
+            $extraAreas = $this->toArray($context['email_extra_areas'] ?? []);
             $configuredAreas = $this->toArray($context['email_configured_areas'] ?? []);
-            foreach ($areas as $area) {
-                if (in_array($area, $configuredAreas, true)) {
+            $skippedAreas = $this->toArray($context['email_skipped_areas'] ?? []);
+            foreach ($extraAreas as $area) {
+                if (in_array($area, $configuredAreas, true) || in_array($area, $skippedAreas, true)) {
                     continue;
                 }
                 $label = self::BUSINESS_AREAS[$area] ?? ucfirst((string) $area);
@@ -428,13 +483,13 @@ final class OnboardingStepProvider
                     'id' => 'email_account_' . $area,
                     'phase' => 'E-Mail-Konten',
                     'question' => sprintf(
-                        'E-Mail-Konto fuer "%s" konfigurieren (SMTP + IMAP). Du kannst es auch ueberspringen.',
+                        'Eigene E-Mail-Adresse fuer "%s" hinterlegen (SMTP + IMAP). Du kannst es auch ueberspringen.',
                         $label
                     ),
                     'type' => 'email_combined',
                     'field' => 'email_account',
                     'area' => $area,
-                    'help' => 'Kombinierte SMTP- und IMAP-Eingabe fuer diesen Bereich. Verschiedene Bereiche koennen verschiedene E-Mail-Adressen nutzen.',
+                    'help' => 'Kombinierte SMTP- und IMAP-Eingabe nur fuer diesen Bereich.',
                     'required' => false,
                 ];
             }
@@ -457,10 +512,13 @@ final class OnboardingStepProvider
         // Schleife: "Weitere Bereiche hinzufuegen?" nachdem E-Mail-Konten
         // konfiguriert wurden (nur bei manage_company, wenn Bereiche gewaehlt).
         if ($goal === 'manage_company') {
-            $areas = $this->toArray($context['business_areas'] ?? []);
-            $configuredAreas = $this->toArray($context['email_configured_areas'] ?? []);
-            $allConfigured = !empty($areas) && count($areas) === count($configuredAreas);
-            if ($allConfigured && !isset($context['add_more'])) {
+            // add_more erscheint, sobald der optionale E-Mail-Teil
+            // durchlaufen ist (Haupt-Adresse, Zuordnungen und alle
+            // gewaehlten Extra-Bereiche konfiguriert oder uebersprungen).
+            $emailFlowDone = array_key_exists('email_main', $context)
+                && isset($context['email_main_areas'])
+                && isset($context['email_extra_areas']);
+            if ($emailFlowDone && !isset($context['add_more'])) {
                 $steps[] = [
                     'id' => 'add_more',
                     'phase' => 'Abschluss',
