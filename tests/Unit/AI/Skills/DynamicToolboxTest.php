@@ -9,6 +9,7 @@ use App\AI\Skills\DynamicToolbox;
 use App\Entity\ToolDefinition;
 use App\Repository\ToolDefinitionRepository;
 use App\Security\UserContext;
+use App\Tests\Stub\StubAgent;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\RequestStack;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
@@ -18,6 +19,7 @@ use Symfony\AI\Platform\Result\ToolCall;
 use Symfony\AI\Platform\Tool\ExecutionReference;
 use Symfony\AI\Agent\AgentInterface;
 use Symfony\AI\Platform\Message\MessageBag;
+use Symfony\AI\Platform\Message\UserMessage;
 use Symfony\AI\Platform\Result\ResultInterface;
 use Symfony\AI\Platform\Tool\Tool;
 use Symfony\AI\Agent\Toolbox\ToolboxInterface;
@@ -174,16 +176,7 @@ final class DynamicToolboxTest extends TestCase
         // ausgefuehrt statt stillschweigend im GenericExecutor zu verpuffen.
         $toolCall = new ToolCall('call-1', 'sub_agent_website_researcher', ['task' => 'Analysiere example.com']);
 
-        $result = $this->createMock(ResultInterface::class);
-        $result->method('getContent')->willReturn('Recherche abgeschlossen');
-
-        $agent = $this->createMock(AgentInterface::class);
-        $agent->expects(self::once())
-            ->method('call')
-            ->with(self::callback(static function (MessageBag $bag): bool {
-                return str_contains((string) $bag->getMessages()[0]->asText(), 'Analysiere example.com');
-            }))
-            ->willReturn($result);
+        $agent = new StubAgent(['Recherche abgeschlossen']);
 
         $factory = $this->createMock(SubAgentFactoryInterface::class);
         $factory->method('createByName')
@@ -199,6 +192,8 @@ final class DynamicToolboxTest extends TestCase
         $toolResult = $toolbox->execute($toolCall);
 
         self::assertSame('Recherche abgeschlossen', $toolResult->getResult());
+        self::assertCount(1, $agent->getSentMessages());
+        self::assertStringContainsString('Analysiere example.com', (string) $agent->getSentMessages()[0]->getMessages()[0]->asText());
     }
 
     public function testExecuteSubAgentToolWithoutFactoryFallsBackToInnerToolbox(): void
@@ -222,8 +217,17 @@ final class DynamicToolboxTest extends TestCase
     {
         $toolCall = new ToolCall('call-3', 'sub_agent_data_analyst', ['task' => 'Failing task']);
 
-        $agent = $this->createMock(AgentInterface::class);
-        $agent->method('call')->willThrowException(new \RuntimeException('LLM offline'));
+        $agent = new class () implements AgentInterface {
+            public function call(string|MessageBag|UserMessage $input, array $options = []): ResultInterface
+            {
+                throw new \RuntimeException('LLM offline');
+            }
+
+            public function getName(): string
+            {
+                return 'failing_agent';
+            }
+        };
 
         $factory = $this->createMock(SubAgentFactoryInterface::class);
         $factory->method('createByName')->willReturn($agent);
