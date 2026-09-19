@@ -9,7 +9,7 @@
         <a href="{{ path('app_streaming_sessions') }}"
            class="inline-flex items-center gap-2 text-content-subtle hover:text-content transition-colors">
             <i class="ph ph-caret-left"></i>
-            Zurck zu allen Sessions
+            Zurück zu allen Sessions
         </a>
     </div>
 
@@ -25,7 +25,11 @@
                         Tool: <code class="text-primary">{{ session.toolName }}</code>
                     </p>
                 </div>
-                <div class="flex gap-2">
+                <div class="flex gap-2" id="session-status-badges">
+                    <span id="live-indicator" class="hidden px-3 py-1 bg-slate-100 dark:bg-slate-700 text-content-subtle text-sm font-medium rounded-full">
+                        <i class="ph ph-broadcast"></i>
+                        Live
+                    </span>
                     {% if session.status == 'active' %}
                         <span class="px-3 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-sm font-medium rounded-full">
                             <i class="ph ph-play-circle"></i>
@@ -68,7 +72,7 @@
                         </div>
                         <div class="flex justify-between">
                             <dt class="text-content-subtle">Status</dt>
-                            <dd class="text-content">{{ session.status }}</dd>
+                            <dd class="text-content" id="session-status-value">{{ session.status }}</dd>
                         </div>
                         <div class="flex justify-between">
                             <dt class="text-content-subtle">Erstellt</dt>
@@ -99,7 +103,7 @@
                                 {% if session.finishedAt %}
                                     {{ session.finishedAt|date('H:i:s') }} ({{ (session.finishedAt - session.createdAt)|date('H:i:s') }})
                                 {% else %}
-                                    Luft noch...
+                                    Läuft noch...
                                 {% endif %}
                             </dd>
                         </div>
@@ -176,6 +180,20 @@
                 </div>
             {% endif %}
 
+            {# Live-Feed: Echtzeit-Events vom Mercure-Hub (Blueprint Punkt 4) #}
+            <div id="live-feed" class="hidden mb-6">
+                <h3 class="text-lg font-semibold text-content mb-3">
+                    <i class="ph ph-broadcast"></i>
+                    Live-Feed
+                </h3>
+                <div class="bg-slate-50 dark:bg-slate-700 rounded-lg p-4">
+                    <div id="live-progress-bar" class="hidden w-full bg-slate-200 dark:bg-slate-600 rounded-full h-2 mb-4">
+                        <div id="live-progress-fill" class="bg-primary h-2 rounded-full transition-all" style="width: 0%"></div>
+                    </div>
+                    <div id="live-messages" class="space-y-2"></div>
+                </div>
+            </div>
+
             {# Aktionen #}
             <div class="flex justify-end gap-2 pt-4 border-t border-border">
                 {% if session.status == 'active' %}
@@ -195,10 +213,130 @@
                    onclick="if(confirm('Soll diese Session gel\u00f6scht werden?')) { fetch('{{ path('api_streaming_session_delete', {'sessionId': session.sessionId}) }}', {method: 'DELETE'}).then(() => window.location.href = '{{ path('app_streaming_sessions') }}'); }"
                    class="btn btn-ghost text-danger px-4 py-2 text-sm">
                     <i class="ph ph-trash"></i>
-                    Lschen
+                    Löschen
                 </a>
             </div>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    <script>
+        (function () {
+            'use strict';
+
+            const statusValue = document.getElementById('session-status-value');
+            const liveIndicator = document.getElementById('live-indicator');
+            const liveFeed = document.getElementById('live-feed');
+            const liveMessages = document.getElementById('live-messages');
+            const progressBar = document.getElementById('live-progress-bar');
+            const progressFill = document.getElementById('live-progress-fill');
+
+            if (!liveFeed || '{{ session.status }}' !== 'active') {
+                return;
+            }
+
+            const topic = '/streaming/sessions/{{ session.sessionId }}';
+            const hubUrl = "{{ mercure(topic)|escape('js') }}";
+            const eventSource = new EventSource(hubUrl);
+
+            liveFeed.classList.remove('hidden');
+            liveIndicator.classList.remove('hidden');
+
+            function addLiveMessage(role, content, timestamp) {
+                const wrapper = document.createElement('div');
+                wrapper.className = 'flex gap-2 items-start';
+
+                const icon = document.createElement('i');
+                icon.className = role === 'error'
+                    ? 'ph ph-warning-circle text-danger' : 'ph ph-rainbow text-primary';
+                wrapper.appendChild(icon);
+
+                const body = document.createElement('div');
+                body.className = 'text-content text-sm whitespace-pre-wrap flex-1';
+                body.textContent = content;
+                wrapper.appendChild(body);
+
+                liveMessages.appendChild(wrapper);
+            }
+
+            function setProgress(percentage) {
+                if (percentage === null || percentage === undefined) {
+                    progressBar.classList.add('hidden');
+                    return;
+                }
+                progressBar.classList.remove('hidden');
+                progressFill.style.width = Math.min(100, Math.max(0, Number(percentage))) + '%';
+            }
+
+            function markEnded(finalStatus) {
+                statusValue.textContent = finalStatus;
+                liveIndicator.classList.add('hidden');
+                eventSource.close();
+            }
+
+            eventSource.onmessage = function (event) {
+                let payload;
+                try {
+                    payload = JSON.parse(event.data);
+                } catch (e) {
+                    return;
+                }
+
+                const eventType = payload.event || 'data';
+                const data = payload.data || {};
+
+                switch (eventType) {
+                    case 'session_start':
+                        if (data.status) {
+                            statusValue.textContent = data.status;
+                        }
+                        setProgress(data.progress);
+                        addLiveMessage('info', 'Session gestartet: ' + (data.tool_name || ''));
+                        break;
+                    case 'progress':
+                        if (data.message) {
+                            addLiveMessage('info', data.message);
+                        }
+                        setProgress(data.percentage);
+                        break;
+                    case 'partial_result':
+                    case 'final_result':
+                    case 'data':
+                    case 'log':
+                    case 'status':
+                        if (data.message) {
+                            addLiveMessage('info', data.message);
+                        } else if (data.chunk) {
+                            addLiveMessage('info', data.chunk);
+                        }
+                        if (data.progress !== undefined && data.progress !== null) {
+                            setProgress(data.progress * 100);
+                        }
+                        break;
+                    case 'error':
+                        addLiveMessage('error', data.error || data.chunk || 'Unbekannter Fehler');
+                        break;
+                    case 'session_end':
+                        if (data.metadata && data.metadata.message) {
+                            addLiveMessage('info', data.metadata.message);
+                        }
+                        setProgress(100);
+                        markEnded(data.final_status || 'completed');
+                        break;
+                    default:
+                        if (data.message) {
+                            addLiveMessage('info', data.message);
+                        }
+                }
+            };
+
+            eventSource.onerror = function () {
+                eventSource.close();
+                liveIndicator.classList.add('hidden');
+            };
+        })();
+    </script>
 {% endblock %}

@@ -35,6 +35,9 @@ services:
       - MCP_PLAYWRIGHT_URL=http://mcp-playwright:8931/mcp
       - MAILER_DSN=${MAILER_DSN:-smtp://localhost}
       - MAILER_FROM=${MAILER_FROM:-no-reply@evie.local}
+      - MERCURE_URL=http://mercure:80/.well-known/mercure
+      - MERCURE_PUBLIC_URL=${MERCURE_PUBLIC_URL:-http://localhost:3000/.well-known/mercure}
+      - MERCURE_JWT_SECRET=${MERCURE_JWT_SECRET:?MERCURE_JWT_SECRET muss gesetzt sein}
     depends_on:
       postgres:
         condition: service_healthy
@@ -84,10 +87,15 @@ services:
       - MCP_PLAYWRIGHT_URL=http://mcp-playwright:8931/mcp
       - MAILER_DSN=${MAILER_DSN:-smtp://localhost}
       - MAILER_FROM=${MAILER_FROM:-no-reply@evie.local}
+      - MERCURE_URL=http://mercure:80/.well-known/mercure
+      - MERCURE_PUBLIC_URL=${MERCURE_PUBLIC_URL:-http://localhost:3000/.well-known/mercure}
+      - MERCURE_JWT_SECRET=${MERCURE_JWT_SECRET:?MERCURE_JWT_SECRET muss gesetzt sein}
     depends_on:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_started
+      mercure:
         condition: service_started
     networks: [evie_prod]
     deploy:
@@ -125,6 +133,26 @@ services:
     # Messenger (ersetzt externes Cron, Blueprint Luecke 2 / Phase 5).
     <<: *worker-base
     command: ["php", "bin/console", "app:agent:run-goals", "--loop=60"]
+
+  mercure:
+    # Mercure-Hub fuer Echtzeit-Streaming (Blueprint Punkt 4). Pinned auf
+    # v0.24.x, weil symfony/mercure v0.8/v0.9 das 0.x-Protokoll nutzt
+    # (topic=-Parameter, legacy mercure-JWT-Claim); Mercure 1.0 hat beides
+    # entfernt. Prod laeuft ohne dev.Caddyfile (kein anonymes Subscribe,
+    # keine Debug-UI) und nur ueber den JWT-Schluessel.
+    image: dunglas/mercure:v0.24.2
+    container_name: evie_mercure_prod
+    restart: unless-stopped
+    environment:
+      - SERVER_NAME=:80
+      - MERCURE_PUBLISHER_JWT_KEY=${MERCURE_JWT_SECRET:?MERCURE_JWT_SECRET muss gesetzt sein}
+      - MERCURE_SUBSCRIBER_JWT_KEY=${MERCURE_JWT_SECRET:?MERCURE_JWT_SECRET muss gesetzt sein}
+    ports:
+      - "${MERCURE_PORT:-3000}:80"
+    volumes:
+      - mercure_prod_data:/data
+      - mercure_prod_config:/config
+    networks: [evie_prod]
 
   nginx:
     # Prod-Nginx mit eigener Config (kein Dev-default.conf-Mount).
@@ -188,3 +216,5 @@ networks:
 volumes:
   postgres_prod_data:
   redis_prod_data:
+  mercure_prod_data:
+  mercure_prod_config:
