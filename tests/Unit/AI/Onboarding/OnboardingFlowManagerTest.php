@@ -304,6 +304,33 @@ final class OnboardingFlowManagerTest extends TestCase
         self::assertSame('email_main_areas', $result['step_id']);
     }
 
+    public function testEmptySelectionOnEmailAreaMultiselectsDoesNotBlockFlow(): void
+    {
+        $this->setUpStatefulContext();
+        $this->manager->startOnboarding('user-123');
+        $profile = new UserProfile();
+        $profile->setUserIdentifier('user-123');
+        $this->userProfileRepo->method('findOneBy')->willReturn($profile);
+
+        $this->manager->processResponse('user-123', 'mistral');
+        $this->manager->processResponse('user-123', 'mistral-small-latest');
+        $this->manager->processResponse('user-123', 'key');
+        $this->manager->processResponse('user-123', 'Firmenkommunikation und Vertrieb managen');
+        $this->manager->processResponse('user-123', 'manage_company');
+        $this->manager->processResponse('user-123', 'software_it');
+        $this->manager->processResponse('user-123', ['sales']);
+        $this->manager->processResponse('user-123', '');
+
+        // Leere Auswahl (Skip-Button): email_main_areas mit [] beantworten.
+        $result = $this->manager->processResponse('user-123', []);
+        self::assertSame('email_extra_areas', $result['step_id']);
+
+        // Leere Auswahl: email_extra_areas mit [] beantworten -> keine
+        // eigenen Bereichs-Masken, direkt add_more.
+        $result = $this->manager->processResponse('user-123', []);
+        self::assertSame('add_more', $result['step_id']);
+    }
+
     public function testSkippedAreaEmailMarksAreaAsSkippedAndMovesOn(): void
     {
         $this->setUpStatefulContext();
