@@ -43,7 +43,7 @@
 
         <!-- PHASE 3: Neue Test-Suite fuer Evolution-Flow -->
         <testsuite name="EVIE AI Functional Tests">
-            <directory>tests/Functional/AI</directory>
+            <directory>tests/Functional</directory>
         </testsuite>
 
         <!-- E2E-Tests: Authentifizierungs-Flows (Login, Registrierung, Logout, Navigation, Profil) -->
