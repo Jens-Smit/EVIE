@@ -330,12 +330,42 @@ final class OnboardingStrategyService
         $result = $this->withTenantContext($userIdentifier, fn () => $this->onboardingAgent->call($messages));
         $content = $result->getContent();
 
-        $decoded = json_decode($content, true);
+        $decoded = $this->decodeLlmJson($content);
         if (!is_array($decoded)) {
             return [];
         }
 
         return $decoded;
+    }
+
+    /**
+     * Dekodiert die LLM-Antwort als JSON. Echte Modelle umschliessen JSON
+     * haeufig mit Markdown-Code-Fences (```json ... ```); diese werden
+     * vor dem Parsen entfernt, damit die Extraktion nicht stillschweigend
+     * leer bleibt. Ungueltiges JSON liefert null (Aufrufer behandelt das).
+     */
+    private function decodeLlmJson(string $content): ?array
+    {
+        $content = trim($content);
+        if ($content === '') {
+            return null;
+        }
+        if (preg_match('/```(?:json)?\s*(.+?)\s*```/s', $content, $matches)) {
+            $content = $matches[1];
+        }
+        $firstBrace = strpos($content, '{');
+        $lastBrace = strrpos($content, '}');
+        if ($firstBrace !== false && $lastBrace !== false && $lastBrace > $firstBrace) {
+            $content = substr($content, $firstBrace, $lastBrace - $firstBrace + 1);
+        }
+
+        try {
+            $decoded = json_decode($content, true, 512, \JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return null;
+        }
+
+        return \is_array($decoded) ? $decoded : null;
     }
 
     /**

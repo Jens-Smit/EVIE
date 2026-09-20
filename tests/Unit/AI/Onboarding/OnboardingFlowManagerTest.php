@@ -666,4 +666,69 @@ final class OnboardingFlowManagerTest extends TestCase
         self::assertSame('IT', $preferences['industry']);
         self::assertSame('de', $preferences['language']);
     }
+
+    public function testSecretResponseIsNeverStoredInPlaintextContext(): void
+    {
+        $this->setUpStatefulContext();
+        $this->manager->startOnboarding('user-123');
+        $profile = new UserProfile();
+        $profile->setUserIdentifier('user-123');
+        $this->userProfileRepo->method('findOneBy')->willReturn($profile);
+        $this->secretService->expects(self::once())
+            ->method('set')
+            ->with('MISTRAL_API_KEY', 'super-secret-key-123', 'user-123', 'onboarding');
+        $this->manager->processResponse('user-123', 'mistral');
+        $this->manager->processResponse('user-123', 'mistral-small-latest');
+        $this->manager->processResponse('user-123', 'super-secret-key-123');
+
+        // Der Klartext-Key darf weder im onboarding_data noch in den
+        // Schritt-Protokollen landen (Secret-Leak in LLM-Prompts/Logs).
+        $status = $this->manager->getOnboardingStatus('user-123');
+        self::assertStringNotContainsString(
+            'super-secret-key-123',
+            json_encode($status['onboarding_data'] ?? [], JSON_UNESCAPED_UNICODE),
+            'API-Key-Klartext darf nie im onboarding_data-Kontext serialisiert werden.'
+        );
+        // Der boolesche Marker haelt den Readiness-Check aufrecht.
+        self::assertTrue(($status['onboarding_data']['llm_api_key'] ?? false) === true);
+    }
+
+    public function testEmailCombinedPasswordsAreSanitizedInContext(): void
+    {
+        $this->setUpStatefulContext();
+        $this->manager->startOnboarding('user-123');
+        $profile = new UserProfile();
+        $profile->setUserIdentifier('user-123');
+        $this->userProfileRepo->method('findOneBy')->willReturn($profile);
+        // Die Secret-Speicherung erhaelt die echten Passwoerter (Klartext
+        // geht nur an den SecretService, nie in den Kontext).
+        $this->secretService->expects(self::atLeastOnce())
+            ->method('set')
+            ->willReturnCallback(function (string $key, string $value): void {
+                self::assertNotSame('', $value);
+            });
+        $this->manager->processResponse('user-123', 'mistral');
+        $this->manager->processResponse('user-123', 'mistral-small-latest');
+        $this->manager->processResponse('user-123', 'test-key');
+        $this->manager->processResponse('user-123', 'Ich will mein Unternehmen managen');
+        $this->manager->processResponse('user-123', 'manage_company');
+        $this->manager->processResponse('user-123', 'IT');
+        $this->manager->processResponse('user-123', ['sales']);
+        $this->manager->processResponse('user-123', [
+            'smtp_host' => 'smtp.example.com', 'smtp_port' => '587',
+            'smtp_user' => 'main@example.com', 'smtp_pass' => 'super-secret-email-pass',
+            'from' => 'main@example.com',
+            'imap_host' => 'imap.example.com', 'imap_port' => '993',
+            'imap_pass' => 'super-secret-imap-pass',
+        ]);
+
+        $status = $this->manager->getOnboardingStatus('user-123');
+        $serialized = json_encode($status['onboarding_data'] ?? [], JSON_UNESCAPED_UNICODE);
+        self::assertStringNotContainsString(
+            'super-secret-email-pass',
+            $serialized,
+            'SMTP-Passwort darf nie im onboarding_data-Kontext landen.'
+        );
+        self::assertStringNotContainsString('super-secret-imap-pass', $serialized);
+    }
 }

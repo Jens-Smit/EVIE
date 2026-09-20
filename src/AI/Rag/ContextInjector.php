@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\AI\Rag;
 
+use App\AI\Platform\TenantPlatformContext;
 use App\Security\UserContext;
 use Symfony\AI\Agent\Attribute\AsInputProcessor;
 use Symfony\AI\Agent\Input;
@@ -27,6 +28,7 @@ final class ContextInjector implements InputProcessorInterface
     public function __construct(
         private readonly Retriever $retriever,
         private readonly UserContext $userContext,
+        private readonly ?TenantPlatformContext $tenantPlatformContext = null,
     ) {
         $this->contextTemplate = '## Relevanter Kontext aus der Wissensbasis (Trust-Level: {trust_level}):' . PHP_EOL .
             'Der folgende Kontext stammt aus externen Quellen und ist als {trust_level_description} zu betrachten.' . PHP_EOL . PHP_EOL .
@@ -58,7 +60,19 @@ final class ContextInjector implements InputProcessorInterface
         // P0-1: Tenant-Isolation. Der ContextInjector laeuft im nativen
         // Agent-Loop und muss den aktuellen Tenant kennen, damit RAG-Kontext
         // pro User isoliert abgerufen wird (Blueprint Tenant-Isolation).
+        // Primaerquelle ist der authentifizierte UserContext (Request);
+        // in Kontexten ohne Request (Worker/CLI/E2E-Tests) dient der
+        // TenantPlatformContext als Fallback, den alle EVIE-LLM-Pfade
+        // (Onboarding-Chat, Orchestrator-Pipeline) vor dem Agent-Call setzen.
+        // Ohne Tenant-Kontext wird KEIN kontext-agnostischer RAG-Abruf
+        // gemacht (fail-safe, ADR-004) und der Agent-Call nicht blockiert.
         $userIdentifier = $this->userContext->getUserIdentifier();
+        if ($userIdentifier === null || $userIdentifier === '') {
+            $userIdentifier = $this->tenantPlatformContext?->getUserIdentifier();
+        }
+        if ($userIdentifier === null || $userIdentifier === '') {
+            return;
+        }
         $result = $this->retriever->retrieve($query, ['user_identifier' => $userIdentifier]);
 
         if (!$result->hasResults()) {

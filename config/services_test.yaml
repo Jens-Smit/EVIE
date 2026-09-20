@@ -22,3 +22,16 @@ services:
         public: true
     App\Security\UserContext:
         public: true
+
+    # E2E-LLM-Tests (EVIE_LLM_E2E=1) benoetigen zusaetzlich Zugriff auf die
+    # Secret- und Embedding-Dienste, um den pro-Tenant Key aus dem
+    # Onboarding in die echten Mistral-Aufrufe (Chat + Embeddings) zu
+    # schleusen. Ausserhalb des LLM-E2E-Modus ist public harmlos.
+    App\Service\SecretService:
+        public: true
+    App\AI\Rag\Retriever:
+        public: true
+    App\AI\Onboarding\ContextStoreManager:
+        public: true
+    App\AI\Platform\TenantPlatformContext:
+        public: true

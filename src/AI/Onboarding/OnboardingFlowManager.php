@@ -149,17 +149,40 @@ class OnboardingFlowManager
         $field = $currentStepDef['field'];
         $type = $currentStepDef['type'];
 
-        // Antwort normalisieren und im Kontext speichern.
+        // Antwort normalisieren. Secret-Werte (z.B. API-Keys, E-Mail-
+        // Passwoerter) werden NIE im Klartext im onboarding_data abgelegt:
+        // Der Kontext wird u.a. in LLM-System-Prompts und Chat-Antworten
+        // serialisiert (Audit: keine Secrets in Logs/Kontext). Die Werte
+        // landen ausschliesslich verschluesselt im SecretService (siehe
+        // applyStepSideEffects unten); im Kontext wird nur ein boolescher
+        // Hinterlegt-Marker bzw. eine passwortbereinigte Kopie gespeichert,
+        // damit der Readiness-Checker das Pflichtfeld weiter pruefen kann.
         $normalized = $this->normalizeResponse($response, $type);
-        $context['onboarding_data'][$field] = $normalized;
-        $context['onboarding_data']['step_' . $field] = [
-            'response' => $normalized,
-            'timestamp' => (new \DateTimeImmutable())->format(\DATE_ATOM),
-        ];
-
-        // Nebenwirkungen je nach Schritttyp ausfuehren (Secret-Speicherung,
-        // LLM-Praeferenz-Persistierung, Modell-Optionen dynamisieren).
         $this->applyStepSideEffects($userIdentifier, $context, $currentStepDef, $normalized);
+
+        if ($type === 'secret') {
+            $plain = is_array($normalized) ? (string) ($normalized['value'] ?? '') : (string) $normalized;
+            $context['onboarding_data'][$field] = $plain !== '';
+            $context['onboarding_data']['step_' . $field] = [
+                'response' => $plain !== '' ? '(secret stored)' : '',
+                'timestamp' => (new \DateTimeImmutable())->format(\DATE_ATOM),
+            ];
+        } elseif ($type === 'email_combined' && is_array($normalized)) {
+            $sanitized = $normalized;
+            $sanitized['smtp_pass'] = '';
+            $sanitized['imap_pass'] = '';
+            $context['onboarding_data'][$field] = $sanitized;
+            $context['onboarding_data']['step_' . $field] = [
+                'response' => $sanitized,
+                'timestamp' => (new \DateTimeImmutable())->format(\DATE_ATOM),
+            ];
+        } else {
+            $context['onboarding_data'][$field] = $normalized;
+            $context['onboarding_data']['step_' . $field] = [
+                'response' => $normalized,
+                'timestamp' => (new \DateTimeImmutable())->format(\DATE_ATOM),
+            ];
+        }
 
         // use_cases als Liste sicherstellen, damit der RequirementMapper
         // die Schnittstellen-Schritte ableiten kann.
@@ -223,7 +246,7 @@ class OnboardingFlowManager
                 Message::ofUser($extractPayload)
             );
             $result = $this->withTenantContext($userIdentifier, fn () => $this->onboardingAgent->call($messages));
-            $decoded = json_decode($result->getContent(), true);
+            $decoded = $this->decodeLlmJson($result->getContent());
             if (is_array($decoded)) {
                 $responseText = (string) ($decoded['message'] ?? '');
                 if (isset($decoded['extracted']) && is_array($decoded['extracted'])) {
@@ -238,6 +261,18 @@ class OnboardingFlowManager
 
         if (trim($responseText) === '') {
             $responseText = 'Danke! Ich habe deine Angaben aufgenommen. Weiter im Wizard oder schreib mir einfach mehr.';
+        }
+
+        // Deterministischer Fallback (keine Halluzination): Wenn noch keine
+        // Mission im Kontext liegt und das LLM kein mission_statement extra-
+        // hiert, uebernimmt die erste substanzielle Nutzernachricht selbst
+        // als mission_statement - exakt in den Worten des Nutzers. Kurze
+        // Begruesungen/Rueckfragen (unter 20 Zeichen) werden nicht als
+        // Aufgabe fehlinterpretiert.
+        if (!isset($extracted['mission_statement'])
+            && trim((string) ($onboardingData['mission_statement'] ?? '')) === ''
+            && mb_strlen(trim($message)) >= 20) {
+            $extracted['mission_statement'] = trim($message);
         }
 
         $ingested = $this->ingestExtracted($userIdentifier, $extracted);
@@ -1262,6 +1297,37 @@ class OnboardingFlowManager
         } finally {
             $this->tenantPlatformContext->clear();
         }
+    }
+
+    /**
+     * Dekodiert die LLM-Antwort als JSON. Echte Modelle umschliessen JSON
+     * haeufig mit Markdown-Code-Fences (```json ... ```); diese werden
+     * vor dem Parsen entfernt, damit die Chat-Extraktion nicht still-
+     * schweigend leer bleibt. Ungueltiges JSON liefert null (Aufrufer
+     * faellt dann auf den Rohtext zurueck).
+     */
+    private function decodeLlmJson(string $content): ?array
+    {
+        $content = trim($content);
+        if ($content === '') {
+            return null;
+        }
+        if (preg_match('/```(?:json)?\s*(.+?)\s*```/s', $content, $matches)) {
+            $content = $matches[1];
+        }
+        $firstBrace = strpos($content, '{');
+        $lastBrace = strrpos($content, '}');
+        if ($firstBrace !== false && $lastBrace !== false && $lastBrace > $firstBrace) {
+            $content = substr($content, $firstBrace, $lastBrace - $firstBrace + 1);
+        }
+
+        try {
+            $decoded = json_decode($content, true, 512, \JSON_THROW_ON_ERROR);
+        } catch (\JsonException) {
+            return null;
+        }
+
+        return \is_array($decoded) ? $decoded : null;
     }
 
     /**
