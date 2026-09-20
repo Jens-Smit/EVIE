@@ -107,7 +107,7 @@ class NavigationPagesTest extends WebTestCase
         $this->client->request('GET', '/tools/pending');
 
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorTextContains('#content-area h1', 'Ausstehende Tools');
+        $this->assertSelectorTextContains('#content-area h1', 'Freigaben');
         $this->assertSidebarPresent();
     }
 
@@ -361,7 +361,7 @@ class NavigationPagesTest extends WebTestCase
             ['/dashboard', 'Dashboard'],
             ['/dialog', 'AI Agent Dialog'],
             ['/subagents/list', 'Sub-Agenten verwalten'],
-            ['/tools/pending', 'Ausstehende Tools'],
+            ['/tools/pending', 'Freigaben'],
             ['/documents', 'Dokumente'],
             ['/tools/list', 'Alle verfügbaren Tools'],
             ['/history', 'Agenten-Verlauf'],

@@ -13,12 +13,17 @@ use Symfony\Component\Security\Http\Attribute\CurrentUser;
 class AgentDialogController extends AbstractController
 {
     #[Route('/dialog', name: 'frontend_agent_dialog', methods: ['GET'])]
-    public function dialog(#[CurrentUser] ?UserInterface $user = null): Response
+    public function dialog(Request $request, #[CurrentUser] ?UserInterface $user = null): Response
     {
         if (null === $user) {
             return $this->redirectToRoute('app_login');
         }
-        
+
+        // Optionale Aufgaben-Vorbelegung vom Dashboard-Command-Center: ein
+        // ?task=... Parameter fuehrt den Benutzer direkt in den Chat und
+        // zeigt die Aufgabe im Eingabefeld, damit er nur noch absenden muss.
+        $prefilledTask = trim((string) $request->query->get('task', ''));
+
         // Willkommensnachricht als strukturierte Nachricht
         $messages = [
             ['role' => 'system', 'content' => 'Willkommen beim EVIE-Agenten! Wie kann ich dir helfen?'],
@@ -29,6 +34,7 @@ class AgentDialogController extends AbstractController
             'continuing_conversation' => false,
             'conversation_id' => null,
             'userIdentifier' => $user->getUserIdentifier(),
+            'prefilled_task' => $prefilledTask,
         ]);
     }
 
@@ -45,21 +51,21 @@ class AgentDialogController extends AbstractController
         
         $userIdentifier = $user->getUserIdentifier();
         
-        // Hole alle Eintrge fr den Benutzer
+        // Hole alle Einträge für den Benutzer
         $entries = $historyRepo->findByUserIdentifier($userIdentifier);
         
-        // Sortiere die Eintrge absteigend nach Datum (aktuellste zuerst)
+        // Sortiere die Einträge absteigend nach Datum (aktuellste zuerst)
         usort($entries, function($a, $b) {
             return $b->getCreatedAt() <=> $a->getCreatedAt();
         });
         
-        // Konvertiere die Eintrge in ein fr das Template geeignetes Format
+        // Konvertiere die Einträge in ein für das Template geeignetes Format
         $history = [];
         foreach ($entries as $entry) {
-            // Erst Details prfen (neues Format), dann action (altes Format)
+            // Erst Details prüfen (neues Format), dann action (altes Format)
             $details = json_decode($entry->getDetails() ?? '{}', true) ?? [];
             if (empty($details)) {
-                // Altes Format: action enthlt JSON wie {"type":"dialog"}
+                // Altes Format: action enthält JSON wie {"type":"dialog"}
                 $action = json_decode($entry->getAction(), true);
                 if (is_array($action)) {
                     $details = $action;
@@ -115,18 +121,18 @@ class AgentDialogController extends AbstractController
             }
         }
         
-        // Baue die Nachrichten fr den Chat auf
+        // Baue die Nachrichten für den Chat auf
         $messages = [];
         
-        // System-Nachricht hinzufgen
+        // System-Nachricht hinzufügen
         $messages[] = ['role' => 'system', 'content' => 'Fortsetzung der Konversation vom ' . $entry->getCreatedAt()->format('d.m.Y H:i:s')];
         
-        // User-Nachricht hinzufgen
+        // User-Nachricht hinzufügen
         if (isset($details['input']['message'])) {
             $messages[] = ['role' => 'user', 'content' => $details['input']['message']];
         }
         
-        // Agent-Antwort hinzufgen
+        // Agent-Antwort hinzufügen
         if (isset($details['output']['response'])) {
             $messages[] = ['role' => 'agent', 'content' => $details['output']['response']];
         } elseif (isset($details['output']['error'])) {

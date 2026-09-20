@@ -5,8 +5,8 @@ namespace App\AI\Rag;
 use App\Entity\Embedding;
 
 /**
- * RetrievedItem - Reprsentiert ein aus dem VectorStore abgerufenes Item.
- * Enthlt Trust-Level Information fr Prompt-Injection-Schutz (P2).
+ * RetrievedItem - Repräsentiert ein aus dem VectorStore abgerufenes Item.
+ * Enthält Trust-Level Information für Prompt-Injection-Schutz (P2).
  */
 class RetrievedItem
 {
@@ -39,9 +39,9 @@ class RetrievedItem
     }
     
     /**
-     * Gibt das Trust-Level zurck (P2: Prompt-Injection Schutz).
-     * Standardmig UNTRUSTED, kann aber aus Metadaten oder Embedding 
-     * berschrieben werden.
+     * Gibt das Trust-Level zurück (P2: Prompt-Injection Schutz).
+     * Standardmäßig UNTRUSTED, kann aber aus Metadaten oder Embedding 
+     * überschrieben werden.
      */
     public function getTrustLevel(): string
     {
@@ -49,7 +49,7 @@ class RetrievedItem
             return $this->trustLevel;
         }
         
-        // Prfe Metadaten des Embeddings
+        // Prüfe Metadaten des Embeddings
         $metadata = $this->getMetadata();
         if (isset($metadata['trust_level']) && in_array($metadata['trust_level'], [
             self::TRUST_LEVEL_UNTRUSTED,
@@ -59,7 +59,7 @@ class RetrievedItem
             return $metadata['trust_level'];
         }
         
-        // Standard: UNTRUSTED fr alle externen Inhalte
+        // Standard: UNTRUSTED für alle externen Inhalte
         return self::TRUST_LEVEL_UNTRUSTED;
     }
     
@@ -78,7 +78,7 @@ class RetrievedItem
     }
     
     /**
-     * Prft, ob das Item als vertrauenswrdig markiert ist.
+     * Prüft, ob das Item als vertrauenswürdig markiert ist.
      */
     public function isTrusted(): bool
     {
@@ -86,7 +86,7 @@ class RetrievedItem
     }
     
     /**
-     * Prft, ob das Item als System-Content markiert ist.
+     * Prüft, ob das Item als System-Content markiert ist.
      */
     public function isSystem(): bool
     {

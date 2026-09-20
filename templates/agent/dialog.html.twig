@@ -89,7 +89,7 @@
                                  focus:ring-2 focus:ring-primary focus:border-transparent
                                  text-content placeholder-content-subtle"
                           placeholder="Was möchtest du den Agenten fragen?"
-                          rows="3" required></textarea>
+                          rows="3" required>{{ prefilled_task is defined ? prefilled_task : '' }}</textarea>
             </div>
             <input type="hidden" name="user_identifier" value="{{ userIdentifier }}">
             {% if conversation_id is defined and conversation_id is not empty %}
@@ -204,7 +204,7 @@
                     appendMessage('agent', data.response || 'Keine Antwort erhalten.');
 
                     // Frontend-Audit F8: HITL-Inline-Approval prüfen
-                    if (data.requires_approval || data.pending_tool) {
+                    if (data.requires_tool_approval || data.requires_approval || data.pending_tool) {
                         showHitlApproval(data.pending_tool || data);
                     }
                     refreshPendingToolsBadge();
@@ -278,9 +278,15 @@
 
             async function approveTool(toolId, cardEl) {
                 try {
+                    const body = new URLSearchParams();
+                    body.set('_token', '{{ csrf_token('tool_approval') }}');
                     const res = await fetch('/tools/pending/' + toolId + '/approve', {
                         method: 'POST',
-                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: body.toString()
                     });
                     if (res.ok) {
                         cardEl.innerHTML = '<div class="flex items-center gap-2 text-success"><i class="ph ph-check-circle text-lg"></i> Tool genehmigt. Agent wird fortgesetzt.</div>';
@@ -297,9 +303,15 @@
 
             async function rejectTool(toolId, cardEl) {
                 try {
+                    const body = new URLSearchParams();
+                    body.set('_token', '{{ csrf_token('tool_approval') }}');
                     const res = await fetch('/tools/pending/' + toolId + '/reject', {
                         method: 'POST',
-                        headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                        headers: {
+                            'Content-Type': 'application/x-www-form-urlencoded',
+                            'X-Requested-With': 'XMLHttpRequest'
+                        },
+                        body: body.toString()
                     });
                     if (res.ok) {
                         cardEl.innerHTML = '<div class="flex items-center gap-2 text-danger"><i class="ph ph-x-circle text-lg"></i> Tool abgelehnt.</div>';

@@ -49,24 +49,31 @@ class ToolApprovalControllerTest extends WebTestCase
         $this->client->request('GET', '/tools/pending');
 
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorTextContains('', 'Freigaben');
+        $this->assertSelectorTextContains('#content-area h1', 'Freigaben');
     }
 
     public function testPendingListApiReturnsEmptyArray(): void
     {
-        // /tools/pending wird von Frontend\ToolApprovalController::pending
-        // (GET) bedient, die HTML rendert. Die parallele app_tool_pending_list-
-        // Route ist durch die GET-Frontend-Route verdeckt, daher gibt es keine
-        // separate AJAX-JSON-API fuer die pending-Liste. Wir verifizieren, dass
-        // die HTML-Liste fuer einen User ohne Tools erfolgreich laedt (leere Liste).
+        // /tools/pending (app_tool_pending_list) bedient seit der
+        // Frontend-Integration genau EINEN Handler: ohne AJAX-Header rendert
+        // er HTML, mit X-Requested-With liefert er die JSON-API-Antwort
+        // {status, count, tools}. Wir verifizieren beide Varianten.
         $this->createUserAndLogin('toolapi@test.de', 'ToolApiPass123');
 
+        // HTML-Variante
+        $this->client->request('GET', '/tools/pending');
+        $this->assertResponseIsSuccessful();
+        $this->assertSelectorTextContains('#content-area h1', 'Freigaben');
+
+        // JSON-Variante (AJAX)
         $this->client->request('GET', '/tools/pending', [], [], [
             'HTTP_X-Requested-With' => 'XMLHttpRequest',
         ]);
-
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorTextContains('', 'Freigaben');
+        $data = json_decode((string) $this->client->getResponse()->getContent(), true);
+        $this->assertSame('success', $data['status']);
+        $this->assertSame(0, $data['count']);
+        $this->assertSame([], $data['tools']);
     }
 
     public function testPendingToolsCountApiReturnsZero(): void
@@ -94,7 +101,7 @@ class ToolApprovalControllerTest extends WebTestCase
         $this->client->request('GET', '/tools/pending');
 
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorTextContains('', 'Freigaben');
+        $this->assertSelectorTextContains('#content-area h1', 'Freigaben');
     }
 
     public function testToolStatusEndpointReturnsNotFound(): void
