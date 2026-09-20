@@ -257,7 +257,20 @@ jobs:
         # Stellt sicher, dass das per Migration angelegte Schema exakt mit
         # den aktuellen Doctrine-Entities uebereinstimmt (In-Sync).
         run: php bin/console doctrine:schema:validate --env=prod
-
+      # ------------------------------------------------------------------
+      # Regressionsschutz fuer den TableNotFoundException-Bug
+      # (relation "users" does not exist): Die kritischen Tabellen muessen
+      # nach dem Migrations-Run wirklich existieren.
+      # ------------------------------------------------------------------
+      - name: Assert users and user_profile tables exist
+        env:
+          PGPASSWORD: evie
+        run: |
+          psql -h 127.0.0.1 -U evie -d evie_migrate -tAc "SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename" > /tmp/tables.txt
+          cat /tmp/tables.txt
+          grep -qx users /tmp/tables.txt || { echo 'FAIL: Tabelle users fehlt'; exit 1; }
+          grep -qx user_profile /tmp/tables.txt || { echo 'FAIL: Tabelle user_profile fehlt'; exit 1; }
+          psql -h 127.0.0.1 -U evie -d evie_migrate -tAc "SELECT 1 FROM pg_constraint WHERE lower(conname)=lower('FK_D95AB405A76ED395')" | grep -q 1 || { echo 'FAIL: FK user_profile.user_id -> users.id fehlt'; exit 1; }
       - name: RAG regression test against real PostgreSQL+pgvector
         env:
           APP_SECRET: test-secret-for-evie-1234567890abcdef
@@ -268,6 +281,37 @@ jobs:
         run: |
           php bin/console cache:warmup --env=prod --no-interaction
           php tests/scripts/rag_pgvector_regression_test.php
+      # ------------------------------------------------------------------
+      # Reproduktion des gemeldeten Fehlerbilds: DB, die von einem alten
+      # Kette-Stand nur Sequenzen erhalten hat und in der die Baseline
+      # bereits als ausgefuehrt vermerkt ist. Die Reparatur-Migration
+      # (Version20260920120000) muss users/user_profile nachbauen.
+      # ------------------------------------------------------------------
+      - name: Repair broken pre-provisioned database (sequences without tables)
+        env:
+          APP_SECRET: test-secret-for-evie-1234567890abcdef
+          DATABASE_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_migrate?serverVersion=15&charset=utf8'
+          PGVECTOR_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_migrate?serverVersion=15&charset=utf8'
+          MISTRAL_API_KEY: test
+          GEMINI_API_KEY: test
+          PGPASSWORD: evie
+        run: |
+          psql -h 127.0.0.1 -U evie -d evie_migrate -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;' > /dev/null
+          psql -h 127.0.0.1 -U evie -d evie_migrate -c 'CREATE EXTENSION IF NOT EXISTS vector; CREATE SEQUENCE users_id_seq; CREATE SEQUENCE user_profile_id_seq'
+          # Defekten Zustand simulieren: alle Migrationen ausser der neuen
+          # Reparatur-Migration als bereits ausgefuehrt markieren. Der
+          # Metadata-Sync legt die Versions-Tabelle korrekt an.
+          php bin/console doctrine:migrations:sync-metadata-storage --env=prod --no-interaction
+          for v in Version20260902205052 Version20260903120000 Version20260903130000 Version20260903140000 Version20260903150000 Version20260903160000 Version20260910120000; do
+            php bin/console doctrine:migrations:version --add --env=prod --no-interaction "DoctrineMigrations\\$v" || exit 1
+          done
+          php bin/console cache:warmup --env=prod --no-interaction
+          php bin/console doctrine:migrations:migrate --env=prod --no-interaction --allow-no-migration
+          psql -h 127.0.0.1 -U evie -d evie_migrate -tAc "SELECT tablename FROM pg_tables WHERE schemaname='public' ORDER BY tablename" > /tmp/tables-repaired.txt
+          cat /tmp/tables-repaired.txt
+          grep -qx users /tmp/tables-repaired.txt || { echo 'FAIL: Reparatur-Migration hat users nicht erstellt'; exit 1; }
+          grep -qx user_profile /tmp/tables-repaired.txt || { echo 'FAIL: Reparatur-Migration hat user_profile nicht erstellt'; exit 1; }
+
 
   e2e-llm:
     runs-on: ubuntu-latest
