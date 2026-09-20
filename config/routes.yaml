@@ -83,7 +83,8 @@ app_agent_dialog:
     controller: App\Controller\Frontend\AgentDialogController::dialog
     methods: [GET]
 
-app_tools:
-    path: /tools
-    controller: App\Controller\Frontend\ToolApprovalController::pending
-    methods: [GET]
+# app_tools (path /tools) wurde entfernt: Der Controller
+# App\Controller\Frontend\ToolApprovalController wurde mit dem
+# kanonischen ToolApprovalController (app_tool_pending_list, /tools/pending)
+# zusammengefuehrt. Eine zweite, route-verdeckende pending-Route war die
+# Ursache fuer den P0-Befund aus dem Frontend-Audit.

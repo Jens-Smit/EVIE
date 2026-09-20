@@ -32,7 +32,7 @@
                     <select name="action" class="w-full p-2 border border-border rounded-lg bg-white dark:bg-slate-700 text-content">
                         <option value="">Alle Aktionen</option>
                         <option value="tool_registration" {{ filters.action == 'tool_registration' ? 'selected' : '' }}>Tool-Registrierung</option>
-                        <option value="tool_execution" {{ filters.action == 'tool_execution' ? 'selected' : '' }}>Tool-Ausfhrung</option>
+                        <option value="tool_execution" {{ filters.action == 'tool_execution' ? 'selected' : '' }}>Tool-Ausführung</option>
                         <option value="tool_approval" {{ filters.action == 'tool_approval' ? 'selected' : '' }}>Tool-Freigabe</option>
                         <option value="hitl" {{ filters.action == 'hitl' ? 'selected' : '' }}>HITL</option>
                         <option value="ALLOW" {{ filters.action == 'ALLOW' ? 'selected' : '' }}>ALLOW</option>
@@ -186,14 +186,14 @@
                     <a href="{{ path('app_audit_logs', {'page': currentPage - 1, 'limit': limit, 'action': filters.action, 'status': filters.status, 'entity_type': filters.entity_type}) }}"
                        class="btn btn-ghost {{ currentPage <= 1 ? 'opacity-50 cursor-not-allowed' : '' }}">
                         <i class="ph ph-caret-left"></i>
-                        Zurck
+                        Zurück
                     </a>
                     <span class="btn btn-ghost px-4">
                         Seite {{ currentPage }} von {{ (total / limit)|round(0, 'ceil') }}
                     </span>
                     <a href="{{ path('app_audit_logs', {'page': currentPage + 1, 'limit': limit, 'action': filters.action, 'status': filters.status, 'entity_type': filters.entity_type}) }}"
                        class="btn btn-ghost {{ currentPage >= (total / limit)|round(0, 'ceil') ? 'opacity-50 cursor-not-allowed' : '' }}">
-                        Nchste
+                        Nächste
                         <i class="ph ph-caret-right"></i>
                     </a>
                 </nav>

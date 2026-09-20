@@ -1,14 +1,14 @@
 {# templates/agent/goals.html.twig #}
 {% extends 'base.html.twig' %}
 
-{% block title %}Autonome Agent-Ziele - EVIE{% endblock %}
+{% block title %}Automatisierungen - EVIE{% endblock %}
 
 {% block body %}
 <div class="max-w-6xl mx-auto space-y-6">
     <div class="flex items-center justify-between">
         <h1 class="text-2xl md:text-3xl font-bold text-content flex items-center gap-3">
             <i class="ph ph-rocket-launch text-primary"></i>
-            Autonome Agent-Ziele
+            Automatisierungen
         </h1>
         <a href="{{ path('app_settings') }}" class="btn btn-ghost">
             <i class="ph ph-caret-left"></i>
@@ -22,7 +22,7 @@
             <h2 class="card-title">Hinweis</h2>
         </div>
         <p class="text-content-muted text-sm">
-            Autonome Ziele ermöglichen es EVIE, Aufgaben im Hintergrund auszuführen, ohne dass Sie manuell einen Prompt eingeben müssen. 
+            Automatisierungen ermöglichen es EVIE, Aufgaben im Hintergrund auszuführen, ohne dass Sie manuell einen Prompt eingeben müssen. 
             <strong>HITL (Human-in-the-Loop) ist standardmäßig aktiviert:</strong> Jedes neue Ziel muss von Ihnen genehmigt werden, bevor es aktiviert werden kann.
         </p>
     </div>
@@ -39,11 +39,11 @@
         {% endfor %}
     {% endfor %}
 
-    <!-- Neues Ziel erstellen -->
+    <!-- Neues Automatisierung erstellen -->
     <div class="card">
         <div class="flex items-center gap-2 mb-4">
             <i class="ph ph-plus-circle text-primary text-xl"></i>
-            <h2 class="card-title">Neues autonomes Ziel erstellen</h2>
+            <h2 class="card-title">Neue Automatisierung erstellen</h2>
         </div>
         <form method="post" action="{{ path('app_agent_goals_create') }}" class="space-y-4">
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -75,7 +75,7 @@
             </div>
             <div>
                 <label class="block text-sm font-medium text-content mb-2">
-                    Fähigkeits-Einschränkungen (optional)
+                    Welche Fähigkeiten darf EVIE für diese Automatisierung verwenden? (optional)
                 </label>
                 <div class="space-y-2">
                     <label class="flex items-center gap-2">
@@ -88,13 +88,13 @@
                     </label>
                     <label class="flex items-center gap-2">
                         <input type="checkbox" name="capability_constraints[]" value="no_tool_execution" class="rounded">
-                        <span class="text-sm text-content">Keine Tool-Ausführung</span>
+                        <span class="text-sm text-content">Keine Fähigkeiten ausführen (nur planen)</span>
                     </label>
                 </div>
             </div>
             <button type="submit" class="btn btn-primary">
                 <i class="ph ph-plus"></i>
-                Ziel erstellen
+                Automatisierung erstellen
             </button>
         </form>
     </div>
@@ -103,7 +103,7 @@
     <div class="card">
         <div class="flex items-center gap-2 mb-4">
             <i class="ph ph-target text-primary text-xl"></i>
-            <h2 class="card-title">Ihre autonomen Ziele</h2>
+            <h2 class="card-title">Deine Automatisierungen</h2>
         </div>
 
         {% if goals|length > 0 %}
@@ -191,7 +191,7 @@
         {% else %}
             <div class="text-center py-8 text-content-muted">
                 <i class="ph ph-target text-4xl mb-2"></i>
-                <p>Keine autonomen Ziele vorhanden.</p>
+                <p>Noch keine Automatisierungen vorhanden.</p>
                 <p class="text-sm mt-1">Erstellen Sie oben ein neues Ziel.</p>
             </div>
         {% endif %}

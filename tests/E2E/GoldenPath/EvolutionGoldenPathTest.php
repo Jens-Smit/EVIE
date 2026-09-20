@@ -151,9 +151,20 @@ final class EvolutionGoldenPathTest extends WebTestCase
         );
 
         // 6. HITL-Freigabe ueber HTTP POST /tools/pending/{id}/approve
-        //    (ToolApprovalController::approveTool, ROLE_USER).
+        //    (ToolApprovalController::approveTool, ROLE_USER). Der Endpunkt ist
+        //    CSRF-gesichert ('tool_approval'-Token), damit ein Fremd-POST die
+        //    Faehigkeit nicht im Namen des Users freigeben kann.
         $toolId = $persisted->getId();
-        $this->client->request('POST', "/tools/pending/{$toolId}/approve", [], [], [
+        // Das CSRF-Token wird aus der gerenderten Freigabe-Liste gelesen
+        // (data-token), da der Token-Manager eine aktive Session benoetigt.
+        $crawler = $this->client->request('GET', '/tools/pending');
+        $btn = $crawler->filter('.approve-tool[data-token]')->first();
+        $csrfToken = $btn->count() > 0
+            ? (string) $btn->attr('data-token')
+            : '';
+        $this->client->request('POST', "/tools/pending/{$toolId}/approve", [
+            '_token' => $csrfToken,
+        ], [], [
             'HTTP_X-Requested-With' => 'XMLHttpRequest',
         ]);
 

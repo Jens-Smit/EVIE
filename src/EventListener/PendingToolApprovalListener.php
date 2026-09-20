@@ -55,12 +55,15 @@ final readonly class PendingToolApprovalListener
      */
     private function sendNotification(ToolDefinition $toolDefinition, string $userIdentifier): void
     {
-        // Generiere die URL für die Freigabe
-        $approvalUrl = $this->urlGenerator->generate('app_tool_approve_api', [
+        // Generiere die URL fuer die Freigabe. Der HTML-Endpunkt heisst
+        // app_tool_pending_show (GET /tools/pending/{id}) mit den
+        // POST-Endpunkten app_tool_pending_approve/app_tool_pending_reject
+        // fuer die eigentliche Freigabe/Ablehnung (Blueprint §4.B HITL).
+        $approvalUrl = $this->urlGenerator->generate('app_tool_pending_show', [
             'id' => $toolDefinition->getId(),
         ], UrlGeneratorInterface::ABSOLUTE_URL);
 
-        $rejectUrl = $this->urlGenerator->generate('app_tool_reject_api', [
+        $rejectUrl = $this->urlGenerator->generate('app_tool_pending_show', [
             'id' => $toolDefinition->getId(),
         ], UrlGeneratorInterface::ABSOLUTE_URL);
 

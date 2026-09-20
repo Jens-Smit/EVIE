@@ -191,112 +191,130 @@
 {% block javascripts %}
     {{ parent() }}
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        // Entscheidung-Handler
-        document.querySelectorAll('.approve-decision').forEach(button => {
-            button.addEventListener('click', function() {
-                const decisionId = this.getAttribute('data-decision-id');
-                const container = this.closest('.decision-item');
-                approveDecision(decisionId, container);
-            });
-        });
+    window.EVIE = window.EVIE || {};
 
-        document.querySelectorAll('.reject-decision').forEach(button => {
-            button.addEventListener('click', function() {
-                const decisionId = this.getAttribute('data-decision-id');
-                const container = this.closest('.decision-item');
-                rejectDecision(decisionId, container);
-            });
-        });
+    // Entscheidung-Aktionen. Wird nach DOMContentLoaded UND nach
+    // htmx:afterSettle aufgerufen und ist idempotent (data-initialized),
+    // damit die Buttons auch nach HTMX-Navigation funktionieren.
+    window.EVIE.initDecisionActions = function() {
+        document.querySelectorAll('.decision-item').forEach(function(item) {
+            if (item.dataset.initialized === 'true') return;
+            item.dataset.initialized = 'true';
 
-        document.querySelectorAll('.details-decision').forEach(button => {
-            button.addEventListener('click', function() {
-                const decisionId = this.getAttribute('data-decision-id');
-                showDecisionDetails(decisionId);
-            });
-        });
-    });
+            var id = item.dataset.decisionId;
 
-    // Globale Funktionen für Entscheidungen
-    function approveDecision(decisionId, container) {
-        fetch(`/api/decisions/${decisionId}/approve`, {
+            var approveBtn = item.querySelector('.approve-decision');
+            if (approveBtn) {
+                approveBtn.addEventListener('click', function() {
+                    window.EVIE.decide(id, 'approve', item);
+                });
+            }
+            var rejectBtn = item.querySelector('.reject-decision');
+            if (rejectBtn) {
+                rejectBtn.addEventListener('click', function() {
+                    window.EVIE.openRejectModal(id, item);
+                });
+            }
+            var detailsBtn = item.querySelector('.details-decision');
+            if (detailsBtn) {
+                detailsBtn.addEventListener('click', function() {
+                    window.EVIE.showDecisionDetails(id);
+                });
+            }
+        });
+    };
+
+    window.EVIE.decide = function(decisionId, action, container, reason) {
+        var body = new URLSearchParams();
+        if (reason) body.set('reason', reason);
+        fetch('/api/decisions/' + decisionId + '/' + action, {
             method: 'POST',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
                 'Accept': 'application/json',
-            }
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.status === 'success') {
-                showNotification('Entscheidung genehmigt!', 'success');
-                if (container) container.remove();
-                
-                // Aktualisiere die Statistiken
-                updateStatistics();
-            } else {
-                showNotification('Fehler beim Genehmigen', 'error');
-            }
-        })
-        .catch(error => {
-            showNotification('Fehler: ' + error.message, 'error');
-        });
-    }
-
-    function rejectDecision(decisionId, container) {
-        const reason = prompt('Begründung für die Ablehnung:');
-        if (!reason) return;
-
-        fetch(`/api/decisions/${decisionId}/reject`, {
-            method: 'POST',
-            headers: {
-                'X-Requested-With': 'XMLHttpRequest',
-                'Accept': 'application/json',
-                'Content-Type': 'application/json',
+                'Content-Type': 'application/x-www-form-urlencoded',
             },
-            body: JSON.stringify({ reason: reason })
+            body: body.toString()
         })
-        .then(response => response.json())
-        .then(data => {
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
             if (data.status === 'success') {
-                showNotification('Entscheidung abgelehnt', 'info');
+                showToast(action === 'approve'
+                    ? 'Entscheidung genehmigt'
+                    : 'Entscheidung abgelehnt', 'success');
                 if (container) container.remove();
-                
-                // Aktualisiere die Statistiken
-                updateStatistics();
+                window.EVIE.updateStatistics();
             } else {
-                showNotification('Fehler beim Ablehnen', 'error');
+                showToast(data.message || 'Fehler bei der Entscheidung', 'error');
             }
         })
-        .catch(error => {
-            showNotification('Fehler: ' + error.message, 'error');
+        .catch(function(error) {
+            showToast('Fehler: ' + error.message, 'error');
         });
-    }
+    };
 
-    function showDecisionDetails(decisionId) {
-        fetch(`/api/decisions/${decisionId}`, {
+    window.EVIE.openRejectModal = function(decisionId, container) {
+        openModal(
+            'Entscheidung ablehnen',
+            'ph-x-circle',
+            '<p class="mb-3 text-content">Warum lehnst du diese Entscheidung ab?</p>' +
+            '<textarea id="reject-reason-input" rows="3" class="w-full p-3 border border-border ' +
+            'rounded-xl bg-surface-elevated text-content" placeholder="Begründung (optional)"></textarea>',
+            'Ablehnen',
+            function() {
+                var input = document.getElementById('reject-reason-input');
+                window.EVIE.decide(decisionId, 'reject', container, input ? input.value.trim() : '');
+            }
+        );
+    };
+
+    window.EVIE.showDecisionDetails = function(decisionId) {
+        fetch('/api/decisions/' + decisionId, {
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
                 'Accept': 'application/json',
             }
         })
-        .then(response => response.json())
-        .then(data => {
+        .then(function(response) { return response.json(); })
+        .then(function(data) {
             if (data.status === 'success') {
-                const decision = data.decision;
-                alert(`Entscheidungs-Details:\n\nID: ${decision.id}\nTyp: ${decision.type}\nStatus: ${decision.status}\nBeschreibung: ${decision.description}\nErstellt: ${decision.created_at}`);
+                var d = data.decision;
+                var risk = d.type === 'tool_approval' ? 'Mittel' : 'Gering';
+                var rows = [
+                    ['Beschreibung', d.description],
+                    ['Typ', d.type],
+                    ['Status', d.status],
+                    ['Erstellt', d.created_at],
+                    ['Risiko', risk]
+                ];
+                var html = '<dl class="space-y-2">';
+                rows.forEach(function(row) {
+                    html += '<div class="flex gap-3"><dt class="w-32 shrink-0 text-content-subtle">' +
+                            row[0] + ':</dt><dd class="text-content flex-1">' +
+                            (row[1] === null || row[1] === undefined ? '-' : String(row[1])) + '</dd></div>';
+                });
+                html += '</dl>';
+                if (d.context) {
+                    html += '<pre class="mt-4 text-xs text-content-muted bg-surface-elevated ' +
+                            'rounded-lg p-3 overflow-auto">' +
+                            JSON.stringify(d.context, null, 2).replace(/[<>&]/g, function(c) {
+                                return {'<':'&lt;','>':'&gt;','&':'&amp;'}[c];
+                            }) + '</pre>';
+                }
+                openModal('Entscheidung erforderlich', 'ph-seal-question', html, 'Schließen', null);
             } else {
-                showNotification('Fehler beim Laden der Details', 'error');
+                showToast('Fehler beim Laden der Details', 'error');
             }
         })
-        .catch(error => {
-            showNotification('Fehler: ' + error.message, 'error');
+        .catch(function(error) {
+            showToast('Fehler: ' + error.message, 'error');
         });
-    }
+    };
 
-    function updateStatistics() {
-        // Lade die Seite neu, um die Statistiken zu aktualisieren
+    window.EVIE.updateStatistics = function() {
         location.reload();
-    }
+    };
+
+    document.addEventListener('DOMContentLoaded', function() { window.EVIE.initDecisionActions(); });
     </script>
 {% endblock %}

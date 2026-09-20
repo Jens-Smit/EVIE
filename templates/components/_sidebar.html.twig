@@ -1,23 +1,24 @@
-<aside id="sidebar" 
+<aside id="sidebar"
        class="fixed md:relative inset-y-0 left-0 z-50 w-72 md:w-64
               transform -translate-x-full md:translate-x-0 transition-transform
               duration-300 ease-in-out glass-panel flex flex-col justify-between
               shadow-card md:shadow-none bg-surface/95 dark:bg-surface/95
               md:bg-transparent dark:md:bg-transparent">
-    
     <div class="overflow-y-auto overflow-x-hidden flex-1 no-scrollbar">
+
         {# Logo & Header #}
         <div class="p-5 md:p-6 flex items-center justify-between">
             <div class="flex items-center gap-3">
                 <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary
-                    flex items-center justify-center shadow-button shadow-primary/30 shrink-0">
+                            flex items-center justify-center shadow-button shadow-primary/30 shrink-0">
                     <i class="ph ph-brain text-white text-2xl"></i>
                 </div>
                 <div>
                     <h1 class="text-xl font-bold text-content tracking-wide">EVIE</h1>
-                    <p class="text-xs text-content-muted">AI Agent System</p>
+                    <p class="text-xs text-content-muted">Dein digitaler Mitarbeiter</p>
                 </div>
             </div>
+
             {# Close Button (Mobile) #}
             <button onclick="toggleSidebar()"
                     class="md:hidden text-content-muted
@@ -26,19 +27,26 @@
                 <i class="ph ph-x text-xl"></i>
             </button>
         </div>
-        
+
         {# Navigation Menu #}
         <nav class="mt-2 px-3 md:px-4 space-y-1.5" id="nav-menu">
+            {# ================================================== #}
+            {# EVIE – Benutzer-Ebene (Workflow des Kunden)        #}
+            {# ================================================== #}
+            <p class="px-4 pt-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-content-subtle">
+                EVIE
+            </p>
+
             {# Dashboard #}
             <a href="{{ path('app_dashboard') }}"
                class="nav-btn {% if app.request.attributes.get('_route') == 'app_dashboard' %}active{% else %}inactive{% endif %}
                       border w-full flex items-center gap-3 px-4 py-3 rounded-xl
                       transition-all active:scale-95 font-medium">
                 <i class="ph ph-squares-four text-xl"></i>
-                <span>Dashboard</span>
+                <span>Übersicht</span>
             </a>
 
-            {# Agent Chat #}
+            {# Agent Chat – Aufgabe stellen #}
             <a href="{{ path('frontend_agent_dialog') }}"
                class="nav-btn {% if app.request.attributes.get('_route') == 'frontend_agent_dialog' %}active{% else %}inactive{% endif %}
                       border w-full flex items-center gap-3 px-4 py-3 rounded-xl
@@ -51,38 +59,17 @@
                 {% endif %}
             </a>
 
-            {# Sub-Agenten #}
-            <a href="{{ path('app_subagents') }}"
-               class="nav-btn {% if app.request.attributes.get('_route') == 'app_subagents' %}active{% else %}inactive{% endif %}
-                      border w-full flex items-center gap-3 px-4 py-3 rounded-xl
-                      transition-all active:scale-95 font-medium">
-                <i class="ph ph-users-three text-xl"></i>
-                <span>Sub-Agenten</span>
-            </a>
-
-            {# Streaming Sessions #}
-            <a href="{{ path('app_streaming_sessions') }}"
-               class="nav-btn {% if app.request.attributes.get('_route') == 'app_streaming_sessions' %}active{% else %}inactive{% endif %}
-                      border w-full flex items-center gap-3 px-4 py-3 rounded-xl
-                      transition-all active:scale-95 font-medium">
-                <i class="ph ph-rainbow text-xl"></i>
-                <span>Streaming</span>
-            </a>
-
-            {# Freigaben #}
-            <a href="{{ path('app_tool_pending_list') }}"
-               class="nav-btn {% if app.request.attributes.get('_route') == 'app_tool_pending_list' %}active{% else %}inactive{% endif %}
+            {# Zentrale Freigabe-Inbox (Tools + Entscheidungen) #}
+            <a href="{{ path('app_approvals') }}"
+               class="nav-btn {% if app.request.attributes.get('_route') in ['app_approvals', 'app_tool_pending_list', 'app_tool_pending_show', 'app_decisions'] %}active{% else %}inactive{% endif %}
                       border w-full flex items-center gap-3 px-4 py-3 rounded-xl
                       transition-all active:scale-95 font-medium">
                 <i class="ph ph-check-square-offset text-xl"></i>
                 <span>Freigaben</span>
                 <span id="sidebar-pending-count"
-                      hx-get="{{ path('app_pending_tools_count') }}"
-                      hx-trigger="every 30s"
-                      hx-swap="innerHTML"
-                      hx-headers='{"Accept": "application/json"}'
+                      data-initial="{{ pending_approval_count|default(0) }}"
                       class="ml-auto bg-warning-soft text-warning text-[10px] font-bold px-2 py-0.5 rounded-full">
-                    0
+                    {{ pending_approval_count|default(0) }}
                 </span>
             </a>
 
@@ -95,25 +82,16 @@
                 <span>Dokumente</span>
             </a>
 
-            {# Tools #}
-            <a href="{{ path('app_tools_list') }}"
-               class="nav-btn {% if app.request.attributes.get('_route') == 'app_tools_list' %}active{% else %}inactive{% endif %}
+            {# Automatisierungen (Agent Goals in Benutzersprache) #}
+            <a href="{{ path('app_agent_goals') }}"
+               class="nav-btn {% if app.request.attributes.get('_route') starts with 'app_agent_goals' %}active{% else %}inactive{% endif %}
                       border w-full flex items-center gap-3 px-4 py-3 rounded-xl
                       transition-all active:scale-95 font-medium">
-                <i class="ph ph-wrench text-xl"></i>
-                <span>F&auml;higkeiten</span>
+                <i class="ph ph-lightning text-xl"></i>
+                <span>Automatisierungen</span>
             </a>
 
-            {# MCP-Server #}
-            <a href="{{ path('mcp_servers_list') }}"
-               class="nav-btn {% if app.request.attributes.get('_route') starts with 'mcp_' %}active{% else %}inactive{% endif %}
-                      border w-full flex items-center gap-3 px-4 py-3 rounded-xl
-                      transition-all active:scale-95 font-medium">
-                <i class="ph ph-cpu text-xl"></i>
-                <span>MCP-Server</span>
-            </a>
-
-            {# Agent History #}
+            {# Verlauf #}
             <a href="{{ path('frontend_agent_history') }}"
                class="nav-btn {% if app.request.attributes.get('_route') == 'frontend_agent_history' %}active{% else %}inactive{% endif %}
                       border w-full flex items-center gap-3 px-4 py-3 rounded-xl
@@ -122,69 +100,93 @@
                 <span>Verlauf</span>
             </a>
 
-            {# Entscheidungen #}
-            <a href="{{ path('app_decisions') }}"
-               class="nav-btn {% if app.request.attributes.get('_route') == 'app_decisions' %}active{% else %}inactive{% endif %}
-                      border w-full flex items-center gap-3 px-4 py-3 rounded-xl
-                      transition-all active:scale-95 font-medium">
-                <i class="ph ph-check-circle text-xl"></i>
-                <span>Entscheidungen</span>
-            </a>
+            {# ================================================== #}
+            {# Administration – nur fuer Administrator/Entwickler #}
+            {# ================================================== #}
+            {% if is_granted('ROLE_ORG_ADMIN') %}
+                <p class="px-4 pt-4 pb-1 text-[10px] font-bold uppercase tracking-wider text-content-subtle">
+                    Administration
+                </p>
 
-            {# Briefing #}
-            <a href="{{ path('app_briefing') }}"
-               class="nav-btn {% if app.request.attributes.get('_route') == 'app_briefing' %}active{% else %}inactive{% endif %}
-                      border w-full flex items-center gap-3 px-4 py-3 rounded-xl
-                      transition-all active:scale-95 font-medium">
-                <i class="ph ph-chart-bar text-xl"></i>
-                <span>Briefing</span>
-            </a>
+                {# Integrationen (MCP-Server in Benutzersprache) #}
+                <a href="{{ path('mcp_servers_list') }}"
+                   class="nav-btn {% if app.request.attributes.get('_route') starts with 'mcp_' %}active{% else %}inactive{% endif %}
+                          border w-full flex items-center gap-3 px-4 py-3 rounded-xl
+                          transition-all active:scale-95 font-medium">
+                    <i class="ph ph-plugs-connected text-xl"></i>
+                    <span>Integrationen</span>
+                </a>
 
-            {# Strategie #}
-            <a href="{{ path('app_strategy') }}"
-               class="nav-btn {% if app.request.attributes.get('_route') == 'app_strategy' %}active{% else %}inactive{% endif %}
-                      border w-full flex items-center gap-3 px-4 py-3 rounded-xl
-                      transition-all active:scale-95 font-medium">
-                <i class="ph ph-chart-line-up text-xl"></i>
-                <span>Strategie</span>
-            </a>
+                {# Fähigkeiten (Tools in Benutzersprache) #}
+                <a href="{{ path('app_tools_list') }}"
+                   class="nav-btn {% if app.request.attributes.get('_route') == 'app_tools_list' %}active{% else %}inactive{% endif %}
+                          border w-full flex items-center gap-3 px-4 py-3 rounded-xl
+                          transition-all active:scale-95 font-medium">
+                    <i class="ph ph-wrench text-xl"></i>
+                    <span>Fähigkeiten</span>
+                </a>
 
-            {# Audit Logs #}
-            <a href="{{ path('app_audit_logs') }}"
-               class="nav-btn {% if app.request.attributes.get('_route') == 'app_audit_logs' %}active{% else %}inactive{% endif %}
-                      border w-full flex items-center gap-3 px-4 py-3 rounded-xl
-                      transition-all active:scale-95 font-medium">
-                <i class="ph ph-file-text text-xl"></i>
-                <span>Audit-Logs</span>
-            </a>
+                {# Mitarbeiter / Aufgabenbereiche (Sub-Agenten) #}
+                <a href="{{ path('app_subagents') }}"
+                   class="nav-btn {% if app.request.attributes.get('_route') starts with 'app_subagents' %}active{% else %}inactive{% endif %}
+                          border w-full flex items-center gap-3 px-4 py-3 rounded-xl
+                          transition-all active:scale-95 font-medium">
+                    <i class="ph ph-users-three text-xl"></i>
+                    <span>Mitarbeiter</span>
+                </a>
 
-            {# Quota #}
-            <a href="{{ path('app_settings_quota') }}"
-               class="nav-btn {% if app.request.attributes.get('_route') == 'app_settings_quota' %}active{% else %}inactive{% endif %}
-                      border w-full flex items-center gap-3 px-4 py-3 rounded-xl
-                      transition-all active:scale-95 font-medium">
-                <i class="ph ph-coins text-xl"></i>
-                <span>Quota</span>
-            </a>
+                {# Briefing #}
+                <a href="{{ path('app_briefing') }}"
+                   class="nav-btn {% if app.request.attributes.get('_route') == 'app_briefing' %}active{% else %}inactive{% endif %}
+                          border w-full flex items-center gap-3 px-4 py-3 rounded-xl
+                          transition-all active:scale-95 font-medium">
+                    <i class="ph ph-chart-bar text-xl"></i>
+                    <span>Briefing</span>
+                </a>
+
+                {# Strategie #}
+                <a href="{{ path('app_strategy') }}"
+                   class="nav-btn {% if app.request.attributes.get('_route') starts with 'app_strategy' %}active{% else %}inactive{% endif %}
+                          border w-full flex items-center gap-3 px-4 py-3 rounded-xl
+                          transition-all active:scale-95 font-medium">
+                    <i class="ph ph-chart-line-up text-xl"></i>
+                    <span>Strategie</span>
+                </a>
+
+                {# Nutzung (Quota in Benutzersprache) #}
+                <a href="{{ path('app_settings_quota') }}"
+                   class="nav-btn {% if app.request.attributes.get('_route') == 'app_settings_quota' %}active{% else %}inactive{% endif %}
+                          border w-full flex items-center gap-3 px-4 py-3 rounded-xl
+                          transition-all active:scale-95 font-medium">
+                    <i class="ph ph-gauge text-xl"></i>
+                    <span>Nutzung</span>
+                </a>
+
+                {# Sicherheitsprotokoll (Audit-Logs in Benutzersprache) #}
+                <a href="{{ path('app_audit_logs') }}"
+                   class="nav-btn {% if app.request.attributes.get('_route') starts with 'app_audit_log' %}active{% else %}inactive{% endif %}
+                          border w-full flex items-center gap-3 px-4 py-3 rounded-xl
+                          transition-all active:scale-95 font-medium">
+                    <i class="ph ph-shield-check text-xl"></i>
+                    <span>Sicherheit</span>
+                </a>
+
+                {# Streaming-Sessions (diagnostisch, Admin-Ebene) #}
+                <a href="{{ path('app_streaming_sessions') }}"
+                   class="nav-btn {% if app.request.attributes.get('_route') starts with 'app_streaming' %}active{% else %}inactive{% endif %}
+                          border w-full flex items-center gap-3 px-4 py-3 rounded-xl
+                          transition-all active:scale-95 font-medium">
+                    <i class="ph ph-rainbow text-xl"></i>
+                    <span>Streaming</span>
+                </a>
+            {% endif %}
         </nav>
     </div>
-    
-    {# Footer (Ressourcen, Einstellungen, User) #}
+
+    {# Footer (Einstellungen, Profil, User) #}
     <div class="p-4 shrink-0 bg-surface-muted/50 dark:bg-surface-muted/50
                 md:bg-transparent mt-auto border-t border-border">
-        {# Ressourcen-Indikator #}
-        <div class="bg-surface rounded-xl p-3 md:p-4
-                    border border-border mb-3 md:mb-4
-                    shadow-card">
-            <div class="flex items-center justify-between mb-2">
-                <span class="text-xs text-content-muted">Ressourcen</span>
-                <span class="text-xs text-success">Normal</span>
-            </div>
-            <div class="w-full bg-surface-elevated rounded-full h-1.5 mb-1">
-                <div class="bg-primary h-1.5 rounded-full" style="width: 45%"></div>
-            </div>
-        </div>
-        
+
         {# Einstellungen #}
         <a href="{{ path('app_settings') }}"
            class="nav-btn {% if app.request.attributes.get('_route') == 'app_settings' %}active{% else %}inactive{% endif %}
@@ -193,20 +195,21 @@
             <i class="ph ph-gear text-xl"></i>
             <span>Einstellungen</span>
         </a>
-        
+
+        {# Zugangsdaten (Secrets in Benutzersprache) #}
         <a href="{{ path('app_settings_secrets') }}"
            class="nav-btn {% if app.request.attributes.get('_route') == 'app_settings_secrets' %}active{% else %}inactive{% endif %}
                   border w-full flex items-center gap-3 px-4 py-3 rounded-xl
                   transition-all active:scale-95 font-medium">
             <i class="ph ph-lock-key text-xl"></i>
-            <span>Secrets</span>
+            <span>Zugangsdaten</span>
         </a>
-        
+
         {# User Profile + Aktionen #}
         {% if app.user %}
         <div class="mt-2 border-t border-border">
             <a href="{{ path('app_profile') }}"
-               class="nav-btn inactive border w-full flex items-center gap-3 px-4 py-3 rounded-xl
+               class="nav-btn {% if app.request.attributes.get('_route') == 'app_profile' %}active{% else %}inactive{% endif %} border w-full flex items-center gap-3 px-4 py-3 rounded-xl
                       transition-all active:scale-95 font-medium">
                 <i class="ph ph-user-circle text-xl"></i>
                 <div class="flex-1 min-w-0 text-left">

@@ -9,7 +9,7 @@
         <a href="{{ path('app_streaming_sessions') }}"
            class="inline-flex items-center gap-2 text-content-subtle hover:text-content transition-colors">
             <i class="ph ph-caret-left"></i>
-            Zurck zu Streaming-Sessions
+            Zurück zu Streaming-Sessions
         </a>
     </div>
 
@@ -19,7 +19,7 @@
             Neue Streaming-Session starten
         </h1>
         <p class="text-content-subtle mb-6">
-            Starte eine Tool-Ausfhrung, deren Ergebnisse in Echtzeit gestreamt werden.
+            Starte eine Tool-Ausführung, deren Ergebnisse in Echtzeit gestreamt werden.
         </p>
 
         <form action="{{ path('api_streaming_sessions_create') }}" 
@@ -29,20 +29,20 @@
             
             <div>
                 <label for="tool_name" class="block text-sm font-medium text-content mb-1">
-                    Tool auswhlen
+                    Tool auswählen
                 </label>
                 <select name="tool_name" id="tool_name" 
                         required
                         class="w-full p-3 border border-border rounded-xl bg-white dark:bg-slate-700 text-content
                                focus:ring-2 focus:ring-primary focus:border-transparent">
-                    <option value="" disabled selected>Bitte whlen Sie ein Tool aus</option>
+                    <option value="" disabled selected>Bitte wählen Sie ein Tool aus</option>
                     <option value="web_scraper">Web Scraper</option>
                     <option value="document_analyzer">Dokumenten-Analyse</option>
                     <option value="code_generator">Code-Generator</option>
                     <option value="summarizer">Zusammenfassungs-Tool</option>
                 </select>
                 <p class="text-xs text-content-subtle mt-1">
-                    Nur genehmigte Tools sind verfugbar
+                    Nur genehmigte Tools sind verfügbar
                 </p>
             </div>
 

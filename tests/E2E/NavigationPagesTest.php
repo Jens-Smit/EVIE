@@ -73,7 +73,10 @@ class NavigationPagesTest extends WebTestCase
         $this->assertSelectorTextContains('#content-area h1', 'Dashboard');
         // Die Sidebar wird ueber base.html.twig eingebunden und muss rendern.
         $this->assertSidebarPresent();
-        $this->assertSelectorTextContains('#nav-menu', 'Dashboard');
+        // Der Sidebar-Eintrag heisst seit der Produkt-Sprachumstellung
+        // 'Übersicht' und verlinkt weiterhin auf app_dashboard.
+        $this->assertSelectorTextContains('#nav-menu', 'Übersicht');
+        $this->assertSelectorExists('#nav-menu a[href="/dashboard"]');
     }
 
     public function testAgentDialogPageLoads(): void
@@ -107,7 +110,7 @@ class NavigationPagesTest extends WebTestCase
         $this->client->request('GET', '/tools/pending');
 
         $this->assertResponseIsSuccessful();
-        $this->assertSelectorTextContains('#content-area h1', 'Ausstehende Tools');
+        $this->assertSelectorTextContains('#content-area h1', 'Freigaben');
         $this->assertSidebarPresent();
     }
 
@@ -361,7 +364,7 @@ class NavigationPagesTest extends WebTestCase
             ['/dashboard', 'Dashboard'],
             ['/dialog', 'AI Agent Dialog'],
             ['/subagents/list', 'Sub-Agenten verwalten'],
-            ['/tools/pending', 'Ausstehende Tools'],
+            ['/tools/pending', 'Freigaben'],
             ['/documents', 'Dokumente'],
             ['/tools/list', 'Alle verfügbaren Tools'],
             ['/history', 'Agenten-Verlauf'],

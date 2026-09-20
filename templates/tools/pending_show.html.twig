@@ -1,0 +1,88 @@
+{# templates/tools/pending_show.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}EVIE – Fähigkeit prüfen: {{ tool.name }}{% endblock %}
+
+{% block body %}
+<div class="max-w-3xl mx-auto">
+    <div class="card p-6">
+        <div class="flex items-center justify-between mb-6">
+            <div>
+                <h1 class="text-2xl font-bold text-content">Fähigkeit erforderlich</h1>
+                <p class="text-content-muted mt-1">
+                    EVIE möchte die folgende Fähigkeit verwenden. Prüfe die Details, bevor du freigibst.
+                </p>
+            </div>
+            <a href="{{ path('app_tool_pending_list') }}" class="btn btn-ghost">
+                <i class="ph ph-arrow-left"></i>
+                Zurück
+            </a>
+        </div>
+
+        <div class="bg-surface-muted rounded-xl p-4 border border-border mb-4">
+            <h2 class="text-lg font-bold text-content mb-2">{{ tool.name }}</h2>
+            <p class="text-content-muted">{{ tool.description }}</p>
+        </div>
+
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4 text-sm">
+            <div class="bg-surface rounded-xl p-3 border border-border">
+                <p class="text-xs text-content-subtle uppercase mb-1">Angefragt von</p>
+                <p class="text-content font-medium">{{ tool.requester ?? 'EVIE' }}</p>
+            </div>
+            <div class="bg-surface rounded-xl p-3 border border-border">
+                <p class="text-xs text-content-subtle uppercase mb-1">Erstellt am</p>
+                <p class="text-content font-medium">
+                    {{ tool.timestamp is not null ? tool.timestamp|date('d.m.Y H:i') : 'Unbekannt' }}
+                </p>
+            </div>
+            <div class="bg-surface rounded-xl p-3 border border-border">
+                <p class="text-xs text-content-subtle uppercase mb-1">Risiko</p>
+                <p class="font-medium {% if tool.security_level == 'high' %}text-danger{% elseif tool.security_level == 'medium' %}text-warning{% else %}text-success{% endif %}">
+                    {% if tool.security_level == 'high' %}Hoch{% elseif tool.security_level == 'medium' %}Mittel{% else %}Niedrig{% endif %}
+                </p>
+            </div>
+            <div class="bg-surface rounded-xl p-3 border border-border">
+                <p class="text-xs text-content-subtle uppercase mb-1">Freigabe erforderlich (HITL)</p>
+                <p class="text-content font-medium">{{ tool.requires_hitl ? 'Ja' : 'Nein' }}</p>
+            </div>
+        </div>
+
+        <div class="bg-surface rounded-xl p-4 border border-border mb-4">
+            <p class="text-xs text-content-subtle uppercase mb-2">Was diese Fähigkeit tun kann (Parameter)</p>
+            {% if tool.schema is not empty %}
+                <pre class="text-xs text-content-muted overflow-auto bg-surface-elevated rounded-lg p-3">{{ tool.schema|json_encode(constant('JSON_PRETTY_PRINT')) }}</pre>
+            {% else %}
+                <p class="text-sm text-content-muted">Keine Parameter definiert.</p>
+            {% endif %}
+        </div>
+
+        <div class="flex flex-wrap gap-2">
+            <form method="post"
+                  action="{{ path('app_tool_pending_reject', {'id': tool.id}) }}"
+                  class="inline"
+                  onsubmit="this.querySelector('input[name=reason]').value = window.prompt('Warum lehnst du diese Fähigkeit ab? (optional)') ?? ''; return true;">
+                <input type="hidden" name="_token" value="{{ csrf_token('tool_approval') }}">
+                <input type="hidden" name="reason" value="">
+                <button type="submit" class="btn btn-danger">
+                    <i class="ph ph-x"></i>
+                    Ablehnen
+                </button>
+            </form>
+            <form method="post"
+                  action="{{ path('app_tool_pending_approve', {'id': tool.id}) }}"
+                  class="inline">
+                <input type="hidden" name="_token" value="{{ csrf_token('tool_approval') }}">
+                <button type="submit" class="btn btn-success">
+                    <i class="ph ph-check"></i>
+                    Freigeben
+                </button>
+            </form>
+        </div>
+
+        <p class="text-xs text-content-subtle mt-4">
+            Nach der Freigabe nimmt EVIE die Fähigkeit automatisch in seine Toolbox auf und setzt deine Aufgabe fort.
+            Nach einer Ablehnung sucht EVIE nach einem alternativen Weg.
+        </p>
+    </div>
+</div>
+{% endblock %}

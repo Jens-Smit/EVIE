@@ -10,7 +10,9 @@
     
     <!-- Tailwind CSS (kompiliertes Design-System) -->
     <link rel="stylesheet" href="{{ asset('assets/styles/tailwind.css') }}">
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
+    <!-- Phosphor Icons: lokal ausgeliefert (keine CDN-Abhaengigkeit, P2).
+         Wichtig fuer Kanzleien/Sachverstaendige mit isolierten Netzwerken. -->
+    <link rel="stylesheet" href="{{ asset('assets/vendor/phosphor/phosphor.css') }}">
     
     <!-- Custom Styles -->
     <style>
@@ -101,10 +103,11 @@
         };
     </script>
     
-    {# HTMX + Alpine.js Bibliotheken (im <head>, damit hx-boost sie nicht bei jeder Navigation neu ausfuehrt) #}
-    <script src="https://unpkg.com/htmx.org@1.9.10"></script>
-    <script src="https://unpkg.com/htmx.org@1.9.10/dist/ext/json-enc.js"></script>
-    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
+    {# HTMX + Alpine.js Bibliotheken (im <head>, damit hx-boost sie nicht bei jeder Navigation neu ausfuehrt).
+         Lokal ausgeliefert ueber public/assets/vendor (keine CDN-Abhaengigkeit, P2). #}
+    <script src="{{ asset('assets/vendor/htmx/htmx.min.js') }}"></script>
+    <script src="{{ asset('assets/vendor/htmx/json-enc.js') }}"></script>
+    <script defer src="{{ asset('assets/vendor/alpine/alpine.min.js') }}"></script>
 
     {% block stylesheets %}{% endblock %}
 </head>
@@ -136,6 +139,9 @@
         </div>
     </main>
     
+    <!-- Global Modal -->
+    {% include 'components/_modal.html.twig' %}
+
     <!-- Toast Container -->
     <div id="toast-container" 
          class="fixed bottom-4 left-1/2 transform -translate-x-1/2 z-[110] 
@@ -154,20 +160,97 @@
     
     <!-- JavaScript -->
     <script>
-        // -- Theme Toggle Logic --
+        // -- Theme Toggle Logic (persistent via localStorage, P2) --
         function toggleTheme() {
             const html = document.documentElement;
             const icon = document.getElementById('theme-icon');
-            
+
             if (html.classList.contains('dark')) {
                 html.classList.remove('dark');
-                icon.classList.replace('ph-sun', 'ph-moon');
+                try { localStorage.setItem('evie-theme', 'light'); } catch (e) {}
+                if (icon) icon.classList.replace('ph-sun', 'ph-moon');
                 showToast('Light Mode aktiviert', 'info');
             } else {
                 html.classList.add('dark');
-                icon.classList.replace('ph-moon', 'ph-sun');
+                try { localStorage.setItem('evie-theme', 'dark'); } catch (e) {}
+                if (icon) icon.classList.replace('ph-moon', 'ph-sun');
                 showToast('Dark Mode aktiviert', 'info');
             }
+        }
+
+        // -- Theme beim Laden anwenden (vor erstem Paint, um Flackern zu verhindern) --
+        (function () {
+            try {
+                var saved = localStorage.getItem('evie-theme');
+                var prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+                var html = document.documentElement;
+                var icon = document.getElementById('theme-icon');
+                if (saved === 'light' || (saved === null && !prefersDark)) {
+                    html.classList.remove('dark');
+                    if (icon) icon.classList.replace('ph-sun', 'ph-moon');
+                } else {
+                    html.classList.add('dark');
+                }
+            } catch (e) { /* localStorage nicht verfuegbar -> Dark Default */ }
+        })();
+
+        // -- Zentrale, idempotente Initialisierungs-Registry (P2.3) --
+        // Seiten registrieren ihre init-Funktionen unter window.EVIE.init<Name>.
+        // reinit() ruft sie nach DOMContentLoaded UND nach jeder
+        // htmx:afterSettle-Navigation auf; da init-Funktionen mit
+        // data-initialized-Markern arbeiten, ist ein doppelter Aufruf harmlos.
+        window.EVIE = window.EVIE || {};
+        window.EVIE.reinit = function(root) {
+            Object.keys(window.EVIE).forEach(function(key) {
+                if (key.indexOf('init') === 0 && typeof window.EVIE[key] === 'function') {
+                    try { window.EVIE[key](root); } catch (e) { console.error('EVIE init error in ' + key, e); }
+                }
+            });
+        };
+
+        // -- Modal Logic (P2: ersetzt Browser-Dialoge) --
+        function openModal(title, icon, contentHtml, confirmLabel, confirmHandler) {
+            var modal = document.getElementById('global-modal');
+            var container = document.getElementById('modal-container');
+            if (!modal || !container) return;
+
+            document.getElementById('modal-title-text').textContent = title || '';
+            var iconEl = document.getElementById('modal-icon');
+            if (iconEl) iconEl.className = 'ph ' + (icon || 'ph-file-text');
+            document.getElementById('modal-body').innerHTML = contentHtml || '';
+
+            var confirmBtn = document.getElementById('modal-confirm-btn');
+            if (confirmBtn) {
+                confirmBtn.textContent = confirmLabel || 'Aktion ausfuehren';
+                // Alter Handler entfernen und neuen setzen (idempotent)
+                var clone = confirmBtn.cloneNode(true);
+                confirmBtn.parentNode.replaceChild(clone, confirmBtn);
+                clone.addEventListener('click', function () {
+                    if (typeof confirmHandler === 'function') confirmHandler();
+                    closeModal();
+                });
+            }
+
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+            setTimeout(function () {
+                modal.classList.remove('opacity-0');
+                container.classList.remove('scale-95');
+                container.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeModal() {
+            var modal = document.getElementById('global-modal');
+            var container = document.getElementById('modal-container');
+            if (!modal || !container) return;
+            modal.classList.add('opacity-0');
+            container.classList.remove('scale-100');
+            container.classList.add('scale-95');
+            setTimeout(function () {
+                modal.classList.add('hidden');
+                modal.style.display = 'none';
+            }, 300);
         }
 
         // -- Toast Notification System --
@@ -317,14 +400,21 @@
                 evt.detail.elt.classList.add('opacity-100');
             });
 
-            // HTMX After Settle - Initialize Alpine.js components inserted by
-            // boosted navigation. Alpine only walks the DOM once on load; new
-            // x-data elements swapped in afterwards must be initialized
-            // explicitly, otherwise their reactive properties stay undefined
+            // HTMX After Settle - Initialize components inserted by boosted
+            // navigation. Alpine only walks the DOM once on load; new x-data
+            // elements swapped in afterwards must be initialized explicitly,
+            // otherwise their reactive properties stay undefined
             // (ReferenceError: currentStep, loading, ...).
+            // Zusaetzlich werden alle Seiten-Initialisierungen
+            // (window.EVIE.init*) erneut ausgefuehrt: DOMContentLoaded feuert
+            // bei HTMX-Boost-Navigation nicht erneut, deshalb ist dies der
+            // zentrale Hook. Alle init-Funktionen sind idempotent.
             document.addEventListener('htmx:afterSettle', function(evt) {
                 if (typeof Alpine !== 'undefined') {
                     Alpine.initTree(evt.detail.target);
+                }
+                if (window.EVIE && typeof window.EVIE.reinit === 'function') {
+                    window.EVIE.reinit(evt.detail.target);
                 }
             });
         });
