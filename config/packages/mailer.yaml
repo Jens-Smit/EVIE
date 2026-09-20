@@ -2,10 +2,10 @@ framework:
     mailer:
         dsn: '%env(MAILER_DSN)%'
         envelope:
-            sender: '%env(default::default_mailer_from:MAILER_FROM)%'
+            sender: '%env(default::MAILER_FROM)%'
 
 parameters:
-    mailer_from: '%env(default::default_mailer_from:MAILER_FROM)%'
+    mailer_from: '%env(default::MAILER_FROM)%'
 
 when@test:
     framework:
