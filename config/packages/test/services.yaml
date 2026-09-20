@@ -29,3 +29,11 @@ services:
             $onboardingAgent: '@ai.agent.onboarding'
     App\AI\Skills\DynamicToolbox:
         public: true
+    # HITL-E-Mail-Workflow (E2E Productive Workflow Tests): Services public
+    # machen, damit sie via static::getContainer()->get() abrufbar sind.
+    App\AI\Workflow\MailDraftHitlService:
+        public: true
+    App\AI\Workflow\EmailIngestionService:
+        public: true
+        arguments:
+            $documentAgent: '@ai.agent.document_processor'

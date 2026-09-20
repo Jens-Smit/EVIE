@@ -62,6 +62,12 @@
         <testsuite name="E2E LLM Tests">
             <directory>tests/E2E/LLM</directory>
         </testsuite>
+        <!-- E2E Productive Workflow Tests: produktionsnahe Szenarien (Onboarding,
+             Businessplan, Vertriebsagent, E-Mail-HITL, Postfach-Verarbeitung,
+             Dokumentenauswertung, Brainstorming) mit echten Mistral-Calls -->
+        <testsuite name="E2E Productive Workflow Tests">
+            <file>tests/E2E/LLM/ProductiveWorkflowE2ETest.php</file>
+        </testsuite>
 
         <!-- Spezifische Test-Suites fuer AI-Komponenten -->
         <testsuite name="EVIE AI Security Tests">

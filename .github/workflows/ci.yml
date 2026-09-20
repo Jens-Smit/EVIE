@@ -302,15 +302,37 @@ jobs:
           while ! pg_isready -h localhost -p 5432 -U evie; do
             sleep 1
           done
+      # pgvector-Extension aktivieren: RealEmbeddingContextE2ETest und die
+      # Productive-Workflow-Tests laufen gegen PostgreSQL+pgvector (wie in
+      # Produktion), nicht mehr gegen SQLite.
+      - name: Activate pgvector extension for E2E DB
+        run: |
+          PGPASSWORD=evie psql -h 127.0.0.1 -U evie -d evie_test -c 'CREATE EXTENSION IF NOT EXISTS vector'
       - name: E2E-LLM tests (echte Mistral-Aufrufe, minimiert)
         env:
           EVIE_LLM_E2E: '1'
           APP_ENV: test
           APP_SECRET: test-secret-for-evie-1234567890abcdef
-          DATABASE_URL: 'sqlite:///%kernel.project_dir%/var/test.db'
+          DATABASE_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_test?serverVersion=15&charset=utf8'
+          PGVECTOR_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_test?serverVersion=15&charset=utf8'
           MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
           GEMINI_API_KEY: test
           TAVILY_API_KEY: ${{ secrets.TAVILY_API_KEY }}
           FIRECRAWL_API_KEY: test
           LINKEDIN_API_TOKEN: test
         run: vendor/bin/phpunit --testsuite="E2E LLM Tests"
+      - name: E2E Productive Workflow Tests (Onboarding, Businessplan, Vertriebsagent, E-Mail-HITL, Postfach, Dokumente, Brainstorming)
+        env:
+          EVIE_LLM_E2E: '1'
+          APP_ENV: test
+          APP_SECRET: test-secret-for-evie-1234567890abcdef
+          DATABASE_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_test?serverVersion=15&charset=utf8'
+          PGVECTOR_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_test?serverVersion=15&charset=utf8'
+          MAILER_DSN: 'null://null'
+          MAILER_FROM: 'no-reply@evie.test'
+          MISTRAL_API_KEY: ${{ secrets.MISTRAL_API_KEY }}
+          GEMINI_API_KEY: test
+          TAVILY_API_KEY: test
+          FIRECRAWL_API_KEY: test
+          LINKEDIN_API_TOKEN: test
+        run: vendor/bin/phpunit --testsuite="E2E Productive Workflow Tests" --verbose
