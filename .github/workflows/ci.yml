@@ -335,4 +335,4 @@ jobs:
           TAVILY_API_KEY: test
           FIRECRAWL_API_KEY: test
           LINKEDIN_API_TOKEN: test
-        run: vendor/bin/phpunit --testsuite="E2E Productive Workflow Tests" --verbose
+        run: vendor/bin/phpunit --testsuite="E2E Productive Workflow Tests"
