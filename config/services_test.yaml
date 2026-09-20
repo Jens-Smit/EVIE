@@ -35,3 +35,18 @@ services:
         public: true
     App\AI\Platform\TenantPlatformContext:
         public: true
+
+    # HITL-E-Mail-Workflow (E2E Productive Workflow Tests): Services public
+    # machen, damit sie via static::getContainer()->get() abrufbar sind.
+    # Diese Datei wird NACH config/services.yaml geladen (MicroKernelTrait-
+    # Reihenfolge: services.yaml -> packages/* -> services_{env}.yaml), deshalb
+    # greift public: true hier zuverlaessig - die fruehere Definition in
+    # config/packages/test/services.yaml wurde von services.yaml ueberdeckt
+    # und der EmailIngestionService (kein Prod-Consumer) vom Container
+    # beim Compile entfernt.
+    App\AI\Workflow\MailDraftHitlService:
+        public: true
+    App\AI\Workflow\EmailIngestionService:
+        public: true
+        arguments:
+            $documentAgent: '@ai.agent.document_processor'

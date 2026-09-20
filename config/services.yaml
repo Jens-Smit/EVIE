@@ -206,6 +206,25 @@ services:
             $secretRepository: '@App\Repository\SecretRepository'
             $kernelSecret: '%kernel.secret%'
 
+    # =====================================================================
+    # HITL E-Mail-Freigabe-Workflow (Blueprint §5) und Inbound-Verarbeitung
+    # =====================================================================
+    # MailDraftHitlService versendet freigegebene E-Mail-Entwuerfe ueber den
+    # Symfony Mailer (Test-Env: null://null, Onboarding erfasst SMTP in prod).
+    # Der Absender-Default ist ein PHP-Konstruktor-Default (analog EmailTool),
+    # kein %env(...)%-Wiring: "default_mailer_from" ist kein gueltiger
+    # Env-Processor-Prefix und wuerde den Container-Build brechen. Im Test-Env
+    # ist der Service via services_test.yaml public (E2E-Zugriff).
+    App\AI\Workflow\MailDraftHitlService: ~
+    # EmailIngestionService nutzt den document_processor-Sub-Agenten (ai.yaml)
+    # fuer die LLM-gestuetzte Dokumentenauswertung mit heuristischem Fallback.
+    # AgentInterface kann nicht autowired werden (mehrere Agent-Services),
+    # deshalb wird der document_processor explizit verdrahtet. Im Test-Env ist
+    # der Service via services_test.yaml public (E2E-Zugriff).
+    App\AI\Workflow\EmailIngestionService:
+        arguments:
+            $documentAgent: '@ai.agent.document_processor'
+
 
     # LLM Platform/Provider Choice (Issue #11)
     App\AI\Platform\PlatformResolver:
