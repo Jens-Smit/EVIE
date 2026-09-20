@@ -76,7 +76,7 @@ final class ToolApprovalController extends AbstractController
      * Genehmigt ein ausstehendes Tool.
      */
     #[Route('/tools/pending/{id}/approve', name: 'app_tool_pending_approve', methods: ['POST'], priority: 3)]
-    public function approveTool(Request $request, ToolDefinition $tool): JsonResponse
+    public function approveTool(Request $request, ToolDefinition $tool): Response
     {
         if (!$this->isCsrfTokenValid('tool_approval', (string) $request->request->get('_token', $request->headers->get('X-CSRF-TOKEN', '')))) {
             return $this->json([
@@ -175,7 +175,7 @@ final class ToolApprovalController extends AbstractController
      * Lehnt ein ausstehendes Tool ab.
      */
     #[Route('/tools/pending/{id}/reject', name: 'app_tool_pending_reject', methods: ['POST'], priority: 3)]
-    public function rejectTool(Request $request, ToolDefinition $tool): JsonResponse
+    public function rejectTool(Request $request, ToolDefinition $tool): Response
     {
         if (!$this->isCsrfTokenValid('tool_approval', (string) $request->request->get('_token', $request->headers->get('X-CSRF-TOKEN', '')))) {
             return $this->json([

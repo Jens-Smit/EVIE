@@ -9,8 +9,8 @@ use App\Repository\ToolDefinitionRepository;
 use Symfony\Component\EventDispatcher\Attribute\AsEventListener;
 use Symfony\Component\HttpKernel\Event\ControllerEvent;
 use Symfony\Component\HttpKernel\KernelEvents;
-use Symfony\Component\Security\Core\Authentication\Token\AnonymousToken;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
+use Symfony\Component\Security\Core\User\UserInterface;
 use Twig\Environment;
 
 /**
@@ -36,7 +36,10 @@ final class PendingApprovalCountListener
         }
 
         $token = $this->tokenStorage->getToken();
-        if ($token === null || $token instanceof AnonymousToken) {
+        // Symfony 7: Tokens sind per Definition authentifiziert; ein nicht
+        // authentifizierter Gast hat entweder kein Token oder einen User, der
+        // kein UserInterface implementiert (legacy 'anon.'-String).
+        if ($token === null || !$token->getUser() instanceof UserInterface) {
             $this->twig->addGlobal('pending_approval_count', 0);
 
             return;
