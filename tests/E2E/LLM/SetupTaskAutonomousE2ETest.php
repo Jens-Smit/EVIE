@@ -275,6 +275,7 @@ final class SetupTaskAutonomousE2ETest extends KernelTestCase
         $secretService = static::getContainer()->get(SecretService::class);
         $secretService->set('MISTRAL_API_KEY', $envKey, $tenantUser, 'llm');
 
+        $tenantContext = null;
         try {
             $platform = static::getContainer()->get(\Symfony\AI\Platform\PlatformInterface::class);
             $tenantContext = static::getContainer()->get(\App\AI\Platform\TenantPlatformContext::class);

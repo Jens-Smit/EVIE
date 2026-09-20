@@ -3,6 +3,7 @@
 namespace App;
 
 use App\DependencyInjection\Compiler\E2EStubPass;
+use App\DependencyInjection\Compiler\RealEmbeddingPass;
 use App\DependencyInjection\Compiler\RegisterDynamicToolboxDecoratorPass;
 use App\DependencyInjection\Compiler\TestStubPass;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
@@ -67,6 +68,10 @@ class Kernel extends BaseKernel
         // Symfony AI). In dev/prod ist der Pass ein No-op.
         if ($this->environment === 'test') {
             $container->addCompilerPass(new TestStubPass(), PassConfig::TYPE_BEFORE_REMOVING);
+            // E2E-LLM-Modus (EVIE_LLM_E2E=1): echte Mistral-Embeddings statt
+            // des deterministischen Test-Stubs, damit der e2e-llm-CI-Job die
+            // Embedding-Aufrufe (Kontextsuche/RAG) mit dem echten Key testet.
+            $container->addCompilerPass(new RealEmbeddingPass(), PassConfig::TYPE_BEFORE_REMOVING);
         }
     }
 }

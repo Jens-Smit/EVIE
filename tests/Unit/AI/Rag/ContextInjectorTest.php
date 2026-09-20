@@ -8,6 +8,7 @@ use App\AI\Rag\ContextInjector;
 use App\AI\Rag\RetrievalResult;
 use App\AI\Rag\Retriever;
 use App\AI\Rag\RetrievedItem;
+use App\AI\Platform\TenantPlatformContext;
 use App\Entity\Embedding;
 use App\Security\UserContext;
 use PHPUnit\Framework\TestCase;
@@ -185,8 +186,51 @@ final class ContextInjectorTest extends TestCase
     }
 
 
+    public function testProcessInputSkipsRetrievalWithoutTenantIdentifier(): void
+    {
+        // Fail-Safe (P0-1): Ohne Tenant-Identifier (weder Request noch
+        // TenantPlatformContext) darf KEIN kontext-agnostischer RAG-Abruf
+        // erfolgen - der Agent-Call wird nicht blockiert, aber es wird
+        // kein fremder Kontext injiziert.
+        $retriever = $this->createMock(Retriever::class);
+        $retriever->expects(self::never())->method('retrieve');
+
+        $injector = new ContextInjector($retriever, $this->createUserContext(''));
+        $messageBag = new MessageBag(Message::ofUser('Frage ohne Tenant'));
+        $input = new Input('mistral-small-latest', $messageBag);
+
+        $injector->processInput($input);
+
+        self::assertCount(1, $input->getMessageBag()->getMessages());
+    }
+
+    public function testProcessInputUsesTenantPlatformContextFallback(): void
+    {
+        // Worker/CLI-Kontext: kein Request-Tenant, aber TenantPlatformContext
+        // gesetzt (von withTenantContext() vor dem Agent-Call).
+        $retriever = $this->createMock(Retriever::class);
+        $retriever->expects(self::once())->method('retrieve')
+            ->willReturn(new RetrievalResult('query', [
+                $this->createItem('Tenant-Fallback-Kontext', 0.9, 'knowledge'),
+            ]));
+
+        $tenantContext = new TenantPlatformContext();
+        $tenantContext->setUserIdentifier('worker-tenant-1');
+
+        $injector = new ContextInjector($retriever, $this->createUserContext(''), $tenantContext);
+        $messageBag = new MessageBag(Message::ofUser('Frage aus dem Worker'));
+        $input = new Input('mistral-small-latest', $messageBag);
+
+        $injector->processInput($input);
+
+        self::assertGreaterThanOrEqual(2, count($input->getMessageBag()->getMessages()));
+    }
+
     private function createUserContext(?string $identifier = null): UserContext
     {
+        if ($identifier === null) {
+            $identifier = 'test-user';
+        }
         // UserContext is final and cannot be mocked. We build a real instance
         // with a RequestStack carrying the tenant identifier (the fallback
         // path UserContext uses when no Security-Token is present).
