@@ -487,6 +487,19 @@ final class ProductJourneyTest extends WebTestCase
 
     private function getCsrfToken(string $tokenId): string
     {
+        // Der Token-Manager benoetigt eine aktive Session. Wir holen das
+        // Token daher ueber eine gerenderte Seite (die das Token als
+        // data-token-Attribut bzw. Hidden-Field enthaelt), damit der Helper
+        // auch ohne vorherige Session-nutzende Request funktioniert.
+        $crawler = $this->client->request('GET', '/tools/pending');
+        $btn = $crawler->filter('.approve-tool[data-token]')->first();
+        if ($btn->count() > 0) {
+            $token = $btn->attr('data-token');
+            if (is_string($token) && $token !== '') {
+                return $token;
+            }
+        }
+
         return static::getContainer()
             ->get('security.csrf.token_manager')
             ->getToken($tokenId)
