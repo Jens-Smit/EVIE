@@ -27,7 +27,7 @@ final class PendingApprovalCountListener
     ) {
     }
 
-    #[AsEventListener(event: KernelEvents::CONTROLLER, method: 'onKernelController')]
+    #[AsEventListener(event: KernelEvents::CONTROLLER)]
     public function onKernelController(ControllerEvent $event): void
     {
         if (!$event->isMainRequest()) {
