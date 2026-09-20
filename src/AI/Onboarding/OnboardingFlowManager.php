@@ -263,6 +263,18 @@ class OnboardingFlowManager
             $responseText = 'Danke! Ich habe deine Angaben aufgenommen. Weiter im Wizard oder schreib mir einfach mehr.';
         }
 
+        // Deterministischer Fallback (keine Halluzination): Wenn noch keine
+        // Mission im Kontext liegt und das LLM kein mission_statement extra-
+        // hiert, uebernimmt die erste substanzielle Nutzernachricht selbst
+        // als mission_statement - exakt in den Worten des Nutzers. Kurze
+        // Begruesungen/Rueckfragen (unter 20 Zeichen) werden nicht als
+        // Aufgabe fehlinterpretiert.
+        if (!isset($extracted['mission_statement'])
+            && trim((string) ($onboardingData['mission_statement'] ?? '')) === ''
+            && mb_strlen(trim($message)) >= 20) {
+            $extracted['mission_statement'] = trim($message);
+        }
+
         $ingested = $this->ingestExtracted($userIdentifier, $extracted);
 
         return [

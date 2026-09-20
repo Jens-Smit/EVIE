@@ -164,6 +164,25 @@ final class RealEmbeddingContextE2ETest extends KernelTestCase
             ['user_identifier' => self::USER]
         );
 
+        // Positiv-Kontrolle: Tenant A findet seinen eigenen Kontext (der
+        // Test greift wirklich auf gespeicherte Daten zu und ist nicht
+        // leer-riskant, falls der Cross-Tenant-Abruf leer ausfaellt).
+        $ownResult = $retriever->retrieve(
+            'Interner Vertriebsplan der Softwarefirma',
+            ['user_identifier' => self::USER]
+        );
+        $ownFound = false;
+        foreach ($ownResult->getItems() as $item) {
+            if (str_contains($item->getContent(), 'Tenant-A-Geheimkontext')) {
+                $ownFound = true;
+                break;
+            }
+        }
+        self::assertTrue(
+            $ownFound,
+            'Positiv-Kontrolle: Tenant A muss seinen eigenen Kontext finden.'
+        );
+
         $crossResult = $retriever->retrieve(
             'Interner Vertriebsplan der Softwarefirma',
             ['user_identifier' => $otherTenant]
