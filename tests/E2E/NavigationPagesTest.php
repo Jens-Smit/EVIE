@@ -73,7 +73,10 @@ class NavigationPagesTest extends WebTestCase
         $this->assertSelectorTextContains('#content-area h1', 'Dashboard');
         // Die Sidebar wird ueber base.html.twig eingebunden und muss rendern.
         $this->assertSidebarPresent();
-        $this->assertSelectorTextContains('#nav-menu', 'Dashboard');
+        // Der Sidebar-Eintrag heisst seit der Produkt-Sprachumstellung
+        // 'Übersicht' und verlinkt weiterhin auf app_dashboard.
+        $this->assertSelectorTextContains('#nav-menu', 'Übersicht');
+        $this->assertSelectorExists('#nav-menu a[href="/dashboard"]');
     }
 
     public function testAgentDialogPageLoads(): void

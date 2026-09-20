@@ -155,10 +155,13 @@ final class EvolutionGoldenPathTest extends WebTestCase
         //    CSRF-gesichert ('tool_approval'-Token), damit ein Fremd-POST die
         //    Faehigkeit nicht im Namen des Users freigeben kann.
         $toolId = $persisted->getId();
-        $csrfToken = static::getContainer()
-            ->get('security.csrf.token_manager')
-            ->getToken('tool_approval')
-            ->getValue();
+        // Das CSRF-Token wird aus der gerenderten Freigabe-Liste gelesen
+        // (data-token), da der Token-Manager eine aktive Session benoetigt.
+        $crawler = $this->client->request('GET', '/tools/pending');
+        $btn = $crawler->filter('.approve-tool[data-token]')->first();
+        $csrfToken = $btn->count() > 0
+            ? (string) $btn->attr('data-token')
+            : '';
         $this->client->request('POST', "/tools/pending/{$toolId}/approve", [
             '_token' => $csrfToken,
         ], [], [
