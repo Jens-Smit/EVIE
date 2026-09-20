@@ -211,11 +211,16 @@ services:
     # =====================================================================
     # MailDraftHitlService versendet freigegebene E-Mail-Entwuerfe ueber den
     # Symfony Mailer (Test-Env: null://null, Onboarding erfasst SMTP in prod).
-    App\AI\Workflow\MailDraftHitlService:
-        arguments:
-            $defaultFrom: '%env(default::default_mailer_from:MAILER_FROM)%'
+    # Der Absender-Default ist ein PHP-Konstruktor-Default (analog EmailTool),
+    # kein %env(...)%-Wiring: "default_mailer_from" ist kein gueltiger
+    # Env-Processor-Prefix und wuerde den Container-Build brechen. Im Test-Env
+    # ist der Service via services_test.yaml public (E2E-Zugriff).
+    App\AI\Workflow\MailDraftHitlService: ~
     # EmailIngestionService nutzt den document_processor-Sub-Agenten (ai.yaml)
     # fuer die LLM-gestuetzte Dokumentenauswertung mit heuristischem Fallback.
+    # AgentInterface kann nicht autowired werden (mehrere Agent-Services),
+    # deshalb wird der document_processor explizit verdrahtet. Im Test-Env ist
+    # der Service via services_test.yaml public (E2E-Zugriff).
     App\AI\Workflow\EmailIngestionService:
         arguments:
             $documentAgent: '@ai.agent.document_processor'

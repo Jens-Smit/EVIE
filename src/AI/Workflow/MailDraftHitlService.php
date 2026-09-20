@@ -39,7 +39,7 @@ final class MailDraftHitlService
         private MailerInterface $mailer,
         private AuditLogger $auditLogger,
         private LoggerInterface $logger,
-        private string $defaultFrom,
+        private string $defaultFrom = 'noreply@evie.ai',
     ) {
     }
 

@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace App\Tests\E2E\LLM;
+namespace App\Tests\E2E\ProductiveWorkflow;
 
 use App\AI\Agent\OrchestratorDialogService;
 use App\AI\Onboarding\OnboardingFlowManager;
