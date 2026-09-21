@@ -50,7 +50,7 @@ final class GoalResolver implements GoalResolverInterface
             $description = $goal->getTitle();
             $successMetric = $goal->getSuccessMetric();
 
-            $this->logger->debug('GoalResolver: aktives AgentGoal verwendet', [
+            $this->logger->info('GoalResolver: aktives AgentGoal verwendet', [
                 'goal_id' => $goal->getId(),
                 'user_identifier' => $context->getUserIdentifier(),
             ]);
@@ -80,6 +80,11 @@ final class GoalResolver implements GoalResolverInterface
             $this->logger->warning('GoalResolver: ad-hoc-LLM fehlgeschlagen, verwende Nachricht als Ziel: ' . $e->getMessage());
             $description = $context->getMessage();
         }
+
+        $this->logger->info('GoalResolver: ad-hoc-Ziel aufgeloest', [
+            'goal_description' => $description,
+            'source' => Goal::SOURCE_AD_HOC,
+        ]);
 
         return new Goal(
             'ad-hoc-' . substr(sha1($context->getMessage()), 0, 8),

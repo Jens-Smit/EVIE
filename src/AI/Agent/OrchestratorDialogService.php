@@ -6,6 +6,7 @@ namespace App\AI\Agent;
 
 use App\AI\Pipeline\PipelineInterface;
 use App\AI\Platform\TenantPlatformContext;
+use Psr\Log\LoggerInterface;
 
 /**
  * Duennen Fassade fuer den Dialog mit dem Orchestrator.
@@ -29,6 +30,7 @@ final class OrchestratorDialogService
     public function __construct(
         private PipelineInterface $pipeline,
         private TenantPlatformContext $tenantPlatformContext,
+        private readonly LoggerInterface $logger,
     ) {
     }
 
@@ -42,13 +44,20 @@ final class OrchestratorDialogService
      */
     public function ask(string $userMessage, string $userIdentifier, ?string $systemContext = null): string
     {
+        $this->logger->info('OrchestratorDialogService::ask - Start', [
+            'user_identifier' => $userIdentifier,
+            'message' => $userMessage,
+        ]);
         $this->tenantPlatformContext->setUserIdentifier($userIdentifier);
         try {
             $result = $this->pipeline->run($userMessage, $userIdentifier, $systemContext);
         } finally {
             $this->tenantPlatformContext->clear();
         }
-
+        $this->logger->info('OrchestratorDialogService::ask - Ergebnis', [
+            'result_type' => $result->getType(),
+            'content_length' => strlen($result->getContent()),
+        ]);
         return $result->getContent();
     }
 }

@@ -64,7 +64,7 @@ final class Pipeline implements PipelineInterface
 
     public function run(string $message, string $userIdentifier, ?string $systemContext = null): PipelineResult
     {
-        $this->logger->debug('Pipeline.run: Start', [
+        $this->logger->info('Pipeline.run: Start', [
             'user_identifier' => $userIdentifier,
             'message' => $message,
         ]);
@@ -72,7 +72,7 @@ final class Pipeline implements PipelineInterface
 
         // Phase 1 — Goal
         $context = $context->withGoal($this->goalResolver->resolve($context));
-        $this->logger->debug('Pipeline.run: Phase 1 Goal aufgeloest', [
+        $this->logger->info('Pipeline.run: Phase 1 Goal aufgeloest', [
             'goal' => $context->getGoal() !== null ? $context->getGoal()->getIdentifier() : null,
             'goal_source' => $context->getGoal() !== null ? $context->getGoal()->getSource() : null,
         ]);
@@ -80,22 +80,24 @@ final class Pipeline implements PipelineInterface
         // Phase 2 — Intent (Exit-Gate: Dialog)
         $intent = $this->intentClassifier->classify($context);
         $context = $context->withIntent($intent);
-        $this->logger->debug('Pipeline.run: Phase 2 Intent klassifiziert', [
+        $this->logger->info('Pipeline.run: Phase 2 Intent klassifiziert', [
             'intent' => $intent->name,
         ]);
         if ($intent->isDialog()) {
-            $this->logger->debug('Pipeline.run: Exit-Gate Dialog (Intent ist dialogorientiert)');
+            $this->logger->info('Pipeline.run: Exit-Gate Dialog (Intent ist dialogorientiert)', [
+                'intent' => $intent->name,
+            ]);
             return $this->executionCoordinator->dialog($context);
         }
 
         // Phase 3 — Plan (Exit-Gate: clarify)
         $plan = $this->planner->plan($context, $intent);
-        $this->logger->debug('Pipeline.run: Phase 3 Plan erstellt', [
+        $this->logger->info('Pipeline.run: Phase 3 Plan erstellt', [
             'is_clarification' => $plan->isClarification(),
             'steps' => count($plan->getSteps()),
         ]);
         if ($plan->isClarification()) {
-            $this->logger->debug('Pipeline.run: Exit-Gate clarify', [
+            $this->logger->info('Pipeline.run: Exit-Gate clarify', [
                 'reason' => $plan->getSteps()[0]->getReason(),
             ]);
             return $this->executionCoordinator->clarify($context, $plan);
@@ -106,6 +108,11 @@ final class Pipeline implements PipelineInterface
         // mehrere Dialogrunden/Messenger-Ausfuehrungen autonom abarbeitet.
         if ($intent === Intent::SetupTask) {
             $this->persistSetupTaskGoal($context, $plan);
+            $this->logger->info('Pipeline.run: SetupTask-Goal persistiert', [
+                'user_identifier' => $context->getUserIdentifier(),
+                'summary' => $plan->getSummary(),
+                'steps' => count($plan->getSteps()),
+            ]);
         }
 
         // Phase 4 — Capability (Exit-Gate: HITL)
@@ -113,7 +120,15 @@ final class Pipeline implements PipelineInterface
         foreach ($plan->getSteps() as $step) {
             $result = $this->capabilityResolver->resolve($step, $context);
             $decision = $result->getDecision();
+            $this->logger->info('Pipeline.run: Phase 4 Capability aufgeloest', [
+                'step_type' => $step->getType(),
+                'step_target' => $step->getTarget(),
+                'decision' => $decision->value,
+            ]);
             if ($decision->isMissing() || $decision->isPending()) {
+                $this->logger->info('Pipeline.run: Exit-Gate HITL (Capability missing/pending)', [
+                    'step_target' => $step->getTarget(),
+                ]);
                 return $this->executionCoordinator->awaitingApproval($context, $result);
             }
 
@@ -124,6 +139,9 @@ final class Pipeline implements PipelineInterface
         }
 
         // Phase 5 — Execution
+        $this->logger->info('Pipeline.run: Phase 5 Execution startet', [
+            'steps' => count($resolvedPlan->getSteps()),
+        ]);
         return $this->executionCoordinator->execute($context, $resolvedPlan);
     }
 

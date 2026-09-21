@@ -9,6 +9,7 @@ use App\AI\Pipeline\Execution\PipelineResult;
 use App\AI\Pipeline\PipelineInterface;
 use App\AI\Platform\TenantPlatformContext;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\NullLogger;
 
 /**
  * Unit-Tests fuer die OrchestratorDialogService-Fassade (Blueprint §4.A).
@@ -32,7 +33,7 @@ final class OrchestratorAgentLlmTest extends TestCase
             ->with('Hallo', 'user-789')
             ->willReturn(new PipelineResult(PipelineResult::TYPE_DIALOG, 'Hallo, ich kann dir helfen.'));
 
-        $orchestrator = new OrchestratorDialogService($pipeline, new TenantPlatformContext());
+        $orchestrator = new OrchestratorDialogService($pipeline, new TenantPlatformContext(), new NullLogger());
         $result = $orchestrator->ask('Hallo', 'user-789');
 
         self::assertIsString($result);
@@ -46,7 +47,7 @@ final class OrchestratorAgentLlmTest extends TestCase
             ->method('run')
             ->willReturn(new PipelineResult(PipelineResult::TYPE_EXECUTED, 'Datenanalyse abgeschlossen: 42 Verkaeufe'));
 
-        $orchestrator = new OrchestratorDialogService($pipeline, new TenantPlatformContext());
+        $orchestrator = new OrchestratorDialogService($pipeline, new TenantPlatformContext(), new NullLogger());
         $result = $orchestrator->ask('Analysiere die Daten', 'user-456');
 
         self::assertStringContainsString('Datenanalyse', $result);
@@ -59,7 +60,7 @@ final class OrchestratorAgentLlmTest extends TestCase
             ->method('run')
             ->willReturn(new PipelineResult(PipelineResult::TYPE_AWAITING_APPROVAL, 'Tool wartet auf Freigabe', 42));
 
-        $orchestrator = new OrchestratorDialogService($pipeline, new TenantPlatformContext());
+        $orchestrator = new OrchestratorDialogService($pipeline, new TenantPlatformContext(), new NullLogger());
         $result = $orchestrator->ask('Rufe die API example.com auf', 'user-gen');
 
         self::assertIsString($result);
@@ -72,7 +73,7 @@ final class OrchestratorAgentLlmTest extends TestCase
             ->method('run')
             ->willReturn(new PipelineResult(PipelineResult::TYPE_CLARIFY, 'Bitte beschreibe es etwas genauer.'));
 
-        $orchestrator = new OrchestratorDialogService($pipeline, new TenantPlatformContext());
+        $orchestrator = new OrchestratorDialogService($pipeline, new TenantPlatformContext(), new NullLogger());
         $result = $orchestrator->ask('irgendwas', 'user-unclear');
 
         self::assertStringContainsString('genauer', $result);

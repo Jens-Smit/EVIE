@@ -9,6 +9,7 @@ use App\AI\Platform\TenantPlatformContext;
 use App\AI\Pipeline\Execution\PipelineResult;
 use App\AI\Pipeline\PipelineInterface;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\NullLogger;
 
 /**
  * Unit-Tests fuer OrchestratorDialogService (Blueprint §4.A).
@@ -28,7 +29,7 @@ class OrchestratorAgentTest extends TestCase
             ->with('Analysiere diese Daten', 'user123')
             ->willReturn(new PipelineResult(PipelineResult::TYPE_EXECUTED, 'Antwort des Agenten'));
 
-        $orchestrator = new OrchestratorDialogService($pipeline, new TenantPlatformContext());
+        $orchestrator = new OrchestratorDialogService($pipeline, new TenantPlatformContext(), new NullLogger());
         $result = $orchestrator->ask('Analysiere diese Daten', 'user123');
 
         self::assertIsString($result);
@@ -43,7 +44,7 @@ class OrchestratorAgentTest extends TestCase
             ->with('Analysiere diese Excel-Datei', 'user123')
             ->willReturn(new PipelineResult(PipelineResult::TYPE_EXECUTED, 'Excel verarbeitet'));
 
-        $orchestrator = new OrchestratorDialogService($pipeline, new TenantPlatformContext());
+        $orchestrator = new OrchestratorDialogService($pipeline, new TenantPlatformContext(), new NullLogger());
         $result = $orchestrator->ask('Analysiere diese Excel-Datei', 'user123');
 
         self::assertIsString($result);
@@ -57,7 +58,7 @@ class OrchestratorAgentTest extends TestCase
             ->method('run')
             ->willReturn(new PipelineResult(PipelineResult::TYPE_EXECUTED, 'Analyse abgeschlossen'));
 
-        $orchestrator = new OrchestratorDialogService($pipeline, new TenantPlatformContext());
+        $orchestrator = new OrchestratorDialogService($pipeline, new TenantPlatformContext(), new NullLogger());
         $result = $orchestrator->ask('Analysiere die Daten', 'user456');
 
         self::assertIsString($result);
@@ -71,7 +72,7 @@ class OrchestratorAgentTest extends TestCase
             ->method('run')
             ->willReturn(new PipelineResult(PipelineResult::TYPE_EXECUTED, 'Excel-Ergebnis'));
 
-        $orchestrator = new OrchestratorDialogService($pipeline, new TenantPlatformContext());
+        $orchestrator = new OrchestratorDialogService($pipeline, new TenantPlatformContext(), new NullLogger());
         $result = $orchestrator->ask('Verarbeite Excel', 'user789');
 
         self::assertIsString($result);
