@@ -53,7 +53,7 @@ final class StrategyManagerTest extends TestCase
             new PipelineResult(PipelineResult::TYPE_EXECUTED, 'strategy-test-result')
         );
 
-        return new OrchestratorDialogService($pipeline, new TenantPlatformContext());
+        return new OrchestratorDialogService($pipeline, new TenantPlatformContext(), new NullLogger());
     }
 
     public function testAnalyzeAndSuggestAdjustmentsWithNoGoals(): void

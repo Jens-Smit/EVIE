@@ -42,14 +42,14 @@ final class IntentClassifier implements IntentClassifierInterface
     {
         try {
             $prompt = $this->buildIntentClassificationPrompt($context->getMessage());
-            $this->logger->debug('IntentClassifier: Klassifizierungs-Prompt an LLM', [
+            $this->logger->info('IntentClassifier: Klassifizierungs-Prompt an LLM', [
                 'message' => $context->getMessage(),
                 'model' => 'mistral-small-latest',
             ]);
             $messages = new MessageBag(Message::ofUser($prompt));
             $result = $this->platform->invoke('mistral-small-latest', $messages)->asText();
             $result = strtoupper(trim($result));
-            $this->logger->debug('IntentClassifier: Rohe LLM-Antwort', [
+            $this->logger->info('IntentClassifier: Rohe LLM-Antwort', [
                 'raw_result' => $result,
             ]);
 

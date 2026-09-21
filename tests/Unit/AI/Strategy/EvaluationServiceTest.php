@@ -49,7 +49,7 @@ final class EvaluationServiceTest extends TestCase
             new PipelineResult(PipelineResult::TYPE_EXECUTED, 'evaluation-test-result')
         );
 
-        return new OrchestratorDialogService($pipeline, new TenantPlatformContext());
+        return new OrchestratorDialogService($pipeline, new TenantPlatformContext(), new NullLogger());
     }
 
     public function testEvaluateGoalWithGenericEvaluationSuccess(): void

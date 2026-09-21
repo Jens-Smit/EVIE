@@ -9,6 +9,7 @@ use App\AI\Pipeline\Execution\PipelineResult;
 use App\AI\Pipeline\PipelineInterface;
 use App\AI\Platform\TenantPlatformContext;
 use PHPUnit\Framework\TestCase;
+use Psr\Log\NullLogger;
 
 /**
  * Unit-Test fuer die OrchestratorDialogService-Fassade: ask() delegiert
@@ -29,7 +30,7 @@ final class OrchestratorDialogFacadeTest extends TestCase
             ->with('moin', 'user-1', null)
             ->willReturn(new PipelineResult(PipelineResult::TYPE_DIALOG, 'Hallo von der Pipeline'));
 
-        $service = new OrchestratorDialogService($pipeline, new TenantPlatformContext());
+        $service = new OrchestratorDialogService($pipeline, new TenantPlatformContext(), new NullLogger());
         $result = $service->ask('moin', 'user-1');
         self::assertSame('Hallo von der Pipeline', $result);
     }
@@ -44,7 +45,7 @@ final class OrchestratorDialogFacadeTest extends TestCase
             ->with('Folgefrage', 'user-3', '## Bisheriger Konversationsverlauf...')
             ->willReturn(new PipelineResult(PipelineResult::TYPE_DIALOG, 'Kontext aware Antwort'));
 
-        $service = new OrchestratorDialogService($pipeline, new TenantPlatformContext());
+        $service = new OrchestratorDialogService($pipeline, new TenantPlatformContext(), new NullLogger());
         $result = $service->ask('Folgefrage', 'user-3', '## Bisheriger Konversationsverlauf...');
 
         self::assertSame('Kontext aware Antwort', $result);
@@ -57,7 +58,7 @@ final class OrchestratorDialogFacadeTest extends TestCase
             ->method('run')
             ->willReturn(new PipelineResult(PipelineResult::TYPE_EXECUTED, 'Ergebnis der Ausfuehrung'));
 
-        $service = new OrchestratorDialogService($pipeline, new TenantPlatformContext());
+        $service = new OrchestratorDialogService($pipeline, new TenantPlatformContext(), new NullLogger());
         $result = $service->ask('Rufe API auf', 'user-2');
         self::assertSame('Ergebnis der Ausfuehrung', $result);
     }

@@ -74,6 +74,10 @@ final class AgentDialogController extends AbstractController
         // P0-5 IDOR-Schutz: der Tenant-Identifier wird ausschliesslich aus
         // dem authentifizierten User bezogen, niemals aus dem Request-Body.
         // So kann ein Aufrufer nicht den Tenant eines anderen Users spoofen.
+        $this->logger->info('AgentDialogController::dialog - Request empfangen', [
+            'user_message_set' => $userMessage !== null,
+            'conversation_id' => $conversationId,
+        ]);
         $authenticatedUser = $this->getUser();
         if ($authenticatedUser instanceof UserInterface) {
             $userIdentifier = $authenticatedUser->getUserIdentifier();
@@ -110,10 +114,15 @@ final class AgentDialogController extends AbstractController
         if ($conversationId !== null && $conversationId > 0) {
             $systemPrompt .= $this->buildConversationContext($conversationId, $userIdentifier);
         }
-        $this->logger->debug('AgentDialogController::dialog - System-Prompt:', ['prompt' => $systemPrompt]);
+        $this->logger->info('AgentDialogController::dialog - System-Prompt:', ['prompt' => $systemPrompt]);
 
         try {
             // NUTZE OrchestratorDialogService statt direkten Agent-Aufruf
+            $this->logger->info('AgentDialogController::dialog - OrchestratorDialogService::ask wird aufgerufen', [
+                'user_identifier' => $userIdentifier,
+                'message' => $userMessage,
+                'conversation_id' => $conversationId,
+            ]);
             $response = $this->orchestratorDialogService->ask($userMessage, $userIdentifier, $systemPrompt);
 
             $this->logger->debug('AgentDialogController::dialog - Ergebnis:', [

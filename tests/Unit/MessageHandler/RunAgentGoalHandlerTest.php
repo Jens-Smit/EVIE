@@ -65,7 +65,7 @@ final class RunAgentGoalHandlerTest extends TestCase
             new PipelineResult(PipelineResult::TYPE_EXECUTED, 'handler-test-result')
         );
 
-        return new OrchestratorDialogService($pipeline, new TenantPlatformContext());
+        return new OrchestratorDialogService($pipeline, new TenantPlatformContext(), new NullLogger());
     }
 
     private function createMockAuditLogRepository(): \App\Repository\AuditLogRepository&MockObject

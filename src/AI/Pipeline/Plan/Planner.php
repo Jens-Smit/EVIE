@@ -55,34 +55,34 @@ final class Planner implements PlannerInterface
     {
         // unclear -> direkt clarify, ohne LLM-Aufruf.
         if ($intent === Intent::Unclear) {
-            $this->logger->debug('Planner: Intent=Unclear, clarify ohne LLM-Aufruf', [
+            $this->logger->info('Planner: Intent=Unclear, clarify ohne LLM-Aufruf', [
                 'intent' => $intent->name,
                 'message' => $context->getMessage(),
             ]);
             return new Plan([new Step(Step::TYPE_CLARIFY, '', [], false, 'Anfrage mehrdeutig')]);
         }
 
-        $this->logger->debug('Planner: Start Phase 3 (Plan)', [
+        $this->logger->info('Planner: Start Phase 3 (Plan)', [
             'intent' => $intent->name,
             'message' => $context->getMessage(),
         ]);
 
         try {
             $prompt = $this->buildPrompt($context);
-            $this->logger->debug('Planner: Prompt an LLM gesendet', [
+            $this->logger->info('Planner: Prompt an LLM gesendet', [
                 'prompt' => $prompt,
                 'model' => 'mistral-small-latest',
             ]);
             $messages = new MessageBag(Message::ofUser($prompt));
             $response = $this->platform->invoke('mistral-small-latest', $messages)->asText();
-            $this->logger->debug('Planner: Rohe LLM-Antwort erhalten', [
+            $this->logger->info('Planner: Rohe LLM-Antwort erhalten', [
                 'response' => $response,
                 'response_length' => strlen($response),
             ]);
             $plan = $this->parsePlan($response);
 
             if ($plan !== null) {
-                $this->logger->debug('Planner: Plan erfolgreich geparst', [
+                $this->logger->info('Planner: Plan erfolgreich geparst', [
                     'steps' => count($plan->getSteps()),
                     'summary' => $plan->getSummary(),
                 ]);
