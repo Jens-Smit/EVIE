@@ -172,7 +172,13 @@ function recomputeMetrics(DOMDocument $doc): void
             $classMetrics->setAttribute('coveredelements', (string) $coveredElements);
         }
 
-        $fm = $file->getElementsByTagName('metrics')->item(0);
+        $fm = null;
+        foreach ($file->childNodes as $child) {
+            if ($child instanceof DOMElement && $child->tagName === 'metrics') {
+                $fm = $child;
+                break;
+            }
+        }
         if ($fm !== null) {
             $fileLoc = (int) $fm->getAttribute('loc');
             $fileNcloc = (int) $fm->getAttribute('ncloc');
