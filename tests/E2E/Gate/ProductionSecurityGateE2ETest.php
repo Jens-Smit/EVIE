@@ -210,17 +210,28 @@ final class ProductionSecurityGateE2ETest extends WebTestCase
         // Liste von Tenant A darf NUR eigene Entwuerfe enthalten.
         $this->client->request('GET', '/tools/mail-drafts');
         self::assertResponseIsSuccessful();
-        $content = (string) $this->client->getResponse()->getContent();
-        self::assertStringContainsString((string) $draftA->getId(), $content);
-        self::assertStringNotContainsString((string) $draftB->getId(), $content);
-        self::assertStringNotContainsString('Tenant B', $content);
+        $listA = json_decode((string) $this->client->getResponse()->getContent(), true);
+        self::assertIsArray($listA);
+        $idsA = array_map(static fn (array $d): int => (int) $d['id'], $listA['drafts']);
+        self::assertContains($draftA->getId(), $idsA);
+        self::assertNotContains($draftB->getId(), $idsA);
+        foreach ($listA['drafts'] as $d) {
+            self::assertStringNotContainsString('Tenant B', (string) $d['subject']);
+            self::assertStringNotContainsString('Tenant B', (string) $d['body']);
+        }
 
         // Tenant B sieht umgekehrt niemals den Entwurf von A.
         $this->switchTenant(self::TENANT_B);
         $this->client->request('GET', '/tools/mail-drafts');
-        $contentB = (string) $this->client->getResponse()->getContent();
-        self::assertStringNotContainsString((string) $draftA->getId(), $contentB);
-        self::assertStringNotContainsString('Geheime Geschaeftszahlen von Tenant A', $contentB);
+        $listB = json_decode((string) $this->client->getResponse()->getContent(), true);
+        self::assertIsArray($listB);
+        $idsB = array_map(static fn (array $d): int => (int) $d['id'], $listB['drafts']);
+        self::assertContains($draftB->getId(), $idsB);
+        self::assertNotContains($draftA->getId(), $idsB);
+        foreach ($listB['drafts'] as $d) {
+            self::assertStringNotContainsString('Tenant A', (string) $d['subject']);
+            self::assertStringNotContainsString('Tenant A', (string) $d['body']);
+        }
 
         // Direkter Zugriff (ID-Spoofing) muss mit 403 abgewiesen werden.
         $this->client->request('POST', '/tools/mail-drafts/' . $draftA->getId() . '/reject', ['reason' => 'angriff']);
