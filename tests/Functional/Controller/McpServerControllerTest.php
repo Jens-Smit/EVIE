@@ -30,6 +30,7 @@ class McpServerControllerTest extends AbstractFunctionalControllerTest
         $definition = new McpServerDefinition();
         $definition->setName($name);
         $definition->setType('filesystem');
+        $definition->setDescription('Test-Definition');
         $definition->setConfiguration([]);
         $definition->setAllowedTools([]);
         $definition->setBlockedResources([]);
@@ -88,6 +89,7 @@ class McpServerControllerTest extends AbstractFunctionalControllerTest
         $this->client->request('POST', '/mcp/servers/fs_delete_test/delete');
 
         self::assertResponseRedirects('/mcp/servers');
+        $this->entityManager->clear();
         self::assertNull($this->entityManager->find(McpServerDefinition::class, $definition->getId()));
     }
 

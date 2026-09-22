@@ -135,6 +135,7 @@ class SubAgentControllerTest extends AbstractFunctionalControllerTest
         $this->client->request('DELETE', '/api/subagents/' . $subAgent->getId());
 
         self::assertResponseIsSuccessful();
+        $this->entityManager->clear();
         self::assertNull($this->entityManager->find(SubAgent::class, $subAgent->getId()));
     }
 }

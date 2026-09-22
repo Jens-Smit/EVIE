@@ -26,7 +26,7 @@ class MetricsControllerTest extends AbstractFunctionalControllerTest
     {
         $this->client->request('GET', '/api/metrics');
 
-        self::assertResponseRedirects('/login');
+        self::assertResponseStatusCodeSame(401);
     }
 
     public function testMetricsIndexReturnsSuccessForAdmin(): void
@@ -51,7 +51,7 @@ class MetricsControllerTest extends AbstractFunctionalControllerTest
         self::assertJson($this->client->getResponse()->getContent());
         $data = json_decode($this->client->getResponse()->getContent(), true);
         self::assertSame('success', $data['status']);
-        self::assertArrayHasKey('data', $data);
+        self::assertArrayHasKey('metrics', $data);
     }
 
     public function testLatencyMetricsReturnsDataForAdmin(): void
@@ -63,7 +63,7 @@ class MetricsControllerTest extends AbstractFunctionalControllerTest
         self::assertJson($this->client->getResponse()->getContent());
         $data = json_decode($this->client->getResponse()->getContent(), true);
         self::assertSame('success', $data['status']);
-        self::assertArrayHasKey('data', $data);
+        self::assertArrayHasKey('metrics', $data);
     }
 
     public function testToolSuccessRateMetricsReturnsDataForAdmin(): void
@@ -75,7 +75,7 @@ class MetricsControllerTest extends AbstractFunctionalControllerTest
         self::assertJson($this->client->getResponse()->getContent());
         $data = json_decode($this->client->getResponse()->getContent(), true);
         self::assertSame('success', $data['status']);
-        self::assertArrayHasKey('data', $data);
+        self::assertArrayHasKey('metrics', $data);
     }
 
     public function testAuditMetricsReturnsDataForAdmin(): void
@@ -87,6 +87,6 @@ class MetricsControllerTest extends AbstractFunctionalControllerTest
         self::assertJson($this->client->getResponse()->getContent());
         $data = json_decode($this->client->getResponse()->getContent(), true);
         self::assertSame('success', $data['status']);
-        self::assertArrayHasKey('data', $data);
+        self::assertArrayHasKey('metrics', $data);
     }
 }

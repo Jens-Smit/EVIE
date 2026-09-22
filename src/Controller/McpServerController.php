@@ -57,36 +57,6 @@ class McpServerController extends AbstractController
     }
 
     /**
-     * Zeigt die Details eines MCP-Servers an.
-     */
-    #[Route('/mcp/servers/{name}', name: 'mcp_server_show', methods: ['GET'])]
-    #[IsGranted('ROLE_ADMIN')]
-    public function showServer(string $name): Response
-    {
-        $definition = $this->mcpServerDefinitionRepo->findOneByName($name);
-
-        if ($definition === null) {
-            throw $this->createNotFoundException('MCP-Server nicht gefunden.');
-        }
-
-        try {
-            $server = $this->mcpServerFactory->createFromDefinition($definition);
-            $tools = $server->getAvailableTools();
-        } catch (\Exception $e) {
-            $this->addFlash('error', sprintf(
-                'Fehler beim Laden des MCP-Servers: %s',
-                $e->getMessage()
-            ));
-            $tools = [];
-        }
-
-        return $this->render('mcp/server_show.html.twig', [
-            'server' => $definition,
-            'tools' => $tools,
-        ]);
-    }
-
-    /**
      * Zeigt das Formular zum Erstellen eines neuen MCP-Servers an.
      */
     #[Route('/mcp/servers/new', name: 'mcp_server_new', methods: ['GET', 'POST'])]
@@ -121,6 +91,36 @@ class McpServerController extends AbstractController
         return $this->render('mcp/server_new.html.twig', [
             'form' => $form->createView(),
             'availableTypes' => $this->getAvailableServerTypes(),
+        ]);
+    }
+
+    /**
+     * Zeigt die Details eines MCP-Servers an.
+     */
+    #[Route('/mcp/servers/{name}', name: 'mcp_server_show', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function showServer(string $name): Response
+    {
+        $definition = $this->mcpServerDefinitionRepo->findOneByName($name);
+
+        if ($definition === null) {
+            throw $this->createNotFoundException('MCP-Server nicht gefunden.');
+        }
+
+        try {
+            $server = $this->mcpServerFactory->createFromDefinition($definition);
+            $tools = $server->getAvailableTools();
+        } catch (\Exception $e) {
+            $this->addFlash('error', sprintf(
+                'Fehler beim Laden des MCP-Servers: %s',
+                $e->getMessage()
+            ));
+            $tools = [];
+        }
+
+        return $this->render('mcp/server_show.html.twig', [
+            'server' => $definition,
+            'tools' => $tools,
         ]);
     }
 

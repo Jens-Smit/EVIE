@@ -33,7 +33,7 @@ class DashboardControllerTest extends AbstractFunctionalControllerTest
     {
         $this->client->request('GET', '/api/dashboard');
 
-        self::assertResponseRedirects('/login');
+        self::assertResponseStatusCodeSame(401);
     }
 
     public function testDashboardReturnsEmptyData(): void

@@ -63,8 +63,7 @@ class StreamingController extends AbstractController
         $session = $this->sessionManager->createSession(
             $toolName,
             $arguments,
-            $userIdentifier,
-            $this->getUser()?->getId()
+            $userIdentifier
         );
 
         // ExecuteToolMessage senden (asynchron)
@@ -84,6 +83,26 @@ class StreamingController extends AbstractController
         ], 202); // 202 Accepted
     }
 
+    /**
+     * Hole alle aktiven Streaming-Sessions eines Users.
+     */
+    #[Route('/api/streaming/sessions/active', name: 'api_streaming_sessions_active', methods: ['GET'])]
+    #[IsGranted('ROLE_USER')]
+    public function listActiveSessions(): JsonResponse
+    {
+        $userIdentifier = $this->getUser()?->getUserIdentifier() ?? 'anonymous';
+        $sessions = $this->sessionManager->getActiveSessionsByUser($userIdentifier);
+
+        $sessionsArray = [];
+        foreach ($sessions as $session) {
+            $sessionsArray[] = $session->toArray();
+        }
+
+        return $this->json([
+            'sessions' => $sessionsArray,
+            'count' => count($sessionsArray),
+        ]);
+    }
     /**
      * Hole den Status einer Streaming-Session.
      */
@@ -126,26 +145,6 @@ class StreamingController extends AbstractController
         ]);
     }
 
-    /**
-     * Hole alle aktiven Streaming-Sessions eines Users.
-     */
-    #[Route('/api/streaming/sessions/active', name: 'api_streaming_sessions_active', methods: ['GET'])]
-    #[IsGranted('ROLE_USER')]
-    public function listActiveSessions(): JsonResponse
-    {
-        $userIdentifier = $this->getUser()?->getUserIdentifier() ?? 'anonymous';
-        $sessions = $this->sessionManager->getActiveSessionsByUser($userIdentifier);
-
-        $sessionsArray = [];
-        foreach ($sessions as $session) {
-            $sessionsArray[] = $session->toArray();
-        }
-
-        return $this->json([
-            'sessions' => $sessionsArray,
-            'count' => count($sessionsArray),
-        ]);
-    }
 
     /**
      * Bricht eine Streaming-Session ab.

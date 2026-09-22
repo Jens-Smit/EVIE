@@ -163,6 +163,7 @@ class AgentGoalControllerTest extends AbstractFunctionalControllerTest
         $this->client->request('POST', '/agent/goals/' . $goal->getId());
 
         self::assertResponseRedirects('/agent/goals');
+        $this->entityManager->clear();
         self::assertNull($this->goalRepository->find($goal->getId()));
     }
 

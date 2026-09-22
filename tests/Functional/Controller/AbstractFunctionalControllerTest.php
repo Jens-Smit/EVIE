@@ -66,9 +66,9 @@ abstract class AbstractFunctionalControllerTest extends WebTestCase
     protected function createUserAndLogin(string $email, string $plainPassword, array $roles = ['ROLE_USER']): User
     {
         $user = $this->createUser($email, $plainPassword, $roles);
-        $this->login($email, $plainPassword);
         $user->setOnboardingComplete(true);
         $this->entityManager->flush();
+        $this->login($email, $plainPassword);
         return $user;
     }
 

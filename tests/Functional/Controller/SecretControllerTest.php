@@ -90,7 +90,7 @@ class SecretControllerTest extends AbstractFunctionalControllerTest
     {
         $this->client->request('POST', '/api/secrets/check', ['keyName' => 'ANY']);
 
-        self::assertResponseRedirects('/login');
+        self::assertResponseStatusCodeSame(401);
     }
 
     public function testCheckSecretWithEmptyNameReturns400(): void

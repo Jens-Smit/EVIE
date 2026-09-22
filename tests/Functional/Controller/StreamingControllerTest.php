@@ -51,7 +51,7 @@ class StreamingControllerTest extends AbstractFunctionalControllerTest
             'CONTENT_TYPE' => 'application/json',
         ], json_encode(['tool_name' => 'tool', 'arguments' => []]));
 
-        self::assertResponseRedirects('/login');
+        self::assertResponseStatusCodeSame(401);
     }
 
     public function testCreateSessionReturnsCreated(): void

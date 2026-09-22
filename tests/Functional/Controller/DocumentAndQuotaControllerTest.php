@@ -117,6 +117,7 @@ class DocumentAndQuotaControllerTest extends AbstractFunctionalControllerTest
         $this->client->request('DELETE', '/api/documents/' . $document->getId());
 
         self::assertResponseStatusCodeSame(204);
+        $this->entityManager->clear();
         self::assertNull($this->entityManager->find(Document::class, $document->getId()));
     }
 
@@ -139,7 +140,7 @@ class DocumentAndQuotaControllerTest extends AbstractFunctionalControllerTest
     {
         $this->client->request('GET', '/api/quota/usage');
 
-        self::assertResponseRedirects('/login');
+        self::assertResponseStatusCodeSame(401);
     }
 
     public function testQuotaUsageReturnsData(): void

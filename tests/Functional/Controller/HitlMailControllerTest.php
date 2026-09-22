@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace App\Tests\Functional\Controller;
 
 use App\Entity\MailDraft;
+use App\Entity\UserProfile;
 
 /**
  * Functional-Tests fuer HitlMailController (HITL E-Mail-Freigabe).
@@ -21,15 +22,37 @@ class HitlMailControllerTest extends AbstractFunctionalControllerTest
             $this->entityManager->createQueryBuilder()
                 ->delete(MailDraft::class, 'm')
                 ->getQuery()->execute();
+            $this->entityManager->createQueryBuilder()
+                ->delete(UserProfile::class, 'p')
+                ->getQuery()->execute();
         } catch (\Throwable) {
         }
         parent::tearDown();
+    }
+
+    private function createProfile(string $identifier): UserProfile
+    {
+        $profile = $this->entityManager->getRepository(UserProfile::class)
+            ->findOneBy(['userIdentifier' => $identifier]);
+
+        if ($profile !== null) {
+            return $profile;
+        }
+
+        $profile = new UserProfile();
+        $profile->setUserIdentifier($identifier);
+        $profile->setName($identifier);
+        $this->entityManager->persist($profile);
+        $this->entityManager->flush();
+
+        return $profile;
     }
 
     private function createDraft(string $userIdentifier, string $status = MailDraft::STATUS_PENDING): MailDraft
     {
         $draft = new MailDraft();
         $draft->setUserIdentifier($userIdentifier);
+        $draft->setUserProfile($this->createProfile($userIdentifier));
         $draft->setSubject('Test Betreff');
         $draft->setBody('Test-Inhalt');
         $draft->setRecipients(['to@example.com']);
