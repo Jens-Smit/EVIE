@@ -121,13 +121,22 @@
                 <i class="ph ph-power text-warning text-xl"></i>
                 <h2 class="card-title">Server-Steuerung</h2>
             </div>
-            <form method="post" action="{{ path('mcp_server_toggle', {'name': server.name}) }}">
-                <input type="hidden" name="_token" value="{{ csrf_token('toggle' ~ server.name) }}">
-                <button type="submit" class="btn {% if server.active %}btn-ghost{% else %}btn-primary{% endif %}">
-                    <i class="ph ph-power"></i>
-                    {% if server.active %}Deaktivieren{% else %}Aktivieren{% endif %}
-                </button>
-            </form>
+            <div class="flex items-center gap-2">
+                <form method="post" action="{{ path('mcp_server_toggle', {'name': server.name}) }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token('toggle' ~ server.name) }}">
+                    <button type="submit" class="btn {% if server.active %}btn-ghost{% else %}btn-primary{% endif %}">
+                        <i class="ph ph-power"></i>
+                        {% if server.active %}Deaktivieren{% else %}Aktivieren{% endif %}
+                    </button>
+                </form>
+                <form method="post" action="{{ path('mcp_server_delete', {'name': server.name}) }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token('delete' ~ server.name) }}">
+                    <button type="submit" class="btn btn-danger">
+                        <i class="ph ph-trash"></i>
+                        Löschen
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
     {% endif %}

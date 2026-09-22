@@ -86,10 +86,11 @@ class McpServerControllerTest extends AbstractFunctionalControllerTest
         $this->createUserAndLogin('mcp-delete@test.de', 'McpPass123', ['ROLE_ADMIN']);
         $definition = $this->createDefinition('fs_delete_test');
 
-        $csrfToken = static::getContainer()
-            ->get('security.csrf.token_manager')
-            ->getToken('delete' . $definition->getId()->toRfc4122())
-            ->getValue();
+        $crawler = $this->client->request('GET', '/mcp/servers/fs_delete_test');
+        $deleteForm = $crawler->filter('form[action="' . $crawler->filter('form[action*="/delete"]')->attr('action') . '"]');
+        self::assertGreaterThan(0, $deleteForm->count());
+        $csrfToken = $crawler->filter('form[action*="/delete"] input[name="_token"]')->attr('value');
+
         $this->client->request('POST', '/mcp/servers/fs_delete_test/delete', ['_token' => $csrfToken]);
 
         self::assertResponseRedirects('/mcp/servers');

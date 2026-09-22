@@ -169,7 +169,7 @@ class McpServerController extends AbstractController
         }
 
         // Überprüfe CSRF-Token
-        if (!$this->isCsrfTokenValid('delete' . $definition->getId()->toRfc4122(), $request->request->get('_token'))) {
+        if (!$this->isCsrfTokenValid('delete' . $definition->getName(), $request->request->get('_token'))) {
             $this->addFlash('error', 'Ungültiges CSRF-Token.');
             return $this->redirectToRoute('mcp_server_show', ['name' => $name]);
         }
@@ -195,7 +195,7 @@ class McpServerController extends AbstractController
         }
 
         // Überprüfe CSRF-Token
-        if (!$this->isCsrfTokenValid('toggle' . $definition->getId()->toRfc4122(), $request->request->get('_token'))) {
+        if (!$this->isCsrfTokenValid('toggle' . $definition->getName(), $request->request->get('_token'))) {
             $this->addFlash('error', 'Ungültiges CSRF-Token.');
             return $this->redirectToRoute('mcp_server_show', ['name' => $name]);
         }

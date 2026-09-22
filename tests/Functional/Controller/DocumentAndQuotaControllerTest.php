@@ -77,7 +77,7 @@ class DocumentAndQuotaControllerTest extends AbstractFunctionalControllerTest
         file_put_contents($tmpFile, 'Upload-Inhalt');
         $uploadedFile = new UploadedFile($tmpFile, 'upload.txt', 'text/plain', UPLOAD_ERR_OK, true);
 
-        $this->client->request('POST', '/api/documents/upload', [], [], ['file' => $uploadedFile]);
+        $this->client->request('POST', '/api/documents/upload', [], ['file' => $uploadedFile]);
 
         self::assertResponseStatusCodeSame(201);
         $data = json_decode($this->client->getResponse()->getContent(), true);
