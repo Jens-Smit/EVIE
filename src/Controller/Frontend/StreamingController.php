@@ -78,7 +78,7 @@ class StreamingController extends AbstractController
     /**
      * Zeigt das Formular zum Starten einer neuen Streaming-Session an.
      */
-    #[Route('/streaming/sessions/new', name: 'app_streaming_session_new', methods: ['GET'])]
+    #[Route('/streaming/sessions/new', name: 'app_streaming_session_new', methods: ['GET'], priority: 10)]
     public function newSession(
         #[CurrentUser] ?UserInterface $user = null
     ): Response

@@ -101,6 +101,11 @@ jobs:
       # -+
       # Unit + Integration Tests (Blueprint §7.1/§7.2)
       # ------------------------------------------------------------------
+      - name: Application test suite (with coverage)
+        env:
+          APP_SECRET: test-secret-for-evie-1234567890abcdef
+          DATABASE_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_test?serverVersion=15&charset=utf8'
+        run: vendor/bin/phpunit --testsuite="Application Test Suite" --coverage-clover=coverage-application.xml
       - name: Unit tests (with coverage)
         env:
           APP_SECRET: test-secret-for-evie-1234567890abcdef

@@ -61,6 +61,10 @@ class SecretControllerUpdateTest extends WebTestCase
         $updated = $this->entityManager->getRepository(Secret::class)
             ->findOneByKeyAndUser('MISTRAL_API_KEY', $userIdentifier);
         self::assertNotNull($updated);
+        // Identity-Map leeren: Der Request aktualisiert die Secret-Entity im
+        // Unit-of-Work des Requests; die hier gecachte Instanz traegt noch den
+        // alten verschluesselten Wert.
+        $this->entityManager->clear();
         self::assertSame('new-key-value', $this->secretService->get('MISTRAL_API_KEY', $userIdentifier));
     }
 
