@@ -7,6 +7,7 @@ declare(strict_types=1);
 namespace App\Tests\E2E\Gate;
 
 use App\AI\Security\OutboundRequestPolicy;
+use App\Entity\OutboundAllowlistEntry;
 use App\AI\Security\SecurityGuard;
 use App\AI\Workflow\MailDraftHitlService;
 use App\Entity\MailDraft;
@@ -104,6 +105,7 @@ final class ProductionSecurityGateE2ETest extends WebTestCase
             'DELETE FROM mail_drafts',
             'DELETE FROM tool_definitions',
             'DELETE FROM agent_history',
+            'DELETE FROM ai_outbound_allowlist',
             'DELETE FROM user_profile WHERE user_identifier IN (:ids)',
         ] as $index => $sql) {
             if ($index === 3) {
@@ -336,6 +338,58 @@ final class ProductionSecurityGateE2ETest extends WebTestCase
         /** @var OutboundRequestPolicy $policy */
         $policy = static::getContainer()->get(OutboundRequestPolicy::class);
         self::assertTrue($policy->isUrlAllowed('https://api.tavily.com/search'));
+    }
+
+    /**
+     * GATE 2b - FRONTEND-FREIGABE STEUERT DIE OUTBOUND-POLICY:
+     * Ohne aktive Freigaben gilt der Legacy-Default (oeffentliche Hosts
+     * erlaubt). Sobald eine Freigabe persistiert ist, sind NUR noch
+     * freigegebene Hosts erlaubt (Blueprint §4.D: explizite Freigabe im
+     * Frontend statt YAML-Allowlist). Interne Ziele bleiben blockiert.
+     */
+    public function testGate2bFrontendApprovalTightensOutboundPolicy(): void
+    {
+        static::ensureKernelShutdown();
+        $this->client = static::createClient();
+        $this->entityManager = static::getContainer()->get(EntityManagerInterface::class);
+
+        $em = $this->entityManager;
+        $repo = $em->getRepository(OutboundAllowlistEntry::class);
+
+        // Baseline: keine aktiven Freigaben -> Legacy-Default aktiv.
+        foreach ($repo->findAll() as $existing) {
+            $em->remove($existing);
+        }
+        $em->flush();
+
+        $entry = new OutboundAllowlistEntry();
+        $entry->setHostPattern('api.tavily.com');
+        $entry->setPatternType('exact');
+        $entry->setOrganizationId('gate-org');
+        $em->persist($entry);
+        $em->flush();
+
+        /** @var OutboundRequestPolicy $policy */
+        $policy = static::getContainer()->get(OutboundRequestPolicy::class);
+
+        // Freigegebener Host: erlaubt.
+        self::assertTrue(
+            $policy->isUrlAllowed('https://api.tavily.com/search'),
+            'Frontend-freigegebener Host muss erlaubt sein.'
+        );
+        // Nicht freigegebener oeffentlicher Host: blockiert.
+        self::assertFalse(
+            $policy->isUrlAllowed('https://api.mistral.ai/v1/models'),
+            'Ohne Freigabe darf kein oeffentlicher Host mehr erlaubt sein.'
+        );
+        // Interne Zieladresse: bleibt trotz Freigabe-Modus blockiert.
+        self::assertFalse(
+            $policy->isUrlAllowed('http://127.0.0.1:8080/admin'),
+            'Interne Zieladresse muss auch im Freigabe-Modus blockiert bleiben.'
+        );
+
+        $em->remove($entry);
+        $em->flush();
     }
 
     // ==================================================================

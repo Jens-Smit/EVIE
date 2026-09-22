@@ -1,0 +1,158 @@
+{# templates/settings/outbound_allowlist.html.twig #}
+{% extends 'base.html.twig' %}
+
+{% block title %}Externe Ziele freigeben - EVIE{% endblock %}
+
+{% block body %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <div class="flex items-center justify-between">
+        <h1 class="text-2xl md:text-3xl font-bold text-content flex items-center gap-3">
+            <i class="ph ph-shield-star text-primary"></i>
+            Externe Ziele freigeben
+        </h1>
+        <a href="{{ path('app_settings') }}" class="btn btn-ghost">
+            <i class="ph ph-caret-left"></i>
+            Zurück zu Einstellungen
+        </a>
+    </div>
+
+    <div class="card">
+        <div class="flex items-center gap-2 mb-4">
+            <i class="ph ph-info text-primary text-xl"></i>
+            <h2 class="card-title">Hinweis</h2>
+        </div>
+        <p class="text-content-muted text-sm">
+            Sobald mindestens eine aktive Freigabe existiert, darf EVIE ausschließlich ausgehende
+            HTTP-Anfragen an freigegebene Hosts senden (Security by Default, Blueprint &sect;4.D).
+            Interne Zieladressen (Loopback, private Netzwerke, Cloud-Metadaten) bleiben unabh&auml;ngig
+            von Freigaben permanent blockiert (SSRF-Schutz).
+        </p>
+    </div>
+
+    {% for label, messages in app.flashes %}
+        {% for message in messages %}
+            <div class="rounded-xl px-4 py-3 border flex items-center gap-2
+                        {% if label == 'success' %}bg-success-soft border-success/20 text-success
+                        {% else %}bg-danger-soft border-danger/20 text-danger{% endif %}">
+                <i class="ph {% if label == 'success' %}ph-check-circle{% else %}ph-warning-circle{% endif %} text-lg"></i>
+                <span>{{ message }}</span>
+            </div>
+        {% endfor %}
+    {% endfor %}
+
+    <!-- Neue Freigabe -->
+    <div class="card">
+        <div class="flex items-center gap-2 mb-4">
+            <i class="ph ph-plus-circle text-primary text-xl"></i>
+            <h2 class="card-title">Ziel freigeben</h2>
+        </div>
+        <form method="post" action="{{ path('app_settings_outbound_allowlist_create') }}" class="space-y-4">
+            <input type="hidden" name="_token" value="{{ csrf_token('outbound_allowlist_create') }}">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-content mb-1" for="hostPattern">
+                        Host *
+                        <span class="text-xs text-content-muted">(z.B. api.tavily.com, mistral.ai)</span>
+                    </label>
+                    <input type="text" id="hostPattern" name="hostPattern" required
+                           placeholder="api.tavily.com"
+                           pattern="[a-zA-Z0-9.*_-]+"
+                           class="w-full px-3 py-2 bg-surface-muted border border-border rounded-xl text-content focus:ring-2 focus:ring-primary focus:border-transparent">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-content mb-1" for="patternType">
+                        Match-Typ *
+                    </label>
+                    <select id="patternType" name="patternType"
+                            class="w-full px-3 py-2 bg-surface-muted border border-border rounded-xl text-content focus:ring-2 focus:ring-primary focus:border-transparent">
+                        <option value="suffix" selected>Suffix (Host + Subdomains)</option>
+                        <option value="exact">Exakt (nur dieser Host)</option>
+                        <option value="wildcard">Wildcard (fnmatch)</option>
+                    </select>
+                    <p class="text-xs text-content-muted mt-1">
+                        Suffix "mistral.ai" erlaubt auch "api.mistral.ai".
+                    </p>
+                </div>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-content mb-1" for="description">
+                    Beschreibung (optional)
+                </label>
+                <input type="text" id="description" name="description"
+                       placeholder="z.B. Tavily Websuche für website_researcher"
+                       class="w-full px-3 py-2 bg-surface-muted border border-border rounded-xl text-content focus:ring-2 focus:ring-primary focus:border-transparent">
+            </div>
+            <button type="submit" class="btn btn-primary">
+                <i class="ph ph-shield-check"></i>
+                Ziel freigeben
+            </button>
+        </form>
+    </div>
+
+    <!-- Bestehende Freigaben -->
+    <div class="card">
+        <div class="flex items-center gap-2 mb-4">
+            <i class="ph ph-list-checks text-primary text-xl"></i>
+            <h2 class="card-title">Freigegebene Ziele</h2>
+        </div>
+        {% if entries|length > 0 %}
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="border-b border-border text-left">
+                            <th class="pb-3 text-sm font-medium text-content">Host</th>
+                            <th class="pb-3 text-sm font-medium text-content">Match-Typ</th>
+                            <th class="pb-3 text-sm font-medium text-content">Beschreibung</th>
+                            <th class="pb-3 text-sm font-medium text-content">Status</th>
+                            <th class="pb-3 text-sm font-medium text-content">Aktionen</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for entry in entries %}
+                            <tr class="border-b border-border/50">
+                                <td class="py-3 text-content font-mono text-sm">{{ entry.hostPattern }}</td>
+                                <td class="py-3 text-content-muted text-sm">{{ entry.patternType }}</td>
+                                <td class="py-3 text-content-muted text-sm">{{ entry.description ?? '—' }}</td>
+                                <td class="py-3">
+                                    {% if entry.isActive %}
+                                        <span class="badge badge-approved">aktiv</span>
+                                    {% else %}
+                                        <span class="badge badge-rejected">inaktiv</span>
+                                    {% endif %}
+                                </td>
+                                <td class="py-3">
+                                    <div class="flex gap-2">
+                                        <form method="post"
+                                              action="{{ path('app_settings_outbound_allowlist_toggle', {'id': entry.id}) }}">
+                                            <input type="hidden" name="_token"
+                                                   value="{{ csrf_token('outbound_allowlist_toggle_' ~ entry.hostPattern) }}">
+                                            <button type="submit" class="btn btn-ghost text-sm">
+                                                <i class="ph ph-arrow-clockwise"></i>
+                                                {{ entry.isActive ? 'Deaktivieren' : 'Aktivieren' }}
+                                            </button>
+                                        </form>
+                                        <form method="post"
+                                              action="{{ path('app_settings_outbound_allowlist_delete', {'id': entry.id}) }}">
+                                            <input type="hidden" name="_token"
+                                                   value="{{ csrf_token('outbound_allowlist_delete_' ~ entry.hostPattern) }}">
+                                            <button type="submit" class="btn btn-danger text-sm">
+                                                <i class="ph ph-trash"></i>
+                                                Entfernen
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <p class="text-content-muted text-sm">
+                Noch keine Freigaben vorhanden. Ohne aktive Freigabe sind &ouml;ffentliche Hosts
+                erlaubt (Default-Allow); interne Adressen bleiben immer blockiert.
+            </p>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
