@@ -10,6 +10,7 @@ use Symfony\Component\Form\Extension\Core\Type\ChoiceType;
 use Symfony\Component\Form\Extension\Core\Type\TextareaType;
 use Symfony\Component\Form\Extension\Core\Type\TextType;
 use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Form\CallbackTransformer;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
 /**
@@ -100,6 +101,22 @@ class McpServerDefinitionType extends AbstractType
                 ],
                 'required' => false,
             ]);
+
+        $this->addJsonTransformer($builder, 'configuration');
+        $this->addJsonTransformer($builder, 'allowedTools');
+        $this->addJsonTransformer($builder, 'blockedResources');
+    }
+
+    private function addJsonTransformer(FormBuilderInterface $builder, string $field): void
+    {
+        $builder->get($field)->addModelTransformer(new CallbackTransformer(
+            static fn ($modelValue): string => \is_array($modelValue)
+                ? (string) json_encode($modelValue)
+                : (string) ($modelValue ?? ''),
+            static fn ($viewValue): array => \is_string($viewValue) && $viewValue !== ''
+                ? (array) json_decode($viewValue, true)
+                : []
+        ));
     }
 
     public function configureOptions(OptionsResolver $resolver): void
