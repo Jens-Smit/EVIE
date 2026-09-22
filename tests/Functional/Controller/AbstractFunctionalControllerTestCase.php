@@ -52,6 +52,13 @@ abstract class AbstractFunctionalControllerTestCase extends WebTestCase
 
     protected function createUser(string $email, string $plainPassword, array $roles = ['ROLE_USER']): User
     {
+        $existing = $this->entityManager->getRepository(User::class)->findOneBy(['email' => $email]);
+        if ($existing instanceof User) {
+            $existing->setRoles($roles);
+            $existing->setPassword($this->passwordHasher->hashPassword(new User(), $plainPassword));
+            $this->entityManager->flush();
+            return $existing;
+        }
         $user = (new User())
             ->setEmail($email)
             ->setFirstName('Test')
