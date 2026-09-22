@@ -200,6 +200,16 @@ class SecurityGuard
             return false;
         }
 
+        // Tilde-Pfade (~/.ssh, ~root/...) verweisen auf das Home-Verzeichnis
+        // des ausfuehrenden Users und liegen immer ausserhalb der Sandbox.
+        // Sie muessen in beiden Modi (Blockliste und Sandbox-Root) geblockt
+        // werden, da weder str_starts_with-Blocklisten noch die Sandbox-
+        // Relativierung sie erfassen.
+        if (str_starts_with($path, '~') || str_starts_with($decoded, '~')) {
+            $this->logger->warning('Home-Verzeichnis-Pfad geblockt', ['path' => $path]);
+            return false;
+        }
+
         // H-1: Allowlist-basierte Sandbox. Ist ein Sandbox-Root konfiguriert,
         // wird der Pfad via realpath() aufgeloest und muss innerhalb des
         // Sandbox-Roots liegen. Relative Pfade werden gegen den Sandbox-Root

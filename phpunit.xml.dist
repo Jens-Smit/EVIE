@@ -59,6 +59,12 @@
             <directory>tests/E2E/Smoke</directory>
         </testsuite>
 
+        <!-- PRODUCTION SECURITY GATE: Tenant-Isolation, interne Infrastruktur-Blockade,
+             HITL vor Seiteneffekten — E2E gegen den echten Kernel (Blueprint §4.D/§17) -->
+        <testsuite name="E2E Security Gate Tests">
+            <directory>tests/E2E/Gate</directory>
+        </testsuite>
+
         <!-- E2E LLM-Tests: kritische Aktionen mit echten Mistral/Tavily-Calls (minimiert) -->
         <testsuite name="E2E LLM Tests">
             <directory>tests/E2E/LLM</directory>
