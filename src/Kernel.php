@@ -4,6 +4,7 @@ namespace App;
 
 use App\DependencyInjection\Compiler\E2EStubPass;
 use App\DependencyInjection\Compiler\RealEmbeddingPass;
+use App\DependencyInjection\Compiler\RealMercurePass;
 use App\DependencyInjection\Compiler\RegisterDynamicToolboxDecoratorPass;
 use App\DependencyInjection\Compiler\TestStubPass;
 use Symfony\Bundle\FrameworkBundle\Kernel\MicroKernelTrait;
@@ -72,6 +73,10 @@ class Kernel extends BaseKernel
             // des deterministischen Test-Stubs, damit der e2e-llm-CI-Job die
             // Embedding-Aufrufe (Kontextsuche/RAG) mit dem echten Key testet.
             $container->addCompilerPass(new RealEmbeddingPass(), PassConfig::TYPE_BEFORE_REMOVING);
+            // Mercure-E2E-Modus (EVIE_MERCURE_E2E=1): echter Mercure-Hub statt
+            // NullMercureHub-Stub, damit der e2e-mercure-CI-Job die echte
+            // Publish-Kette inklusive Subscriber-Empfang prueft.
+            $container->addCompilerPass(new RealMercurePass(), PassConfig::TYPE_BEFORE_REMOVING);
         }
     }
 }

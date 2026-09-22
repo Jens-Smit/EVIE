@@ -133,6 +133,51 @@ class AuditLogController extends AbstractController
     }
 
     /**
+     * Exportiert Audit-Logs als CSV
+     */
+    #[Route('/audit-logs/export', name: 'app_audit_logs_export', methods: ['GET'])]
+    #[IsGranted('ROLE_ADMIN')]
+    public function exportAuditLogs(Request $request): Response
+    {
+        $action = $request->query->get('action');
+        $limit = $request->query->getInt('limit', 1000);
+
+        $queryBuilder = $this->auditLogRepository->createQueryBuilder('a');
+        
+        if ($action) {
+            $queryBuilder->andWhere('a.action = :action')->setParameter('action', $action);
+        }
+        
+        $queryBuilder->orderBy('a.createdAt', 'DESC');
+        $queryBuilder->setMaxResults($limit);
+        
+        $logs = $queryBuilder->getQuery()->getResult();
+
+        $csv = "ID,Action,EntityType,EntityID,UserID,Status,Details,IP Address,User Agent,Created At\n";
+        
+        foreach ($logs as $log) {
+            $csv .= sprintf(
+                '%d,"%s","%s",%d,%d,%s,"%s","%s","%s","%s"\n',
+                $log->getId(),
+                $log->getAction() ?? '',
+                $log->getEntityType() ?? '',
+                $log->getEntityId() ?? 0,
+                $log->getUserId() ?? 0,
+                $log->getStatus() ?? '',
+                str_replace('"', '""', $log->getDetails() ?? ''),
+                $log->getIpAddress() ?? '',
+                $log->getUserAgent() ?? '',
+                $log->getCreatedAt()?->format('Y-m-d H:i:s') ?? ''
+            );
+        }
+
+        $response = new Response($csv);
+        $response->headers->set('Content-Type', 'text/csv');
+        $response->headers->set('Content-Disposition', 'attachment; filename="audit_logs_export.csv"');
+
+        return $response;
+    }
+    /**
      * Zeigt Details eines bestimmten Audit-Logs an
      */
     #[Route('/audit-logs/{id}', name: 'app_audit_log_show', methods: ['GET'])]
@@ -147,37 +192,6 @@ class AuditLogController extends AbstractController
 
         return $this->render('audit_logs/show.html.twig', [
             'log' => $log,
-        ]);
-    }
-
-    /**
-     * API: Zeigt Details eines bestimmten Audit-Logs an
-     */
-    #[Route('/api/audit-logs/{id}', name: 'api_audit_log_show', methods: ['GET'])]
-    #[IsGranted('ROLE_ADMIN')]
-    public function apiShowAuditLog(int $id): JsonResponse
-    {
-        $log = $this->auditLogRepository->find($id);
-        
-        if (!$log) {
-            return $this->json(['error' => 'Audit-Log nicht gefunden'], 404);
-        }
-
-        return $this->json([
-            'status' => 'success',
-            'data' => [
-                'id' => $log->getId(),
-                'action' => $log->getAction(),
-                'entityType' => $log->getEntityType(),
-                'entityId' => $log->getEntityId(),
-                'userId' => $log->getUserId(),
-                'status' => $log->getStatus(),
-                'details' => $log->getDetails(),
-                'context' => $log->getContext(),
-                'ipAddress' => $log->getIpAddress(),
-                'userAgent' => $log->getUserAgent(),
-                'createdAt' => $log->getCreatedAt()?->format('Y-m-d H:i:s'),
-            ],
         ]);
     }
 
@@ -265,48 +279,33 @@ class AuditLogController extends AbstractController
     }
 
     /**
-     * Exportiert Audit-Logs als CSV
+     * API: Zeigt Details eines bestimmten Audit-Logs an
      */
-    #[Route('/audit-logs/export', name: 'app_audit_logs_export', methods: ['GET'])]
+    #[Route('/api/audit-logs/{id}', name: 'api_audit_log_show', methods: ['GET'])]
     #[IsGranted('ROLE_ADMIN')]
-    public function exportAuditLogs(Request $request): Response
+    public function apiShowAuditLog(int $id): JsonResponse
     {
-        $action = $request->query->get('action');
-        $limit = $request->query->getInt('limit', 1000);
-
-        $queryBuilder = $this->auditLogRepository->createQueryBuilder('a');
+        $log = $this->auditLogRepository->find($id);
         
-        if ($action) {
-            $queryBuilder->andWhere('a.action = :action')->setParameter('action', $action);
-        }
-        
-        $queryBuilder->orderBy('a.createdAt', 'DESC');
-        $queryBuilder->setMaxResults($limit);
-        
-        $logs = $queryBuilder->getQuery()->getResult();
-
-        $csv = "ID,Action,EntityType,EntityID,UserID,Status,Details,IP Address,User Agent,Created At\n";
-        
-        foreach ($logs as $log) {
-            $csv .= sprintf(
-                '%d,"%s","%s",%d,%d,%s,"%s","%s","%s","%s"\n',
-                $log->getId(),
-                $log->getAction() ?? '',
-                $log->getEntityType() ?? '',
-                $log->getEntityId() ?? 0,
-                $log->getUserId() ?? 0,
-                $log->getStatus() ?? '',
-                str_replace('"', '""', $log->getDetails() ?? ''),
-                $log->getIpAddress() ?? '',
-                $log->getUserAgent() ?? '',
-                $log->getCreatedAt()?->format('Y-m-d H:i:s') ?? ''
-            );
+        if (!$log) {
+            return $this->json(['error' => 'Audit-Log nicht gefunden'], 404);
         }
 
-        $response = new Response($csv);
-        $response->headers->set('Content-Type', 'text/csv');
-        $response->headers->set('Content-Disposition', 'attachment; filename="audit_logs_export.csv"');
-
-        return $response;
+        return $this->json([
+            'status' => 'success',
+            'data' => [
+                'id' => $log->getId(),
+                'action' => $log->getAction(),
+                'entityType' => $log->getEntityType(),
+                'entityId' => $log->getEntityId(),
+                'userId' => $log->getUserId(),
+                'status' => $log->getStatus(),
+                'details' => $log->getDetails(),
+                'context' => $log->getContext(),
+                'ipAddress' => $log->getIpAddress(),
+                'userAgent' => $log->getUserAgent(),
+                'createdAt' => $log->getCreatedAt()?->format('Y-m-d H:i:s'),
+            ],
+        ]);
     }
 }

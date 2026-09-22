@@ -10,6 +10,7 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\Security\Core\Exception\AccessDeniedException;
 use Psr\Log\LoggerInterface;
 
 /**
@@ -79,6 +80,8 @@ final class HitlMailController extends AbstractController
                     'sent_at' => $draft->getSentAt()?->format(DATE_ATOM),
                 ],
             ]);
+        } catch (AccessDeniedException $e) {
+            throw $e;
         } catch (\LogicException|\InvalidArgumentException $e) {
             return $this->json([
                 'status' => 'error',
@@ -118,6 +121,8 @@ final class HitlMailController extends AbstractController
                     'rejection_reason' => $draft->getRejectionReason(),
                 ],
             ]);
+        } catch (AccessDeniedException $e) {
+            throw $e;
         } catch (\LogicException|\InvalidArgumentException $e) {
             return $this->json([
                 'status' => 'error',

@@ -43,12 +43,15 @@ class AiMcpServersCompilerPass implements CompilerPassInterface
         if ($container->has('cache.app') && $container->has('doctrine.orm.entity_manager')) {
             try {
                 $cache = $container->get('cache.app');
-                $cachedDefinitions = $cache->get('ai.mcp_server.definitions');
+                $cachedDefinitions = $cache->get(
+                    'ai.mcp_server.definitions',
+                    static fn (): array => []
+                );
                 
                 if (is_array($cachedDefinitions)) {
                     return $cachedDefinitions;
                 }
-            } catch (\Exception $e) {
+            } catch (\Throwable $e) {
                 // Cache nicht verfügbar oder Fehler
             }
         }

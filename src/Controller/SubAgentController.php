@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controller;
 
 use App\Entity\SubAgent;
@@ -26,13 +28,9 @@ class SubAgentController extends AbstractController
     #[Route('', name: 'list', methods: ['GET'])]
     public function list(Request $request): JsonResponse
     {
-        $user = $this->getUser();
-        if (!$user) {
-            // Default-User laden
-            $user = $this->userRepository->find(1); // oder eine andere ID
-        }
+        $userProfile = $this->resolveUserProfile();
 
-        $subAgents = $this->subAgentRepository->findByUser($user->getId());
+        $subAgents = $this->subAgentRepository->findByUser($userProfile->getId());
 
         $data = [];
         foreach ($subAgents as $subAgent) {
@@ -52,11 +50,7 @@ class SubAgentController extends AbstractController
     #[Route('/{id}', name: 'get', methods: ['GET'])]
     public function get(SubAgent $subAgent): JsonResponse
     {
-        $user = $this->getUser();
-        if (!$user) {
-            // Default-User laden
-            $user = $this->userRepository->find(1); // oder eine andere ID
-        }
+        $this->resolveUserProfile();
 
         $history = [];
         foreach ($subAgent->getHistory() as $agentHistory) {
@@ -81,11 +75,7 @@ class SubAgentController extends AbstractController
     #[Route('/{id}/history', name: 'history', methods: ['GET'])]
     public function history(SubAgent $subAgent): JsonResponse
     {
-        $user = $this->getUser();
-        if (!$user) {
-            // Default-User laden
-            $user = $this->userRepository->find(1); // oder eine andere ID
-        }
+        $this->resolveUserProfile();
 
         $history = [];
         foreach ($subAgent->getHistory() as $agentHistory) {
@@ -103,11 +93,7 @@ class SubAgentController extends AbstractController
     #[Route('', name: 'create', methods: ['POST'])]
     public function create(Request $request): JsonResponse
     {
-        $user = $this->getUser();
-        if (!$user) {
-            // Default-User laden
-            $user = $this->userRepository->find(1); // oder eine andere ID
-        }
+        $userProfile = $this->resolveUserProfile();
 
         $data = json_decode($request->getContent(), true);
         if (empty($data['name']) || empty($data['description'])) {
@@ -117,7 +103,7 @@ class SubAgentController extends AbstractController
         $subAgent = new SubAgent();
         $subAgent->setName($data['name']);
         $subAgent->setDescription($data['description']);
-        $subAgent->setUser($user);
+        $subAgent->setUser($userProfile);
         $subAgent->setCapabilities($data['capabilities'] ?? []);
         $subAgent->setStatus($data['status'] ?? 'active');
 
@@ -138,15 +124,33 @@ class SubAgentController extends AbstractController
     #[Route('/{id}', name: 'delete', methods: ['DELETE'])]
     public function delete(SubAgent $subAgent): JsonResponse
     {
-        $user = $this->getUser();
-        if (!$user) {
-            // Default-User laden
-            $user = $this->userRepository->find(1); // oder eine andere ID
-        }
+        $this->resolveUserProfile();
 
         $this->entityManager->remove($subAgent);
         $this->entityManager->flush();
 
         return $this->json(['success' => true], Response::HTTP_NO_CONTENT);
+    }
+
+    private function resolveUserProfile(): UserProfile
+    {
+        $user = $this->getUser();
+        $userIdentifier = $user?->getUserIdentifier();
+
+        $userProfile = $userIdentifier !== null
+            ? $this->userRepository->findOneBy(['userIdentifier' => $userIdentifier])
+            : null;
+
+        if ($userProfile !== null) {
+            return $userProfile;
+        }
+
+        $userProfile = new UserProfile();
+        $userProfile->setUserIdentifier($userIdentifier ?? 'anonymous');
+        $userProfile->setName($userIdentifier ?? 'Anonymous');
+        $this->entityManager->persist($userProfile);
+        $this->entityManager->flush();
+
+        return $userProfile;
     }
 }

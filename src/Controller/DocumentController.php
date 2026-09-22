@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Controller;
 
 use App\Entity\Document;
@@ -12,7 +14,6 @@ use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\Security\Core\User\UserInterface;
 
 #[Route('/api/documents', name: 'api_documents_')]
 class DocumentController extends AbstractController
@@ -27,13 +28,9 @@ class DocumentController extends AbstractController
     #[Route('', name: 'list', methods: ['GET'])]
     public function list(Request $request): JsonResponse
     {
-        $user = $this->getUser();
-        if (!$user) {
-            // Default-User laden
-            $user = $this->userRepository->find(1); // oder eine andere ID
-        }
+        $userProfile = $this->resolveUserProfile();
 
-        $documents = $this->documentRepository->findByUser($user->getId());
+        $documents = $this->documentRepository->findByUser($userProfile->getId());
 
         return $this->json($documents, Response::HTTP_OK, [], [
             'groups' => ['document:read']
@@ -43,11 +40,7 @@ class DocumentController extends AbstractController
     #[Route('/upload', name: 'upload', methods: ['POST'])]
     public function upload(Request $request): JsonResponse
     {
-        $user = $this->getUser();
-        if (!$user) {
-            // Default-User laden
-            $user = $this->userRepository->find(1); // oder eine andere ID
-        }
+        $userProfile = $this->resolveUserProfile();
 
         $file = $request->files->get('file');
         if (!$file) {
@@ -56,8 +49,8 @@ class DocumentController extends AbstractController
 
         $document = new Document();
         $document->setName($file->getClientOriginalName());
-        $document->setContent(file_get_contents($file->getPathname()));
-        $document->setUser($user);
+        $document->setContent((string) file_get_contents($file->getPathname()));
+        $document->setUser($userProfile);
 
         $this->entityManager->persist($document);
         $this->entityManager->flush();
@@ -75,11 +68,7 @@ class DocumentController extends AbstractController
     #[Route('/{id}', name: 'get', methods: ['GET'])]
     public function get(Document $document): JsonResponse
     {
-        $user = $this->getUser();
-        if (!$user) {
-            // Default-User laden
-            $user = $this->userRepository->find(1); // oder eine andere ID
-        }
+        $this->resolveUserProfile();
 
         return $this->json([
             'id' => $document->getId(),
@@ -94,15 +83,33 @@ class DocumentController extends AbstractController
     #[Route('/{id}', name: 'delete', methods: ['DELETE'])]
     public function delete(Document $document): JsonResponse
     {
-        $user = $this->getUser();
-        if (!$user) {
-            // Default-User laden
-            $user = $this->userRepository->find(1); // oder eine andere ID
-        }
+        $this->resolveUserProfile();
 
         $this->entityManager->remove($document);
         $this->entityManager->flush();
 
         return $this->json(['success' => true], Response::HTTP_NO_CONTENT);
+    }
+
+    private function resolveUserProfile(): UserProfile
+    {
+        $user = $this->getUser();
+        $userIdentifier = $user?->getUserIdentifier();
+
+        $userProfile = $userIdentifier !== null
+            ? $this->userRepository->findOneBy(['userIdentifier' => $userIdentifier])
+            : null;
+
+        if ($userProfile !== null) {
+            return $userProfile;
+        }
+
+        $userProfile = new UserProfile();
+        $userProfile->setUserIdentifier($userIdentifier ?? 'anonymous');
+        $userProfile->setName($userIdentifier ?? 'Anonymous');
+        $this->entityManager->persist($userProfile);
+        $this->entityManager->flush();
+
+        return $userProfile;
     }
 }

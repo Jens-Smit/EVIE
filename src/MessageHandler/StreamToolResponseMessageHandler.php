@@ -11,30 +11,24 @@ use Symfony\Component\Messenger\Attribute\AsMessageHandler;
 
 /**
  * Handler für StreamToolResponseMessage.
- * Verarbeitet Streaming-Chunks und aktualisiert den Session-Status.
- * In einer echten Implementierung würde dieser Handler die Chunks
- * an einen WebSocket oder Mercure Topic senden.
+ * Verarbeitet Streaming-Chunks, aktualisiert den Session-Status
+ * und veröffentlicht die Chunks über den StreamingPublisher an Mercure.
  */
 #[AsMessageHandler]
 class StreamToolResponseMessageHandler
 {
     private StreamingSessionManager $sessionManager;
     private LoggerInterface $logger;
-    // In einer echten Implementierung:
-    // private MercureHubInterface $mercureHub;
     private StreamingPublisher $streamingPublisher;
 
     public function __construct(
         StreamingSessionManager $sessionManager,
         LoggerInterface $logger,
         StreamingPublisher $streamingPublisher
-        // In einer echten Implementierung:
-        // MercureHubInterface $mercureHub
     ) {
         $this->sessionManager = $sessionManager;
         $this->logger = $logger;
         $this->streamingPublisher = $streamingPublisher;
-        // $this->mercureHub = $mercureHub;
     }
 
     /**
@@ -78,7 +72,7 @@ class StreamToolResponseMessageHandler
                 }
             }
 
-            // 2. Chunk verarbeiten (in einer echten Implementierung an Client senden)
+            // 2. Chunk an den Client publishen (Mercure)
             $this->processChunk($message);
 
             // 3. Bei finalem Chunk: Session abschließen (falls noch nicht geschehen)
@@ -109,31 +103,19 @@ class StreamToolResponseMessageHandler
     }
 
     /**
-     * Verarbeitet einen Chunk.
-     * In einer echten Implementierung würde dieser Chunk an den Client gesendet.
+     * Verarbeitet einen Chunk und veröffentlicht ihn an den Mercure-Topic der Session.
      */
     private function processChunk(StreamToolResponseMessage $message): void
     {
         $sessionId = $message->getSessionId();
-        $chunk = $message->getChunk();
         $chunkType = $message->getChunkType();
 
-        // Logge den Chunk für Debug-Zwecke
+        $this->streamingPublisher->publishStreamResponse($message);
+
         $this->logger->debug('Streaming-Chunk verarbeitet', [
             'session_id' => $sessionId,
             'chunk_type' => $chunkType,
-            'chunk_size' => strlen(json_encode($chunk)),
+            'chunk_size' => strlen(json_encode($message->getChunk())),
         ]);
-
-        // In einer echten Implementierung:
-        // 1. Chunk an Mercure Topic senden
-        // $topic = new Topic(sprintf('/streaming/sessions/%s', $sessionId));
-        // $this->mercureHub->publish($topic, json_encode($message->toArray()));
-        
-        // 2. Oder an WebSocket senden
-        // $this->webSocketPublisher->publish($sessionId, $message->toArray());
-
-        // Für jetzt: Nur Loggen
-        // In Produktion: Mercure oder WebSocket Integration
     }
 }

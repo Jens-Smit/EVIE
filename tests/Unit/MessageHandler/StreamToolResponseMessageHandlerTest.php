@@ -80,6 +80,33 @@ final class StreamToolResponseMessageHandlerTest extends TestCase
         ($this->handler)($message);
     }
 
+    public function testInvokePublishesChunkToStreamingPublisher(): void
+    {
+        $session = $this->createMock(StreamingSession::class);
+        $this->sessionManager->method('getSession')->willReturn($session);
+
+        $message = new StreamToolResponseMessage('sess1', 'ToolA', 'chunk-data', 'data');
+        $this->publisher
+            ->expects(self::once())
+            ->method('publishStreamResponse')
+            ->with($message);
+
+        ($this->handler)($message);
+    }
+
+    public function testInvokeWithNoSessionStillPublishesChunk(): void
+    {
+        $this->sessionManager->method('getSession')->willReturn(null);
+
+        $message = new StreamToolResponseMessage('sess1', 'ToolA', 'chunk-data', 'data');
+        $this->publisher
+            ->expects(self::once())
+            ->method('publishStreamResponse')
+            ->with($message);
+
+        ($this->handler)($message);
+    }
+
     public function testInvokeWithFinalChunkLogsInfo(): void
     {
         $session = $this->createMock(StreamingSession::class);

@@ -63,6 +63,11 @@
         <testsuite name="E2E LLM Tests">
             <directory>tests/E2E/LLM</directory>
         </testsuite>
+        <!-- E2E Mercure-Tests: echte Publish-Kette (StreamingPublisher -> dunglas/mercure -> SSE-Subscriber)
+             mit laufendem Hub; Guard ueber EVIE_MERCURE_E2E=1, sonst Skip. -->
+        <testsuite name="E2E Mercure Tests">
+            <file>tests/E2E/Smoke/MercureStreamingE2ETest.php</file>
+        </testsuite>
         <!-- E2E Productive Workflow Tests: produktionsnahe Szenarien (Onboarding,
              Businessplan, Vertriebsagent, E-Mail-HITL, Postfach-Verarbeitung,
              Dokumentenauswertung, Brainstorming) mit echten Mistral-Calls -->
