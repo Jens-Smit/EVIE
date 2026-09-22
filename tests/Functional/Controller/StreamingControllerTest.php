@@ -15,7 +15,7 @@ use App\Entity\User;
  * create/status/list/active/cancel/delete/stats/cleanup ab inkl.
  * Ownership-Pruefung (403) und 404-Faellen.
  */
-class StreamingControllerTest extends AbstractFunctionalControllerTest
+class StreamingControllerTest extends AbstractFunctionalControllerTestCase
 {
     private StreamingSessionManager $sessionManager;
 

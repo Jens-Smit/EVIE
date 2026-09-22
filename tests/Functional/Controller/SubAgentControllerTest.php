@@ -14,7 +14,7 @@ use App\Entity\UserProfile;
  * list/get/history/create/delete ab, inkl. 400 bei unvollstaendigen
  * Create-Payloads.
  */
-class SubAgentControllerTest extends AbstractFunctionalControllerTest
+class SubAgentControllerTest extends AbstractFunctionalControllerTestCase
 {
     protected function tearDown(): void
     {

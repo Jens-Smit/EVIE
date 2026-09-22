@@ -16,7 +16,7 @@ use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
  * Basis-Klasse fuer Functional-Controller-Tests: erzeugt das DB-Schema,
  * stellt Login- und Admin-Login-Helper sowie Datenbereinigung bereit.
  */
-abstract class AbstractFunctionalControllerTest extends WebTestCase
+abstract class AbstractFunctionalControllerTestCase extends WebTestCase
 {
     protected KernelBrowser $client;
     protected EntityManagerInterface $entityManager;

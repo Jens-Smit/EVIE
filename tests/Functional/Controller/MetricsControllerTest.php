@@ -12,7 +12,7 @@ namespace App\Tests\Functional\Controller;
  * tool-success-rate, audit. Prueft Auth (403 fuer Nicht-Admins) und
  * Erfolgsfaelle (leere DB -> gueltige JSON-Struktur).
  */
-class MetricsControllerTest extends AbstractFunctionalControllerTest
+class MetricsControllerTest extends AbstractFunctionalControllerTestCase
 {
     public function testMetricsIndexRequiresAdmin(): void
     {

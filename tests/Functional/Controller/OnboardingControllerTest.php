@@ -11,7 +11,7 @@ namespace App\Tests\Functional\Controller;
  * index (Redirect bei abgeschlossenem Onboarding), start, next,
  * validate-key und chat ab, jeweils mit Auth-Pruefung.
  */
-class OnboardingControllerTest extends AbstractFunctionalControllerTest
+class OnboardingControllerTest extends AbstractFunctionalControllerTestCase
 {
     public function testOnboardingPageRequiresAuthentication(): void
     {

@@ -14,7 +14,7 @@ use App\Entity\UserProfile;
  * list/approve/reject ab inkl. Ownership-Schutz (403) und 404-Faellen.
  * Der Mailer ist im Test-Env null://null, der Versand ist ein No-Op.
  */
-class HitlMailControllerTest extends AbstractFunctionalControllerTest
+class HitlMailControllerTest extends AbstractFunctionalControllerTestCase
 {
     protected function tearDown(): void
     {

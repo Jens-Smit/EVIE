@@ -11,7 +11,7 @@ namespace App\Tests\Functional\Controller;
  * (0%). Deckt die HTTP-Schicht ab: 401 ohne Auth, 400 ohne message-Feld,
  * JSON- und FormData-Parsing sowie die IDOR-Geschuetzte history-Route.
  */
-class AgentDialogControllerTest extends AbstractFunctionalControllerTest
+class AgentDialogControllerTest extends AbstractFunctionalControllerTestCase
 {
     public function testDialogRequiresAuthentication(): void
     {

@@ -14,7 +14,7 @@ use App\Repository\AgentGoalRepository;
  * list/create (Validierung)/activate/pause/approve/delete ab inkl.
  * Tenant-Isolation.
  */
-class AgentGoalControllerTest extends AbstractFunctionalControllerTest
+class AgentGoalControllerTest extends AbstractFunctionalControllerTestCase
 {
     private AgentGoalRepository $goalRepository;
 

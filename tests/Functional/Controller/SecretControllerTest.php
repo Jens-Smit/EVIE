@@ -10,7 +10,7 @@ namespace App\Tests\Functional\Controller;
  * SecretController war laut Coverage-Report ungetestet (0%). Deckt
  * index/create (Validierung + Erfolg)/delete/check ab.
  */
-class SecretControllerTest extends AbstractFunctionalControllerTest
+class SecretControllerTest extends AbstractFunctionalControllerTestCase
 {
     public function testSecretsPageRequiresAuthentication(): void
     {

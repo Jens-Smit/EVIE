@@ -13,7 +13,7 @@ use App\Entity\ToolDefinition;
  * DashboardController war laut Coverage-Report ungetestet (0%). Deckt
  * den Index-Endpunkt ab: Auth, leere Datenbasis und bevoelkerte Daten.
  */
-class DashboardControllerTest extends AbstractFunctionalControllerTest
+class DashboardControllerTest extends AbstractFunctionalControllerTestCase
 {
     protected function tearDown(): void
     {

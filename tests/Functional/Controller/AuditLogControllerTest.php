@@ -14,7 +14,7 @@ use App\Entity\AuditLog;
  * Filter, Statistics und CSV-Export. Prueft Auth (403/Redirect) und
  * Erfolgsfaelle inkl. eines echten AuditLog-Datensatzes.
  */
-class AuditLogControllerTest extends AbstractFunctionalControllerTest
+class AuditLogControllerTest extends AbstractFunctionalControllerTestCase
 {
     protected function tearDown(): void
     {

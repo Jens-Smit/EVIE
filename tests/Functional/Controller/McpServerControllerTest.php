@@ -12,7 +12,7 @@ use App\Entity\McpServerDefinition;
  * McpServerController war laut Coverage-Report ungetestet (0%). Deckt
  * list/show/new (GET+POST)/delete ab. Alle Routen sind ROLE_ADMIN-only.
  */
-class McpServerControllerTest extends AbstractFunctionalControllerTest
+class McpServerControllerTest extends AbstractFunctionalControllerTestCase
 {
     protected function tearDown(): void
     {

@@ -14,7 +14,7 @@ use Symfony\Component\HttpFoundation\File\UploadedFile;
  * Beide Controller waren laut Coverage-Report ungetestet (0%). Deckt
  * Document list/upload/get/delete und Quota index/usage/remaining ab.
  */
-class DocumentAndQuotaControllerTest extends AbstractFunctionalControllerTest
+class DocumentAndQuotaControllerTest extends AbstractFunctionalControllerTestCase
 {
     protected function tearDown(): void
     {
