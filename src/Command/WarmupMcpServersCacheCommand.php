@@ -48,8 +48,14 @@ class WarmupMcpServersCacheCommand extends Command
             return Command::SUCCESS;
         }
 
-        // 2. Speichere die Definitionen im Cache für den CompilerPass
-        $this->cache->set('ai.mcp_server.definitions', $definitions);
+        // 2. Speichere die Definitionen im Cache fuer den CompilerPass.
+        // CacheInterface kennt kein set() — die Definitionen werden ueber
+        // get() mit Callback gespeichert (analog zum Lese-Pfad im
+        // AiMcpServersCompilerPass, der denselben Key liest).
+        $this->cache->get(
+            'ai.mcp_server.definitions',
+            static fn (): array => $definitions
+        );
 
         $io->section('Gefundene MCP-Server-Definitionen:');
         foreach ($definitions as $definition) {

@@ -13,7 +13,7 @@ use Mcp\Client\Transport\StdioTransport;
 use Psr\Log\LoggerInterface;
 use Psr\Log\NullLogger;
 
-final class McpServerManager
+class McpServerManager
 {
     private const MAX_RETRIES = 2;
     private const RETRY_DELAY_SECONDS = 1;

@@ -98,6 +98,17 @@ jobs:
           GEMINI_API_KEY: test
         run: vendor/bin/phpunit --testsuite="E2E Smoke Tests" --coverage-clover=coverage-e2e-smoke.xml
 
+      # ------------------------------------------------------------------
+      # PRODUCTION SECURITY GATE: Tenant-Isolation, interne Infrastruktur-
+      # blockade, HITL vor Seiteneffekten — E2E gegen den echten Kernel.
+      # Blockierend: scheitert dieser Gate, ist die App nicht deploy-faehig.
+      # ------------------------------------------------------------------
+      - name: Production Security Gate (E2E)
+        env:
+          APP_SECRET: test-secret-for-evie-1234567890abcdef
+          DATABASE_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_test?serverVersion=15&charset=utf8'
+        run: vendor/bin/phpunit --testsuite="E2E Security Gate Tests" --coverage-clover=coverage-security-gate.xml
+
       # -+
       # Unit + Integration Tests (Blueprint §7.1/§7.2)
       # ------------------------------------------------------------------

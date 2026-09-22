@@ -6,7 +6,7 @@ namespace App\Mcp\Toolbox;
 use App\Mcp\Client\McpServerManager;
 use Symfony\Contracts\Cache\CacheInterface;
 
-final class McpToolFactory
+class McpToolFactory
 {
     /** @param string[] $serverAliases */
     public function __construct(

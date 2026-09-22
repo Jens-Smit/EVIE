@@ -87,7 +87,7 @@
                                 <p class="text-sm text-content-muted mb-3">{{ suggestion.description }}</p>
                             </div>
                             <div class="flex gap-2">
-                                {% if suggestion.action starts with '/agent/goals' %}
+                                {% if suggestion.action starts with '/agent/goals' and suggestion.goal_id is not null %}
                                     <form method="post" action="{{ path('app_strategy_suggestion_apply', {'id': suggestion.goal_id}) }}">
                                         <button type="submit" class="btn btn-primary btn-sm">
                                             <i class="ph ph-check"></i>
