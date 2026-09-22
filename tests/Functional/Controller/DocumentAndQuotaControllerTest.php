@@ -75,7 +75,7 @@ class DocumentAndQuotaControllerTest extends AbstractFunctionalControllerTest
         $user = $this->createUserAndLogin('doc-upload@test.de', 'DocPass123');
         $tmpFile = tempnam(sys_get_temp_dir(), 'evie_test');
         file_put_contents($tmpFile, 'Upload-Inhalt');
-        $uploadedFile = new UploadedFile($tmpFile, 'upload.txt', 'text/plain', null, true);
+        $uploadedFile = new UploadedFile($tmpFile, 'upload.txt', 'text/plain', UPLOAD_ERR_OK, true);
 
         $this->client->request('POST', '/api/documents/upload', [], [], ['file' => $uploadedFile]);
 

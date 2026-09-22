@@ -86,7 +86,11 @@ class McpServerControllerTest extends AbstractFunctionalControllerTest
         $this->createUserAndLogin('mcp-delete@test.de', 'McpPass123', ['ROLE_ADMIN']);
         $definition = $this->createDefinition('fs_delete_test');
 
-        $this->client->request('POST', '/mcp/servers/fs_delete_test/delete');
+        $csrfToken = static::getContainer()
+            ->get('security.csrf.token_manager')
+            ->getToken('delete' . $definition->getId()->toRfc4122())
+            ->getValue();
+        $this->client->request('POST', '/mcp/servers/fs_delete_test/delete', ['_token' => $csrfToken]);
 
         self::assertResponseRedirects('/mcp/servers');
         $this->entityManager->clear();
