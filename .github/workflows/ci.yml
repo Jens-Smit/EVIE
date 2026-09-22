@@ -313,6 +313,91 @@ jobs:
           grep -qx user_profile /tmp/tables-repaired.txt || { echo 'FAIL: Reparatur-Migration hat user_profile nicht erstellt'; exit 1; }
 
 
+  # ===================================================================
+  # E2E-Mercure-Smoke-Tests (Blueprint-Punkt 4): beweisen die ECHTE
+  # Publish-Kette mit laufendem dunglas/mercure-Hub (v0.24.x, wie in
+  # docker-compose.prod.yml gepinnt): POST /api/streaming/sessions ->
+  # Messenger -> Handler-Kette -> StreamingPublisher -> Hub -> SSE-
+  # Subscriber (Frontend-Sicht). Zusaetzlich Frontend-Regression: Die
+  # Detailseite rendert Hub-URL + Topic + EventSource fuer laufende
+  # Sessions (Status-Bug 'active' vs. 'running').
+  #
+  # Der Hub laeuft als Service-Container mit demselben HS256-Secret wie
+  # die App (MERCURE_JWT_SECRET), sodass Publish und Subscribe ueber
+  # echte JWTs laufen (kein anonymes Subscribe, produktionsnah).
+  # ===================================================================
+  e2e-mercure:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_DB: evie_test
+          POSTGRES_USER: evie
+          POSTGRES_PASSWORD: evie
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      mercure:
+        image: dunglas/mercure:v0.24.2
+        env:
+          SERVER_NAME: :80
+          MERCURE_PUBLISHER_JWT_KEY: e2e-mercure-ci-secret-not-for-prod-0123456789
+          MERCURE_SUBSCRIBER_JWT_KEY: e2e-mercure-ci-secret-not-for-prod-0123456789
+        ports:
+          - 3000:80
+    steps:
+      - uses: actions/checkout@v5
+      - name: Setup PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.2'
+          extensions: pdo_pgsql, pdo_sqlite, mbstring, ctype, iconv
+          coverage: pcov
+      - name: Copy .env.dist to .env
+        run: cp .env.dist .env
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-scripts
+      - name: Wait for PostgreSQL
+        run: |
+          while ! pg_isready -h localhost -p 5432 -U evie; do
+            sleep 1
+          done
+      - name: Wait for Mercure hub
+        run: |
+          for i in $(seq 1 30); do
+            code=$(curl -s -o /dev/null -w "%{http_code}" "http://127.0.0.1:3000/.well-known/mercure?topic=/health" || echo 000)
+            # 200 = Hub antwortet (anonymes Subscribe erlaubt), 401 = Hub
+            # antwortet und verlangt Subscriber-JWT (produktionsnah). Beides
+            # bedeutet: der Hub ist erreichbar.
+            if [ "$code" = "200" ] || [ "$code" = "401" ]; then
+              echo "Mercure hub is up (HTTP $code)"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "Mercure hub did not become reachable"
+          exit 1
+      - name: Activate pgvector extension for E2E DB
+        run: |
+          PGPASSWORD=evie psql -h 127.0.0.1 -U evie -d evie_test -c 'CREATE EXTENSION IF NOT EXISTS vector'
+      - name: E2E Mercure tests (echter Hub, SSE-Subscriber)
+        env:
+          EVIE_MERCURE_E2E: '1'
+          APP_ENV: test
+          APP_SECRET: test-secret-for-evie-1234567890abcdef
+          DATABASE_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_test?serverVersion=15&charset=utf8'
+          MERCURE_URL: 'http://127.0.0.1:3000/.well-known/mercure'
+          MERCURE_PUBLIC_URL: 'http://127.0.0.1:3000/.well-known/mercure'
+          MERCURE_JWT_SECRET: e2e-mercure-ci-secret-not-for-prod-0123456789
+          MISTRAL_API_KEY: test
+          GEMINI_API_KEY: test
+        run: vendor/bin/phpunit --testsuite="E2E Mercure Tests" --coverage-clover=coverage-e2e-mercure.xml
+
   e2e-llm:
     runs-on: ubuntu-latest
     services:
