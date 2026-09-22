@@ -21,6 +21,9 @@ class McpServerManager
     /** @var array<string, Client> */
     private array $clients = [];
 
+    /** @var array<string, array{transport: 'stdio'|'http', command?: string, arguments?: string[], url?: string}>|null */
+    private ?array $mergedServerConfigs = null;
+
     /**
      * @param array<string, array{
      *     transport: 'stdio'|'http',
@@ -28,11 +31,33 @@ class McpServerManager
      *     arguments?: string[],
      *     url?: string
      * }> $serverConfigs
+     * @param callable|null $dynamicConfigLoader Liefert zusaetzliche
+     *     Server-Konfigurationen aus der Datenbank (aktive
+     *     McpServerDefinition-Eintraege, Frontend-Freigabe ueber /mcp/servers).
+     *     Lazy, damit CLI/Cache-Warmup ohne DB laeuft.
      */
     public function __construct(
         private readonly array $serverConfigs,
         private readonly LoggerInterface $logger = new NullLogger(),
+        private $dynamicConfigLoader = null,
     ) {
+    }
+
+    /**
+     * Setzt den Loader fuer Frontend-freigegebene MCP-Server-Konfigurationen
+     * (Service-Wiring; akzeptiert McpDynamicServerConfigProvider oder callable).
+     */
+    public function setDynamicConfigLoader(mixed $loader): void
+    {
+        if ($loader instanceof McpDynamicServerConfigProvider) {
+            $this->dynamicConfigLoader = fn (): array => $loader->getServerConfigs();
+        } elseif (is_callable($loader)) {
+            $this->dynamicConfigLoader = $loader(...);
+        } else {
+            throw new \InvalidArgumentException(
+                'Loader muss callable oder McpDynamicServerConfigProvider sein.'
+            );
+        }
     }
 
     public function getClient(string $serverAlias): Client
@@ -41,7 +66,7 @@ class McpServerManager
             return $this->clients[$serverAlias];
         }
 
-        $config = $this->serverConfigs[$serverAlias] ?? throw new McpServerUnavailableException(
+        $config = $this->getMergedServerConfigs()[$serverAlias] ?? throw new McpServerUnavailableException(
             sprintf('Unbekannter MCP-Server "%s".', $serverAlias)
         );
 
@@ -181,11 +206,12 @@ class McpServerManager
     }
 
     /**
-     * Prueft, ob ein Server-Alias in der Konfiguration existiert (Whitelist).
+     * Prueft, ob ein Server-Alias in der Konfiguration existiert (Whitelist:
+     * statische YAML-Konfiguration UND aktive Frontend-Freigaben).
      */
     public function hasServer(string $serverAlias): bool
     {
-        return isset($this->serverConfigs[$serverAlias]);
+        return isset($this->getMergedServerConfigs()[$serverAlias]);
     }
 
     /**
@@ -193,6 +219,37 @@ class McpServerManager
      */
     public function getAvailableServerAliases(): array
     {
-        return array_keys($this->serverConfigs);
+        return array_keys($this->getMergedServerConfigs());
+    }
+
+    /**
+     * Statische YAML-Konfiguration gemerged mit den Frontend-freigegebenen
+     * MCP-Server-Definitionen (aktive McpServerDefinition-Eintraege). Der
+     * Loader wird einmalig pro Instanz konsultiert; schlaegt er fehl (DB
+     * nicht verfuegbar), greifen nur die statischen Server.
+     *
+     * @return array<string, array{transport: 'stdio'|'http', command?: string, arguments?: string[], url?: string}>
+     */
+    private function getMergedServerConfigs(): array
+    {
+        if ($this->mergedServerConfigs !== null) {
+            return $this->mergedServerConfigs;
+        }
+
+        $dynamic = [];
+        if ($this->dynamicConfigLoader !== null) {
+            try {
+                $loaded = ($this->dynamicConfigLoader)();
+                if (is_array($loaded)) {
+                    $dynamic = $loaded;
+                }
+            } catch (\Throwable $e) {
+                $this->logger->warning('Frontend-freigegebene MCP-Server nicht ladbar', [
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        return $this->mergedServerConfigs = array_merge($this->serverConfigs, $dynamic);
     }
 }
