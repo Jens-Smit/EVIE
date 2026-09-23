@@ -70,8 +70,9 @@ final class McpToolFactoryTest extends TestCase
 
         $this->cache
             ->method('get')
-            ->with('mcp_tools_website_researcher')
-            ->willReturn($tools);
+            ->willReturnCallback(
+                fn (string $key): array => $key === 'mcp_tools_website_researcher' ? $tools : []
+            );
         $this->serverManager
             ->method('getAvailableServerAliases')
             ->willReturn(['website_researcher']);
