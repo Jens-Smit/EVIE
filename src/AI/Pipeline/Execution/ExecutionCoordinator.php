@@ -19,13 +19,20 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
 /**
  * Phase 5 + Antwortformatierung: Erzeugt die finale PipelineResult-Antwort.
  *
- * Die Ausfuehrung (execute) nutzt die native Agent-Loop des
- * ai.agent.orchestrator (Toolbox -> ToolCallRequested -> HitlListener ->
- * SecurityGuard -> Executor); der Coordinator ruft den Agenten auf und
- * liefert dessen finale Textantwort. Die Formatierungsmethoden
- * (dialog/clarify/awaitingApproval) erzeugen die User-Antwort fuer die
- * Exit-Gates der Phasen 2-4, ohne eine Capability zu generieren oder eine
- * Aktion auszuloesen.
+ * Die Ausfuehrung (execute) arbeitet den Plan deterministisch ab: Der
+ * Coordinator iteriert ueber die geordneten Steps, delegiert jeden
+ * Schritt an den unterstuetzenden StepExecutor (tool -> ToolStepExecutor,
+ * subagent -> SubAgentStepExecutor), speichert jedes Ergebnis im
+ * ExecutionState unter dem output_key und reicht die Ergebnisse der
+ * input_from-Steps an nachfolgende Schritte weiter. Das LLM entscheidet
+ * NICHT erneut, ob ein Schritt ausgefuehrt wird — der Plan ist die
+ * Entscheidung. schliesst der letzte Schritt die Antwort ab, wird sie
+ * als Textantwort geliefert; sonst fasst der Coordinator die
+ * Schrittergebnisse zusammen.
+ *
+ * Die Formatierungsmethoden (dialog/clarify/awaitingApproval) erzeugen
+ * die User-Antwort fuer die Exit-Gates der Phasen 2-4, ohne eine
+ * Capability zu generieren oder eine Aktion auszuloesen.
  *
  * Keine neuen Symfony-AI-Bridges, keine Konstruktor-Injection fuer Tools;
  * der native Agent wird als Service injiziert.
@@ -38,18 +45,22 @@ final class ExecutionCoordinator implements ExecutionCoordinatorInterface
     private LlmRetryExecutor $llmRetryExecutor;
     private UrlGeneratorInterface $urlGenerator;
     private LoggerInterface $logger;
+    /** @var list<StepExecutorInterface> */
+    private array $stepExecutors;
 
     public function __construct(
         #[Autowire(service: 'ai.agent.orchestrator')]
         AgentInterface $orchestratorAgent,
         LlmRetryExecutor $llmRetryExecutor,
         UrlGeneratorInterface $urlGenerator,
-        LoggerInterface $logger
+        LoggerInterface $logger,
+        StepExecutorInterface ...$stepExecutors
     ) {
         $this->orchestratorAgent = $orchestratorAgent;
         $this->llmRetryExecutor = $llmRetryExecutor;
         $this->urlGenerator = $urlGenerator;
         $this->logger = $logger;
+        $this->stepExecutors = array_values($stepExecutors);
     }
 
     public function dialog(PipelineContext $context): PipelineResult
@@ -106,10 +117,10 @@ final class ExecutionCoordinator implements ExecutionCoordinatorInterface
 
         if ($result->getDecision()->isPending() && $toolDefinitionId !== null) {
             $content = sprintf(
-                "Ich habe ein neues Werkzeug fuer deine Anfrage entworfen, das vor der "
-                . "Ausfuehrung freigegeben werden muss.\n\n"
-                . "\xF0\x9F\x91\x89 **Freigeben/Ablehnen:** %s (Tool-ID %d)\n\n"
-                . "Sobald du das Werkzeug freigibst, fahre ich mit deiner Anfrage fort.",
+                "Ich habe ein neues Werkzeug fuer deine Anfrage entworfen, das vor der " .
+                "Ausfuehrung freigegeben werden muss.\n\n" .
+                "\xF0\x9F\x91\x89 **Freigeben/Ablehnen:** %s (Tool-ID %d)\n\n" .
+                "Sobald du das Werkzeug freigibst, fahre ich mit deiner Anfrage fort.",
                 $toolsUrl,
                 $toolDefinitionId
             );
@@ -120,39 +131,160 @@ final class ExecutionCoordinator implements ExecutionCoordinatorInterface
         // Missing ohne generierte Definition: kein Tool moeglich.
         return new PipelineResult(
             PipelineResult::TYPE_AWAITING_APPROVAL,
-            'Ich habe aktuell kein passendes Werkzeug fuer diese Anfrage und konnte '
-            . 'auch keines entwerfen. Kannst du die Anfrage praeziser stellen oder '
-            . 'auf eine bestaehende Faehigkeit beziehen?'
+            'Ich habe aktuell kein passendes Werkzeug fuer diese Anfrage und konnte ' .
+            'auch keines entwerfen. Kannst du die Anfrage praeziser stellen oder ' .
+            'auf eine bestaehende Faehigkeit beziehen?'
         );
     }
 
     public function execute(PipelineContext $context, Plan $plan): PipelineResult
     {
-        // Phase 5: Ausfuehrung eines freigegebenen Plans ueber die native
-        // Agent-Loop. Der native Orchestrator-Agent uebernimmt Tool-Calling,
-        // HITL (ToolCallRequested -> HitlListener -> SecurityGuard) und
-        // Audit. Wir reichern den Prompt mit dem Plan an, damit der Agent
-        // die geplanten Schritte priorisiert, und liefern seine finale
-        // Textantwort.
+        // Phase 5: Deterministische Ausfuehrung des freigegebenen Plans.
+        // Der Coordinator arbeitet die geordneten Steps ab; jeder Schritt
+        // wird ueber einen StepExecutor ausgefuehrt, das Ergebnis im
+        // ExecutionState gespeichert und an abhaengige Schritte
+        // weitergereicht. Fehlgeschlagene Schritte stoppen den Workflow
+        // (keine Halluzination desfinalen Ergebnisses).
+        $state = new ExecutionState();
+        $steps = $this->sortByDependencies($plan->getSteps());
+        $lastResult = null;
+
         try {
-            $prompt = $this->buildExecutionPrompt($context, $plan);
-            $messages = $this->buildMessageBag($context, $prompt);
-            $result = $this->llmRetryExecutor->callAgentWithRetry($this->orchestratorAgent, $messages);
-            $content = $result->getContent();
+            foreach ($steps as $step) {
+                $executor = $this->findExecutor($step);
+                if ($executor === null) {
+                    throw new \RuntimeException(sprintf(
+                        'Kein StepExecutor fuer Schritt "%s" (type "%s").',
+                        $step->getId(),
+                        $step->getType()
+                    ));
+                }
 
-            if (!is_string($content) || $content === '') {
-                $content = 'Die Anfrage wurde ausgefuehrt.';
+                $this->logger->info('ExecutionCoordinator: Schritt gestartet', [
+                    'step_id' => $step->getId(),
+                    'type' => $step->getType(),
+                    'target' => $step->getTarget(),
+                ]);
+
+                $result = $executor->execute($step, $context, $state);
+                $state->set($step->resolvedOutputKey(), $result);
+                $lastResult = $result;
+
+                $this->logger->info('ExecutionCoordinator: Schritt abgeschlossen', [
+                    'step_id' => $step->getId(),
+                    'output_key' => $step->resolvedOutputKey(),
+                ]);
             }
-
-            return new PipelineResult(PipelineResult::TYPE_EXECUTED, $content);
         } catch (\Exception $e) {
-            $this->logger->error('ExecutionCoordinator::execute fehlgeschlagen: ' . $e->getMessage());
+            $this->logger->error('ExecutionCoordinator::execute fehlgeschlagen: ' . $e->getMessage(), [
+                'step_id' => $step->getId(),
+                'step_target' => $step->getTarget(),
+            ]);
 
             return new PipelineResult(
                 PipelineResult::TYPE_ERROR,
                 'Bei der Ausfuehrung ist ein Fehler aufgetreten: ' . $e->getMessage()
             );
         }
+
+        return new PipelineResult(
+            PipelineResult::TYPE_EXECUTED,
+            $this->formatFinalAnswer($lastResult, $plan, $state)
+        );
+    }
+
+    /**
+     * Sortiert die Steps nach ihren depends_on-Angaben (stabile
+     * Topologie): Steps ohne Abhaengigkeiten zuerst, danach Steps,
+     * deren Abhaengigkeiten bereits eingeplant sind. Zyklen werden wie
+     * ungeloesste Abhaengigkeiten behandelt und erhalten ihre Original-
+     * Position bei (Fehler wird bei der Ausfuehrung sichtbar).
+     *
+     * @param list<Step> $steps
+     * @return list<Step>
+     */
+    private function sortByDependencies(array $steps): array
+    {
+        $ids = [];
+        foreach ($steps as $step) {
+            $ids[$step->getId()] = $step;
+        }
+
+        $remaining = $steps;
+        $sorted = [];
+        $scheduled = [];
+        while ($remaining !== []) {
+            $progress = false;
+            $next = [];
+            foreach ($remaining as $step) {
+                $ready = true;
+                foreach ($step->getDependsOn() as $dependency) {
+                    if (!isset($scheduled[$dependency])) {
+                        $ready = false;
+                        break;
+                    }
+                }
+                if ($ready) {
+                    $sorted[] = $step;
+                    $scheduled[$step->getId()] = true;
+                    $progress = true;
+                } else {
+                    $next[] = $step;
+                }
+            }
+            $remaining = $next;
+            if (!$progress) {
+                // Zyklus oder unbekannte Abhaengigkeit: Original-Reihenfolge
+                // beibehalten, damit der Workflow nicht still haengt.
+                foreach ($remaining as $step) {
+                    $sorted[] = $step;
+                }
+                break;
+            }
+        }
+
+        return $sorted;
+    }
+
+    private function findExecutor(Step $step): ?StepExecutorInterface
+    {
+        foreach ($this->stepExecutors as $executor) {
+            if ($executor->supports($step)) {
+                return $executor;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Formatiert die finale Antwort: bevorzugt das Ergebnis des letzten
+     * Schritts (z.B. der Businessplan aus dem synthesis-Schritt); sonst
+     * eine strukturierte Zusammenfassung aller Schrittergebnisse.
+     */
+    private function formatFinalAnswer(mixed $lastResult, Plan $plan, ExecutionState $state): string
+    {
+        if (is_string($lastResult) && trim($lastResult) !== '') {
+            return $lastResult;
+        }
+        if (is_array($lastResult)) {
+            $encoded = json_encode($lastResult, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT);
+            if (is_string($encoded) && $encoded !== '[]' && $encoded !== '{}') {
+                return $encoded;
+            }
+        }
+
+        $summary = $plan->getSummary() ?? 'Die Anfrage wurde ausgefuehrt.';
+        $sections = [$summary, ''];
+        foreach ($state->all() as $key => $value) {
+            $sections[] = sprintf(
+                "## %s\n%s",
+                $key,
+                is_string($value) ? $value : json_encode($value, JSON_UNESCAPED_UNICODE | JSON_PRETTY_PRINT)
+            );
+        }
+
+        return implode("\n\n", $sections);
     }
 
     /**
@@ -170,26 +302,5 @@ final class ExecutionCoordinator implements ExecutionCoordinatorInterface
         $messages[] = Message::ofUser($userPrompt ?? $context->getMessage());
 
         return new MessageBag(...$messages);
-    }
-
-    private function buildExecutionPrompt(PipelineContext $context, Plan $plan): string
-    {
-        $summary = $plan->getSummary() ?? $context->getMessage();
-        $stepDescriptions = [];
-        foreach ($plan->getSteps() as $step) {
-            $stepDescriptions[] = sprintf(
-                '- %s: %s%s',
-                $step->getType(),
-                $step->getTarget(),
-                $step->getReason() !== null ? ' (' . $step->getReason() . ')' : ''
-            );
-        }
-        $stepsText = implode("\n", $stepDescriptions);
-
-        return "Fuehre die folgende Anfrage mit den geplanten Schritten aus. "
-            . "Nutze die verfuegbaren Werkzeuge/Sub-Agenten und liefere das Ergebnis.\n\n"
-            . "Anfrage: " . $context->getMessage() . "\n\n"
-            . "Plan: " . $summary . "\n"
-            . "Schritte:\n" . $stepsText;
     }
 }

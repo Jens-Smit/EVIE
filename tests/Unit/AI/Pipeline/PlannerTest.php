@@ -156,6 +156,96 @@ final class PlannerTest extends TestCase
         self::assertSame(1, $invokeCount);
     }
 
+    public function testWorkflowFieldsAreParsedFromLlmPlan(): void
+    {
+        // Phase 3 Workflow-Felder: id, depends_on, input_from und output_key
+        // muessen aus der LLM-Antwort in die Steps uebernommen werden, damit
+        // Phase 5 deterministisch abhaengigkeitsbewusst ausfuehren kann.
+        $json = json_encode([
+            'summary' => 'Businessplan erstellen',
+            'steps' => [
+                [
+                    'id' => 'research_market',
+                    'type' => 'subagent',
+                    'target' => 'website_researcher',
+                    'parameters' => ['task' => 'Recherchiere visiongastro.de'],
+                    'needs_capability' => false,
+                    'reason' => 'Marktdaten sammeln',
+                    'depends_on' => [],
+                    'input_from' => [],
+                    'output_key' => 'market_research',
+                ],
+                [
+                    'id' => 'analyse_market',
+                    'type' => 'subagent',
+                    'target' => 'data_analyst',
+                    'parameters' => ['task' => 'Analysiere die Recherche'],
+                    'needs_capability' => false,
+                    'reason' => 'Daten analysieren',
+                    'depends_on' => ['research_market'],
+                    'input_from' => ['market_research'],
+                    'output_key' => 'business_analysis',
+                ],
+                [
+                    'id' => 'create_business_plan',
+                    'type' => 'tool',
+                    'target' => 'weather',
+                    'parameters' => ['city' => 'Berlin'],
+                    'needs_capability' => false,
+                    'reason' => 'Dokument erzeugen',
+                    'depends_on' => ['analyse_market'],
+                    'input_from' => ['business_analysis'],
+                    'output_key' => 'business_plan',
+                ],
+            ],
+        ], JSON_THROW_ON_ERROR);
+        $this->platform->method('invoke')->willReturn(StubDeferredResult::withText($json));
+        $planner = $this->buildPlanner();
+
+        $plan = $planner->plan(PipelineContext::create('Businessplan von visiongastro.de', 'u'), Intent::Task);
+
+        self::assertFalse($plan->isClarification());
+        $steps = $plan->getSteps();
+        self::assertCount(3, $steps);
+
+        self::assertSame('research_market', $steps[0]->getId());
+        self::assertSame([], $steps[0]->getDependsOn());
+        self::assertSame([], $steps[0]->getInputFrom());
+        self::assertSame('market_research', $steps[0]->getOutputKey());
+
+        self::assertSame('analyse_market', $steps[1]->getId());
+        self::assertSame(['research_market'], $steps[1]->getDependsOn());
+        self::assertSame(['market_research'], $steps[1]->getInputFrom());
+        self::assertSame('business_analysis', $steps[1]->getOutputKey());
+
+        self::assertSame('create_business_plan', $steps[2]->getId());
+        self::assertSame(['analyse_market'], $steps[2]->getDependsOn());
+        self::assertSame(['business_analysis'], $steps[2]->getInputFrom());
+        self::assertSame('business_plan', $steps[2]->getOutputKey());
+    }
+
+    public function testStepGeneratesUniqueIdWhenLlmOmitsId(): void
+    {
+        // Ohne id in der LLM-Antwort erzeugt der Step automatisch eine
+        // eindeutige, target-basierte ID (kein Kollidieren mit anderen Steps).
+        $json = json_encode([
+            'summary' => 'Wetter',
+            'steps' => [
+                ['type' => 'tool', 'target' => 'weather', 'parameters' => ['city' => 'Berlin'], 'needs_capability' => false],
+                ['type' => 'tool', 'target' => 'weather', 'parameters' => ['city' => 'Hamburg'], 'needs_capability' => false],
+            ],
+        ], JSON_THROW_ON_ERROR);
+        $this->platform->method('invoke')->willReturn(StubDeferredResult::withText($json));
+        $planner = $this->buildPlanner();
+
+        $plan = $planner->plan(PipelineContext::create('Wetter', 'u'), Intent::Task);
+
+        $steps = $plan->getSteps();
+        self::assertCount(2, $steps);
+        self::assertNotSame($steps[0]->getId(), $steps[1]->getId());
+        self::assertStringContainsString('weather', $steps[0]->getId());
+    }
+
     private function buildPlanner(): Planner
     {
         return new Planner(

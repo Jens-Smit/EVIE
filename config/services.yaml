@@ -86,6 +86,17 @@ services:
     App\AI\Pipeline\Plan\Planner:
         arguments:
             $promptFile: '%kernel.project_dir%/config/prompts/planner.txt'
+    # Phase 5: StepExecutors fuehren Plan-Schritte deterministisch aus
+    # (tool -> ToolStepExecutor, subagent -> SubAgentStepExecutor). Der
+    # ExecutionCoordinator haelt sie als variadisches Argument; Reihenfolge
+    # irrelevant, da supports() je Schritt entscheidet.
+    App\AI\Pipeline\Execution\ToolStepExecutor:
+        tags: [{ name: app.ai.step_executor }]
+    App\AI\Pipeline\Execution\SubAgentStepExecutor:
+        tags: [{ name: app.ai.step_executor }]
+    App\AI\Pipeline\Execution\ExecutionCoordinator:
+        arguments:
+            $stepExecutors: !tagged_iterator app.ai.step_executor
 
     # Orchestrator-Pipeline: PipelineInterface -> Pipeline-Implementierung,
     # die die fuenf Phasen Goal -> Intent -> Plan -> Capability -> Execution
