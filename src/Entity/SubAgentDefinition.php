@@ -23,8 +23,8 @@ class SubAgentDefinition
     #[ORM\Column(type: 'text')]
     private string $description;
 
-    #[ORM\Column(type: 'string', length: 255)]
-    private string $className;
+    #[ORM\Column(type: 'string', length: 255, nullable: true)]
+    private ?string $className = null;
 
     #[ORM\Column(type: 'json')]
     private array $configuration;
@@ -74,12 +74,12 @@ class SubAgentDefinition
         return $this;
     }
 
-    public function getClassName(): string
+    public function getClassName(): ?string
     {
         return $this->className;
     }
 
-    public function setClassName(string $className): self
+    public function setClassName(?string $className): self
     {
         $this->className = $className;
         return $this;

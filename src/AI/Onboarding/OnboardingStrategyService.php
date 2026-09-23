@@ -207,7 +207,10 @@ final class OnboardingStrategyService
             $definition = new SubAgentDefinition();
             $definition->setName($name);
             $definition->setDescription($label);
-            $definition->setClassName(\Symfony\AI\Agent\Agent::class);
+            // P1: class_name bewusst null — generische DB-Agenten werden
+            // von der SubAgentFactory aus der Konfiguration erzeugt (keine
+            // Symfony-DI-Service-ID fuer konkrete Agent-Klassen).
+            $definition->setClassName(null);
             $definition->setConfiguration([
                 'model' => 'mistral-small-latest',
                 'role' => $name,

@@ -25,6 +25,7 @@ final class PipelineContext
     private ?string $systemContext;
     private ?Goal $goal;
     private ?Intent $intent;
+    private string $runId;
 
     private function __construct(string $message, string $userIdentifier, ?string $systemContext = null)
     {
@@ -33,11 +34,23 @@ final class PipelineContext
         $this->systemContext = $systemContext;
         $this->goal = null;
         $this->intent = null;
+        $this->runId = bin2hex(random_bytes(8));
     }
 
     public static function create(string $message, string $userIdentifier, ?string $systemContext = null): self
     {
         return new self($message, $userIdentifier, $systemContext);
+    }
+
+    /**
+     * P2 Observability: Eindeutige run_id des Pipeline-Laufs. Wird in
+     * Phase 1 erzeugt und von allen Phasen-Logs getragen, damit ein
+     * kompletter Workflow (Goal -> Intent -> Plan -> Capability ->
+     * Execution) im Log als zusammenhaengender Trace lesbar ist.
+     */
+    public function getRunId(): string
+    {
+        return $this->runId;
     }
 
     /**
@@ -75,6 +88,7 @@ final class PipelineContext
         $clone = new self($this->message, $this->userIdentifier);
         $clone->goal = $goal;
         $clone->intent = $this->intent;
+        $clone->runId = $this->runId;
 
         return $clone;
     }
@@ -84,6 +98,7 @@ final class PipelineContext
         $clone = new self($this->message, $this->userIdentifier);
         $clone->goal = $this->goal;
         $clone->intent = $intent;
+        $clone->runId = $this->runId;
 
         return $clone;
     }

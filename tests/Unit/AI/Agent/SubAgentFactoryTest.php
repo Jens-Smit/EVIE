@@ -47,7 +47,7 @@ final class SubAgentFactoryTest extends TestCase
         );
     }
 
-    private function makeDefinition(string $name, string $className = 'App\\Nonexistent\\Agent', array $config = []): SubAgentDefinition
+    private function makeDefinition(string $name, ?string $className = null, array $config = []): SubAgentDefinition
     {
         $def = new SubAgentDefinition();
         $def->setName($name);
@@ -129,18 +129,44 @@ final class SubAgentFactoryTest extends TestCase
     {
         $badDefinition = $this->makeDefinition('broken', className: 'Some\\Bad\\Class');
         $goodDefinition = $this->makeDefinition('ok');
-
         $this->subAgentRepo->method('findAllActive')->willReturn([$badDefinition, $goodDefinition]);
-
-        // First call may throw somewhere internally; container get returns non-agent, falls to generic path
-        $this->container->method('get')->willReturn($this->createMock(AgentInterface::class));
+        // P1: Nicht als Service registrierte class_name-Werte duerfen niemals
+        // container->get() erreichen (dev-tail-Fehler "non-existent service").
+        $this->container->expects(self::never())->method('get');
         // The broken definition generic path still creates an Agent; only a real exception skips
         $this->toolRepo->method('save');
-
         $agents = $this->factory->createAllFromDatabase();
-
         self::assertArrayHasKey('broken', $agents);
         self::assertArrayHasKey('ok', $agents);
+    }
+
+    public function testCreateFromDefinitionWithNullClassNameSkipsContainerLookup(): void
+    {
+        // P1: class_name=null ist der Standardweg fuer generische DB-Agenten.
+        $definition = $this->makeDefinition('ceo_assistant', null, ['model' => 'mistral-small', 'role' => 'ceo_assistant']);
+        $this->container->expects(self::never())->method('get');
+        $this->toolRepo->method('findOneBy')->willReturn(null);
+        $this->toolRepo->method('save');
+
+        $agent = $this->factory->createFromDefinition($definition);
+
+        self::assertInstanceOf(AgentInterface::class, $agent);
+    }
+
+    public function testCreateFromDefinitionWithLegacyBaseAgentClassFallsBackToConfig(): void
+    {
+        // P1 Fix fuer den dev-tail-Log-Fehler: class_name=Symfony\AI\Agent\Agent
+        // ist keine Service-ID; die Factory faellt auf die Konfiguration
+        // zurueck, statt einen Container-Fehler zu provozieren.
+        $definition = $this->makeDefinition('legacy_agent', \Symfony\AI\Agent\Agent::class, ['model' => 'mistral-small', 'role' => 'legacy_agent']);
+        $this->container->method('has')->willReturn(false);
+        $this->container->expects(self::never())->method('get');
+        $this->toolRepo->method('findOneBy')->willReturn(null);
+        $this->toolRepo->method('save');
+
+        $agent = $this->factory->createFromDefinition($definition);
+
+        self::assertInstanceOf(AgentInterface::class, $agent);
     }
 
     public function testCreateSubAgentReturnsAgentInterface(): void

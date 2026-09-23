@@ -64,15 +64,17 @@ final class Pipeline implements PipelineInterface
 
     public function run(string $message, string $userIdentifier, ?string $systemContext = null): PipelineResult
     {
+        $context = PipelineContext::create($message, $userIdentifier, $systemContext);
         $this->logger->info('Pipeline.run: Start', [
+            'run_id' => $context->getRunId(),
             'user_identifier' => $userIdentifier,
             'message' => $message,
         ]);
-        $context = PipelineContext::create($message, $userIdentifier, $systemContext);
 
         // Phase 1 — Goal
         $context = $context->withGoal($this->goalResolver->resolve($context));
         $this->logger->info('Pipeline.run: Phase 1 Goal aufgeloest', [
+            'run_id' => $context->getRunId(),
             'goal' => $context->getGoal() !== null ? $context->getGoal()->getIdentifier() : null,
             'goal_source' => $context->getGoal() !== null ? $context->getGoal()->getSource() : null,
         ]);
@@ -81,10 +83,12 @@ final class Pipeline implements PipelineInterface
         $intent = $this->intentClassifier->classify($context);
         $context = $context->withIntent($intent);
         $this->logger->info('Pipeline.run: Phase 2 Intent klassifiziert', [
+            'run_id' => $context->getRunId(),
             'intent' => $intent->name,
         ]);
         if ($intent->isDialog()) {
             $this->logger->info('Pipeline.run: Exit-Gate Dialog (Intent ist dialogorientiert)', [
+            'run_id' => $context->getRunId(),
                 'intent' => $intent->name,
             ]);
             return $this->executionCoordinator->dialog($context);
@@ -93,6 +97,7 @@ final class Pipeline implements PipelineInterface
         // Phase 3 — Plan (Exit-Gate: clarify)
         $plan = $this->planner->plan($context, $intent);
         $this->logger->info('Pipeline.run: Phase 3 Plan erstellt', [
+            'run_id' => $context->getRunId(),
             'is_clarification' => $plan->isClarification(),
             'steps' => count($plan->getSteps()),
         ]);
@@ -109,6 +114,7 @@ final class Pipeline implements PipelineInterface
         if ($intent === Intent::SetupTask) {
             $this->persistSetupTaskGoal($context, $plan);
             $this->logger->info('Pipeline.run: SetupTask-Goal persistiert', [
+            'run_id' => $context->getRunId(),
                 'user_identifier' => $context->getUserIdentifier(),
                 'summary' => $plan->getSummary(),
                 'steps' => count($plan->getSteps()),
@@ -121,12 +127,14 @@ final class Pipeline implements PipelineInterface
             $result = $this->capabilityResolver->resolve($step, $context);
             $decision = $result->getDecision();
             $this->logger->info('Pipeline.run: Phase 4 Capability aufgeloest', [
+            'run_id' => $context->getRunId(),
                 'step_type' => $step->getType(),
                 'step_target' => $step->getTarget(),
                 'decision' => $decision->value,
             ]);
             if ($decision->isMissing() || $decision->isPending()) {
                 $this->logger->info('Pipeline.run: Exit-Gate HITL (Capability missing/pending)', [
+            'run_id' => $context->getRunId(),
                     'step_target' => $step->getTarget(),
                 ]);
                 return $this->executionCoordinator->awaitingApproval($context, $result);
@@ -140,6 +148,7 @@ final class Pipeline implements PipelineInterface
 
         // Phase 5 — Execution
         $this->logger->info('Pipeline.run: Phase 5 Execution startet', [
+            'run_id' => $context->getRunId(),
             'steps' => count($resolvedPlan->getSteps()),
         ]);
         return $this->executionCoordinator->execute($context, $resolvedPlan);

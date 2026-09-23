@@ -53,7 +53,7 @@ class WarmupSubAgentsCacheCommand extends Command
             $io->text(sprintf(
                 '- %s (Klasse: %s, Aktiv: %s)',
                 $definition->getName(),
-                $definition->getClassName(),
+                $definition->getClassName() ?? '(konfigurationsbasiert)',
                 $definition->isActive() ? 'Ja' : 'Nein'
             ));
         }

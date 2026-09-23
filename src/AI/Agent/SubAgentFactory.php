@@ -66,9 +66,13 @@ class SubAgentFactory implements SubAgentFactoryInterface
             'class' => $className,
         ]);
 
-        // 1. Prüfe, ob die Klasse existiert und ein AgentInterface implementiert
-        if (class_exists($className) && is_subclass_of($className, AgentInterface::class)) {
-            // Direkte Instanzierung, wenn es sich um eine konkrete Klasse handelt
+        // 1. Nur echte, als Service registrierte AgentInterface-Implementierungen
+        // werden aus dem Container geholt. class_name ist KEINE Symfony-DI-
+        // Service-ID fuer konkrete Basisklassen (Fix fuer "non-existent service
+        // Symfony\AI\Agent\Agent" aus dem dev-tail-Log): ist die Klasse nicht
+        // als Service registriert, faellt die Factory auf die Konfiguration
+        // zurueck, statt container->get() mit einer Klasse zu fuettern.
+        if ($className !== null && $this->container->has($className)) {
             $subAgent = $this->container->get($className);
             if ($subAgent instanceof AgentInterface) {
                 $this->registerAsTool($name, $definition->getDescription(), $subAgent);
