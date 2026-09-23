@@ -73,8 +73,8 @@ class AiSubAgentsCompilerPass implements CompilerPassInterface
 
         $className = $definition->getClassName();
 
-        // Registriere den Service nur, wenn die Klasse existiert
-        if (class_exists($className)) {
+        // Registriere den Service nur, wenn class_name gesetzt ist und die Klasse existiert (P1: nullable)
+        if ($className !== null && class_exists($className)) {
             $container->register($serviceId, $className)
                 ->addTag('ai.agent')
                 ->addTag('container.hot_path')

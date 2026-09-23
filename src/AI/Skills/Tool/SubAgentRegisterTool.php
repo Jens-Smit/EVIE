@@ -55,7 +55,9 @@ final class SubAgentRegisterTool
         $definition = new SubAgentDefinition();
         $definition->setName($name);
         $definition->setDescription($description);
-        $definition->setClassName('Symfony\\AI\\Agent\\Agent');
+        // P1: class_name null — Erzeugung via SubAgentFactory-Konfiguration
+        // statt nicht existierender DI-Service-ID (dev-tail-Log-Fehler).
+        $definition->setClassName(null);
         $definition->setConfiguration([
             'model' => $model,
             'role' => $role,

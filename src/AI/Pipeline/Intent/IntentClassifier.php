@@ -84,13 +84,14 @@ final class IntentClassifier implements IntentClassifierInterface
             . "- TASK: Eine einzelne konkrete, ausfuehrbare Aktion, die ein Werkzeug erfordert, z.B. das Abrufen \"\n"
             . "  einer externen API, die Analyse einer konkreten Datei, das Versenden einer Nachricht oder \"\n"
             . "  eine Datenbankabfrage.\n"
-            . "- SETUP_TASK: Eine mehrstufige Aufbau-Aufgabe, bei der der Agent als Koordinator/CEO agieren, \"\n"
-            . "  mehrere Sub-Agenten koordinieren, ein Strategiedokument/Businessplan erstellen, \"\n"
-            . "  Aufgaben autonom anlegen und ausfuehren soll. Indikatoren: 'EVIE soll ... aufbauen', \"\n"
-            . "  'als CEO agieren', 'Sub-Agenten koordinieren', 'mehrstufig', 'autonom', 'Plan erstellen', \"\n"
-            . "  'Strategiedokument', 'Businessplan entwickeln', 'Aufgaben erstellen und ausfuehren', \"\n"
-            . "  'Prozesse automatisieren', 'skalieren', Umsatzziele, mehrgjaehrige Plaene, Setup-Anweisungen \"\n"
-            . "  mit mehreren konkreten Ausfuehrungsschritten.\n\n"
+            . "- SETUP_TASK: NUR eine dauerhaft-autonome Aufgabe, die EVIE als persistentes Ziel ueber "
+            . "  mehrere Dialogrunden/Sessions eigenverantwortlich abarbeiten soll (Blueprint Luecke 2). "
+            . "  Indikatoren: 'EVIE soll mein Unternehmen aufbauen', 'agiere dauerhaft als mein CEO', "
+            . "  'uebernimm laufend', 'richten dir selbst ein', mehrjaehrige autonome Ziele. "
+            . "  NICHT SETUP_TASK: einmalige Liefergegenstaende wie 'erstelle mir einen Businessplan', "
+            . "  'erstelle ein Strategiedokument', 'recherchiere X und analysiere Y' - auch wenn dafuer "
+            . "  mehrere Schritte noetig sind. Solche Aufgaben sind TASK: die Pipeline plant und fuehrt "
+            . "  sie sofort aus, ohne persistentes AgentGoal und ohne zusaetzliche Freigabe.\n\n"
             . 'Anfrage: "' . $userMessage . '"';
     }
 }

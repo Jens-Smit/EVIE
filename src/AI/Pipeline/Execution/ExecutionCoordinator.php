@@ -169,6 +169,7 @@ final class ExecutionCoordinator implements ExecutionCoordinatorInterface
                 }
 
                 $this->logger->info('ExecutionCoordinator: Schritt gestartet', [
+                    'run_id' => $context->getRunId(),
                     'step_id' => $step->getId(),
                     'type' => $step->getType(),
                     'target' => $step->getTarget(),
@@ -179,6 +180,7 @@ final class ExecutionCoordinator implements ExecutionCoordinatorInterface
                 $lastResult = $result;
 
                 $this->logger->info('ExecutionCoordinator: Schritt abgeschlossen', [
+                    'run_id' => $context->getRunId(),
                     'step_id' => $step->getId(),
                     'output_key' => $step->resolvedOutputKey(),
                 ]);
@@ -202,28 +204,26 @@ final class ExecutionCoordinator implements ExecutionCoordinatorInterface
     }
 
     /**
-     * Sortiert die Steps nach ihren depends_on-Angaben (stabile
-     * Topologie): Steps ohne Abhaengigkeiten zuerst, danach Steps,
-     * deren Abhaengigkeiten bereits eingeplant sind. Zyklen werden wie
-     * ungeloesste Abhaengigkeiten behandelt und erhalten ihre Original-
-     * Position bei (Fehler wird bei der Ausfuehrung sichtbar).
+     * Gruppiert die Steps in Dependency-Level (Kahn-Topologie) und liefert
+     * sie als geordnete Liste zurueck. Steps desselben Levels haben keine
+     * ungeplanten Abhaengigkeiten mehr untereinander und sind damit
+     * prinzipiell parallelisierbar; der Coordinator fuehrt sie deterministisch
+     * sequenziell aus (Symfony-AI Agent-Calls sind synchron, keine
+     * inkompatiblen Async-Bridges). Zyklen werden wie ungeloesste
+     * Abhaengigkeiten behandelt und behalten ihre Original-Position.
      *
      * @param list<Step> $steps
      * @return list<Step>
      */
     private function sortByDependencies(array $steps): array
     {
-        $ids = [];
-        foreach ($steps as $step) {
-            $ids[$step->getId()] = $step;
-        }
-
         $remaining = $steps;
         $sorted = [];
         $scheduled = [];
         while ($remaining !== []) {
             $progress = false;
             $next = [];
+            $levelIds = [];
             foreach ($remaining as $step) {
                 $ready = true;
                 foreach ($step->getDependsOn() as $dependency) {
@@ -235,6 +235,7 @@ final class ExecutionCoordinator implements ExecutionCoordinatorInterface
                 if ($ready) {
                     $sorted[] = $step;
                     $scheduled[$step->getId()] = true;
+                    $levelIds[] = $step->getId();
                     $progress = true;
                 } else {
                     $next[] = $step;
