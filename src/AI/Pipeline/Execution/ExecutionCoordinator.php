@@ -48,19 +48,27 @@ final class ExecutionCoordinator implements ExecutionCoordinatorInterface
     /** @var list<StepExecutorInterface> */
     private array $stepExecutors;
 
+    /**
+     * @param iterable<StepExecutorInterface> $stepExecutors Tagged Iterator
+     *        (app.ai.step_executor); wird beim Konstruktor-Aufruf in eine
+     *        Liste materialisiert.
+     */
     public function __construct(
         #[Autowire(service: 'ai.agent.orchestrator')]
         AgentInterface $orchestratorAgent,
         LlmRetryExecutor $llmRetryExecutor,
         UrlGeneratorInterface $urlGenerator,
         LoggerInterface $logger,
-        StepExecutorInterface ...$stepExecutors
+        iterable $stepExecutors = []
     ) {
         $this->orchestratorAgent = $orchestratorAgent;
         $this->llmRetryExecutor = $llmRetryExecutor;
         $this->urlGenerator = $urlGenerator;
         $this->logger = $logger;
-        $this->stepExecutors = array_values($stepExecutors);
+        $this->stepExecutors = [];
+        foreach ($stepExecutors as $executor) {
+            $this->stepExecutors[] = $executor;
+        }
     }
 
     public function dialog(PipelineContext $context): PipelineResult

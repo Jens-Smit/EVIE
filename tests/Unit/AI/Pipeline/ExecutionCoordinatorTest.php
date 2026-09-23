@@ -42,7 +42,7 @@ final class ExecutionCoordinatorTest extends TestCase
             new LlmRetryExecutor(new NullLogger(), maxRetries: 1, initialDelayMs: 1),
             $urlGenerator,
             new NullLogger(),
-            ...$stepExecutors
+            $stepExecutors
         );
     }
 

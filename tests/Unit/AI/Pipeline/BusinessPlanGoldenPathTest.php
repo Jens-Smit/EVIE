@@ -143,7 +143,7 @@ final class BusinessPlanGoldenPathTest extends TestCase
             new LlmRetryExecutor(new NullLogger(), maxRetries: 1, initialDelayMs: 1),
             $urlGenerator,
             new NullLogger(),
-            $executor
+            [$executor]
         );
     }
 }
