@@ -108,7 +108,7 @@ final class ProductionSecurityGateE2ETest extends WebTestCase
             'DELETE FROM ai_outbound_allowlist',
             'DELETE FROM user_profile WHERE user_identifier IN (:ids)',
         ] as $index => $sql) {
-            if ($index === 3) {
+            if (str_contains($sql, ':ids')) {
                 $em->getConnection()->executeStatement(
                     $sql,
                     ['ids' => [self::TENANT_A, self::TENANT_B]],
