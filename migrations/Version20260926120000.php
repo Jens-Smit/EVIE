@@ -28,13 +28,11 @@ final class Version20260926120000 extends AbstractMigration
 
     public function up(Schema $schema): void
     {
-        $this->addSql('ALTER TABLE ai_sub_agent_definitions ALTER COLUMN class_name DROP NOT NULL');
-        $this->addSql("UPDATE ai_sub_agent_definitions SET class_name = NULL WHERE class_name = 'Symfony\\AI\\Agent\\Agent'");
+        $this->addSql("DO \$\$ BEGIN IF to_regclass('ai_sub_agent_definitions') IS NOT NULL THEN ALTER TABLE ai_sub_agent_definitions ALTER COLUMN class_name DROP NOT NULL; UPDATE ai_sub_agent_definitions SET class_name = NULL WHERE class_name = 'Symfony\\AI\\Agent\\Agent'; END IF; END \$\$");
     }
 
     public function down(Schema $schema): void
     {
-        $this->addSql("UPDATE ai_sub_agent_definitions SET class_name = 'Symfony\\AI\\Agent\\Agent' WHERE class_name IS NULL");
-        $this->addSql('ALTER TABLE ai_sub_agent_definitions ALTER COLUMN class_name SET NOT NULL');
+        $this->addSql("DO \$\$ BEGIN IF to_regclass('ai_sub_agent_definitions') IS NOT NULL THEN UPDATE ai_sub_agent_definitions SET class_name = 'Symfony\\AI\\Agent\\Agent' WHERE class_name IS NULL; ALTER TABLE ai_sub_agent_definitions ALTER COLUMN class_name SET NOT NULL; END IF; END \$\$");
     }
 }
