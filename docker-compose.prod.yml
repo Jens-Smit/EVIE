@@ -180,6 +180,24 @@ services:
       - POSTGRES_DB=evie
       - POSTGRES_USER=evie
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?POSTGRES_PASSWORD muss gesetzt sein}
+    # Moderate Tuning-Werte, abgestimmt auf das 1G-Memory-Limit des
+    # Containers (deploy.resources.limits): shared_buffers=256MB ist
+    # ~25% des Limits, effective_cache_size bleibt konservativ. Groessere
+    # Werte wuerden den Container bei Last in OOM treiben.
+    command:
+      - postgres
+      - -c
+      - max_connections=200
+      - -c
+      - shared_buffers=256MB
+      - -c
+      - effective_cache_size=512MB
+      - -c
+      - work_mem=8MB
+      - -c
+      - maintenance_work_mem=128MB
+      - -c
+      - random_page_cost=1.1
     volumes:
       - postgres_prod_data:/var/lib/postgresql/data
     healthcheck:
