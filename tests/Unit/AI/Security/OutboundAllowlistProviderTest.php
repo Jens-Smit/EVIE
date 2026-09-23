@@ -71,7 +71,12 @@ final class OutboundAllowlistProviderTest extends TestCase
             ]);
 
         $provider = $this->createProvider();
-        self::assertSame(['api.tavily.com', '*.mistral.ai'], $provider->getActiveHostPatterns());
+        // Suffix-Freigaben erzeugen zwei Patterns: Subdomain-Wildcard und
+        // Bare-Host (mistral.ai selbst + jede Subdomain, siehe Provider-Doku).
+        self::assertSame(
+            ['api.tavily.com', '*.mistral.ai', 'mistral.ai'],
+            $provider->getActiveHostPatterns()
+        );
     }
 
     public function testRegisterEnablesExplicitApprovalMode(): void
