@@ -48,10 +48,12 @@ final class OutboundAllowlistProvider
     {
         $patterns = [];
         foreach ($this->repository->findAllActive() as $entry) {
-            $patterns[] = $this->toFnmatchPattern(
-                $entry->getHostPattern(),
-                $entry->getPatternType(),
-            );
+            $host = strtolower(trim($entry->getHostPattern()));
+            $pattern = $this->toFnmatchPattern($host, $entry->getPatternType());
+            $patterns[] = $pattern;
+            if ($pattern !== $host) {
+                $patterns[] = $host;
+            }
         }
 
         return $patterns;
