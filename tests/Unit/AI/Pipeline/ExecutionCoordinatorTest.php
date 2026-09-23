@@ -9,6 +9,7 @@ use App\AI\Pipeline\Capability\CapabilityDecision;
 use App\AI\Pipeline\Capability\CapabilityResult;
 use App\AI\Pipeline\Execution\ExecutionCoordinator;
 use App\AI\Pipeline\Execution\PipelineResult;
+use App\AI\Pipeline\Execution\StepExecutorInterface;
 use App\AI\Pipeline\Plan\Plan;
 use App\AI\Pipeline\Plan\Step;
 use App\AI\Pipeline\PipelineContext;
@@ -31,7 +32,7 @@ use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
  */
 final class ExecutionCoordinatorTest extends TestCase
 {
-    private function buildCoordinator(AgentInterface $agent): ExecutionCoordinator
+    private function buildCoordinator(AgentInterface $agent, StepExecutorInterface ...$stepExecutors): ExecutionCoordinator
     {
         $urlGenerator = $this->createMock(UrlGeneratorInterface::class);
         $urlGenerator->method('generate')->willReturn('https://tools.example/pending');
@@ -40,7 +41,8 @@ final class ExecutionCoordinatorTest extends TestCase
             $agent,
             new LlmRetryExecutor(new NullLogger(), maxRetries: 1, initialDelayMs: 1),
             $urlGenerator,
-            new NullLogger()
+            new NullLogger(),
+            $stepExecutors
         );
     }
 
@@ -143,37 +145,147 @@ final class ExecutionCoordinatorTest extends TestCase
         self::assertStringContainsString('kein passendes Werkzeug', $result->getContent());
     }
 
-    public function testExecuteReturnsAgentContent(): void
+    public function testExecuteRunsStepsDeterministicallyInOrder(): void
     {
-        $agent = new StubAgent('Wetter in Berlin: 24 Grad.');
-        $coordinator = $this->buildCoordinator($agent);
-        $plan = new Plan([new Step(Step::TYPE_TOOL, 'weather', ['city' => 'Berlin'])], 'Wetter abrufen');
+        // Phase 5: Der Plan wird Schritt fuer Schritt deterministisch
+        // ausgefuehrt — nicht erneut dem Orchestrator-LLM uebergeben.
+        $agent = new StubAgent('sollte nicht aufgerufen werden');
+        $calls = [];
+        $executor = new class ($calls) implements StepExecutorInterface {
+            /** @param list<string> $calls */
+            public function __construct(private array &$calls)
+            {
+            }
+
+            /** @return list<string> */
+            public function getCalls(): array
+            {
+                return $this->calls;
+            }
+
+            public function supports(Step $step): bool
+            {
+                return $step->getType() === Step::TYPE_TOOL;
+            }
+
+            public function execute(Step $step, PipelineContext $context, \App\AI\Pipeline\Execution\ExecutionState $state): mixed
+            {
+                $this->calls[] = $step->getTarget();
+
+                return 'Ergebnis von ' . $step->getTarget();
+            }
+        };
+        $coordinator = $this->buildCoordinator($agent, $executor);
+        $plan = new Plan([
+            new Step(Step::TYPE_TOOL, 'weather', ['city' => 'Berlin'], id: 'step_a'),
+            new Step(Step::TYPE_TOOL, 'data_analyzer', [], id: 'step_b', dependsOn: ['step_a'], inputFrom: ['step_a']),
+        ], 'Wetter analysieren');
 
         $result = $coordinator->execute(PipelineContext::create('Wie ist das Wetter in Berlin?', 'u'), $plan);
 
         self::assertSame(PipelineResult::TYPE_EXECUTED, $result->getType());
-        self::assertSame('Wetter in Berlin: 24 Grad.', $result->getContent());
+        self::assertSame(['weather', 'data_analyzer'], $calls);
+        self::assertSame('Ergebnis von data_analyzer', $result->getContent());
     }
 
-    public function testExecuteFallsBackOnError(): void
+    public function testExecuteStopsWorkflowOnStepFailure(): void
     {
-        $agent = new class implements AgentInterface {
-            public function call(string|\Symfony\AI\Platform\Message\MessageBag|\Symfony\AI\Platform\Message\UserMessage $input, array $options = []): \Symfony\AI\Platform\Result\ResultInterface
+        // Fehlerweitergabe: schlaegt ein Schritt fehl, stoppt der
+        // Workflow — kein Halluzinieren des Endergebnisses.
+        $agent = new StubAgent('sollte nicht aufgerufen werden');
+        $calls = [];
+        $executor = new class ($calls) implements StepExecutorInterface {
+            /** @param list<string> $calls */
+            public function __construct(private array &$calls)
             {
-                throw new \RuntimeException('Executor kaputt');
             }
 
-            public function getName(): string
+            /** @return list<string> */
+            public function getCalls(): array
             {
-                return 'failing';
+                return $this->calls;
+            }
+
+            public function supports(Step $step): bool
+            {
+                return true;
+            }
+
+            public function execute(Step $step, PipelineContext $context, \App\AI\Pipeline\Execution\ExecutionState $state): mixed
+            {
+                $this->calls[] = $step->getTarget();
+                if ($step->getTarget() === 'research') {
+                    throw new \RuntimeException('Recherche fehlgeschlagen');
+                }
+
+                return 'ok';
             }
         };
-        $coordinator = $this->buildCoordinator($agent);
-        $plan = new Plan([new Step(Step::TYPE_TOOL, 'weather', [])], 'Wetter');
+        $coordinator = $this->buildCoordinator($agent, $executor);
+        $plan = new Plan([
+            new Step(Step::TYPE_SUBAGENT, 'research', [], id: 'research'),
+            new Step(Step::TYPE_SUBAGENT, 'analysis', [], id: 'analysis', dependsOn: ['research']),
+        ], 'Businessplan');
 
-        $result = $coordinator->execute(PipelineContext::create('Wetter', 'u'), $plan);
+        $result = $coordinator->execute(PipelineContext::create('Businessplan', 'u'), $plan);
 
         self::assertSame(PipelineResult::TYPE_ERROR, $result->getType());
-        self::assertStringContainsString('Executor kaputt', $result->getContent());
+        self::assertSame(['research'], $calls);
+        self::assertStringContainsString('Recherche fehlgeschlagen', $result->getContent());
+    }
+
+    public function testExecuteSortsStepsByDependencies(): void
+    {
+        // Der Coordinator sortiert nach depends_on, selbst wenn der
+        // Plan die Schritte unsortiert liefert.
+        $agent = new StubAgent('');
+        $calls = [];
+        $executor = new class ($calls) implements StepExecutorInterface {
+            /** @param list<string> $calls */
+            public function __construct(private array &$calls)
+            {
+            }
+
+            /** @return list<string> */
+            public function getCalls(): array
+            {
+                return $this->calls;
+            }
+
+            public function supports(Step $step): bool
+            {
+                return true;
+            }
+
+            public function execute(Step $step, PipelineContext $context, \App\AI\Pipeline\Execution\ExecutionState $state): mixed
+            {
+                $this->calls[] = $step->getId();
+
+                return 'ok';
+            }
+        };
+        $coordinator = $this->buildCoordinator($agent, $executor);
+        $plan = new Plan([
+            new Step(Step::TYPE_TOOL, 'strategy_document', [], id: 'business_plan', dependsOn: ['analysis']),
+            new Step(Step::TYPE_TOOL, 'data_analyzer', [], id: 'analysis', dependsOn: ['research']),
+            new Step(Step::TYPE_SUBAGENT, 'website_researcher', [], id: 'research'),
+        ], 'Businessplan');
+
+        $result = $coordinator->execute(PipelineContext::create('Businessplan von visiongastro.de', 'u'), $plan);
+
+        self::assertSame(PipelineResult::TYPE_EXECUTED, $result->getType());
+        self::assertSame(['research', 'analysis', 'business_plan'], $calls);
+    }
+
+    public function testExecuteRejectsUnsupportedStepType(): void
+    {
+        $agent = new StubAgent('');
+        $coordinator = $this->buildCoordinator($agent);
+        $plan = new Plan([new Step('unbekannter_typ', 'irgendwas', [], id: 'x')], 'Plan');
+
+        $result = $coordinator->execute(PipelineContext::create('Anfrage', 'u'), $plan);
+
+        self::assertSame(PipelineResult::TYPE_ERROR, $result->getType());
+        self::assertStringContainsString('Kein StepExecutor', $result->getContent());
     }
 }

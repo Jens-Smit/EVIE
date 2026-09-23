@@ -174,8 +174,41 @@ final class Planner implements PlannerInterface
         $parameters = is_array($raw['parameters'] ?? null) ? $raw['parameters'] : [];
         $needsCapability = is_bool($raw['needs_capability'] ?? null) ? $raw['needs_capability'] : false;
         $reason = is_string($raw['reason'] ?? null) ? $raw['reason'] : null;
+        $id = is_string($raw['id'] ?? null) && $raw['id'] !== '' ? $raw['id'] : null;
 
-        return new Step($type, $target, $parameters, $needsCapability, $reason);
+        $dependsOn = [];
+        if (is_array($raw['depends_on'] ?? null)) {
+            foreach ($raw['depends_on'] as $dependency) {
+                if (is_string($dependency) && $dependency !== '') {
+                    $dependsOn[] = $dependency;
+                }
+            }
+        }
+
+        $inputFrom = [];
+        if (is_array($raw['input_from'] ?? null)) {
+            foreach ($raw['input_from'] as $input) {
+                if (is_string($input) && $input !== '') {
+                    $inputFrom[] = $input;
+                }
+            }
+        }
+
+        $outputKey = is_string($raw['output_key'] ?? null) && $raw['output_key'] !== ''
+            ? $raw['output_key']
+            : null;
+
+        return new Step(
+            $type,
+            $target,
+            $parameters,
+            $needsCapability,
+            $reason,
+            $id,
+            $dependsOn,
+            $inputFrom,
+            $outputKey
+        );
     }
 
     /**
