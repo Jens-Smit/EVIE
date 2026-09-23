@@ -5,10 +5,15 @@
 #   - McpToolFactory(McpServerManager $serverManager, CacheInterface $cache, array $serverAliases, int $cacheTtl = 300)
 # Parameters evie_mcp.* are set by EvieMcpExtension from config/packages/evie_mcp.yaml.
 services:
+    # Frontend-Freigaben: aktive McpServerDefinition-Eintraege (/mcp/servers)
+    # werden lazy in die Server-Konfiguration gemerged.
+    App\Mcp\Client\McpDynamicServerConfigProvider: ~
     # MCP Server Manager
     App\Mcp\Client\McpServerManager:
         arguments:
             $serverConfigs: '%evie_mcp.servers%'
+        calls:
+            - [setDynamicConfigLoader, ['@App\Mcp\Client\McpDynamicServerConfigProvider']]
 
     # MCP Tool Factory (registered as AI tool_factory so remote MCP tools are discovered)
     App\Mcp\Toolbox\McpToolFactory:

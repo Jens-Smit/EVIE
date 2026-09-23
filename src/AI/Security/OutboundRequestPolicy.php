@@ -30,6 +30,16 @@ class OutboundRequestPolicy
     private bool $allowRedirects = false;
     private int $maxRedirects = 0;
 
+    // Frontend-Freigaben (OutboundAllowlistEntry): Sobald mindestens ein
+    // Muster registriert ist, greift die explizite Freigabe (Security by
+    // Default, Blueprint §4.D): Nur noch freigegebene Hosts sind erlaubt.
+    // Die Blocklist-Pruefung bleibt immer vor der Freigabe-Pruefung aktiv.
+    private bool $hasApprovedHostPatterns = false;
+
+    /** @var callable|null Liefert die aktiven Freigabe-Patterns aus der DB */
+    private $approvedPatternLoader = null;
+    private bool $approvedPatternsLoaded = false;
+
     public function __construct(
         private LoggerInterface $logger,
         array $options = []
@@ -105,11 +115,28 @@ class OutboundRequestPolicy
         // Pattern- und IP-Prüfungen zuverlässig greifen.
         $host = trim($host, '[]');
 
-        // Prüfe gegen geblockte Patterns
+        // Prüfe gegen geblockte Patterns (immer zuerst: eine Freigabe
+        // hebt keine SSRF-Blockliste auf).
         foreach ($this->blockedHostPatterns as $pattern) {
             if (fnmatch($pattern, $host)) {
                 return false;
             }
+        }
+
+        $this->ensureApprovedHostPatternsLoaded();
+
+        // Frontend-Freigabe-Modus: explizite Freigabe per Settings-UI
+        // (OutboundAllowlistEntry). Sobald mindestens ein Muster existiert,
+        // sind nur noch freigegebene Hosts erlaubt. Ein Treffer durchläuft
+        // die privaten-Netz- und IP-Prüfungen (Defense-in-Depth), damit eine
+        // Freigabe nie einen auf interne Adressen zeigenden Host oeffnet.
+        if ($this->hasApprovedHostPatterns) {
+            foreach ($this->allowedHostPatterns as $pattern) {
+                if (fnmatch($pattern, $host)) {
+                    return $this->isPubliclyReachable($host);
+                }
+            }
+            return false;
         }
 
         // Prüfe gegen erlaubte Patterns (falls definiert)
@@ -134,6 +161,47 @@ class OutboundRequestPolicy
 
         // Host ist erlaubt, wenn nicht explizit geblockt
         return true;
+    }
+
+    /**
+     * Defense-in-Depth fuer freigegebene Hosts: private Netze und nicht
+     * erlaubte IPs bleiben blockiert, selbst wenn der Host per Frontend
+     * freigegeben wurde.
+     */
+    private function isPubliclyReachable(string $host): bool
+    {
+        if (!$this->allowPrivateNetworks && $this->isPrivateNetwork($host)) {
+            return false;
+        }
+
+        if (filter_var($host, FILTER_VALIDATE_IP)) {
+            return $this->isIpAllowed($host);
+        }
+
+        return true;
+    }
+
+    /**
+     * Laedt die Frontend-Freigaben einmalig pro Policy-Instanz (Lazy,
+     * damit Cache-Warmup/CLI ohne DB nicht scheitern).
+     */
+    private function ensureApprovedHostPatternsLoaded(): void
+    {
+        if ($this->approvedPatternsLoaded || $this->approvedPatternLoader === null) {
+            return;
+        }
+
+        $this->approvedPatternsLoaded = true;
+        try {
+            $patterns = ($this->approvedPatternLoader)();
+            if (is_array($patterns)) {
+                $this->applyApprovedHostPatterns($patterns);
+            }
+        } catch (\Throwable $e) {
+            $this->logger->warning('Frontend-Freigaben nicht ladbar, Policy-Defaults aktiv', [
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     /**
@@ -321,6 +389,40 @@ class OutboundRequestPolicy
     public function addAllowedHostPattern(string $pattern): void
     {
         $this->allowedHostPatterns[] = $pattern;
+        $this->hasApprovedHostPatterns = true;
+    }
+
+    /**
+     * Registriert die im Frontend freigegebenen Host-Muster und aktiviert
+     * den expliziten Freigabe-Modus (nur freigegebene Hosts sind erlaubt).
+     *
+     * @param string[] $patterns
+     */
+    public function applyApprovedHostPatterns(array $patterns): void
+    {
+        foreach ($patterns as $pattern) {
+            if (is_string($pattern) && $pattern !== '') {
+                $this->addAllowedHostPattern($pattern);
+            }
+        }
+    }
+
+    /**
+     * Setzt den Loader fuer die Frontend-Freigaben (OutboundAllowlistProvider).
+     * Der Loader wird einmalig beim ersten URL-Check konsultiert.
+     */
+    public function setApprovedPatternLoader(mixed $loader): void
+    {
+        if ($loader instanceof OutboundAllowlistProvider) {
+            $this->approvedPatternLoader = fn (): array => $loader->getActiveHostPatterns();
+        } elseif (is_callable($loader)) {
+            $this->approvedPatternLoader = $loader(...);
+        } else {
+            throw new \InvalidArgumentException(
+                'Loader muss callable oder OutboundAllowlistProvider sein.'
+            );
+        }
+        $this->approvedPatternsLoaded = false;
     }
 
     /**

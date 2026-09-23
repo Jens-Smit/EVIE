@@ -116,6 +116,16 @@
                     <i class="ph ph-plugs-connected text-xl"></i>
                     <span>Integrationen</span>
                 </a>
+                {# Externe Ziele (Outbound-Allowlist in Benutzersprache) #}
+                {% if is_granted('ROLE_ADMIN') %}
+                <a href="{{ path('app_settings_outbound_allowlist') }}"
+                   class="nav-btn {% if app.request.attributes.get('_route') starts with 'app_settings_outbound_allowlist' %}active{% else %}inactive{% endif %}
+                          border w-full flex items-center gap-3 px-4 py-3 rounded-xl
+                          transition-all active:scale-95 font-medium">
+                    <i class="ph ph-shield-star text-xl"></i>
+                    <span>Externe Ziele</span>
+                </a>
+                {% endif %}
 
                 {# Fähigkeiten (Tools in Benutzersprache) #}
                 <a href="{{ path('app_tools_list') }}"

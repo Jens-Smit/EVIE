@@ -24,8 +24,18 @@ final class McpToolExecutor
         // Prüfe, ob der angefragte Server überhaupt existiert.
         // Das verhindert, dass das LLM erfundene Server-Aliasse (z. B. "weather_server")
         // verwendet, die nicht konfiguriert sind.
-        if ($this->knownServerAliases !== [] && !in_array($serverAlias, $this->knownServerAliases, true)) {
-            $available = implode(', ', $this->knownServerAliases);
+        // Frontend-Freigaben: Zusaetzlich zur statischen Alias-Liste wird der
+        // McpServerManager befragt, dessen Konfigurations-Merge die aktiven
+        // McpServerDefinition-Eintraege (/mcp/servers) enthaelt. Ein im
+        // Frontend freigegebener Server ist damit ohne YAML-Aenderung
+        // ausfuehrbar; erfundene Aliasse bleiben blockiert.
+        if ($this->knownServerAliases !== []
+            && !in_array($serverAlias, $this->knownServerAliases, true)
+            && !$this->serverManager->hasServer($serverAlias)) {
+            $available = implode(', ', array_unique([
+                ...$this->knownServerAliases,
+                ...$this->serverManager->getAvailableServerAliases(),
+            ]));
             throw new McpToolExecutionFailed(
                 $serverAlias,
                 $toolName,

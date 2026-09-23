@@ -185,6 +185,11 @@ services:
     App\Mcp\Client\McpServerManager:
         arguments:
             $serverConfigs: '%evie_mcp.servers%'
+        # Frontend-Freigaben: aktive McpServerDefinition-Eintraege (/mcp/servers)
+        # werden lazy in die Server-Konfiguration gemerged; die Alias-Whitelist
+        # des McpToolExecutor greift damit ohne YAML-Aenderung (Blueprint §5.D).
+        calls:
+            - [setDynamicConfigLoader, ['@App\Mcp\Client\McpDynamicServerConfigProvider']]
 
     # =====================================================================
     # P0-3/P0-5 Security & RAG Services
@@ -199,6 +204,11 @@ services:
                 allow_private_networks: false
                 allow_redirects: false
                 max_redirects: 0
+        # Frontend-Freigaben (ai_outbound_allowlist) werden lazy beim ersten
+        # URL-Check geladen: sobald aktive Eintraege existieren, sind nur
+        # noch freigegebene Hosts erlaubt (explizite Freigabe, Blueprint §4.D).
+        calls:
+            - [setApprovedPatternLoader, ['@App\AI\Security\OutboundAllowlistProvider']] 
 
     # Secrets-Store Service (Issue #10)
     App\Service\SecretService:

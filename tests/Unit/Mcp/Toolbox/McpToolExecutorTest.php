@@ -50,9 +50,31 @@ final class McpToolExecutorTest extends TestCase
         self::assertSame('sunny', $executor('weather_server', 'get_weather'));
     }
 
+    public function testInvokeAllowsFrontendApprovedServerAlias(): void
+    {
+        // Frontend-Freigabe: Der Alias ist nicht in der statischen Liste,
+        // aber im Manager-Merge (aktive McpServerDefinition) enthalten.
+        $this->serverManager
+            ->method('hasServer')
+            ->willReturnCallback(static fn (string $alias): bool => $alias === 'website_researcher');
+        $this->serverManager
+            ->expects(self::once())
+            ->method('callTool')
+            ->with('website_researcher', 'fetch_imprint', ['url' => 'https://example.com'])
+            ->willReturn(['firma' => 'Example GmbH']);
+
+        $executor = $this->createExecutor(['github', 'filesystem']);
+        self::assertSame(
+            ['firma' => 'Example GmbH'],
+            $executor('website_researcher', 'fetch_imprint', ['url' => 'https://example.com'])
+        );
+    }
+
     public function testInvokeRejectsUnknownServerAlias(): void
     {
         $this->serverManager->expects(self::never())->method('callTool');
+        $this->serverManager->method('hasServer')->willReturn(false);
+        $this->serverManager->method('getAvailableServerAliases')->willReturn([]);
 
         $executor = $this->createExecutor();
         try {

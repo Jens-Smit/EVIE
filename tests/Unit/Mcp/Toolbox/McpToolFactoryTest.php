@@ -56,6 +56,35 @@ final class McpToolFactoryTest extends TestCase
         self::assertSame('search_repos', $result[0]->getRemoteName());
     }
 
+    public function testGetToolsIncludesFrontendApprovedServers(): void
+    {
+        // Frontend-Freigabe: Der Manager kennt zusaetzlich einen aktiven
+        // McpServerDefinition-Server, der nicht in der statischen Liste steht.
+        $tools = [
+            'fetch_imprint' => [
+                'name' => 'fetch_imprint',
+                'description' => 'Extrahiert Impressum',
+                'inputSchema' => ['type' => 'object', 'properties' => []],
+            ],
+        ];
+
+        $this->cache
+            ->method('get')
+            ->willReturnCallback(
+                fn (string $key): array => $key === 'mcp_tools_website_researcher' ? $tools : []
+            );
+        $this->serverManager
+            ->method('getAvailableServerAliases')
+            ->willReturn(['website_researcher']);
+
+        $factory = new McpToolFactory($this->serverManager, $this->cache, ['github']);
+        $result = iterator_to_array($factory->getTools(), false);
+
+        self::assertCount(1, $result);
+        self::assertSame('website_researcher_fetch_imprint', $result[0]->getName());
+        self::assertSame('website_researcher', $result[0]->getServerAlias());
+    }
+
     public function testGetToolsWithoutAliasesYieldsNothing(): void
     {
         $this->cache->expects(self::never())->method('get');

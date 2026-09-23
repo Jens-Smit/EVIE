@@ -171,6 +171,50 @@ final class OutboundRequestPolicyTest extends TestCase
         self::assertFalse($this->policy->isUrlAllowed('https://other.com/data'));
     }
 
+    public function testApprovedHostPatternBlocksNonMatchingHost(): void
+    {
+        // Frontend-Freigabemodus: applyApprovedHostPatterns() aktiviert die
+        // explizite Freigabe — nur freigegebene Hosts sind erlaubt.
+        $this->policy->applyApprovedHostPatterns(['*.tavily.com']);
+        self::assertTrue($this->policy->isUrlAllowed('https://api.tavily.com/search'));
+        self::assertFalse($this->policy->isUrlAllowed('https://other.com/data'));
+    }
+
+    public function testApprovedHostPatternStillBlocksPrivateTargets(): void
+    {
+        // Freigabe hebt die SSRF-Blockliste nicht auf (Defense-in-Depth).
+        $this->policy->applyApprovedHostPatterns(['localhost', 'corp.internal']);
+        self::assertFalse($this->policy->isUrlAllowed('http://localhost/admin'));
+        self::assertFalse($this->policy->isUrlAllowed('http://127.0.0.1/admin'));
+    }
+
+    public function testApprovedPatternLoaderIsConsultedLazily(): void
+    {
+        $loaderCalls = 0;
+        $this->policy->setApprovedPatternLoader(static function () use (&$loaderCalls): array {
+            ++$loaderCalls;
+
+            return ['*.tavily.com'];
+        });
+        self::assertSame(0, $loaderCalls);
+        self::assertTrue($this->policy->isUrlAllowed('https://api.tavily.com/search'));
+        self::assertSame(1, $loaderCalls);
+        // Lazy-Caching: zweiter Check konsultiert den Loader nicht erneut.
+        self::assertTrue($this->policy->isUrlAllowed('https://www.tavily.com/docs'));
+        self::assertSame(1, $loaderCalls);
+        self::assertFalse($this->policy->isUrlAllowed('https://example.com/data'));
+    }
+
+    public function testApprovedPatternLoaderFailureKeepsDefaults(): void
+    {
+        $this->policy->setApprovedPatternLoader(static function (): array {
+            throw new \RuntimeException('DB nicht verfuegbar');
+        });
+        // Fehler beim Laden aktiviert keine Freigabe, Default-Pfad bleibt.
+        self::assertTrue($this->policy->isUrlAllowed('https://example.com/data'));
+        self::assertFalse($this->policy->isUrlAllowed('http://127.0.0.1/admin'));
+    }
+
     public function testAllowPrivateNetworksBypassesPrivateNetworkDnsCheck(): void
     {
         // allow_private_networks=true bypasses isPrivateNetwork() (DNS-basiert)

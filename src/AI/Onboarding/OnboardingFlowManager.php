@@ -269,7 +269,7 @@ class OnboardingFlowManager
         // als mission_statement - exakt in den Worten des Nutzers. Kurze
         // Begruesungen/Rueckfragen (unter 20 Zeichen) werden nicht als
         // Aufgabe fehlinterpretiert.
-        if (!isset($extracted['mission_statement'])
+        if (trim((string) ($extracted['mission_statement'] ?? '')) === ''
             && trim((string) ($onboardingData['mission_statement'] ?? '')) === ''
             && mb_strlen(trim($message)) >= 20) {
             $extracted['mission_statement'] = trim($message);
