@@ -63,10 +63,28 @@ when@dev:
             transports:
                 # Dev: alle Transporte teilen sich die Doctrine-DB, werden aber
                 # per queue_name getrennt, damit ein Worker gezielt konsumiert.
-                async_tools: 'doctrine://default?queue_name=async_tools'
-                streaming: 'doctrine://default?queue_name=streaming'
-                hitl_approvals: 'doctrine://default?queue_name=hitl_approvals'
-                failed: 'doctrine://default?queue_name=failed'
+                # use_notify (options-Ebene, nicht DSN-Parameter): PostgreSQL
+                # LISTEN/NOTIFY statt Polling-Schleife auf messenger_messages.
+                # Reduziert den Connection-Overhead aus der Log-Analyse;
+                # erfordert symfony/doctrine-messenger. Wichtig laut Symfony-
+                # Doku: Transporte duerfen sich bei use_notify nicht denselben
+                # queue_name teilen — hier hat jeder Transport einen eigenen.
+                async_tools:
+                    dsn: 'doctrine://default?queue_name=async_tools'
+                    options:
+                        use_notify: true
+                streaming:
+                    dsn: 'doctrine://default?queue_name=streaming'
+                    options:
+                        use_notify: true
+                hitl_approvals:
+                    dsn: 'doctrine://default?queue_name=hitl_approvals'
+                    options:
+                        use_notify: true
+                failed:
+                    dsn: 'doctrine://default?queue_name=failed'
+                    options:
+                        use_notify: true
 
 when@test:
     framework:

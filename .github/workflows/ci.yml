@@ -262,6 +262,21 @@ jobs:
           # README). Bisher wurde nur schema:create getestet, das
           # Migrationsfehler auf leerer DB verdeckte.
           php bin/console doctrine:migrations:migrate --env=prod --no-interaction --allow-no-migration
+      - name: Set up messenger transports
+        env:
+          APP_SECRET: test-secret-for-evie-1234567890abcdef
+          DATABASE_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_migrate?serverVersion=15&charset=utf8'
+          PGVECTOR_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_migrate?serverVersion=15&charset=utf8'
+          MISTRAL_API_KEY: test
+          GEMINI_API_KEY: test
+        # Die messenger_messages-Tabelle wird vom Messenger-Transport selbst
+        # verwaltet (auto_setup) und ist NICHT Teil der Doctrine-Entity-
+        # Migrations. Seit symfony/doctrine-messenger registriert der
+        # MessengerTransportDoctrineSchemaListener die Tabelle im erwarteten
+        # Schema (postGenerateSchema), sodass doctrine:schema:validate sie
+        # fordert. Ohne diesen Schritt schlaegt das Validate mit Schema-Drift
+        # fehl, weil der Migrations-Job nie eine Message dispatched.
+        run: php bin/console messenger:setup-transports --env=prod
 
       - name: Validate schema against entities
         env:
