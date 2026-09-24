@@ -42,8 +42,8 @@ security:
         - { path: ^/datenschutz, roles: PUBLIC_ACCESS }
         - { path: ^/impressum, roles: PUBLIC_ACCESS }
         - { path: ^/logout$, roles: PUBLIC_ACCESS }
-        - { path: ^/api/tools, roles: ROLE_ADMIN }
-        - { path: ^/admin, roles: ROLE_ADMIN }
+       # - { path: ^/api/tools, roles: ROLE_ADMIN }
+       # - { path: ^/admin, roles: ROLE_ADMIN }
         - { path: ^/, roles: ROLE_USER }
 
     role_hierarchy:
