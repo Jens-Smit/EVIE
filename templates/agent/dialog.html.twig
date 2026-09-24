@@ -158,7 +158,25 @@
                 // Typing-Indikator anzeigen
                 const typingEl = showTyping();
 
+                // Live-Progress: pro Turn eine Session-ID generieren, vor
+                // dem fetch() ein Mercure-Topic abonnieren und die Pipeline-
+                // Events (Phasen, Subagent-/Tool-Schritte) als Timeline
+                // rendern. Ohne laufenden Mercure-Hub fehlert der fetch()
+                // weiter normal.
+                const sessionId = (crypto.randomUUID ? crypto.randomUUID() : 'turn-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+                const liveProgress = createLiveProgress();
+                const eventSource = subscribeToProgress(sessionId, liveProgress);
+
                 try {
+                    // Kurz warten, bis die SSE-Verbindung offen ist, sonst
+                    // koennen die ersten Phasen-Events verpasst werden. Bei
+                    // fehlender Verbindung (kein Mercure) laeuft der Timeout
+                    // weiter, der Dialog funktioniert trotzdem.
+                    await new Promise(resolve => {
+                        eventSource.onopen = resolve;
+                        setTimeout(resolve, 300);
+                    });
+
                     const url = conversationId 
                         ? `/api/agent/dialog?conversation_id=${conversationId}` 
                         : '{{ path('agent_dialog') }}';
@@ -171,6 +189,7 @@
                         },
                         body: JSON.stringify({
                             message: message,
+                            session_id: sessionId,
                             user_identifier: form.querySelector('input[name="user_identifier"]').value
                         })
                     });
@@ -183,6 +202,8 @@
                     if (!response.ok || !contentType.includes('application/json')) {
                         const text = await response.text();
                         typingEl.remove();
+                        eventSource.close();
+                        liveProgress.finish();
                         if (response.status === 401) {
                             appendMessage('agent', 'Sitzung abgelaufen. Bitte neu anmelden.');
                             window.location.reload();
@@ -200,6 +221,8 @@
 
                     const data = await response.json();
                     typingEl.remove();
+                    eventSource.close();
+                    liveProgress.finish();
 
                     appendMessage('agent', data.response || 'Keine Antwort erhalten.');
 
@@ -210,9 +233,76 @@
                     refreshPendingToolsBadge();
                 } catch (err) {
                     typingEl.remove();
+                    eventSource.close();
+                    liveProgress.finish();
                     appendMessage('agent', 'Fehler: ' + err.message);
                 }
             });
+
+            // Live-Progress (Mercure): Topic /streaming/sessions/{sessionId}
+            // abonnieren und empfangene Events an die Timeline weitergeben.
+            // subscribe: ['*'] in mercure.yaml erlaubt das Abonnement;
+            // ein Aufruf von mercure() setzt zudem das Autorisierungs-Cookie.
+            function subscribeToProgress(sessionId, liveProgress) {
+                const hubUrl = new URL("{{ mercure('/streaming/sessions/live-progress')|escape('js') }}".split('?')[0]);
+                hubUrl.searchParams.set('topic', '/streaming/sessions/' + sessionId);
+                const eventSource = new EventSource(hubUrl);
+                eventSource.onmessage = function (event) {
+                    let payload;
+                    try {
+                        payload = JSON.parse(event.data);
+                    } catch (e) {
+                        return;
+                    }
+                    if ((payload.event || '') === 'progress') {
+                        const data = payload.data || {};
+                        liveProgress.addStep(data.message || 'Fortschritt', data.percentage);
+                    }
+                };
+                return eventSource;
+            }
+
+            function createLiveProgress() {
+                const container = document.createElement('div');
+                container.className = 'flex justify-start w-full';
+                const card = document.createElement('div');
+                card.className = 'chat-bubble-agent rounded-xl px-4 py-3 w-full max-w-[75%] space-y-2';
+                const stepsList = document.createElement('div');
+                stepsList.className = 'space-y-1 text-sm';
+                const progressBar = document.createElement('div');
+                progressBar.className = 'w-full bg-slate-200 dark:bg-slate-600 rounded-full h-1.5';
+                const progressFill = document.createElement('div');
+                progressFill.className = 'bg-primary h-1.5 rounded-full transition-all';
+                progressFill.style.width = '0%';
+                progressBar.appendChild(progressFill);
+                card.appendChild(stepsList);
+                card.appendChild(progressBar);
+                container.appendChild(card);
+                chatContainer.appendChild(container);
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+
+                return {
+                    addStep: function (message, percentage) {
+                        const row = document.createElement('div');
+                        row.className = 'flex items-center gap-2 text-content';
+                        const icon = document.createElement('i');
+                        icon.className = 'ph ph-check-circle text-primary';
+                        const text = document.createElement('span');
+                        text.textContent = message;
+                        row.appendChild(icon);
+                        row.appendChild(text);
+                        stepsList.appendChild(row);
+                        if (percentage !== null && percentage !== undefined) {
+                            progressFill.style.width = Math.min(100, Math.max(0, Number(percentage))) + '%';
+                        }
+                        chatContainer.scrollTop = chatContainer.scrollHeight;
+                    },
+                    finish: function () {
+                        progressFill.style.width = '100%';
+                        setTimeout(function () { container.remove(); }, 1500);
+                    }
+                };
+            }
 
             function appendMessage(role, content) {
                 const wrapper = document.createElement('div');

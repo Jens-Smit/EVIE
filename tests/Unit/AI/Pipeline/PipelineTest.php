@@ -20,6 +20,7 @@ use App\AI\Pipeline\Plan\PlannerInterface;
 use App\AI\Pipeline\Plan\Step;
 use App\Repository\AgentGoalRepository;
 use App\Repository\UserProfileRepository;
+use App\AI\Streaming\StreamingPublisher;
 use PHPUnit\Framework\MockObject\MockObject;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
@@ -232,6 +233,74 @@ final class PipelineTest extends TestCase
         $result = $this->pipeline()->run('EVIE soll mein Unternehmen aufbauen', 'user-setup');
 
         self::assertSame($expected, $result);
+    }
+
+    public function testRunWithSessionIdPublishesPhaseProgress(): void
+    {
+        // Uebergibt der Client eine Session-ID, muessen die Phasen-Events
+        // auf /streaming/sessions/{sessionId} publiziert werden. Hier fuer
+        // den kurzen Dialog-Pfad (Goal 10%, Intent 25%).
+        $publisher = $this->createMock(StreamingPublisher::class);
+        $publisher->expects(self::exactly(2))->method('publishProgress')
+            ->with(
+                'sess-1',
+                self::callback(fn (float $p): bool => in_array($p, [10.0, 25.0], true)),
+                self::callback(fn (string $m): bool => $m !== '')
+            );
+
+        $this->goalResolver->method('resolve')->willReturn(
+            new Goal('g', 'ad-hoc', null, Goal::SOURCE_AD_HOC)
+        );
+        $this->intentClassifier->method('classify')->willReturn(Intent::Conversation);
+        $this->execution->method('dialog')->willReturn(
+            new PipelineResult(PipelineResult::TYPE_DIALOG, 'Hallo')
+        );
+
+        $pipeline = new Pipeline(
+            $this->goalResolver,
+            $this->intentClassifier,
+            $this->planner,
+            $this->capabilityResolver,
+            $this->execution,
+            $this->agentGoalRepository,
+            $this->userProfileRepository,
+            new NullLogger(),
+            $publisher
+        );
+
+        $result = $pipeline->run('moin wer bist du', 'user-1', null, 'sess-1');
+        self::assertSame(PipelineResult::TYPE_DIALOG, $result->getType());
+    }
+
+    public function testRunWithoutSessionIdStaysSilent(): void
+    {
+        // Ohne Session-ID (interne Aufrufer) darf kein Progress-Event
+        // publiziert werden.
+        $publisher = $this->createMock(StreamingPublisher::class);
+        $publisher->expects(self::never())->method('publishProgress');
+
+        $this->goalResolver->method('resolve')->willReturn(
+            new Goal('g', 'ad-hoc', null, Goal::SOURCE_AD_HOC)
+        );
+        $this->intentClassifier->method('classify')->willReturn(Intent::Conversation);
+        $this->execution->method('dialog')->willReturn(
+            new PipelineResult(PipelineResult::TYPE_DIALOG, 'Hallo')
+        );
+
+        $pipeline = new Pipeline(
+            $this->goalResolver,
+            $this->intentClassifier,
+            $this->planner,
+            $this->capabilityResolver,
+            $this->execution,
+            $this->agentGoalRepository,
+            $this->userProfileRepository,
+            new NullLogger(),
+            $publisher
+        );
+
+        $result = $pipeline->run('moin wer bist du', 'user-1');
+        self::assertSame(PipelineResult::TYPE_DIALOG, $result->getType());
     }
 
     private function pipeline(): Pipeline

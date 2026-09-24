@@ -15,6 +15,7 @@ use App\AI\Pipeline\Plan\PlannerInterface;
 use App\AI\Pipeline\Plan\Step;
 use App\Entity\AgentGoal;
 use App\Repository\AgentGoalRepository;
+use App\AI\Streaming\StreamingPublisher;
 use App\Repository\UserProfileRepository;
 use Psr\Log\LoggerInterface;
 
@@ -41,6 +42,7 @@ final class Pipeline implements PipelineInterface
     private AgentGoalRepository $agentGoalRepository;
     private UserProfileRepository $userProfileRepository;
     private LoggerInterface $logger;
+    private ?StreamingPublisher $progressPublisher = null;
 
     public function __construct(
         GoalResolverInterface $goalResolver,
@@ -50,7 +52,8 @@ final class Pipeline implements PipelineInterface
         ExecutionCoordinatorInterface $executionCoordinator,
         AgentGoalRepository $agentGoalRepository,
         UserProfileRepository $userProfileRepository,
-        LoggerInterface $logger
+        LoggerInterface $logger,
+        ?StreamingPublisher $progressPublisher = null
     ) {
         $this->goalResolver = $goalResolver;
         $this->intentClassifier = $intentClassifier;
@@ -60,11 +63,12 @@ final class Pipeline implements PipelineInterface
         $this->agentGoalRepository = $agentGoalRepository;
         $this->userProfileRepository = $userProfileRepository;
         $this->logger = $logger;
+        $this->progressPublisher = $progressPublisher;
     }
 
-    public function run(string $message, string $userIdentifier, ?string $systemContext = null): PipelineResult
+    public function run(string $message, string $userIdentifier, ?string $systemContext = null, ?string $sessionId = null): PipelineResult
     {
-        $context = PipelineContext::create($message, $userIdentifier, $systemContext);
+        $context = PipelineContext::create($message, $userIdentifier, $systemContext, $sessionId);
         $this->logger->info('Pipeline.run: Start', [
             'run_id' => $context->getRunId(),
             'user_identifier' => $userIdentifier,
@@ -78,12 +82,20 @@ final class Pipeline implements PipelineInterface
             'goal' => $context->getGoal() !== null ? $context->getGoal()->getIdentifier() : null,
             'goal_source' => $context->getGoal() !== null ? $context->getGoal()->getSource() : null,
         ]);
+        $this->publishProgress($context, 10, 'Ziel erkannt', [
+            'phase' => 'goal',
+            'goal' => $context->getGoal()?->getIdentifier(),
+        ]);
 
         // Phase 2 — Intent (Exit-Gate: Dialog)
         $intent = $this->intentClassifier->classify($context);
         $context = $context->withIntent($intent);
         $this->logger->info('Pipeline.run: Phase 2 Intent klassifiziert', [
             'run_id' => $context->getRunId(),
+            'intent' => $intent->name,
+        ]);
+        $this->publishProgress($context, 25, 'Absicht klassifiziert: ' . $intent->name, [
+            'phase' => 'intent',
             'intent' => $intent->name,
         ]);
         if ($intent->isDialog()) {
@@ -101,9 +113,16 @@ final class Pipeline implements PipelineInterface
             'is_clarification' => $plan->isClarification(),
             'steps' => count($plan->getSteps()),
         ]);
+        $this->publishProgress($context, 40, sprintf('Plan erstellt (%d Schritte)', count($plan->getSteps())), [
+            'phase' => 'plan',
+            'steps' => count($plan->getSteps()),
+        ]);
         if ($plan->isClarification()) {
             $this->logger->info('Pipeline.run: Exit-Gate clarify', [
                 'reason' => $plan->getSteps()[0]->getReason(),
+            ]);
+            $this->publishProgress($context, 100, 'Rückfrage erforderlich', [
+                'phase' => 'clarify',
             ]);
             return $this->executionCoordinator->clarify($context, $plan);
         }
@@ -137,6 +156,13 @@ final class Pipeline implements PipelineInterface
             'run_id' => $context->getRunId(),
                     'step_target' => $step->getTarget(),
                 ]);
+                $this->publishProgress($context, 100, sprintf(
+                    'Freigabe erforderlich: %s',
+                    $step->getTarget()
+                ), [
+                    'phase' => 'hitl',
+                    'step_target' => $step->getTarget(),
+                ]);
                 return $this->executionCoordinator->awaitingApproval($context, $result);
             }
 
@@ -151,7 +177,27 @@ final class Pipeline implements PipelineInterface
             'run_id' => $context->getRunId(),
             'steps' => count($resolvedPlan->getSteps()),
         ]);
+        $this->publishProgress($context, 50, 'Ausführung startet', [
+            'phase' => 'execution',
+            'steps' => count($resolvedPlan->getSteps()),
+        ]);
         return $this->executionCoordinator->execute($context, $resolvedPlan);
+    }
+
+
+    /**
+     * Publiziert ein Live-Progress-Event auf dem Mercure-Topic des Laufs
+     * (/streaming/sessions/<run_id>), sofern der Client eine Session-ID
+     * uebergeben hat. Publish-Fehler dürfen den Lauf nie abbrechen; der
+     * StreamingPublisher faengt sie bereits intern, die Pruefung hier
+     * hält nur die Verantwortlichkeiten sauber getrennt.
+     */
+    private function publishProgress(PipelineContext $context, float $percentage, string $message, mixed $data = null): void
+    {
+        if (!$context->isProgressEnabled() || $this->progressPublisher === null) {
+            return;
+        }
+        $this->progressPublisher->publishProgress($context->getRunId(), $percentage, $message, $data);
     }
 
     /**

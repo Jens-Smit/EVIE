@@ -40,4 +40,46 @@ final class PipelineContextTest extends TestCase
         $withIntent = $withGoal->withIntent(Intent::Task);
         self::assertSame($runId, $withIntent->getRunId());
     }
+
+    public function testExternalRunIdActivatesProgressAndIsPreserved(): void
+    {
+        // Uebergibt der Client (Dialog-Frontend) eine Session-ID, aktiviert
+        // dies Live-Progress-Events auf /streaming/sessions/{runId} und die
+        // ID muss identisch bleiben (Mercure-Topic = Pipeline-runId).
+        $context = PipelineContext::create('nachricht', 'user-1', null, 'sess-abc');
+        self::assertSame('sess-abc', $context->getRunId());
+        self::assertTrue($context->isProgressEnabled());
+
+        $withGoal = $context->withGoal(new Goal('g', 'ziel', null, Goal::SOURCE_AD_HOC));
+        self::assertSame('sess-abc', $withGoal->getRunId());
+        self::assertTrue($withGoal->isProgressEnabled());
+
+        $withIntent = $withGoal->withIntent(Intent::Task);
+        self::assertSame('sess-abc', $withIntent->getRunId());
+        self::assertTrue($withIntent->isProgressEnabled());
+    }
+
+    public function testInternallyGeneratedRunIdKeepsProgressDisabled(): void
+    {
+        // Interne Aufrufer (Scheduler, RunAgentGoalHandler, StrategyManager,
+        // EvaluationService) rufen run() ohne Session-ID auf: Der Lauf darf
+        // keine Progress-Events publizieren.
+        $context = PipelineContext::create('nachricht', 'user-1');
+        self::assertFalse($context->isProgressEnabled());
+    }
+
+    public function testSystemContextSurvivesGoalAndIntentEnrichment(): void
+    {
+        // Regression: withGoal()/withIntent() muessen den SystemContext (z.B.
+        // Konversationsverlauf) weiterreichen, sonst verliert die Pipeline
+        // den Kontext ab der ersten Anreicherung.
+        $context = PipelineContext::create('nachricht', 'user-1', 'kontext-aus-verlauf');
+        self::assertSame('kontext-aus-verlauf', $context->getSystemContext());
+
+        $withGoal = $context->withGoal(new Goal('g', 'ziel', null, Goal::SOURCE_AD_HOC));
+        self::assertSame('kontext-aus-verlauf', $withGoal->getSystemContext());
+
+        $withIntent = $withGoal->withIntent(Intent::Task);
+        self::assertSame('kontext-aus-verlauf', $withIntent->getSystemContext());
+    }
 }

@@ -26,20 +26,22 @@ final class PipelineContext
     private ?Goal $goal;
     private ?Intent $intent;
     private string $runId;
+    private bool $progressEnabled;
 
-    private function __construct(string $message, string $userIdentifier, ?string $systemContext = null)
+    private function __construct(string $message, string $userIdentifier, ?string $systemContext = null, ?string $runId = null)
     {
         $this->message = $message;
         $this->userIdentifier = $userIdentifier;
         $this->systemContext = $systemContext;
         $this->goal = null;
         $this->intent = null;
-        $this->runId = bin2hex(random_bytes(8));
+        $this->runId = $runId ?? bin2hex(random_bytes(8));
+        $this->progressEnabled = $runId !== null;
     }
 
-    public static function create(string $message, string $userIdentifier, ?string $systemContext = null): self
+    public static function create(string $message, string $userIdentifier, ?string $systemContext = null, ?string $runId = null): self
     {
-        return new self($message, $userIdentifier, $systemContext);
+        return new self($message, $userIdentifier, $systemContext, $runId);
     }
 
     /**
@@ -51,6 +53,17 @@ final class PipelineContext
     public function getRunId(): string
     {
         return $this->runId;
+    }
+
+    /**
+     * Live-Progress im Dialog: Nur wenn der Client eine Session-ID
+     * uebergeben hat (und damit ein Mercure-Topic abonniert hat), duerfen
+     * Progress-Events publiziert werden. Interne Laeufe ohne Session-ID
+     * (Scheduler, RunAgentGoalHandler, StrategyManager) bleiben stumm.
+     */
+    public function isProgressEnabled(): bool
+    {
+        return $this->progressEnabled;
     }
 
     /**
@@ -85,20 +98,20 @@ final class PipelineContext
 
     public function withGoal(Goal $goal): self
     {
-        $clone = new self($this->message, $this->userIdentifier);
+        $clone = new self($this->message, $this->userIdentifier, $this->systemContext, $this->runId);
         $clone->goal = $goal;
         $clone->intent = $this->intent;
-        $clone->runId = $this->runId;
+        $clone->progressEnabled = $this->progressEnabled;
 
         return $clone;
     }
 
     public function withIntent(Intent $intent): self
     {
-        $clone = new self($this->message, $this->userIdentifier);
+        $clone = new self($this->message, $this->userIdentifier, $this->systemContext, $this->runId);
         $clone->goal = $this->goal;
         $clone->intent = $intent;
-        $clone->runId = $this->runId;
+        $clone->progressEnabled = $this->progressEnabled;
 
         return $clone;
     }
