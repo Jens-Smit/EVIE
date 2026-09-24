@@ -41,8 +41,13 @@ final class OrchestratorDialogService
      * Der optionale SystemContext (z.B. persistierter Konversationsverlauf,
      * Luecke 5) wird als SystemMessage vor die User-Nachricht gehaengt, ohne
      * die Phasenlogik der Pipeline zu aendern.
+     *
+     * Die optionale sessionId wird als Pipeline-runId durchgereicht und
+     * aktiviert dort Live-Progress-Events auf dem Mercure-Topic
+     * /streaming/sessions/{sessionId}. Ohne sessionId bleibt der Lauf
+     * still (interne Aufrufer bleiben unbeeinflusst).
      */
-    public function ask(string $userMessage, string $userIdentifier, ?string $systemContext = null): string
+    public function ask(string $userMessage, string $userIdentifier, ?string $systemContext = null, ?string $sessionId = null): string
     {
         $this->logger->info('OrchestratorDialogService::ask - Start', [
             'user_identifier' => $userIdentifier,
@@ -50,7 +55,7 @@ final class OrchestratorDialogService
         ]);
         $this->tenantPlatformContext->setUserIdentifier($userIdentifier);
         try {
-            $result = $this->pipeline->run($userMessage, $userIdentifier, $systemContext);
+            $result = $this->pipeline->run($userMessage, $userIdentifier, $systemContext, $sessionId);
         } finally {
             $this->tenantPlatformContext->clear();
         }

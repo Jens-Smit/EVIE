@@ -14,5 +14,11 @@ namespace App\AI\Pipeline;
  */
 interface PipelineInterface
 {
-    public function run(string $message, string $userIdentifier, ?string $systemContext = null): Execution\PipelineResult;
+    /**
+     * $sessionId ist optional: Nur wenn der Client eine Session-ID
+     * uebergibt (Mercure-Topic /streaming/sessions/<id> ist abonniert),
+     * publiziert die Pipeline Live-Progress-Events. Ohne ID bleibt der
+     * Lauf stumm (Scheduler, RunAgentGoalHandler, StrategyManager).
+     */
+    public function run(string $message, string $userIdentifier, ?string $systemContext = null, ?string $sessionId = null): Execution\PipelineResult;
 }

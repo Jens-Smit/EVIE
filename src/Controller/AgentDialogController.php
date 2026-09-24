@@ -67,6 +67,9 @@ final class AgentDialogController extends AbstractController
         }
 
         $userMessage = $payload['message'] ?? null;
+        $sessionId = isset($payload['session_id']) && is_string($payload['session_id']) && $payload['session_id'] !== ''
+            ? $payload['session_id']
+            : null;
         $conversationId = isset($payload['conversation_id'])
             ? (int) $payload['conversation_id']
             : ($request->query->get('conversation_id') !== null ? (int) $request->query->get('conversation_id') : null);
@@ -122,8 +125,9 @@ final class AgentDialogController extends AbstractController
                 'user_identifier' => $userIdentifier,
                 'message' => $userMessage,
                 'conversation_id' => $conversationId,
+                'session_id' => $sessionId,
             ]);
-            $response = $this->orchestratorDialogService->ask($userMessage, $userIdentifier, $systemPrompt);
+            $response = $this->orchestratorDialogService->ask($userMessage, $userIdentifier, $systemPrompt, $sessionId);
 
             $this->logger->debug('AgentDialogController::dialog - Ergebnis:', [
                 'content' => $response,

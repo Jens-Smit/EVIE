@@ -12,6 +12,7 @@ use App\AI\Pipeline\PipelineContext;
 use Psr\Log\LoggerInterface;
 use Symfony\AI\Agent\AgentInterface;
 use Symfony\AI\Platform\Message\Message;
+use App\AI\Streaming\StreamingPublisher;
 use Symfony\AI\Platform\Message\MessageBag;
 use Symfony\Component\DependencyInjection\Attribute\Autowire;
 use Symfony\Component\Routing\Generator\UrlGeneratorInterface;
@@ -45,6 +46,7 @@ final class ExecutionCoordinator implements ExecutionCoordinatorInterface
     private LlmRetryExecutor $llmRetryExecutor;
     private UrlGeneratorInterface $urlGenerator;
     private LoggerInterface $logger;
+    private ?StreamingPublisher $progressPublisher = null;
     /** @var list<StepExecutorInterface> */
     private array $stepExecutors;
 
@@ -59,12 +61,14 @@ final class ExecutionCoordinator implements ExecutionCoordinatorInterface
         LlmRetryExecutor $llmRetryExecutor,
         UrlGeneratorInterface $urlGenerator,
         LoggerInterface $logger,
-        iterable $stepExecutors = []
+        iterable $stepExecutors = [],
+        ?StreamingPublisher $progressPublisher = null
     ) {
         $this->orchestratorAgent = $orchestratorAgent;
         $this->llmRetryExecutor = $llmRetryExecutor;
         $this->urlGenerator = $urlGenerator;
         $this->logger = $logger;
+        $this->progressPublisher = $progressPublisher;
         $this->stepExecutors = [];
         foreach ($stepExecutors as $executor) {
             $this->stepExecutors[] = $executor;
@@ -155,10 +159,11 @@ final class ExecutionCoordinator implements ExecutionCoordinatorInterface
         // (keine Halluzination desfinalen Ergebnisses).
         $state = new ExecutionState();
         $steps = $this->sortByDependencies($plan->getSteps());
+        $stepCount = count($steps);
         $lastResult = null;
 
         try {
-            foreach ($steps as $step) {
+            foreach ($steps as $stepIndex => $step) {
                 $executor = $this->findExecutor($step);
                 if ($executor === null) {
                     throw new \RuntimeException(sprintf(
@@ -174,6 +179,7 @@ final class ExecutionCoordinator implements ExecutionCoordinatorInterface
                     'type' => $step->getType(),
                     'target' => $step->getTarget(),
                 ]);
+                $this->publishStepStarted($context, $step, $stepIndex, $stepCount);
 
                 $result = $executor->execute($step, $context, $state);
                 $state->set($step->resolvedOutputKey(), $result);
@@ -184,6 +190,7 @@ final class ExecutionCoordinator implements ExecutionCoordinatorInterface
                     'step_id' => $step->getId(),
                     'output_key' => $step->resolvedOutputKey(),
                 ]);
+                $this->publishStepCompleted($context, $step, $stepIndex, $stepCount);
             }
         } catch (\Exception $e) {
             $this->logger->error('ExecutionCoordinator::execute fehlgeschlagen: ' . $e->getMessage(), [
@@ -271,6 +278,47 @@ final class ExecutionCoordinator implements ExecutionCoordinatorInterface
      * Schritts (z.B. der Businessplan aus dem synthesis-Schritt); sonst
      * eine strukturierte Zusammenfassung aller Schrittergebnisse.
      */
+
+    /**
+     * Live-Progress: Step-Start dem Mercure-Topic des Laufs melden, wenn
+     * der Client eine Session-ID uebergeben hat (Dialog-Frontend). Die
+     * Prozentzahl interpoliert zwischen 50 (Phase-5-Start) und 90, damit
+     * die finale Antwort bei 100 bleibt.
+     */
+    private function publishStepStarted(PipelineContext $context, Step $step, int $stepIndex, int $stepCount): void
+    {
+        if (!$context->isProgressEnabled() || $this->progressPublisher === null) {
+            return;
+        }
+        $percentage = 50 + (int) floor(40 * ($stepIndex / max(1, $stepCount)));
+        $label = $step->getType() === Step::TYPE_SUBAGENT
+            ? sprintf('Subagent "%s" gestartet', $step->getTarget())
+            : sprintf('Tool "%s" wird aufgerufen', $step->getTarget());
+        $this->progressPublisher->publishProgress($context->getRunId(), $percentage, $label, [
+            'phase' => 'step',
+            'step_id' => $step->getId(),
+            'step_type' => $step->getType(),
+            'step_target' => $step->getTarget(),
+            'step_index' => $stepIndex + 1,
+            'step_count' => $stepCount,
+        ]);
+    }
+
+    private function publishStepCompleted(PipelineContext $context, Step $step, int $stepIndex, int $stepCount): void
+    {
+        if (!$context->isProgressEnabled() || $this->progressPublisher === null) {
+            return;
+        }
+        $percentage = 50 + (int) floor(40 * (($stepIndex + 1) / max(1, $stepCount)));
+        $this->progressPublisher->publishProgress($context->getRunId(), $percentage, sprintf('"%s" abgeschlossen', $step->getTarget()), [
+            'phase' => 'step',
+            'step_id' => $step->getId(),
+            'step_target' => $step->getTarget(),
+            'step_index' => $stepIndex + 1,
+            'step_count' => $stepCount,
+        ]);
+    }
+
     private function formatFinalAnswer(mixed $lastResult, Plan $plan, ExecutionState $state): string
     {
         if (is_string($lastResult) && trim($lastResult) !== '') {
