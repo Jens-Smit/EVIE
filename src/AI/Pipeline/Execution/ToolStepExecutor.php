@@ -28,6 +28,11 @@ use Psr\Log\LoggerInterface;
  * Ergebnis des Schritts wird als String/Array zurueckgegeben und vom
  * ExecutionCoordinator im ExecutionState abgelegt.
  *
+ * Statische Tools erhalten den user_identifier des PipelineContext als
+ * Parameter, weil der Planner (Phase 3) ihn nicht im Plan vorsieht,
+ * tenante隔绝 Tools ihn aber benoetigen (z.B. StrategyDocumentTool
+ * fuer die Tenant-Isolation der Document-Entity).
+ *
  * @see docs/architecture/orchestrator-pipeline.md Phase 5
  */
 final class ToolStepExecutor implements StepExecutorInterface
@@ -59,6 +64,7 @@ final class ToolStepExecutor implements StepExecutorInterface
 
         if ($this->toolRegistry->has($name)) {
             $tool = $this->toolRegistry->get($name);
+            $parameters = $this->withUserIdentifier($parameters, $context);
             $result = $tool($parameters);
 
             return is_array($result) ? $result : (string) $result;
@@ -110,6 +116,25 @@ final class ToolStepExecutor implements StepExecutorInterface
         $inputs = $state->collect($step->getInputFrom());
         if ($inputs !== []) {
             $parameters['input_from'] = $inputs;
+        }
+
+        return $parameters;
+    }
+
+    /**
+     * Ergaenzt die Parameter um den user_identifier des aufrufenden
+     * Users, sofern der Plan ihn nicht explizit setzt. Der Planner
+     * kennt den Identifier nicht; tenante Tools (z.B.
+     * StrategyDocumentTool) benoetigen ihn aber zwingend. Ein im Plan
+     * explizit gesetzter Wert wird nicht ueberschrieben.
+     *
+     * @param array<string, mixed> $parameters
+     * @return array<string, mixed>
+     */
+    private function withUserIdentifier(array $parameters, PipelineContext $context): array
+    {
+        if (!array_key_exists('user_identifier', $parameters)) {
+            $parameters['user_identifier'] = $context->getUserIdentifier();
         }
 
         return $parameters;
