@@ -16,8 +16,10 @@ use Psr\Log\LoggerInterface;
 /**
  * Phase 5: Fuehrt type=tool-Schritte deterministisch aus.
  *
- * Reihenfolge (Blueprint \u00a74.A Phase 4/5):
- *  1. ToolInterface-Tool aus der ToolRegistry (statische EVIE-Tools)
+ * Reihenfolge (Blueprint §4.A Phase 4/5):
+ *  1. ToolInterface-Tool aus der ToolRegistry (statische EVIE-Tools;
+ *     native #[AsTool]-Tools werden ueber den AttributeToolAdapter
+ *     ausgefuehrt)
  *  2. Freigegebene ToolDefinition (dynamische Tools) via
  *     DynamicToolFactory + DynamicToolExecutor
  *
@@ -63,7 +65,16 @@ final class ToolStepExecutor implements StepExecutorInterface
         }
 
         $definition = $this->toolDefinitionRepository->findOneByNameForUser($name, $context->getUserIdentifier());
-        if ($definition instanceof ToolDefinition && $definition->getStatus() === 'approved') {
+        if ($definition instanceof ToolDefinition) {
+            if ($definition->getStatus() !== 'approved') {
+                throw new \RuntimeException(sprintf(
+                    'Tool "%s" existiert als dynamisches Werkzeug, ist aber noch nicht freigegeben (Status: %s). '
+                    . 'Bitte zuerst die Freigabe im Tool-Approval vornehmen.',
+                    $name,
+                    $definition->getStatus()
+                ));
+            }
+
             $dynamicTool = $this->dynamicToolFactory->createAndRegisterTool($definition);
             $result = $this->dynamicToolExecutor->execute($dynamicTool, $parameters);
             if (!$result->isSuccess()) {

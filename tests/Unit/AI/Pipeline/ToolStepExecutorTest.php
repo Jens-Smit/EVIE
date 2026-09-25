@@ -14,13 +14,15 @@ use App\Repository\ToolDefinitionRepository;
 use App\Tests\Stub\InMemoryTool;
 use PHPUnit\Framework\TestCase;
 use Psr\Log\NullLogger;
+use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 
 /**
  * Unit-Tests fuer den ToolStepExecutor (Phase 5).
  *
  * Verifiziert: statische Tool-Ausfuehrung via ToolRegistry, Input-
- * Weitergabe aus dem ExecutionState, dynamische Tool-Definitionen und
- * Fehler- bzw. Aufloesungs-Fehlverhalten.
+ * Weitergabe aus dem ExecutionState, Ausfuehrung nativer #[AsTool]-
+ * Tools ueber den AttributeToolAdapter, dynamische Tool-Definitionen
+ * und Fehler- bzw. Aufloesungs-Fehlverhalten.
  *
  * @see docs/architecture/orchestrator-pipeline.md Phase 5
  */
@@ -43,6 +45,31 @@ final class ToolStepExecutorTest extends TestCase
         $result = $executor->execute($step, PipelineContext::create('Wetter?', 'u'), new ExecutionState());
 
         self::assertSame(['city' => 'Berlin'], $result);
+    }
+
+    /**
+     * Regression-Test fuer dev-tail.log: Der Planner plant ein natives
+     * #[AsTool]-Tool (strategy_document), ToolRegistry::get() brach
+     * zuvor mit "ist kein ToolInterface" ab. Der Executor muss das
+     * Tool ueber den AttributeToolAdapter ausfuehren koennen.
+     */
+    public function testExecutesNativeAsToolThroughAdapter(): void
+    {
+        $registry = $this->createRegistry(new NativeStrategyDocumentStub());
+        $executor = $this->buildExecutor($registry);
+
+        $step = new Step(
+            Step::TYPE_TOOL,
+            'strategy_document',
+            ['name' => 'Businessplan Vision Gastro'],
+            id: 'create_businessplan'
+        );
+        $result = $executor->execute($step, PipelineContext::create('Businessplan', 'u'), new ExecutionState());
+
+        self::assertSame(
+            ['status' => 'success', 'name' => 'Businessplan Vision Gastro'],
+            $result
+        );
     }
 
     public function testMergesInputFromStateIntoParameters(): void
@@ -99,5 +126,14 @@ final class ToolStepExecutorTest extends TestCase
     private function createDynamicToolFactory(): \App\AI\Skills\Tool\DynamicToolFactory
     {
         return $this->createMock(\App\AI\Skills\Tool\DynamicToolFactory::class);
+    }
+}
+
+#[AsTool('strategy_document', 'Speichert oder aktualisiert ein Strategiedokument.')]
+final class NativeStrategyDocumentStub
+{
+    public function __invoke(array $parameters = []): array
+    {
+        return ['status' => 'success', 'name' => (string) ($parameters['name'] ?? '')];
     }
 }
