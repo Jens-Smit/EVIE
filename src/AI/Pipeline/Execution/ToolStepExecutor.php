@@ -53,8 +53,7 @@ final class ToolStepExecutor implements StepExecutorInterface
 
     public function execute(Step $step, PipelineContext $context, ExecutionState $state): mixed
     {
-        $name = $step->getTarget(
-);
+        $name = $step->getTarget();
         $parameters = $this->mergeInputs($step, $state);
 
         $this->logger->info('ToolStepExecutor: Fuehre Tool-Schritt aus', [
@@ -105,8 +104,7 @@ final class ToolStepExecutor implements StepExecutorInterface
 
     /**
      * Mischt die geplanten Parameter mit den Ergebnissen der in
-     * input_from referenzierten Schritte;
- input_from-Ergebnisse werden
+     * input_from referenzierten Schritte; input_from-Ergebnisse werden
      * unter 'input_from' als Key uebergeben, damit Tool-Parameter nicht
      * kollidieren.
      *
