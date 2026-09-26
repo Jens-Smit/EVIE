@@ -30,7 +30,7 @@ use Psr\Log\LoggerInterface;
  *
  * Statische Tools erhalten den user_identifier des PipelineContext als
  * Parameter, weil der Planner (Phase 3) ihn nicht im Plan vorsieht,
- * tenante Tools ihn aber benoetigen (z.B. StrategyDocumentTool
+ * tenante隔绝 Tools ihn aber benoetigen (z.B. StrategyDocumentTool
  * fuer die Tenant-Isolation der Document-Entity).
  *
  * @see docs/architecture/orchestrator-pipeline.md Phase 5
@@ -53,7 +53,8 @@ final class ToolStepExecutor implements StepExecutorInterface
 
     public function execute(Step $step, PipelineContext $context, ExecutionState $state): mixed
     {
-        $name = $step->getTarget();
+        $name = $step->getTarget(
+);
         $parameters = $this->mergeInputs($step, $state);
 
         $this->logger->info('ToolStepExecutor: Fuehre Tool-Schritt aus', [
@@ -104,7 +105,8 @@ final class ToolStepExecutor implements StepExecutorInterface
 
     /**
      * Mischt die geplanten Parameter mit den Ergebnissen der in
-     * input_from referenzierten Schritte; input_from-Ergebnisse werden
+     * input_from referenzierten Schritte;
+ input_from-Ergebnisse werden
      * unter 'input_from' als Key uebergeben, damit Tool-Parameter nicht
      * kollidieren.
      *
