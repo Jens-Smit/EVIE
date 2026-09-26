@@ -16,8 +16,10 @@ use Psr\Log\LoggerInterface;
 /**
  * Phase 5: Fuehrt type=tool-Schritte deterministisch aus.
  *
- * Reihenfolge (Blueprint \u00a74.A Phase 4/5):
- *  1. ToolInterface-Tool aus der ToolRegistry (statische EVIE-Tools)
+ * Reihenfolge (Blueprint §4.A Phase 4/5):
+ *  1. ToolInterface-Tool aus der ToolRegistry (statische EVIE-Tools;
+ *     native #[AsTool]-Tools werden ueber den AttributeToolAdapter
+ *     ausgefuehrt)
  *  2. Freigegebene ToolDefinition (dynamische Tools) via
  *     DynamicToolFactory + DynamicToolExecutor
  *
@@ -25,6 +27,11 @@ use Psr\Log\LoggerInterface;
  * Laufzeit ueber ToolRegistry bzw. ToolDefinitionRepository. Das
  * Ergebnis des Schritts wird als String/Array zurueckgegeben und vom
  * ExecutionCoordinator im ExecutionState abgelegt.
+ *
+ * Statische Tools erhalten den user_identifier des PipelineContext als
+ * Parameter, weil der Planner (Phase 3) ihn nicht im Plan vorsieht,
+ * tenante隔绝 Tools ihn aber benoetigen (z.B. StrategyDocumentTool
+ * fuer die Tenant-Isolation der Document-Entity).
  *
  * @see docs/architecture/orchestrator-pipeline.md Phase 5
  */
@@ -46,7 +53,8 @@ final class ToolStepExecutor implements StepExecutorInterface
 
     public function execute(Step $step, PipelineContext $context, ExecutionState $state): mixed
     {
-        $name = $step->getTarget();
+        $name = $step->getTarget(
+);
         $parameters = $this->mergeInputs($step, $state);
 
         $this->logger->info('ToolStepExecutor: Fuehre Tool-Schritt aus', [
@@ -57,13 +65,23 @@ final class ToolStepExecutor implements StepExecutorInterface
 
         if ($this->toolRegistry->has($name)) {
             $tool = $this->toolRegistry->get($name);
+            $parameters = $this->withUserIdentifier($parameters, $context);
             $result = $tool($parameters);
 
             return is_array($result) ? $result : (string) $result;
         }
 
         $definition = $this->toolDefinitionRepository->findOneByNameForUser($name, $context->getUserIdentifier());
-        if ($definition instanceof ToolDefinition && $definition->getStatus() === 'approved') {
+        if ($definition instanceof ToolDefinition) {
+            if ($definition->getStatus() !== 'approved') {
+                throw new \RuntimeException(sprintf(
+                    'Tool "%s" existiert als dynamisches Werkzeug, ist aber noch nicht freigegeben (Status: %s). '
+                    . 'Bitte zuerst die Freigabe im Tool-Approval vornehmen.',
+                    $name,
+                    $definition->getStatus()
+                ));
+            }
+
             $dynamicTool = $this->dynamicToolFactory->createAndRegisterTool($definition);
             $result = $this->dynamicToolExecutor->execute($dynamicTool, $parameters);
             if (!$result->isSuccess()) {
@@ -87,7 +105,8 @@ final class ToolStepExecutor implements StepExecutorInterface
 
     /**
      * Mischt die geplanten Parameter mit den Ergebnissen der in
-     * input_from referenzierten Schritte; input_from-Ergebnisse werden
+     * input_from referenzierten Schritte;
+ input_from-Ergebnisse werden
      * unter 'input_from' als Key uebergeben, damit Tool-Parameter nicht
      * kollidieren.
      *
@@ -99,6 +118,25 @@ final class ToolStepExecutor implements StepExecutorInterface
         $inputs = $state->collect($step->getInputFrom());
         if ($inputs !== []) {
             $parameters['input_from'] = $inputs;
+        }
+
+        return $parameters;
+    }
+
+    /**
+     * Ergaenzt die Parameter um den user_identifier des aufrufenden
+     * Users, sofern der Plan ihn nicht explizit setzt. Der Planner
+     * kennt den Identifier nicht; tenante Tools (z.B.
+     * StrategyDocumentTool) benoetigen ihn aber zwingend. Ein im Plan
+     * explizit gesetzter Wert wird nicht ueberschrieben.
+     *
+     * @param array<string, mixed> $parameters
+     * @return array<string, mixed>
+     */
+    private function withUserIdentifier(array $parameters, PipelineContext $context): array
+    {
+        if (!array_key_exists('user_identifier', $parameters)) {
+            $parameters['user_identifier'] = $context->getUserIdentifier();
         }
 
         return $parameters;

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Tests\Unit\AI\Skills\Tool;
 
+use App\AI\Skills\Tool\AttributeToolAdapter;
 use App\AI\Skills\Tool\ToolInterface;
 use App\AI\Skills\Tool\ToolRegistry;
 use PHPUnit\Framework\TestCase;
@@ -20,6 +21,13 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
  * Der Regression-Test testAllIncludesNativeAsToolTools() reproduziert den
  * UndefinedMethodError, der auftrat, als der Planner (Phase 3) toolRegistry
  * ->all() aufrief und ein #[AsTool]-Tool ohne getName() traf.
+ *
+ * testGetReturnsAdapterForNativeAsToolTool() und
+ * testAdapterDelegatesInvocationToNativeTool() decken den Fix aus
+ * dev-tail.log ab: Der Planner kuendigt native #[AsTool]-Tools im Plan an,
+ * ToolRegistry::get() liefert sie jetzt als AttributeToolAdapter, sodass
+ * Phase 5 (ToolStepExecutor) statische Tool-Schritte ausfuehren kann,
+ * statt mit "ist kein ToolInterface" abzubrechen.
  */
 final class ToolRegistryTest extends TestCase
 {
@@ -50,7 +58,8 @@ final class ToolRegistryTest extends TestCase
     public function testAllMixesNativeAsToolAndToolInterface(): void
     {
         $registry = new ToolRegistry([
-            new NativeAsToolStub(),
+            new Nat
+iveAsToolStub(),
             $this->buildToolInterface('generic_tool_executor'),
         ]);
 
@@ -77,14 +86,26 @@ final class ToolRegistryTest extends TestCase
         self::assertSame($tool, $registry->get('generic_tool_executor'));
     }
 
-    public function testGetThrowsForNativeAsToolWithoutToolInterface(): void
+    public function testGetReturnsAdapterForNativeAsToolTool(): void
     {
         $registry = new ToolRegistry([new NativeAsToolStub()]);
 
-        $this->expectException(\InvalidArgumentException::class);
-        $this->expectExceptionMessage('kein ToolInterface');
+        $tool = $registry->get('data_analyzer');
 
-        $registry->get('data_analyzer');
+        self::assertInstanceOf(AttributeToolAdapter::class, $tool);
+        self::assertInstanceOf(ToolInterface::class, $tool);
+        self::assertSame('data_analyzer', $tool->getName());
+        self::assertSame('Analysiert Daten.', $tool->getDescription());
+    }
+
+    public function testAdapterDelegatesInvocationToNativeTool(): void
+    {
+        $registry = new ToolRegistry([new NativeAsToolStub()]);
+        $tool = $registry->get('data_analyzer');
+
+        $result = $tool(['value' => 42]);
+
+        self::assertSame(['result' => 'echo:42'], $result);
     }
 
     public function testGetThrowsForUnknownTool(): void
@@ -98,7 +119,8 @@ final class ToolRegistryTest extends TestCase
     private function buildToolInterface(string $name): ToolInterface
     {
         return new class($name) implements ToolInterface {
-            public function __construct(private readonly string $name)
+            public function __construct(private readonly string $n
+ame)
             {
             }
 
@@ -125,7 +147,7 @@ final class NativeAsToolStub
 {
     public function __invoke(array $data): string
     {
-        return '';
+        return 'echo:' . ($data['value'] ?? '');
     }
 }
 
