@@ -29,10 +29,10 @@ final class StrategyDocumentToolTest extends TestCase
         $result = $tool([
             'template' => 'business_plan',
             'content' => [
-                'executive_summary' => 'Gastro-Dienstleister mit Wachstumspotenzial.',
+                'executive_summary' => str_repeat('Gastro-Dienstleister mit Wachstumspotenzial und klarer Zielgruppe. ', 5),
                 'market_analysis' => [
-                    'summary' => 'Markt waechst mit 7% p.a.',
-                    'trends' => 'Digitalisierung der Gastronomie.',
+                    'summary' => str_repeat('Markt waechst mit 7% p.a. ', 20),
+                    'trends' => str_repeat('Digitalisierung der Gastronomie. ', 10),
                 ],
             ],
             'user_identifier' => 'user-1',
@@ -44,7 +44,7 @@ final class StrategyDocumentToolTest extends TestCase
         $document = $documentRepo->lastSaved;
         self::assertInstanceOf(Document::class, $document);
         self::assertStringContainsString('## Executive Summary', $document->getContent());
-        self::assertStringContainsString('Gastro-Dienstleister mit Wachstumspotenzial.', $document->getContent());
+        self::assertStringContainsString('Gastro-Dienstleister mit Wachstumspotenzial und klarer Zielgruppe.', $document->getContent());
         self::assertStringContainsString('## Market Analysis', $document->getContent());
         self::assertStringContainsString('### Summary', $document->getContent());
         self::assertStringContainsString('Markt waechst mit 7% p.a.', $document->getContent());
@@ -56,13 +56,13 @@ final class StrategyDocumentToolTest extends TestCase
 
         $result = $tool([
             'name' => 'Businessplan Visiongastro',
-            'content' => 'Volltext des Businessplans.',
+            'content' => str_repeat('Volltext des Businessplans mit ausformulierten Abschnitten. ', 10),
             'user_identifier' => 'user-1',
         ]);
 
         self::assertSame('success', $result['status']);
         self::assertSame('Businessplan Visiongastro', $documentRepo->lastSaved->getName());
-        self::assertSame('Volltext des Businessplans.', $documentRepo->lastSaved->getContent());
+        self::assertSame(trim(str_repeat('Volltext des Businessplans mit ausformulierten Abschnitten. ', 10)), $documentRepo->lastSaved->getContent());
     }
 
     public function testUsesResolvedInputParameterAsContentFallback(): void
@@ -71,7 +71,7 @@ final class StrategyDocumentToolTest extends TestCase
 
         $result = $tool([
             'template' => 'business_plan',
-            'input' => 'Marktanalyse: Gastro-Markt waechst mit 7% p.a.',
+            'input' => str_repeat('Marktanalyse: Gastro-Markt waechst mit 7% p.a. ', 12),
             'sections' => ['Executive Summary', 'Marktanalyse'],
             'user_identifier' => 'user-1',
         ]);
@@ -79,7 +79,7 @@ final class StrategyDocumentToolTest extends TestCase
         self::assertSame('success', $result['status']);
         self::assertSame('Strategy Document: business_plan', $documentRepo->lastSaved->getName());
         self::assertSame(
-            'Marktanalyse: Gastro-Markt waechst mit 7% p.a.',
+            trim(str_repeat('Marktanalyse: Gastro-Markt waechst mit 7% p.a. ', 12)),
             $documentRepo->lastSaved->getContent()
         );
     }
@@ -90,13 +90,13 @@ final class StrategyDocumentToolTest extends TestCase
 
         $result = $tool([
             'template' => 'business_plan',
-            'input' => ['executive_summary' => 'Wachstumsfaehiger Gastro-Dienstleister.'],
+            'input' => ['executive_summary' => str_repeat('Wachstumsfaehiger Gastro-Dienstleister mit stabilem Markt. ', 10)],
             'user_identifier' => 'user-1',
         ]);
 
         self::assertSame('success', $result['status']);
         self::assertStringContainsString('## Executive Summary', $documentRepo->lastSaved->getContent());
-        self::assertStringContainsString('Wachstumsfaehiger Gastro-Dienstleister.', $documentRepo->lastSaved->getContent());
+        self::assertStringContainsString('Wachstumsfaehiger Gastro-Dienstleister mit stabilem Markt.', $documentRepo->lastSaved->getContent());
     }
 
     public function testMissingParametersYieldsSpeakingValidationMessage(): void
@@ -108,8 +108,100 @@ final class StrategyDocumentToolTest extends TestCase
 
         $tool([
             'template' => 'business_plan',
-            'input_from' => ['business_model_analysis' => ['executive_summary' => '...']],
+            'input_from' => [],
         ]);
+    }
+
+    public function testUsesInputFromAsStringContentWhenContentMissing(): void
+    {
+        [$tool, $documentRepo] = $this->buildTool();
+        $synthesized = trim(str_repeat('Ausformulierter Fachtext zum Markt. ', 20));
+        $result = $tool([
+            'name' => 'Businessplan Vision Gastro',
+            'input_from' => $synthesized,
+            'user_identifier' => 'user-1',
+        ]);
+        self::assertSame('success', $result['status']);
+        self::assertSame(trim($synthesized), $documentRepo->lastSaved->getContent());
+        self::assertSame(Document::STATUS_COMPLETED, $documentRepo->lastSaved->getStatus());
+    }
+
+    public function testPrefersExplicitContentOverInputFrom(): void
+    {
+        [$tool, $documentRepo] = $this->buildTool();
+        $explicit = trim(str_repeat('Bewusst uebergebener Volltext. ', 20));
+        $result = $tool([
+            'name' => 'Dokument',
+            'content' => $explicit,
+            'input_from' => 'Vorergebnis, das ignoriert werden soll.',
+            'user_identifier' => 'user-1',
+        ]);
+        self::assertSame('success', $result['status']);
+        self::assertSame(trim($explicit), $documentRepo->lastSaved->getContent());
+    }
+
+    public function testUsesInputFromArrayAsMarkdownContent(): void
+    {
+        [$tool, $documentRepo] = $this->buildTool();
+        $sectionText = trim(str_repeat('Ausformulierte Analyse des Gastro-Markts. ', 15));
+        $result = $tool([
+            'name' => 'Marktanalyse',
+            'input_from' => ['market_analysis' => $sectionText],
+            'user_identifier' => 'user-1',
+        ]);
+        self::assertSame('success', $result['status']);
+        self::assertStringContainsString('## Market Analysis', $documentRepo->lastSaved->getContent());
+        self::assertStringContainsString(trim($sectionText), $documentRepo->lastSaved->getContent());
+    }
+
+    public function testShortStubContentIsStoredAsDraftAndFails(): void
+    {
+        [$tool, $documentRepo] = $this->buildTool();
+        try {
+            $tool([
+                'name' => 'Businessplan Stub',
+                'input_from' => 'Kurzer Stub-Text.',
+                'user_identifier' => 'user-1',
+            ]);
+            self::fail('Erwartete RuntimeException wegen zu kurzen Inhalts.');
+        } catch (\RuntimeException $e) {
+            self::assertStringContainsString('zu kurz', $e->getMessage());
+        }
+        self::assertSame(Document::STATUS_DRAFT, $documentRepo->lastSaved->getStatus());
+    }
+
+    public function testPlaceholderContentIsRejected(): void
+    {
+        [$tool, $documentRepo] = $this->buildTool();
+        $stub = str_repeat('[TBD] ', 120);
+        try {
+            $tool([
+                'name' => 'Businessplan Stub',
+                'input_from' => $stub,
+                'user_identifier' => 'user-1',
+            ]);
+            self::fail('Erwartete RuntimeException wegen Platzhaltern.');
+        } catch (\RuntimeException $e) {
+            self::assertStringContainsString('Platzhalter', $e->getMessage());
+        }
+        self::assertSame(Document::STATUS_DRAFT, $documentRepo->lastSaved->getStatus());
+    }
+
+    public function testHeadingWithoutBodyTextIsRejected(): void
+    {
+        [$tool, $documentRepo] = $this->buildTool();
+        $stub = "## Marktanalyse\n\n" . str_repeat('Ausformulierter Text. ', 30) . "\n\n## Finanzplan\n\n## Wettbewerbsanalyse";
+        try {
+            $tool([
+                'name' => 'Businessplan Stub',
+                'input_from' => $stub,
+                'user_identifier' => 'user-1',
+            ]);
+            self::fail('Erwartete RuntimeException wegen Ueberschrift ohne Fliesstext.');
+        } catch (\RuntimeException $e) {
+            self::assertStringContainsString('Ueberschrift ohne Fliesstext', $e->getMessage());
+        }
+        self::assertSame(Document::STATUS_DRAFT, $documentRepo->lastSaved->getStatus());
     }
 
     /**

@@ -33,6 +33,12 @@ class Document
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $filePath = null;
 
+    #[ORM\Column(length: 32)]
+    private string $status = self::STATUS_COMPLETED;
+
+    public const STATUS_DRAFT = 'draft';
+    public const STATUS_COMPLETED = 'completed';
+
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
@@ -106,6 +112,17 @@ class Document
     public function setFilePath(?string $filePath): static
     {
         $this->filePath = $filePath;
+        return $this;
+    }
+
+    public function getStatus(): string
+    {
+        return $this->status;
+    }
+
+    public function setStatus(string $status): static
+    {
+        $this->status = $status;
         return $this;
     }
 }
