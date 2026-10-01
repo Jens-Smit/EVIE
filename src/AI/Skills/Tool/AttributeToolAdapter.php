@@ -79,7 +79,7 @@ final class AttributeToolAdapter implements ToolInterface
      * verworfen, Default-Werte fehlender Parameter werden uebernommen.
      *
      * @param array<string, mixed> $parameters
-     * @return array<string, mixed>
+     * @return array<int|string, mixed>
      */
     private function buildArguments(ReflectionMethod $method, array $parameters): array
     {
