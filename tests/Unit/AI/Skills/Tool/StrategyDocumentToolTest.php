@@ -65,6 +65,40 @@ final class StrategyDocumentToolTest extends TestCase
         self::assertSame('Volltext des Businessplans.', $documentRepo->lastSaved->getContent());
     }
 
+    public function testUsesResolvedInputParameterAsContentFallback(): void
+    {
+        [$tool, $documentRepo] = $this->buildTool();
+
+        $result = $tool([
+            'template' => 'business_plan',
+            'input' => 'Marktanalyse: Gastro-Markt waechst mit 7% p.a.',
+            'sections' => ['Executive Summary', 'Marktanalyse'],
+            'user_identifier' => 'user-1',
+        ]);
+
+        self::assertSame('success', $result['status']);
+        self::assertSame('Strategy Document: business_plan', $documentRepo->lastSaved->getName());
+        self::assertSame(
+            'Marktanalyse: Gastro-Markt waechst mit 7% p.a.',
+            $documentRepo->lastSaved->getContent()
+        );
+    }
+
+    public function testSerializesArrayInputParameterAsMarkdown(): void
+    {
+        [$tool, $documentRepo] = $this->buildTool();
+
+        $result = $tool([
+            'template' => 'business_plan',
+            'input' => ['executive_summary' => 'Wachstumsfaehiger Gastro-Dienstleister.'],
+            'user_identifier' => 'user-1',
+        ]);
+
+        self::assertSame('success', $result['status']);
+        self::assertStringContainsString('## Executive Summary', $documentRepo->lastSaved->getContent());
+        self::assertStringContainsString('Wachstumsfaehiger Gastro-Dienstleister.', $documentRepo->lastSaved->getContent());
+    }
+
     public function testMissingParametersYieldsSpeakingValidationMessage(): void
     {
         [$tool] = $this->buildTool();

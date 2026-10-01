@@ -26,7 +26,10 @@ Regeln:
   ist. In diesem Fall enthaelt "target" die Rueckfrage an den Nutzer und
   die steps-Liste hat genau diesen einen Schritt.
 - "tool": Ein statisches oder dynamisches EVIE-Tool aus der verfuegbaren
-  Liste. "target" ist der Tool-Name.
+  Liste. "target" ist der Tool-Name. Fuer "parameters" sind AUSSCHLIESSLICH
+  die in der Tool-Beschreibung genannten Parameter erlaubt. Ergebnisse
+  vorheriger Schritte werden NUR ueber "input_from" uebergeben, NICHT als
+  eigener Parameter wie "input" oder "sections".
 - "subagent": Ein verfuegbarer Sub-Agent. "target" ist der Sub-Agent-Name.
 
 Hierarchie bei der Faehigkeitswahl (WICHTIG):

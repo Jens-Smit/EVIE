@@ -93,11 +93,21 @@ final class StrategyDocumentTool
     private function resolveContent(array $parameters): string
     {
         $content = $parameters['content'] ?? '';
-        if (is_string($content)) {
+        if (is_string($content) && trim($content) !== '') {
             return trim($content);
         }
         if (is_array($content) && $content !== []) {
             return trim($this->renderMarkdown($content));
+        }
+        // Fallback: Der Planner uebergibt das Vorgaenger-Ergebnis gelegentlich
+        // als 'input'-Parameter (String-Verweis wird vom ToolStepExecutor
+        // vorher aufgeloest) statt als 'content'.
+        $input = $parameters['input'] ?? '';
+        if (is_string($input) && trim($input) !== '') {
+            return trim($input);
+        }
+        if (is_array($input) && $input !== []) {
+            return trim($this->renderMarkdown($input));
         }
         return '';
     }
