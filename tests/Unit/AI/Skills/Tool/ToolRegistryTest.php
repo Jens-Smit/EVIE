@@ -58,8 +58,7 @@ final class ToolRegistryTest extends TestCase
     public function testAllMixesNativeAsToolAndToolInterface(): void
     {
         $registry = new ToolRegistry([
-            new Nat
-iveAsToolStub(),
+            new NativeAsToolStub(),
             $this->buildToolInterface('generic_tool_executor'),
         ]);
 
@@ -116,11 +115,29 @@ iveAsToolStub(),
         $registry->get('unknown');
     }
 
+    /**
+     * Regression-Test fuer den e2e-llm-Fehlschlag
+     * (SetupTaskAutonomousE2ETest): Der Adapter uebergab die komplette
+     * Parameter-Map als erstes Argument an das native Tool. Tools mit
+     * scalaren Signatur-Parametern (hier: string $userIdentifier, wie
+     * UserTypeLookupTool) scheiterten mit einem TypeError. Der Adapter
+     * muss die Map-Schluessel per Name auf die Signatur abbilden und
+     * Schluessel ohne Gegenstueck (z.B. 'input_from') verwerfen.
+     */
+    public function testAdapterMapsNamedParametersOntoScalarSignature(): void
+    {
+        $registry = new ToolRegistry([new ScalarSignatureAsToolStub()]);
+        $tool = $registry->get('user_type_lookup');
+
+        $result = $tool(['userIdentifier' => 'user-7', 'input_from' => ['ignored']]);
+
+        self::assertSame(['result' => 'type:user-7'], $result);
+    }
+
     private function buildToolInterface(string $name): ToolInterface
     {
         return new class($name) implements ToolInterface {
-            public function __construct(private readonly string $n
-ame)
+            public function __construct(private readonly string $name)
             {
             }
 
@@ -157,5 +174,14 @@ final class SecondNativeAsToolStub
     public function __invoke(array $data): string
     {
         return '';
+    }
+}
+
+#[AsTool('user_type_lookup', 'Liefert den Nutzertyp.')]
+final class ScalarSignatureAsToolStub
+{
+    public function __invoke(string $userIdentifier): string
+    {
+        return 'type:' . $userIdentifier;
     }
 }

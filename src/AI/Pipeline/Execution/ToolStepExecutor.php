@@ -30,7 +30,7 @@ use Psr\Log\LoggerInterface;
  *
  * Statische Tools erhalten den user_identifier des PipelineContext als
  * Parameter, weil der Planner (Phase 3) ihn nicht im Plan vorsieht,
- * tenante隔绝 Tools ihn aber benoetigen (z.B. StrategyDocumentTool
+ * tenante Tools ihn aber benoetigen (z.B. StrategyDocumentTool
  * fuer die Tenant-Isolation der Document-Entity).
  *
  * @see docs/architecture/orchestrator-pipeline.md Phase 5
