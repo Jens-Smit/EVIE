@@ -13,6 +13,13 @@ use Symfony\Component\DependencyInjection\Attribute\TaggedIterator;
  * (Blueprint: native Erweiterungspunkte, keine Eigenbau-Bridges). Tools,
  * die das custom ToolInterface implementieren (z. B. DynamicTool,
  * GenericToolExecutor), nutzen dessen getName() als Fallback.
+ *
+ * get() liefert fuer native #[AsTool]-Tools einen AttributeToolAdapter,
+ * damit der Planner (Phase 3) nur Tools ankuedigt, die Phase 5 auch
+ * tatsaechlich ausfuehren kann. Vor diesem Fix brach jeder statische
+ * Tool-Schritt mit "ist kein ToolInterface" ab, weil die Registry den
+ * Namen kannte (has() = true), das Tool aber nicht als ToolInterface
+ * zurueckgeben konnte.
  */
 final class ToolRegistry
 {
@@ -32,6 +39,10 @@ final class ToolRegistry
     /**
      * Gibt ein Tool nach Namen zurueck.
      *
+     * Native #[AsTool]-Tools werden in einen AttributeToolAdapter
+     * gekapselt und sind damit wie ToolInterface-Implementoren
+     * ausfuehrbar.
+     *
      * @throws \InvalidArgumentException Falls das Tool nicht gefunden wird.
      */
     public function get(string $name): ToolInterface
@@ -41,8 +52,11 @@ final class ToolRegistry
                 if ($tool instanceof ToolInterface) {
                     return $tool;
                 }
+                if ($this->hasAsToolAttribute($tool)) {
+                    return new AttributeToolAdapter($tool);
+                }
                 throw new \InvalidArgumentException(
-                    sprintf('Tool "%s" ist kein ToolInterface und kann nicht ausgefuehrt werden.', $name)
+                    sprintf('Tool "%s" ist weder ToolInterface noch mit #[AsTool] attribuiert und kann nicht ausgefuehrt werden.', $name)
                 );
             }
         }
@@ -98,5 +112,14 @@ final class ToolRegistry
         throw new \LogicException(
             sprintf('Tool %s hat weder #[AsTool] noch ToolInterface::getName().', $tool::class)
         );
+    }
+
+    /**
+     * Prueft, ob das Tool ein native #[AsTool]-Attribut traegt und damit
+     * ueber den AttributeToolAdapter ausfuehrbar ist.
+     */
+    private function hasAsToolAttribute(object $tool): bool
+    {
+        return (new ReflectionClass($tool))->getAttributes(AsTool::class) !== [];
     }
 }
