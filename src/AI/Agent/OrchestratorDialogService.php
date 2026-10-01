@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\AI\Agent;
 
+use App\AI\Pipeline\Execution\PipelineResult;
 use App\AI\Pipeline\PipelineInterface;
 use App\AI\Platform\TenantPlatformContext;
 use Psr\Log\LoggerInterface;
@@ -64,5 +65,26 @@ final class OrchestratorDialogService
             'content_length' => strlen($result->getContent()),
         ]);
         return $result->getContent();
+    }
+
+    /**
+     * Wie ask(), liefert aber das vollstaendige PipelineResult inklusive
+     * Ergebnis-Typ (dialog, clarify, awaiting_approval, executed, error)
+     * zurueck. Aufrufer (z.B. AgentDialogController) koennen dadurch einen
+     * fehlgeschlagenen Lauf korrekt als error in der agent_history
+     * speichern, statt ihn als success zu zaehlen.
+     */
+    public function askWithResult(string $userMessage, string $userIdentifier, ?string $systemContext = null, ?string $sessionId = null): PipelineResult
+    {
+        $this->logger->info('OrchestratorDialogService::ask - Start', [
+            'user_identifier' => $userIdentifier,
+            'message' => $userMessage,
+        ]);
+        $this->tenantPlatformContext->setUserIdentifier($userIdentifier);
+        try {
+            return $this->pipeline->run($userMessage, $userIdentifier, $systemContext, $sessionId);
+        } finally {
+            $this->tenantPlatformContext->clear();
+        }
     }
 }
