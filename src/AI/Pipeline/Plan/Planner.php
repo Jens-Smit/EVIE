@@ -110,7 +110,7 @@ final class Planner implements PlannerInterface
 
     private function buildPrompt(PipelineContext $context): string
     {
-        $tools = implode(', ', array_keys($this->toolRegistry->all()));
+        $tools = $this->formatTools();
         $subAgents = implode(', ', array_keys($this->subAgentFactory->getAvailableSubAgents()));
 
         return strtr($this->promptTemplate, [
@@ -118,6 +118,26 @@ final class Planner implements PlannerInterface
             '__AVAILABLE_SUBAGENTS__' => $subAgents !== '' ? $subAgents : '(keine)',
             '__USER_MESSAGE__' => $context->getMessage(),
         ]);
+    }
+
+    /**
+     * Formatiert die verfuegbaren Tools als Liste mit Name und Beschreibung
+     * (aus dem #[AsTool]-Attribut bzw. ToolInterface::getDescription()). Nur
+     * mit der Beschreibung im Prompt kann das planende LLM Parameter erzeugen,
+     * die das Ziel-Tool tatsaechlich akzeptiert (Schema-Abgleich Phase 3,
+     * Log-Fall create_business_plan mit erfundenen input-/sections-Keys).
+     */
+    private function formatTools(): string
+    {
+        $lines = [];
+        foreach ($this->toolRegistry->all() as $name => $tool) {
+            $description = $this->toolRegistry->has($name)
+                ? $this->toolRegistry->get($name)->getDescription()
+                : '';
+            $lines[] = sprintf('- %s: %s', $name, $description);
+        }
+
+        return implode("\n", $lines);
     }
 
     /**

@@ -120,6 +120,37 @@ final class ToolStepExecutor implements StepExecutorInterface
             $parameters['input_from'] = $inputs;
         }
 
+        return $this->resolveStateReferences($parameters, $state);
+    }
+
+    /**
+     * Ersetzt String-Verweise auf output_keys in 'input'-Parametern durch
+     * das tatsaechliche Ergebnis aus dem ExecutionState. Das planende LLM
+     * legt gelegentlich statt input_from einen Parameter wie
+     * input: "analyzed_visiongastro_data" an (Log-Fall create_business_plan).
+     * Ohne Aufloesung erhielte das Tool einen unnuetzen String-Verweis
+     * statt der Analyse-Daten. Nur Parameter mit dem Key 'input' werden
+     * aufgeloest, damit echte String-Werte anderer Parameter unangetastet
+     * bleiben; nicht aufloesbare Verweise bleiben unverwendbar und
+     * fuehren spaeter zur Tool-Validierung mit sprechender Meldung.
+     *
+     * @param array<string, mixed> $parameters
+     * @return array<string, mixed>
+     */
+    private function resolveStateReferences(array $parameters, ExecutionState $state): array
+    {
+        if (!isset($parameters['input']) || !is_string($parameters['input'])) {
+            return $parameters;
+        }
+        $reference = trim($parameters['input']);
+        if ($reference === '' || !$state->has($reference)) {
+            return $parameters;
+        }
+        $resolved = $state->get($reference);
+        if (is_string($resolved) && trim($resolved) === '') {
+            return $parameters;
+        }
+        $parameters['input'] = $resolved;
         return $parameters;
     }
 

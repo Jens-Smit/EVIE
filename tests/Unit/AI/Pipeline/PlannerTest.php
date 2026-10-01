@@ -140,6 +140,39 @@ final class PlannerTest extends TestCase
         self::assertTrue($plan->isClarification());
     }
 
+    /**
+     * Schema-Abgleich Phase 3 (Log-Fall create_business_plan): Der Prompt
+     * muss die Beschreibung jedes verfuegbaren Tools enthalten, damit das
+     * planende LLM nur Parameter erzeugen kann, die das Ziel-Tool akzeptiert.
+     */
+    public function testPromptContainsToolDescriptionsForSchemaAlignment(): void
+    {
+        $capturedPrompt = null;
+        $this->platform->method('invoke')->willReturnCallback(
+            function (string|\Symfony\AI\Platform\Model $model, array|string|object $input) use (&$capturedPrompt) {
+                $capturedPrompt = $input;
+                return StubDeferredResult::withText('{"steps":[{"type":"clarify","target":"","parameters":[]}]}');
+            }
+        );
+
+        $planner = new Planner(
+            $this->platform,
+            new ToolRegistry([$this->buildDescribedTool('strategy_document', 'Parameter: name, content')]),
+            $this->subAgentFactory,
+            new NullLogger(),
+            $this->promptFile
+        );
+        $planner->plan(PipelineContext::create('Businessplan', 'u'), Intent::Task);
+
+        self::assertInstanceOf(\Symfony\AI\Platform\Message\MessageBag::class, $capturedPrompt);
+        $promptText = '';
+        foreach ($capturedPrompt->getMessages() as $message) {
+            $promptText .= (string) ($message->asText() ?? '');
+        }
+        self::assertStringContainsString('strategy_document', $promptText);
+        self::assertStringContainsString('Parameter: name, content', $promptText);
+    }
+
     public function testPromptContainsAvailableCapabilities(): void
     {
         $invokeCount = 0;
@@ -255,6 +288,32 @@ final class PlannerTest extends TestCase
             new NullLogger(),
             $this->promptFile
         );
+    }
+
+    private function buildDescribedTool(string $name, string $description): ToolInterface
+    {
+        return new class($name, $description) implements ToolInterface {
+            public function __construct(
+                private readonly string $name,
+                private readonly string $description
+            ) {
+            }
+
+            public function getName(): string
+            {
+                return $this->name;
+            }
+
+            public function getDescription(): string
+            {
+                return $this->description;
+            }
+
+            public function __invoke(array $parameters = []): array
+            {
+                return [];
+            }
+        };
     }
 
     private function buildTool(string $name): ToolInterface

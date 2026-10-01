@@ -130,6 +130,68 @@ final class ToolStepExecutorTest extends TestCase
         self::assertSame('business_plan', $result['document_type']);
     }
 
+    /**
+     * Regression-Test fuer dev-tail.log (Lauf 20:17:43): Der Planner plant
+     * statt input_from einen Parameter input: "analyzed_visiongastro_data"
+     * (String-Verweis auf einen output_key). Der Executor muss den Verweis
+     * gegen den ExecutionState aufloesen, damit das Tool die Analyse-Daten
+     * statt eines unnuetzen Strings erhaelt.
+     */
+    public function testResolvesStringInputReferenceFromState(): void
+    {
+        $tool = new InMemoryTool('strategy_document', 'Erstellt Dokument', []);
+        $executor = $this->buildExecutor($this->createRegistry($tool));
+        $state = new ExecutionState();
+        $state->set('analyzed_visiongastro_data', 'Marktanalyse: Gastro-Markt waechst.');
+
+        $step = new Step(
+            Step::TYPE_TOOL,
+            'strategy_document',
+            ['template' => 'business_plan', 'input' => 'analyzed_visiongastro_data'],
+            id: 'create_business_plan'
+        );
+
+        $result = $executor->execute($step, PipelineContext::create('Businessplan', 'u'), $state);
+
+        self::assertSame('Marktanalyse: Gastro-Markt waechst.', $result['input']);
+    }
+
+    public function testKeepsInputUnchangedWhenReferenceNotInState(): void
+    {
+        $tool = new InMemoryTool('strategy_document', 'Erstellt Dokument', []);
+        $executor = $this->buildExecutor($this->createRegistry($tool));
+
+        $step = new Step(
+            Step::TYPE_TOOL,
+            'strategy_document',
+            ['input' => 'unbekannter_key'],
+            id: 'create_business_plan'
+        );
+
+        $result = $executor->execute($step, PipelineContext::create('Businessplan', 'u'), new ExecutionState());
+
+        self::assertSame('unbekannter_key', $result['input']);
+    }
+
+    public function testResolvesArrayInputReferenceFromState(): void
+    {
+        $tool = new InMemoryTool('strategy_document', 'Erstellt Dokument', []);
+        $executor = $this->buildExecutor($this->createRegistry($tool));
+        $state = new ExecutionState();
+        $state->set('business_analysis', ['executive_summary' => 'Wachstum.']);
+
+        $step = new Step(
+            Step::TYPE_TOOL,
+            'strategy_document',
+            ['template' => 'business_plan', 'input' => 'business_analysis'],
+            id: 'create_business_plan'
+        );
+
+        $result = $executor->execute($step, PipelineContext::create('Businessplan', 'u'), $state);
+
+        self::assertSame(['executive_summary' => 'Wachstum.'], $result['input']);
+    }
+
     public function testThrowsWhenToolNotResolvable(): void
     {
         $executor = $this->buildExecutor($this->createRegistry());
