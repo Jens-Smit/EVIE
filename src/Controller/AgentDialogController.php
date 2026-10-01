@@ -2,6 +2,7 @@
 namespace App\Controller;
 
 use App\AI\Agent\OrchestratorDialogService;
+use App\AI\Pipeline\Execution\PipelineResult;
 use App\AI\Onboarding\ContextStoreManager;
 use App\Entity\AgentHistory;
 use App\Entity\UserProfile;
@@ -127,7 +128,9 @@ final class AgentDialogController extends AbstractController
                 'conversation_id' => $conversationId,
                 'session_id' => $sessionId,
             ]);
-            $response = $this->orchestratorDialogService->ask($userMessage, $userIdentifier, $systemPrompt, $sessionId);
+            $pipelineResult = $this->orchestratorDialogService->askWithResult($userMessage, $userIdentifier, $systemPrompt, $sessionId);
+            $response = $pipelineResult->getContent();
+            $resultStatus = $pipelineResult->getType() === PipelineResult::TYPE_ERROR ? 'error' : 'success';
 
             $this->logger->debug('AgentDialogController::dialog - Ergebnis:', [
                 'content' => $response,
@@ -153,12 +156,14 @@ final class AgentDialogController extends AbstractController
                 ]);
             }
 
-            // Normale Antwort
+            // Normale Antwort: Status richtet sich nach dem Pipeline-Ergebnis-Typ,
+            // damit fehlgeschlagene Laeufe nicht als success gezaehlt werden.
             $historyEntry = new AgentHistory();
             $historyEntry->setAction('dialog');
             $historyEntry->setDetails(json_encode([
                 'agent' => 'orchestrator',
-                'status' => 'success',
+                'status' => $resultStatus,
+                'pipeline_result_type' => $pipelineResult->getType(),
                 'input' => ['message' => $userMessage],
                 'output' => ['response' => $response],
             ], JSON_THROW_ON_ERROR));
