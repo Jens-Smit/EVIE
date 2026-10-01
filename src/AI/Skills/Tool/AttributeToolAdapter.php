@@ -60,8 +60,7 @@ final class AttributeToolAdapter implements ToolInterface
      */
     private static function resolveAsToolAttribute(object $tool): AsTool
     {
-        $attributes = (new ReflectionClass($tool))->getAttr
-ibutes(AsTool::class);
+        $attributes = (new ReflectionClass($tool))->getAttributes(AsTool::class);
         foreach ($attributes as $attribute) {
             /** @var AsTool $instance */
             $instance = $attribute->newInstance();
