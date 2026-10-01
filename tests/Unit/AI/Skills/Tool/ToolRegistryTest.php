@@ -134,6 +134,23 @@ final class ToolRegistryTest extends TestCase
         self::assertSame(['result' => 'type:user-7'], $result);
     }
 
+    /**
+     * Die Pipeline uebergibt Parameter in snake_case (z.B.
+     * 'user_identifier' aus mergeInputs/Plan), native Tool-Signaturen
+     * verwenden camelCase (z.B. UserTypeLookupTool::__invoke(string
+     * $userIdentifier)). Der Adapter muss beide Key-Stile auf die
+     * Signatur abbilden (ArgumentCountError im e2e-llm-Lauf).
+     */
+    public function testAdapterMapsSnakeCaseKeysOntoCamelCaseSignature(): void
+    {
+        $registry = new ToolRegistry([new ScalarSignatureAsToolStub()]);
+        $tool = $registry->get('user_type_lookup');
+
+        $result = $tool(['user_identifier' => 'user-7']);
+
+        self::assertSame(['result' => 'type:user-7'], $result);
+    }
+
     private function buildToolInterface(string $name): ToolInterface
     {
         return new class($name) implements ToolInterface {

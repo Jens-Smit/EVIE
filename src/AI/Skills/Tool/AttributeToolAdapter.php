@@ -97,12 +97,26 @@ final class AttributeToolAdapter implements ToolInterface
             $name = $parameter->getName();
             if (array_key_exists($name, $parameters)) {
                 $arguments[$name] = $parameters[$name];
-            } elseif ($parameter->isDefaultValueAvailable()) {
+                continue;
+            }
+
+            $snakeKey = self::toSnakeCase($name);
+            if (array_key_exists($snakeKey, $parameters)) {
+                $arguments[$name] = $parameters[$snakeKey];
+                continue;
+            }
+
+            if ($parameter->isDefaultValueAvailable()) {
                 $arguments[$name] = $parameter->getDefaultValue();
             }
         }
 
         return $arguments;
+    }
+
+    private static function toSnakeCase(string $name): string
+    {
+        return strtolower((string) preg_replace('/([a-z0-9])([A-Z])/', '$1_$2', $name));
     }
 
     /**
