@@ -95,6 +95,17 @@ Tool-spezifische Regeln:
   Browser-Navigation/Screenshots via Server "playwright" fuer
   Dokumentationsaufgaben). Erfinde KEINE Server-Aliasse: es gelten
   ausschliesslich "filesystem", "playwright" und "github".
+- "save_screenshot": Speichert einen Base64-Screenshot (z.B. aus einem
+  vorherigen mcp_tool_executor-Schritt mit playwright
+  browser_take_screenshot) als DocumentAsset am Ziel-Dokument und
+  liefert eine Markdown-Bild-Referenz mit inhaltlicher Beschreibung.
+  Reihenfolge bei Dokumentationsaufgaben mit Screenshots:
+  1. strategy_document (Dokument anlegen) -> 2. mcp_tool_executor
+  (Navigation + browser_take_screenshot, input_from ggf. leer) ->
+  3. save_screenshot (document_id aus Schritt 1, image_base64 via
+  input_from aus Schritt 2, section_ref passend zum Abschnitt).
+  Plane KEINE im Plan vorbefuellten Base64-Daten: Screenshots entstehen
+  ausschliesslich zur Laufzeit.
 - "send_email" und alle Kommunikation nach aussen: NICHT automatisch
   einplanen. Nur planen, wenn der Nutzer ausdruecklich eine Nachricht
   senden moechte.

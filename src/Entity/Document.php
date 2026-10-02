@@ -3,6 +3,8 @@
 namespace App\Entity;
 
 use App\Repository\DocumentRepository;
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
 use Doctrine\ORM\Mapping as ORM;
 
@@ -39,9 +41,16 @@ class Document
     #[ORM\Column(length: 32, options: ['default' => self::STATUS_COMPLETED])]
     private string $status = self::STATUS_COMPLETED;
 
+    /**
+     * @var Collection<int, DocumentAsset>
+     */
+    #[ORM\OneToMany(mappedBy: 'document', targetEntity: DocumentAsset::class, orphanRemoval: true)]
+    private Collection $assets;
+
     public function __construct()
     {
         $this->createdAt = new \DateTimeImmutable();
+        $this->assets = new ArrayCollection();
     }
 
     public function getId(): ?int
@@ -123,6 +132,35 @@ class Document
     public function setStatus(string $status): static
     {
         $this->status = $status;
+        return $this;
+    }
+
+    /**
+     * @return Collection<int, DocumentAsset>
+     */
+    public function getAssets(): Collection
+    {
+        return $this->assets;
+    }
+
+    public function addAsset(DocumentAsset $asset): static
+    {
+        if (!$this->assets->contains($asset)) {
+            $this->assets->add($asset);
+            $asset->setDocument($this);
+        }
+
+        return $this;
+    }
+
+    public function removeAsset(DocumentAsset $asset): static
+    {
+        if ($this->assets->removeElement($asset)) {
+            if ($asset->getDocument() === $this) {
+                $asset->setDocument(null);
+            }
+        }
+
         return $this;
     }
 }
