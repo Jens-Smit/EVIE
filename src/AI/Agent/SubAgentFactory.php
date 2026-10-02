@@ -12,6 +12,9 @@ use Psr\Log\LoggerInterface;
 use Symfony\AI\Agent\Agent;
 use Symfony\AI\Agent\AgentInterface;
 use Symfony\AI\Agent\InputProcessor\SystemPromptInputProcessor;
+use Symfony\AI\Agent\Toolbox\AgentProcessor;
+use Symfony\AI\Agent\Toolbox\ToolFactory\MemoryToolFactory;
+use Symfony\AI\Agent\Toolbox\Toolbox;
 use Symfony\AI\Platform\PlatformInterface;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
 /**
@@ -80,15 +83,25 @@ class SubAgentFactory implements SubAgentFactoryInterface
             }
         }
 
-        // 2. Falls nicht, erstelle einen generischen Agenten mit der Konfiguration
+        // 2. Bevorzugung: Unter ai.agent.<name> konfigurierte Bundle-Agenten
+        // (config/packages/ai.yaml) bringen Toolbox, Prompt und Tool-Calling
+        // nativ mit; nur wenn kein Bundle-Agent existiert, wird generisch
+        // gebaut.
+        $bundleAgent = $this->resolveBundleAgent($name);
+        if ($bundleAgent !== null) {
+            $this->registerAsTool($name, $definition->getDescription(), $bundleAgent);
+            $this->logger->info('Sub-Agent aus Bundle-Konfiguration verwendet', ['name' => $name]);
+            return $bundleAgent;
+        }
+        // 3. Falls nicht, erstelle einen generischen Agenten mit der Konfiguration
         $model = $configuration['model'] ?? 'mistral-large-latest';
         $role = $configuration['role'] ?? $name;
 
-        $subAgent = new Agent(
-            platform: $this->platform,
-            model: $model,
-            name: $name,
-            inputProcessors: [new SystemPromptInputProcessor($this->generatePromptForRole($role))],
+        $subAgent = $this->buildAgent(
+            $name,
+            $model,
+            $this->generatePromptForRole($role),
+            $this->resolveToolsForRole($role),
         );
 
         $this->registerAsTool($name, $definition->getDescription(), $subAgent);
@@ -200,11 +213,16 @@ class SubAgentFactory implements SubAgentFactoryInterface
     private function createFromStaticConfig(string $name): AgentInterface
     {
         $this->logger->info('Erstelle Sub-Agenten aus statischer Konfiguration', ['name' => $name]);
-        $subAgent = new Agent(
-            platform: $this->platform,
-            model: 'mistral-large-latest',
-            name: $name,
-            inputProcessors: [new SystemPromptInputProcessor($this->generatePromptForRole($name))],
+        $bundleAgent = $this->resolveBundleAgent($name);
+        if ($bundleAgent !== null) {
+            $this->registerAsTool($name, 'Sub-Agent für ' . $name, $bundleAgent);
+            return $bundleAgent;
+        }
+        $subAgent = $this->buildAgent(
+            $name,
+            'mistral-large-latest',
+            $this->generatePromptForRole($name),
+            $this->resolveToolsForRole($name),
         );
         $this->registerAsTool($name, 'Sub-Agent für ' . $name, $subAgent);
         return $subAgent;
@@ -234,14 +252,10 @@ class SubAgentFactory implements SubAgentFactoryInterface
         array $tools = []
     ): AgentInterface {
         $this->logger->info('Erstelle neuen Sub-Agenten', ['name' => $name, 'role' => $role]);
-        $subAgent = new Agent(
-            platform: $this->platform,
-            model: $model,
-            name: $name,
-            inputProcessors: [new SystemPromptInputProcessor($this->generatePromptForRole($role))],
-        );
+        $tools = $tools !== [] ? $tools : $this->resolveToolsForRole($role);
+        $subAgent = $this->buildAgent($name, $model, $this->generatePromptForRole($role), $tools);
         $this->registerAsTool($name, 'Sub-Agent für ' . $role, $subAgent);
-        $this->logger->info('Sub-Agent erstellt', ['name' => $name]);
+        $this->logger->info('Sub-Agent erstellt', ['name' => $name, 'tools' => count($tools)]);
         return $subAgent;
     }
 
@@ -319,8 +333,164 @@ class SubAgentFactory implements SubAgentFactoryInterface
     }
 
     /**
-     * Generiert einen System-Prompt basierend auf der Rolle.
+     * Bevorzugt den unter ai.agent.<name> konfigurierten Bundle-Agenten
+     * (config/packages/ai.yaml). Bundle-Agenten bringen ihre Toolbox, ihre
+     * Prozessoren und Tool-Calling nativ mit (AiBundle::processAgentConfig);
+     * lokal gebaute new-Agent-Instanzen ohne AgentProcessor koennen dagegen
+     * keine Tools ausfuehren. Gibt null zurueck, wenn kein Bundle-Agent
+     * existiert oder der Container ihn nicht als AgentInterface liefert.
      */
+    private function resolveBundleAgent(string $name): ?AgentInterface
+    {
+        $serviceId = 'ai.agent.' . $name;
+        try {
+            if (!$this->container->has($serviceId)) {
+                return null;
+            }
+            $agent = $this->container->get($serviceId);
+        } catch (\Throwable $e) {
+            $this->logger->warning('Bundle-Agent nicht verfuegbar, faellt auf generischen Bau zurueck', [
+                'service_id' => $serviceId,
+                'error' => $e->getMessage(),
+            ]);
+            return null;
+        }
+        if (!$agent instanceof AgentInterface) {
+            return null;
+        }
+        return $agent;
+    }
+
+    /**
+     * Baut einen Agenten mit nativem Tool-Calling (Blueprint: Symfony-AI-
+     * Erweiterungspunkte, keine Eigenbau-Bridge). Ohne AgentProcessor +
+     * Toolbox kann ein Agent keine Tools ausfuehren; der fruehere Bau
+     * ignorierte den $tools-Parameter vollstaendig, sodass z.B. der
+     * website_researcher nur aus Modellwissen (Halluzinationsrisiko)
+     * statt ueber Tavily/MCP recherchieren konnte. Die Toolbox erhaelt die
+     * Tool-Instanzen; MemoryToolFactory haelt Name/Beschreibung/Methode der
+     * nicht-#[AsTool]-attribuierten Tools, SystemPromptInputProcessor haengt
+     * die Tool-Schemata an den Prompt.
+     *
+     * @param list<object> $tools
+     */
+    private function buildAgent(string $name, string $model, string $prompt, array $tools): Agent
+    {
+        $inputProcessors = [];
+        $outputProcessors = [];
+        if ($tools !== []) {
+            $memoryFactory = new MemoryToolFactory();
+            foreach ($tools as $tool) {
+                $memoryFactory->addTool($tool, $this->toolNameOf($tool), $this->toolDescriptionOf($tool));
+            }
+            $toolbox = new Toolbox($tools, $memoryFactory);
+            $toolProcessor = new AgentProcessor($toolbox);
+            $inputProcessors[] = $toolProcessor;
+            $outputProcessors[] = $toolProcessor;
+            $inputProcessors[] = new SystemPromptInputProcessor($prompt, $toolbox);
+        } else {
+            $inputProcessors[] = new SystemPromptInputProcessor($prompt);
+        }
+        return new Agent(
+            platform: $this->platform,
+            model: $model,
+            name: $name,
+            inputProcessors: $inputProcessors,
+            outputProcessors: $outputProcessors,
+        );
+    }
+
+    /**
+     * Liefert die fuer eine Rolle passenden Tool-Instanzen aus dem Service-
+     * Container (keine Konstruktor-Injection einzelner Tools, Blueprint 4.D).
+     * Werkzeuge, die im Container fehlen (z.B. ohne konfigurierten MCP-Server
+     * oder API-Key), werden uebersprungen; der Agent startet dann mit dem
+     * verbleibenden Tool-Set statt komplett zu scheitern.
+     *
+     * @return list<object>
+     */
+    private function resolveToolsForRole(string $role): array
+    {
+        $toolIdsByRole = [
+            'website_researcher' => [
+                'App\AI\Skills\Tool\FileReadTool',
+                'Symfony\AI\Agent\Bridge\Tavily\Tavily',
+                'App\Mcp\Toolbox\McpToolExecutor',
+            ],
+            'data_analyst' => [
+                'App\AI\Skills\Tool\DataAnalyzerTool',
+                'App\AI\Skills\Tool\ExcelParserTool',
+            ],
+            'document_processor' => [
+                'App\AI\Skills\Tool\FileReadTool',
+                'App\AI\Skills\Tool\ExcelParserTool',
+            ],
+            'code_assistant' => [
+                'App\AI\Skills\Tool\FileReadTool',
+            ],
+            'communication_manager' => [
+                'App\AI\Skills\Tool\EmailTool',
+                'App\AI\Skills\Tool\LinkedInTool',
+            ],
+            'api_integration' => [
+                'App\AI\Skills\Tool\OAuthTool',
+                'App\AI\Skills\Tool\RestApiTool',
+            ],
+        ];
+        $tools = [];
+        foreach ($toolIdsByRole[$role] ?? [] as $toolId) {
+            try {
+                if (!$this->container->has($toolId)) {
+                    continue;
+                }
+                $tool = $this->container->get($toolId);
+            } catch (\Throwable $e) {
+                $this->logger->warning('Tool fuer Sub-Agent nicht verfuegbar, uebersprungen', [
+                    'role' => $role,
+                    'tool' => $toolId,
+                    'error' => $e->getMessage(),
+                ]);
+                continue;
+            }
+            if (is_object($tool)) {
+                $tools[] = $tool;
+            }
+        }
+        return $tools;
+    }
+
+    /**
+     * Ermittelt den Tool-Namen: ToolInterface::getName() oder natives
+     * #[AsTool]-Attribut (ReflectionToolFactory kann Letzteres selbst; fuer
+     * die MemoryToolFactory-Registrierung benoetigen wir den Namen explizit).
+     */
+    private function toolNameOf(object $tool): string
+    {
+        if ($tool instanceof \App\AI\Skills\Tool\ToolInterface) {
+            return $tool->getName();
+        }
+        $attributes = (new \ReflectionClass($tool))->getAttributes(\Symfony\AI\Agent\Toolbox\Attribute\AsTool::class);
+        foreach ($attributes as $attribute) {
+            return $attribute->newInstance()->name;
+        }
+        throw new \LogicException(sprintf('Tool %s hat weder #[AsTool] noch ToolInterface::getName().', $tool::class));
+    }
+
+    /**
+     * Ermittelt die Tool-Beschreibung analog toolNameOf().
+     */
+    private function toolDescriptionOf(object $tool): string
+    {
+        if ($tool instanceof \App\AI\Skills\Tool\ToolInterface) {
+            return $tool->getDescription();
+        }
+        $attributes = (new \ReflectionClass($tool))->getAttributes(\Symfony\AI\Agent\Toolbox\Attribute\AsTool::class);
+        foreach ($attributes as $attribute) {
+            return $attribute->newInstance()->description ?? '';
+        }
+        throw new \LogicException(sprintf('Tool %s hat kein #[AsTool]-Attribut.', $tool::class));
+    }
+
     private function generatePromptForRole(string $role): string
     {
         $rolePrompts = [

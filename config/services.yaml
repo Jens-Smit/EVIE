@@ -192,6 +192,13 @@ services:
             - 3600               # default lifetime
             - '%kernel.cache_dir%/oauth'
 
+    # Luecke 2 (Fixplan Rev. 2): Speicherung von Bild-/Screenshot-Assets.
+    # Der Service schreibt dekodierte Base64-Bilder nach var/documents/assets
+    # und legt DocumentAsset-Entities an (Pfad, Alt-Text, Abschnitt, Position).
+    App\Service\DocumentAssetStorageService:
+        arguments:
+            $projectDir: '%kernel.project_dir%'
+
     # MCP Server Manager benötigt die Server-Konfiguration als Array
     App\Mcp\Client\McpServerManager:
         arguments:
