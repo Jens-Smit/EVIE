@@ -185,7 +185,7 @@ final class SetupTaskAutonomousE2ETest extends KernelTestCase
 
         $docResult = $strategyTool->__invoke([
             'name' => 'Vertriebsstrategie Berlin-Mitte',
-            'content' => 'Strategie: PLZ 10115, 20km Radius, 20 Leads/Tag. Sub-Agent: e2e_vertrieb_agent.',
+            'content' => str_repeat('Vertriebsstrategie Berlin-Mitte: PLZ 10115, 20km Radius, 20 Leads pro Tag via Sub-Agent e2e_vertrieb_agent. ', 8),
             'user_identifier' => self::USER_IDENTIFIER,
         ]);
 

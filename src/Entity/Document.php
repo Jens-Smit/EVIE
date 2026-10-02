@@ -33,11 +33,11 @@ class Document
     #[ORM\Column(length: 255, nullable: true)]
     private ?string $filePath = null;
 
-    #[ORM\Column(length: 32)]
-    private string $status = self::STATUS_COMPLETED;
-
     public const STATUS_DRAFT = 'draft';
     public const STATUS_COMPLETED = 'completed';
+
+    #[ORM\Column(length: 32, options: ['default' => self::STATUS_COMPLETED])]
+    private string $status = self::STATUS_COMPLETED;
 
     public function __construct()
     {
