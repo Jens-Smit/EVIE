@@ -6,7 +6,12 @@ namespace App\Mcp\Toolbox;
 use App\Mcp\Client\McpServerManager;
 use App\Mcp\Exception\McpServerUnavailableException;
 use App\Mcp\Exception\McpToolExecutionFailed;
+use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
 
+#[AsTool(
+    name: 'mcp_tool_executor',
+    description: 'Fuehrt Remote-Tools der konfigurierten MCP-Server (filesystem, playwright, github) aus. Parameter: server_alias (z.B. "playwright"), tool_name (Name des Remote-Tools, z.B. "browser_navigate"), arguments (Objekt mit den Tool-Argumenten, z.B. {"url": "https://example.com"}).'
+)]
 final class McpToolExecutor
 {
     /** @var string[] */

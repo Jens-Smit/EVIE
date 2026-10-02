@@ -88,6 +88,13 @@ Workflow-Felder:
 Tool-spezifische Regeln:
 - "file_read": NUR fuer lokale Dateipfade, NIEMALS fuer URLs/Websites.
   Fuer Web-Recherche nutze IMMER den Sub-Agenten "website_researcher".
+- "mcp_tool_executor": Fuehrt Remote-Tools der konfigurierten MCP-Server
+  (filesystem, playwright, github) aus. Der Sub-Agent "website_researcher"
+  kann MCP-Tools selbst aufrufen; plane mcp_tool_executor als direkten
+  Tool-Schritt nur, wenn kein passender Sub-Agent existiert (z.B.
+  Browser-Navigation/Screenshots via Server "playwright" fuer
+  Dokumentationsaufgaben). Erfinde KEINE Server-Aliasse: es gelten
+  ausschliesslich "filesystem", "playwright" und "github".
 - "send_email" und alle Kommunikation nach aussen: NICHT automatisch
   einplanen. Nur planen, wenn der Nutzer ausdruecklich eine Nachricht
   senden moechte.
