@@ -257,6 +257,74 @@ final class PlannerTest extends TestCase
         self::assertSame('business_plan', $steps[2]->getOutputKey());
     }
 
+    /**
+     * Fix 1 (Root Cause 1): Parameter, die zur Planzeit Inhalte festlegen
+     * (content, sections, body, text), muessen aus Tool-Schritten entfernt
+     * werden. Der Plan deklariert Arbeitsauftraege; Inhalte entstehen zur
+     * Laufzeit aus input_from.
+     */
+    public function testPrewrittenContentParametersAreStrippedFromToolSteps(): void
+    {
+        $json = json_encode([
+            'summary' => 'Businessplan speichern',
+            'steps' => [
+                [
+                    'id' => 'save_document',
+                    'type' => 'tool',
+                    'target' => 'strategy_document',
+                    'parameters' => [
+                        'name' => 'Businessplan Vision Gastro',
+                        'template' => 'business_plan',
+                        'content' => '## Executive Summary\n\n[Platzhalter] Hier steht der Businessplan.',
+                        'sections' => ['Executive Summary'],
+                    ],
+                    'needs_capability' => false,
+                    'reason' => 'Dokument speichern',
+                    'input_from' => ['synthesized_document'],
+                ],
+            ],
+        ], JSON_THROW_ON_ERROR);
+        $this->platform->method('invoke')->willReturn(StubDeferredResult::withText($json));
+        $planner = $this->buildPlanner();
+        $plan = $planner->plan(PipelineContext::create('Erstelle einen Businessplan', 'u'), Intent::Task);
+        $steps = $plan->getSteps();
+        $parameters = $steps[0]->getParameters();
+        self::assertArrayNotHasKey('content', $parameters);
+        self::assertArrayNotHasKey('sections', $parameters);
+        self::assertSame('Businessplan Vision Gastro', $parameters['name']);
+        self::assertSame('business_plan', $parameters['template']);
+    }
+
+    /**
+     * Sub-Agenten-Schritte sind von der Filterung nicht betroffen: Der
+     * task-Parameter ist die Arbeitsauftrag-Spezifikation, kein vorbefuelltes
+     * Ergebnis.
+     */
+    public function testSubAgentTaskParameterIsPreserved(): void
+    {
+        $json = json_encode([
+            'summary' => 'Marketingplan',
+            'steps' => [
+                [
+                    'id' => 'synthesize_marketing_plan',
+                    'type' => 'subagent',
+                    'target' => 'content_synthesizer',
+                    'parameters' => ['task' => 'Verdichte die Analysen zu einem Marketingplan mit Abschnitten ...'],
+                    'needs_capability' => false,
+                    'input_from' => ['market_analysis'],
+                ],
+            ],
+        ], JSON_THROW_ON_ERROR);
+        $this->platform->method('invoke')->willReturn(StubDeferredResult::withText($json));
+        $planner = $this->buildPlanner();
+        $plan = $planner->plan(PipelineContext::create('Erstelle einen Marketingplan', 'u'), Intent::Task);
+        $steps = $plan->getSteps();
+        self::assertSame(
+            'Verdichte die Analysen zu einem Marketingplan mit Abschnitten ...',
+            $steps[0]->getParameters()['task']
+        );
+    }
+
     public function testStepGeneratesUniqueIdWhenLlmOmitsId(): void
     {
         // Ohne id in der LLM-Antwort erzeugt der Step automatisch eine

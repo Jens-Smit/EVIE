@@ -324,8 +324,9 @@ final class SubAgentFactoryTest extends TestCase
         $agents = $this->factory->getAvailableSubAgents();
 
         self::assertArrayHasKey('website_researcher', $agents);
+        self::assertArrayHasKey('content_synthesizer', $agents);
         self::assertArrayHasKey('ceo_assistant', $agents);
-        self::assertCount(11, $agents);
+        self::assertCount(12, $agents);
     }
 
     public function testCreateSubAgentDoesNotDuplicateToolDefinition(): void

@@ -325,7 +325,8 @@ class SubAgentFactory implements SubAgentFactoryInterface
     {
         $rolePrompts = [
             'website_researcher' => 'Du bist ein spezialisierter Sub-Agent für Webseiten-Recherche. Deine Aufgabe: Durchsuche Webseiten nach Impressum, Kontakten, Geschäftszweck, Standort und Branche. Fasse die Informationen strukturiert zusammen.',
-            'data_analyst' => 'Du bist ein Datenanalyst. Analysiere Daten und liefere Erkenntnisse.',
+            'data_analyst' => 'Du bist ein Datenanalyst. Analysiere die uebergebenen Daten und Vorergebnisse strukturiert und liefere belastbare Erkenntnisse mit klarer Gliederung (z.B. Marktuebersicht, Wettbewerbsvergleich als Tabelle, Stärken-Schwaechen, Chancen-Risiken, Finanzzahlen). Nutze ausschliesslich die uebergebenen Informationen - erfinde KEINE Zahlen. Kennzeichne fehlende Informationen explizit als solche, damit der content_synthesizer weiss, welche Angaben fehlen.',
+            'content_synthesizer' => 'Du bist der Content-Synthesizer von EVIE. Deine Aufgabe: Verdichte beliebig viele Vorergebnisse (Recherche, Analysen) zu einem ausformulierten Fachtext gemäss der dir uebergebenen Aufgabenspezifikation (Abschnittsstruktur, Mindesttiefe, Sprache, Zielpublikum). Nutze AUSSCHLIESSLICH die uebergebenen Vorergebnisse - erfinde keine Fakten, Zahlen oder Unternehmen. Jeder Abschnitt erhält ausformulierten Fliesstext (keine Stichpunkte als Ersatz, keine Platzhalter wie [TBD]). Liefere das Ergebnis als fertiges Markdown-Dokument mit Ueberschriften und Fliesstext, bereit zum Speichern.',
             'code_assistant' => 'Du bist ein Code-Assistent. Analysiere und generiere Code.',
             'document_processor' => 'Du bist ein Dokumenten-Prozessor. Verarbeite Dokumente.',
             'communication_manager' => 'Du bist der Communication Manager von EVIE. Verwalte E-Mails, Nachrichten, LinkedIn und andere Kommunikation.',
@@ -342,6 +343,7 @@ class SubAgentFactory implements SubAgentFactoryInterface
     // Factory Methoden für spezifische Sub-Agenten
     public function createWebsiteResearchAgent(): AgentInterface { return $this->createSubAgent('website_researcher', 'website_researcher'); }
     public function createDataAnalysisAgent(): AgentInterface { return $this->createSubAgent('data_analyst', 'data_analyst'); }
+    public function createContentSynthesizerAgent(): AgentInterface { return $this->createSubAgent('content_synthesizer', 'content_synthesizer', 'mistral-large-latest'); }
     public function createCodeAssistantAgent(): AgentInterface { return $this->createSubAgent('code_assistant', 'code_assistant'); }
     public function createDocumentProcessorAgent(): AgentInterface { return $this->createSubAgent('document_processor', 'document_processor'); }
     public function createCommunicationManagerAgent(): AgentInterface { return $this->createSubAgent('communication_manager', 'communication_manager'); }
@@ -361,6 +363,7 @@ class SubAgentFactory implements SubAgentFactoryInterface
         $staticSubAgents = [
             'website_researcher' => $this->createWebsiteResearchAgent(),
             'data_analyst' => $this->createDataAnalysisAgent(),
+            'content_synthesizer' => $this->createContentSynthesizerAgent(),
             'code_assistant' => $this->createCodeAssistantAgent(),
             'document_processor' => $this->createDocumentProcessorAgent(),
             'communication_manager' => $this->createCommunicationManagerAgent(),

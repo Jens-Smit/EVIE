@@ -23,10 +23,12 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
  */
 #[AsTool(
     name: 'strategy_document',
-    description: 'Speichert oder aktualisiert ein Strategiedokument (z.B. Businessplan, Strategieplan) als persistente Document-Entity. Parameter: name (Dokumentname, optional; wird aus template abgeleitet, wenn fehlend), content (Volltext als String oder verschachteltes Objekt mit strukturierten Abschnitten wie executive_summary, company_description, market_analysis usw., das als Markdown serialisiert wird).'
+    description: 'Speichert ein Dokument (z.B. Businessplan, Marketingplan, Marktanalyse, Strategieplan) als persistente Document-Entity. Parameter: name (Dokumentname, optional; wird aus template abgeleitet, wenn fehlend), template (optionaler Dokumenttyp als Namensbestandteil). Der Inhalt kommt bevorzugt aus den Vorergebnissen via input_from (z.B. der Output des content_synthesizer); ein content-Parameter ist nur fuer bewusst uebergebenen Volltext vorgesehen.'
 )]
 final class StrategyDocumentTool
 {
+    private const MIN_CONTENT_LENGTH = 500;
+
     public function __construct(
         private DocumentRepository $documentRepository,
         private UserProfileRepository $userProfileRepository,
@@ -54,12 +56,23 @@ final class StrategyDocumentTool
             throw new \RuntimeException(sprintf('UserProfile fuer user_identifier "%s" nicht gefunden.', $userIdentifier));
         }
 
+        $qualityIssue = $this->validateQuality($content);
+
         $document = new Document();
         $document->setName($name);
         $document->setContent($content);
         $document->setUser($userProfile);
+        $document->setStatus($qualityIssue === null ? Document::STATUS_COMPLETED : Document::STATUS_DRAFT);
 
         $this->documentRepository->save($document, true);
+
+        if ($qualityIssue !== null) {
+            throw new \RuntimeException(sprintf(
+                'Dokument "%s" wurde nur als Entwurf (status=draft) gespeichert: Qualitaetspruefung fehlgeschlagen - %s',
+                $name,
+                $qualityIssue
+            ));
+        }
 
         return [
             'status' => 'success',
@@ -86,9 +99,14 @@ final class StrategyDocumentTool
     }
 
     /**
-     * Leitet den Dokumentinhalt ab: skalarer content-String oder
-     * verschachteltes content-Objekt, dessen Abschnitte als Markdown
-     * serialisiert werden.
+     * Leitet den Dokumentinhalt ab (Rangfolge):
+     *  1. content: bewusst uebergebener Volltext (String oder strukturiertes
+     *     Objekt, das als Markdown serialisiert wird)
+     *  2. input_from: Vorergebnisse referenzierter Schritte (der regulaere
+     *     Weg; der ToolStepExecutor uebergibt sie unter diesem Key, z.B.
+     *     der Output des content_synthesizer)
+     *  3. input: Legacy-Fallback (String-Verweis wird vom ToolStepExecutor
+     *     vorher aufgeloest)
      */
     private function resolveContent(array $parameters): string
     {
@@ -99,9 +117,15 @@ final class StrategyDocumentTool
         if (is_array($content) && $content !== []) {
             return trim($this->renderMarkdown($content));
         }
-        // Fallback: Der Planner uebergibt das Vorgaenger-Ergebnis gelegentlich
-        // als 'input'-Parameter (String-Verweis wird vom ToolStepExecutor
-        // vorher aufgeloest) statt als 'content'.
+
+        $inputFrom = $parameters['input_from'] ?? '';
+        if (is_string($inputFrom) && trim($inputFrom) !== '') {
+            return trim($inputFrom);
+        }
+        if (is_array($inputFrom) && $inputFrom !== []) {
+            return trim($this->renderMarkdown($inputFrom));
+        }
+
         $input = $parameters['input'] ?? '';
         if (is_string($input) && trim($input) !== '') {
             return trim($input);
@@ -142,5 +166,53 @@ final class StrategyDocumentTool
     private function headingize(string $key): string
     {
         return ucwords(str_replace('_', ' ', $key));
+    }
+
+    /**
+     * Qualitaetspruefung vor der Auslieferung: Mindestlaenge, keine
+     * Ueberschrift ohne Fliesstext, keine Platzhalter. Liefert null bei
+     * bestandener Pruefung, sonst einen sprechenden Fehler, damit der
+     * Schritt als fehlgeschlagen gemeldet wird statt Erfolg zu simulieren.
+     */
+    private function validateQuality(string $content): ?string
+    {
+        if (mb_strlen($content) < self::MIN_CONTENT_LENGTH) {
+            return sprintf(
+                'Inhalt mit %d Zeichen ist zu kurz (Mindestlaenge %d Zeichen). Erwartet wird ein ausformuliertes Fachergebnis, kein Stub.',
+                mb_strlen($content),
+                self::MIN_CONTENT_LENGTH
+            );
+        }
+        if (preg_match('/\[(?:TBD|TODO|Platzhalter|Placeholder|Beispieltext|\.{3,})\]/iu', $content) === 1
+            || preg_match('/^\s*(?:TBD|TODO)\s*$/imu', $content) === 1
+        ) {
+            return 'Inhalt enthaelt Platzhalter (z.B. [TBD], [TODO], ...). Der Synthese-Schritt muss ein ausformuliertes Ergebnis liefern.';
+        }
+        $headingLines = 0;
+        $bodyLines = 0;
+        $lastMeaningfulLine = '';
+        foreach (explode("\n", $content) as $line) {
+            $trimmed = trim($line);
+            if ($trimmed === '') {
+                continue;
+            }
+            if (str_starts_with($trimmed, '#')) {
+                $headingLines++;
+                $lastMeaningfulLine = $trimmed;
+                continue;
+            }
+            $bodyLines++;
+            $lastMeaningfulLine = $trimmed;
+        }
+        if ($headingLines > 0 && $bodyLines === 0) {
+            return 'Inhalt besteht nur aus Ueberschriften ohne Fliesstext (Stub-Gliederung).';
+        }
+        if ($headingLines > 0 && str_starts_with($lastMeaningfulLine, '#')) {
+            return sprintf(
+                "Abschnitt '%s' enthaelt nur eine Ueberschrift ohne Fliesstext.",
+                $lastMeaningfulLine
+            );
+        }
+        return null;
     }
 }

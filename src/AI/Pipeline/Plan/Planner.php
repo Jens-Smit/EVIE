@@ -192,6 +192,7 @@ final class Planner implements PlannerInterface
         $type = is_string($raw['type'] ?? null) ? $raw['type'] : Step::TYPE_CLARIFY;
         $target = is_string($raw['target'] ?? null) ? $raw['target'] : '';
         $parameters = is_array($raw['parameters'] ?? null) ? $raw['parameters'] : [];
+        $parameters = $this->stripPrewrittenContentParameters($type, $target, $parameters);
         $needsCapability = is_bool($raw['needs_capability'] ?? null) ? $raw['needs_capability'] : false;
         $reason = is_string($raw['reason'] ?? null) ? $raw['reason'] : null;
         $id = is_string($raw['id'] ?? null) && $raw['id'] !== '' ? $raw['id'] : null;
@@ -229,6 +230,36 @@ final class Planner implements PlannerInterface
             $inputFrom,
             $outputKey
         );
+    }
+
+    /**
+     * Entfernt Parameter, die zur Planzeit Inhalte des Ergebnisses
+     * festlegen (z.B. content, sections, body, text). Der Plan darf nur
+     * deklarieren, WAS getan wird; Inhalte entstehen zur Laufzeit aus
+     * input_from (Vorergebnisse) bzw. im Tool selbst. Ein planendes LLM
+     * kann das Endergebnis nicht kennen und wuerde andernfalls Stubs mit
+     * Platzhaltern persistieren (Log-Fall strategy_document mit
+     * vorbefuelltem content-Parameter).
+     *
+     * @param array<string, mixed> $parameters
+     * @return array<string, mixed>
+     */
+    private function stripPrewrittenContentParameters(string $type, string $target, array $parameters): array
+    {
+        if ($type !== Step::TYPE_TOOL) {
+            return $parameters;
+        }
+        foreach (['content', 'sections', 'body', 'text'] as $key) {
+            if (!array_key_exists($key, $parameters)) {
+                continue;
+            }
+            unset($parameters[$key]);
+            $this->logger->warning('Planner: Vorbefuellter Inhalts-Parameter entfernt; Inhalte entstehen nur zur Laufzeit aus input_from', [
+                'tool' => $target,
+                'removed_parameter' => $key,
+            ]);
+        }
+        return $parameters;
     }
 
     /**

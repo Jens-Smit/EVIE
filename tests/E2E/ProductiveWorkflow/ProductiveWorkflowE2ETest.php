@@ -144,7 +144,7 @@ final class ProductiveWorkflowE2ETest extends KernelTestCase
         $strategyTool = new StrategyDocumentTool($documentRepo, $userProfileRepo);
         $docResult = $strategyTool->__invoke([
             'name' => 'Businessplan Gastronomie',
-            'content' => sprintf('Mission: %s | Strategie: %s', (string) $onboardingData['mission_statement'], (string) $draft['goal']),
+            'content' => str_repeat(sprintf('Mission: %s | Strategie: %s. Ausformulierung folgt. ', (string) $onboardingData['mission_statement'], (string) $draft['goal']), 10),
             'user_identifier' => self::USER,
         ]);
         self::assertSame('success', $docResult['status']);
