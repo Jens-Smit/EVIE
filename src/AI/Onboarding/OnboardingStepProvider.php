@@ -56,7 +56,6 @@ final class OnboardingStepProvider
     public const MODELS = [
         'mistral' => [
             'mistral-small-latest' => 'Mistral Small (Latest)',
-            'mistral-small-latest' => 'Mistral Small (Latest)',
         ],
         'gemini' => [
             'gemini-1.5-flash-latest' => 'Gemini 1.5 Flash',
