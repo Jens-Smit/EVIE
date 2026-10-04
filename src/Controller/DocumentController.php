@@ -74,7 +74,18 @@ class DocumentController extends AbstractController
             'id' => $document->getId(),
             'name' => $document->getName(),
             'content' => $document->getContent(),
-            'createdAt' => $document->getCreatedAt()->format('Y-m-d H:i:s')
+            'createdAt' => $document->getCreatedAt()->format('Y-m-d H:i:s'),
+            'assets' => array_values(array_map(
+                static fn (\App\Entity\DocumentAsset $asset): array => [
+                    'id' => $asset->getId(),
+                    'file_path' => $asset->getFilePath(),
+                    'alt_text' => $asset->getAltText(),
+                    'section_ref' => $asset->getSectionRef(),
+                    'position' => $asset->getPosition(),
+                    'markdown' => sprintf('![%s](/%s)', $asset->getAltText() ?? 'Screenshot', $asset->getFilePath()),
+                ],
+                $document->getAssets()->toArray()
+            )),
         ], Response::HTTP_OK, [], [
             'groups' => ['document:read']
         ]);

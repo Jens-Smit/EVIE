@@ -107,6 +107,31 @@ final class ToolRegistryTest extends TestCase
         self::assertSame(['result' => 'echo:42'], $result);
     }
 
+    /**
+     * Luecke 3: Der McpToolExecutor traegt #[AsTool] und wird daher vom
+     * Bundle unter dem Tag ai.tool registriert. Der Planner (Phase 3)
+     * sieht ihn ueber ToolRegistry::all(), Phase 5 fuehrt ihn als
+     * AttributeToolAdapter aus. Dieser Test sichert das Wiring ab.
+     */
+    public function testMcpToolExecutorIsVisibleAndExecutableViaRegistry(): void
+    {
+        $executor = new \ReflectionClass(\App\Mcp\Toolbox\McpToolExecutor::class);
+        $attribute = $executor->getAttributes(\Symfony\AI\Agent\Toolbox\Attribute\AsTool::class)[0] ?? null;
+        self::assertNotNull($attribute, 'McpToolExecutor benoetigt #[AsTool] fuer die Planner-Sichtbarkeit.');
+        self::assertSame('mcp_tool_executor', $attribute->newInstance()->name);
+
+        $registry = new ToolRegistry([
+            new \App\Mcp\Toolbox\McpToolExecutor(
+                $this->createMock(\App\Mcp\Client\McpServerManager::class)
+            ),
+        ]);
+        self::assertTrue($registry->has('mcp_tool_executor'));
+        self::assertArrayHasKey('mcp_tool_executor', $registry->all());
+        $tool = $registry->get('mcp_tool_executor');
+        self::assertInstanceOf(AttributeToolAdapter::class, $tool);
+        self::assertSame('mcp_tool_executor', $tool->getName());
+    }
+
     public function testGetThrowsForUnknownTool(): void
     {
         $registry = new ToolRegistry([]);

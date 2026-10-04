@@ -314,6 +314,114 @@ final class SubAgentFactoryTest extends TestCase
         self::assertInstanceOf(AgentInterface::class, $agent);
     }
 
+    /**
+     * Luecke 1: createSubAgent muss die Tools an den Agenten anschliessen
+     * (Toolbox + AgentProcessor), damit Sub-Agenten zur Laufzeit Tool-Calling
+     * nutzen koennen. Ohne Prozessoren kann der Agent keine Tools ausfuehren;
+     * der $tools-Parameter wurde zuvor stillschweigend ignoriert.
+     */
+    public function testCreateSubAgentWiresToolboxAndProcessors(): void
+    {
+        $this->toolRepo->method('findOneBy')->willReturn(null);
+        $this->toolRepo->method('save');
+
+        $weatherTool = new \App\AI\Skills\Tool\WeatherTool();
+        $agent = $this->factory->createSubAgent('researcher_with_tools', 'code_assistant', 'mistral-large-latest', [$weatherTool]);
+        self::assertInstanceOf(AgentInterface::class, $agent);
+
+        $reflection = new \ReflectionClass($agent);
+        $inputProcessors = $reflection->getProperty('inputProcessors')->getValue($agent);
+        $outputProcessors = $reflection->getProperty('outputProcessors')->getValue($agent);
+        self::assertIsIterable($inputProcessors);
+        self::assertIsIterable($outputProcessors);
+        $hasToolProcessor = false;
+        foreach ([...$inputProcessors, ...$outputProcessors] as $processor) {
+            if ($processor instanceof \Symfony\AI\Agent\Toolbox\AgentProcessor) {
+                $hasToolProcessor = true;
+                $toolbox = (new \ReflectionProperty($processor, 'toolbox'))->getValue($processor);
+                $toolNames = array_map(
+                    static fn (\Symfony\AI\Platform\Tool\Tool $tool): string => $tool->getName(),
+                    $toolbox->getTools(),
+                );
+                self::assertContains('weather', $toolNames);
+            }
+        }
+        self::assertTrue($hasToolProcessor, 'AgentProcessor fehlt: Sub-Agent kann keine Tools ausfuehren.');
+    }
+
+    public function testCreateSubAgentWithoutToolsHasNoToolProcessor(): void
+    {
+        $this->toolRepo->method('findOneBy')->willReturn(null);
+        $this->toolRepo->method('save');
+        $this->container->method('has')->willReturn(false);
+
+        $agent = $this->factory->createSubAgent('bare_agent', 'nonexistent_role_xyz');
+        $reflection = new \ReflectionClass($agent);
+        foreach ([...$reflection->getProperty('inputProcessors')->getValue($agent)] as $processor) {
+            self::assertNotInstanceOf(\Symfony\AI\Agent\Toolbox\AgentProcessor::class, $processor);
+        }
+    }
+
+    /**
+     * Luecke 1: Wenn unter ai.agent.<name> ein Bundle-Agent konfiguriert ist
+     * (config/packages/ai.yaml), muss createByName ihn bevorzugen statt einen
+     * tool-losen Agenten neu zu bauen. Bundle-Agenten bringen ihre Toolbox
+     * nativ mit.
+     */
+    public function testCreateByNamePrefersBundleAgentFromContainer(): void
+    {
+        $this->subAgentRepo->method('findOneByName')->willReturn(null);
+        $this->toolRepo->method('findOneBy')->willReturn(null);
+        $this->toolRepo->method('save');
+
+        $bundleAgent = $this->createMock(AgentInterface::class);
+        $this->container->method('has')->willReturnCallback(
+            static fn (string $id): bool => $id === 'ai.agent.website_researcher'
+        );
+        $this->container->method('get')->willReturnCallback(
+            static fn (string $id): AgentInterface => $bundleAgent
+        );
+
+        $agent = $this->factory->createByName('website_researcher');
+        self::assertSame($bundleAgent, $agent);
+    }
+
+    /**
+     * Luecke 1: Rollen-basierte Tool-Aufloesung. Der website_researcher
+     * bekommt FileRead, Tavily und den McpToolExecutor aus dem Container;
+     * im Container fehlende Tools werden uebersprungen statt zu scheitern.
+     */
+    public function testResolveToolsForRoleSkipsMissingContainerServices(): void
+    {
+        $this->toolRepo->method('findOneBy')->willReturn(null);
+        $this->toolRepo->method('save');
+
+        $fileReadTool = new \App\AI\Skills\Tool\FileReadTool();
+        $this->container->method('has')->willReturnCallback(
+            static fn (string $id): bool => $id === \App\AI\Skills\Tool\FileReadTool::class
+        );
+        $this->container->method('get')->willReturn($fileReadTool);
+
+        $agent = $this->factory->createSubAgent('researcher_partial', 'website_researcher');
+        self::assertInstanceOf(AgentInterface::class, $agent);
+        $reflection = new \ReflectionClass($agent);
+        $inputProcessors = [...$reflection->getProperty('inputProcessors')->getValue($agent)];
+        $hasToolProcessor = false;
+        foreach ($inputProcessors as $processor) {
+            if ($processor instanceof \Symfony\AI\Agent\Toolbox\AgentProcessor) {
+                $hasToolProcessor = true;
+                $toolbox = (new \ReflectionProperty($processor, 'toolbox'))->getValue($processor);
+                $toolNames = array_map(
+                    static fn (\Symfony\AI\Platform\Tool\Tool $tool): string => $tool->getName(),
+                    $toolbox->getTools(),
+                );
+                self::assertContains('file_read', $toolNames);
+                self::assertNotContains('tavily_search', $toolNames);
+            }
+        }
+        self::assertTrue($hasToolProcessor, 'AgentProcessor fehlt trotz verfuegbarem Tool.');
+    }
+
     public function testGetAvailableSubAgents(): void
     {
         $this->subAgentRepo->method('findAllActive')->willReturn([]);
