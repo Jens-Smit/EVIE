@@ -204,6 +204,26 @@ final class StrategyDocumentToolTest extends TestCase
         self::assertSame(Document::STATUS_DRAFT, $documentRepo->lastSaved->getStatus());
     }
 
+    public function testWrappingCodeFenceAndBusinessPlanContentHeadingAreStripped(): void
+    {
+        [$tool, $documentRepo] = $this->buildTool();
+        $body = str_repeat('Vision Gastro bietet eine Gastronomie-Software mit Reservierungsverwaltung. ', 12);
+        $raw = "## Business Plan Content\n\n```markdown\n# Businessplan Vision Gastro\n\n" . $body . "\n```\n";
+        $tool([
+            'name' => 'Businessplan Vision Gastro',
+            'content' => $raw,
+            'user_identifier' => 'user-1',
+        ]);
+        $document = $documentRepo->lastSaved;
+        self::assertInstanceOf(Document::class, $document);
+        $content = $document->getContent();
+        self::assertStringStartsNotWith('## Business Plan Content', $content);
+        self::assertStringStartsNotWith('```', $content);
+        self::assertStringStartsWith('# Businessplan Vision Gastro', $content);
+        self::assertStringContainsString('Gastronomie-Software', $content);
+        self::assertStringNotContainsString('```', $content);
+    }
+
     /**
      * @return array{0: StrategyDocumentTool, 1: RecordingDocumentRepository}
      */

@@ -407,6 +407,14 @@ class SubAgentFactory implements SubAgentFactoryInterface
      * oder API-Key), werden uebersprungen; der Agent startet dann mit dem
      * verbleibenden Tool-Set statt komplett zu scheitern.
      *
+     * Ausnahme: Der website_researcher benoetigt zwingend mindestens ein
+     * Recherche-Tool (Tavily oder MCP). Ohne solches Tool wuerde der Agent
+     * ausschliesslich aus Modellwissen antworten (Halluzinationsrisiko,
+     * Log-Fall visiongastro-Businessplan). In diesem Fall wird kein
+     * degenerierter Agent erzeugt, sondern eindeutig fehlschlagen gelassen:
+     * die Pipeline bricht mit klarem Fehler ab, statt stillschweigend
+     * erfundene Inhalte zu liefern (Blueprint: keine Halluzinationen).
+     *
      * @return list<object>
      */
     private function resolveToolsForRole(string $role): array
@@ -456,7 +464,36 @@ class SubAgentFactory implements SubAgentFactoryInterface
                 $tools[] = $tool;
             }
         }
+        if ($role === 'website_researcher' && !$this->hasResearchCapability($tools)) {
+            throw new \RuntimeException(
+                'Der website_researcher hat kein verfuegbares Recherche-Tool '
+                . '(Tavily-Tool ohne TAVILY_API_KEY und/oder McpToolExecutor '
+                . 'ohne konfigurierten MCP-Server). Ohne Abruf-Tool wuerde der '
+                . 'Agent aus Modellwissen hallucinieren. Bitte TAVILY_API_KEY '
+                . 'setzen oder einen MCP-Server fuer Web-Recherche konfigurieren '
+                . 'und die Ziel-Domain in der Outbound-Allowlist freigeben.'
+            );
+        }
         return $tools;
+    }
+
+    /**
+     * Prueft, ob in der Tool-Liste mindestens ein Web-Recherche-Tool
+     * vorhanden ist (Tavily-Bridge oder MCP-Tool-Executor). Lokale Tools
+     * wie FileReadTool zaehlen nicht als Recherche-Faehigkeit.
+     *
+     * @param list<object> $tools
+     */
+    private function hasResearchCapability(array $tools): bool
+    {
+        foreach ($tools as $tool) {
+            if ($tool instanceof \Symfony\AI\Agent\Bridge\Tavily\Tavily
+                || $tool instanceof \App\Mcp\Toolbox\McpToolExecutor
+            ) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**
@@ -496,7 +533,7 @@ class SubAgentFactory implements SubAgentFactoryInterface
         $rolePrompts = [
             'website_researcher' => 'Du bist ein spezialisierter Sub-Agent für Webseiten-Recherche. Deine Aufgabe: Durchsuche Webseiten nach Impressum, Kontakten, Geschäftszweck, Standort und Branche. Fasse die Informationen strukturiert zusammen.',
             'data_analyst' => 'Du bist ein Datenanalyst. Analysiere die uebergebenen Daten und Vorergebnisse strukturiert und liefere belastbare Erkenntnisse mit klarer Gliederung (z.B. Marktuebersicht, Wettbewerbsvergleich als Tabelle, Stärken-Schwaechen, Chancen-Risiken, Finanzzahlen). Nutze ausschliesslich die uebergebenen Informationen - erfinde KEINE Zahlen. Kennzeichne fehlende Informationen explizit als solche, damit der content_synthesizer weiss, welche Angaben fehlen.',
-            'content_synthesizer' => 'Du bist der Content-Synthesizer von EVIE. Deine Aufgabe: Verdichte beliebig viele Vorergebnisse (Recherche, Analysen) zu einem ausformulierten Fachtext gemäss der dir uebergebenen Aufgabenspezifikation (Abschnittsstruktur, Mindesttiefe, Sprache, Zielpublikum). Nutze AUSSCHLIESSLICH die uebergebenen Vorergebnisse - erfinde keine Fakten, Zahlen oder Unternehmen. Jeder Abschnitt erhält ausformulierten Fliesstext (keine Stichpunkte als Ersatz, keine Platzhalter wie [TBD]). Liefere das Ergebnis als fertiges Markdown-Dokument mit Ueberschriften und Fliesstext, bereit zum Speichern.',
+            'content_synthesizer' => 'Du bist der Content-Synthesizer von EVIE. Deine Aufgabe: Verdichte beliebig viele Vorergebnisse (Recherche, Analysen) zu einem ausformulierten Fachtext gemäss der dir uebergebenen Aufgabenspezifikation (Abschnittsstruktur, Mindesttiefe, Sprache, Zielpublikum). Nutze AUSSCHLIESSLICH die uebergebenen Vorergebnisse - erfinde keine Fakten, Zahlen oder Unternehmen. Angaben, die in den Vorergebnissen nicht vorhanden sind, kennzeichne als "nicht ersichtlich" statt sie zu ergaenzen. Jeder Abschnitt erhaelt ausformulierten Fliesstext (keine Stichpunkte als Ersatz, keine Platzhalter wie [TBD]). Antworte mit reinem Markdown OHNE umgebende Code-Bloecke (keine ```markdown-Fences) und OHNE Meta-Ueberschrift wie "Business Plan Content" - beginne direkt mit der ersten inhaltlichen Ueberschrift des Dokuments.',
             'code_assistant' => 'Du bist ein Code-Assistent. Analysiere und generiere Code.',
             'document_processor' => 'Du bist ein Dokumenten-Prozessor. Verarbeite Dokumente.',
             'communication_manager' => 'Du bist der Communication Manager von EVIE. Verwalte E-Mails, Nachrichten, LinkedIn und andere Kommunikation.',

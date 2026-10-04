@@ -192,6 +192,20 @@ final class ExecutionCoordinator implements ExecutionCoordinatorInterface
                 ]);
                 $this->publishStepCompleted($context, $step, $stepIndex, $stepCount);
             }
+        } catch (\App\AI\Pipeline\Exception\UngroundedResearchException $e) {
+            $this->logger->warning('ExecutionCoordinator::execute Recherche nicht gegrundet: ' . $e->getMessage(), [
+                'step_id' => $step->getId(),
+                'step_target' => $step->getTarget(),
+            ]);
+
+            return new PipelineResult(
+                PipelineResult::TYPE_CLARIFY,
+                'Ich konnte die benoetigten Informationen nicht verlaesslich beschaffen '
+                . 'und erfinde keine Inhalte. ' . $e->getMessage()
+                . ' Bitte pruefe, ob das Recherche-Tool (Tavily/MCP) konfiguriert und die '
+                . 'Ziel-Website in der Outbound-Allowlist freigegeben ist, oder ergaenze die '
+                . 'fehlenden Angaben direkt in deiner Anfrage (z.B. Rechtsform, Standort).'
+            );
         } catch (\Exception $e) {
             $this->logger->error('ExecutionCoordinator::execute fehlgeschlagen: ' . $e->getMessage(), [
                 'step_id' => $step->getId(),
