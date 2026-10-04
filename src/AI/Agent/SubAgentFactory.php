@@ -38,6 +38,7 @@ class SubAgentFactory implements SubAgentFactoryInterface
     private ContainerInterface $container;
     private SubAgentDefinitionRepository $subAgentDefinitionRepo;
     private ParameterBagInterface $params;
+    private bool $enforceResearchCapability = false;
 
     public function __construct(
         PlatformInterface $platform,
@@ -200,11 +201,21 @@ class SubAgentFactory implements SubAgentFactoryInterface
      */
     public function createByName(string $name): AgentInterface
     {
-        $definition = $this->subAgentDefinitionRepo->findOneByName($name);
-        if ($definition !== null) {
-            return $this->createFromDefinition($definition);
+        // createByName ist der Ausfuehrungspfad der Pipeline (Phase 5):
+        // Hier muss ein website_researcher ohne Recherche-Tool fehlschlagen,
+        // damit die Pipeline keinen halluzinierten Businessplan erzeugt.
+        // Rein konstruierende Pfade (getAvailableSubAgents etc.) bleiben
+        // tolerant, damit Seiten wie /subagents auch ohne API-Key laden.
+        $this->enforceResearchCapability = true;
+        try {
+            $definition = $this->subAgentDefinitionRepo->findOneByName($name);
+            if ($definition !== null) {
+                return $this->createFromDefinition($definition);
+            }
+            return $this->createFromStaticConfig($name);
+        } finally {
+            $this->enforceResearchCapability = false;
         }
-        return $this->createFromStaticConfig($name);
     }
 
     /**
@@ -465,14 +476,22 @@ class SubAgentFactory implements SubAgentFactoryInterface
             }
         }
         if ($role === 'website_researcher' && !$this->hasResearchCapability($tools)) {
-            throw new \RuntimeException(
-                'Der website_researcher hat kein verfuegbares Recherche-Tool '
-                . '(Tavily-Tool ohne TAVILY_API_KEY und/oder McpToolExecutor '
-                . 'ohne konfigurierten MCP-Server). Ohne Abruf-Tool wuerde der '
-                . 'Agent aus Modellwissen hallucinieren. Bitte TAVILY_API_KEY '
-                . 'setzen oder einen MCP-Server fuer Web-Recherche konfigurieren '
-                . 'und die Ziel-Domain in der Outbound-Allowlist freigeben.'
-            );
+            // Enforcement nur im Ausführungspfad (createByName), nicht beim
+            // reinen Konstruieren fuer Listen/Tool-Registrierung: Diese bauen
+            // z.B. /subagents alle Agenten, auch ohne geplanten Abruf.
+            if ($this->enforceResearchCapability) {
+                throw new \App\AI\Pipeline\Exception\UngroundedResearchException(
+                    'Der website_researcher hat kein verfuegbares Recherche-Tool '
+                    . '(Tavily-Tool ohne TAVILY_API_KEY und/oder McpToolExecutor '
+                    . 'ohne konfigurierten MCP-Server). Ohne Abruf-Tool wuerde der '
+                    . 'Agent aus Modellwissen hallucinieren. Bitte TAVILY_API_KEY '
+                    . 'setzen oder einen MCP-Server fuer Web-Recherche konfigurieren '
+                    . 'und die Ziel-Domain in der Outbound-Allowlist freigeben.'
+                );
+            }
+            $this->logger->warning('website_researcher ohne Recherche-Tool konstruiert (kein Enforcement in diesem Pfad)', [
+                'role' => $role,
+            ]);
         }
         return $tools;
     }
