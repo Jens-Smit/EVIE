@@ -87,7 +87,7 @@ class PlatformResolver
     {
         return [
             'mistral' => [
-                'mistral-large-latest' => 'Mistral Large (Latest)',
+                'mistral-small-latest' => 'Mistral Small (Latest)',
                 'mistral-medium-latest' => 'Mistral Medium (Latest)',
                 'mistral-small-latest' => 'Mistral Small (Latest)',
                 'mistral-tiny-latest' => 'Mistral Tiny (Latest)',

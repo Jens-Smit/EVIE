@@ -326,7 +326,7 @@ final class SubAgentFactoryTest extends TestCase
         $this->toolRepo->method('save');
 
         $weatherTool = new \App\AI\Skills\Tool\WeatherTool();
-        $agent = $this->factory->createSubAgent('researcher_with_tools', 'code_assistant', 'mistral-large-latest', [$weatherTool]);
+        $agent = $this->factory->createSubAgent('researcher_with_tools', 'code_assistant', 'mistral-small-latest', [$weatherTool]);
         self::assertInstanceOf(AgentInterface::class, $agent);
 
         $reflection = new \ReflectionClass($agent);

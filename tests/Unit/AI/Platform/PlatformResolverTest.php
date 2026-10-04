@@ -108,13 +108,13 @@ final class PlatformResolverTest extends TestCase
 
         self::assertArrayHasKey('mistral', $models);
         self::assertArrayHasKey('gemini', $models);
-        self::assertArrayHasKey('mistral-large-latest', $models['mistral']);
+        self::assertArrayHasKey('mistral-small-latest', $models['mistral']);
         self::assertArrayHasKey('gemini-1.5-pro-latest', $models['gemini']);
     }
 
     public function testGetDefaultModelForMistral(): void
     {
-        self::assertSame('mistral-large-latest', $this->resolver->getDefaultModel('mistral'));
+        self::assertSame('mistral-small-latest', $this->resolver->getDefaultModel('mistral'));
     }
 
     public function testGetDefaultModelForGemini(): void

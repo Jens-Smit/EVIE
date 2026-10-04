@@ -323,7 +323,7 @@ class ToolDefinitionGenerator
 
         try {
             $messages = new MessageBag(Message::ofUser($prompt));
-            $response = $this->platform->invoke('mistral-large-latest', $messages)->asText();
+            $response = $this->platform->invoke('mistral-small-latest', $messages)->asText();
 
             // Versuche, die Antwort als JSON zu parsen
             $schema = json_decode($response, true, 512, JSON_THROW_ON_ERROR);

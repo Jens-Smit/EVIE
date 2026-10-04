@@ -38,11 +38,11 @@ final class ModelResolverTest extends TestCase
     {
         $profile = new UserProfile();
         $profile->setUserIdentifier('u');
-        $profile->setPreferredLlmModel('mistral-large-latest');
+        $profile->setPreferredLlmModel('mistral-small-latest');
 
         $this->userProfileRepo->method('findOneBy')->willReturn($profile);
 
-        self::assertSame('mistral-large-latest', $this->resolver->resolveModel('u'));
+        self::assertSame('mistral-small-latest', $this->resolver->resolveModel('u'));
     }
 
     public function testResolveModelFallsBackToProviderDefault(): void
@@ -113,7 +113,7 @@ final class ModelResolverTest extends TestCase
         $this->userProfileRepo->method('findOneBy')->willReturn(null);
 
         $this->expectException(\InvalidArgumentException::class);
-        $this->resolver->setPreferredModel('unknown-user', 'mistral-large-latest');
+        $this->resolver->setPreferredModel('unknown-user', 'mistral-small-latest');
     }
 
     public function testSetPreferredModelUpdatesProfile(): void
@@ -124,9 +124,9 @@ final class ModelResolverTest extends TestCase
         $this->userProfileRepo->method('findOneBy')->willReturn($profile);
         $this->userProfileRepo->expects(self::once())->method('save')->with($profile, true);
 
-        $this->resolver->setPreferredModel('u', 'mistral-large-latest');
+        $this->resolver->setPreferredModel('u', 'mistral-small-latest');
 
-        self::assertSame('mistral-large-latest', $profile->getPreferredLlmModel());
+        self::assertSame('mistral-small-latest', $profile->getPreferredLlmModel());
         self::assertNotNull($profile->getUpdatedAt());
     }
 
