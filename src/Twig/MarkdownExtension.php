@@ -45,47 +45,6 @@ final class MarkdownExtension extends AbstractExtension
         $codeLines = [];
         $tableRows = [];
 
-        $flushParagraph = function () use (&$paragraph, &$html): void {
-            if ($paragraph !== []) {
-                $html[] = '<p>' . implode('<br>', $paragraph) . '</p>';
-                $paragraph = [];
-            }
-        };
-        $flushList = function () use (&$listType, &$listItems, &$html): void {
-            if ($listType !== null) {
-                $tag = $listType;
-                $html[] = sprintf(
-                    '<%1$s>%2$s</%1$s>',
-                    $tag,
-                    implode('', $listItems)
-                );
-                $listType = null;
-                $listItems = [];
-            }
-        };
-        $flushTable = function () use (&$tableRows, &$html): void {
-            if (count($tableRows) >= 2) {
-                $header = array_shift($tableRows);
-                array_splice($tableRows, 0, 1);
-                $thead = '<thead><tr>'
-                    . implode('', array_map(static fn (string $c): string => '<th class="px-3 py-2 text-left">' . $c . '</th>', $header))
-                    . '</tr></thead>';
-                $tbody = '<tbody>';
-                foreach ($tableRows as $row) {
-                    $tbody .= '<tr class="border-t border-border">'
-                        . implode('', array_map(static fn (string $c): string => '<td class="px-3 py-2">' . $c . '</td>', $row))
-                        . '</tr>';
-                }
-                $tbody .= '</tbody>';
-                $html[] = '<div class="overflow-x-auto my-3"><table class="w-full text-sm">' . $thead . $tbody . '</table></div>';
-            } elseif ($tableRows !== []) {
-                foreach ($tableRows as $row) {
-                    $html[] = '<p>' . implode(' | ', $row) . '</p>';
-                }
-            }
-            $tableRows = [];
-        };
-
         foreach ($lines as $line) {
             $trimmed = trim($line);
 
@@ -103,24 +62,24 @@ final class MarkdownExtension extends AbstractExtension
             }
 
             if ($trimmed === '') {
-                $flushParagraph();
-                $flushList();
-                $flushTable();
+                $this->flushParagraph($paragraph, $html);
+                $this->flushList($listType, $listItems, $html);
+                $this->flushTable($tableRows, $html);
                 continue;
             }
 
             if (str_starts_with($trimmed, '```')) {
-                $flushParagraph();
-                $flushList();
-                $flushTable();
+                $this->flushParagraph($paragraph, $html);
+                $this->flushList($listType, $listItems, $html);
+                $this->flushTable($tableRows, $html);
                 $inCodeBlock = true;
                 continue;
             }
 
             if (preg_match('/^(#{1,6})\s+(.*)$/', $trimmed, $m) === 1) {
-                $flushParagraph();
-                $flushList();
-                $flushTable();
+                $this->flushParagraph($paragraph, $html);
+                $this->flushList($listType, $listItems, $html);
+                $this->flushTable($tableRows, $html);
                 $level = min(4, max(2, strlen($m[1]) + 1));
                 $classes = [
                     2 => 'text-xl font-bold mt-5 mb-2',
@@ -138,36 +97,36 @@ final class MarkdownExtension extends AbstractExtension
             }
 
             if (preg_match('/^\|(.+)\|$/', $trimmed, $m) === 1) {
-                $flushParagraph();
-                $flushList();
-                $cells = array_map(trim(...), explode('|', $m[1]));
-                if (preg_match('/^[\|:\-\s]+$/', $trimmed) === 1 && $cells !== [] && implode('', $cells) === '') {
+                $this->flushParagraph($paragraph, $html);
+                $this->flushList($listType, $listItems, $html);
+                if (preg_match('/^[\|:\-\s]+$/', $trimmed) === 1) {
                     continue;
                 }
+                $cells = array_map(trim(...), explode('|', $m[1]));
                 $tableRows[] = array_map($this->inline(...), $cells);
                 continue;
             }
-            $flushTable();
+            $this->flushTable($tableRows, $html);
 
             if (preg_match('/^[-*+]\s+(.*)$/', $trimmed, $m) === 1) {
-                $flushParagraph();
+                $this->flushParagraph($paragraph, $html);
                 if ($listType !== 'ul') {
-                    $flushList();
+                    $this->flushList($listType, $listItems, $html);
                     $listType = 'ul';
                 }
                 $listItems[] = '<li class="ml-4 list-disc">' . $this->inline($m[1]) . '</li>';
                 continue;
             }
             if (preg_match('/^\d+[.)]\s+(.*)$/', $trimmed, $m) === 1) {
-                $flushParagraph();
+                $this->flushParagraph($paragraph, $html);
                 if ($listType !== 'ol') {
-                    $flushList();
+                    $this->flushList($listType, $listItems, $html);
                     $listType = 'ol';
                 }
                 $listItems[] = '<li class="ml-4 list-decimal">' . $this->inline($m[1]) . '</li>';
                 continue;
             }
-            $flushList();
+            $this->flushList($listType, $listItems, $html);
 
             $paragraph[] = $this->inline($trimmed);
         }
@@ -177,11 +136,67 @@ final class MarkdownExtension extends AbstractExtension
                 . implode("\n", $codeLines)
                 . '</code></pre>';
         }
-        $flushParagraph();
-        $flushList();
-        $flushTable();
+        $this->flushParagraph($paragraph, $html);
+        $this->flushList($listType, $listItems, $html);
+        $this->flushTable($tableRows, $html);
 
         return implode("\n", $html);
+    }
+
+    /**
+     * @param list<string> $paragraph
+     * @param list<string> $html
+     */
+    private function flushParagraph(array &$paragraph, array &$html): void
+    {
+        if ($paragraph !== []) {
+            $html[] = '<p>' . implode('<br>', $paragraph) . '</p>';
+            $paragraph = [];
+        }
+    }
+
+    /**
+     * @param list<string>|null $listType
+     * @param list<string> $listItems
+     * @param list<string> $html
+     */
+    private function flushList(?string &$listType, array &$listItems, array &$html): void
+    {
+        if ($listType !== null) {
+            $html[] = sprintf('<%1$s>%2$s</%1$s>', $listType, implode('', $listItems));
+            $listType = null;
+            $listItems = [];
+        }
+    }
+
+    /**
+     * @param list<list<string>> $tableRows
+     * @param list<string> $html
+     */
+    private function flushTable(array &$tableRows, array &$html): void
+    {
+        if ($tableRows === []) {
+            return;
+        }
+        if (count($tableRows) < 2) {
+            $html[] = '<p>' . implode(' | ', $tableRows[0]) . '</p>';
+            $tableRows = [];
+            return;
+        }
+        $header = $tableRows[0];
+        $body = array_slice($tableRows, 2);
+        $thead = '<thead><tr>'
+            . implode('', array_map(static fn (string $c): string => '<th class="px-3 py-2 text-left">' . $c . '</th>', $header))
+            . '</tr></thead>';
+        $tbody = '<tbody>';
+        foreach ($body as $row) {
+            $tbody .= '<tr class="border-t border-border">'
+                . implode('', array_map(static fn (string $c): string => '<td class="px-3 py-2">' . $c . '</td>', $row))
+                . '</tr>';
+        }
+        $tbody .= '</tbody>';
+        $html[] = '<div class="overflow-x-auto my-3"><table class="w-full text-sm">' . $thead . $tbody . '</table></div>';
+        $tableRows = [];
     }
 
     /**
