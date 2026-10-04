@@ -156,7 +156,6 @@ final class MarkdownExtension extends AbstractExtension
     }
 
     /**
-     * @param list<string>|null $listType
      * @param list<string> $listItems
      * @param list<string> $html
      */
