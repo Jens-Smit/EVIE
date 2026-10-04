@@ -1,0 +1,28 @@
+{% extends 'base.html.twig' %}
+{% block title %}{{ document.name }} - EVIE{% endblock %}
+{% block body %}
+<div class="max-w-4xl mx-auto p-4 sm:p-6 lg:p-8">
+    <div class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl sm:text-3xl font-bold text-content flex items-center gap-3">
+                <i class="ph ph-file-text"></i>
+                {{ document.name }}
+            </h1>
+            <p class="text-sm text-content-subtle mt-1">
+                Erstellt am {{ document.createdAt|date('d.m.Y H:i') }} &middot;
+                Status: {{ document.status|default('Unbekannt') }}
+            </p>
+        </div>
+        <a href="{{ path('app_documents') }}"
+           class="btn btn-ghost btn-sm text-content-subtle hover:text-content">
+            <i class="ph ph-arrow-left"></i>
+            Zur&uuml;ck
+        </a>
+    </div>
+    <div class="bg-white dark:bg-slate-800 rounded-xl border border-border p-6 shadow-sm">
+        <div class="text-content leading-relaxed">
+            {{ document.content|md_to_html }}
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -65,14 +65,15 @@ final class SubAgentStepExecutorTest extends TestCase
 
     public function testExecuteUsesReasonAsTaskFallback(): void
     {
-        $agent = new StubAgent('ok');
+        $payload = '{"url":"https://visiongastro.de","geschaeftszweck":"Gastro-Software","quellen":["https://visiongastro.de"]}';
+        $agent = new StubAgent($payload);
         $executor = $this->buildExecutor($agent, $this->createStubFactory($agent));
 
         $step = new Step(Step::TYPE_SUBAGENT, 'website_researcher', [], false, 'Recherchiere visiongastro.de', 'research');
 
         $result = $executor->execute($step, PipelineContext::create('x', 'u'), new ExecutionState());
 
-        self::assertSame('ok', $result);
+        self::assertSame($payload, $result);
         $content = $this->getFirstUserMessageText($agent);
         self::assertStringContainsString('Recherchiere visiongastro.de', $content);
     }
@@ -87,6 +88,48 @@ final class SubAgentStepExecutorTest extends TestCase
         $this->expectExceptionMessage('leeres Ergebnis');
 
         $executor->execute($step, PipelineContext::create('x', 'u'), new ExecutionState());
+    }
+
+
+    public function testGroundingGateRejectsUngroundedWebsiteResearch(): void
+    {
+        // Kein quellen/url-Feld, kein geschaeftszweck/branche: halluziniertes
+        // Research-Ergebnis muss abgebrochen werden (Log-Fall visiongastro).
+        $agent = new StubAgent('{"type":"website_research_result","zusammenfassung":"Gastro-Ausstatter in Muenchen"}');
+        $executor = $this->buildExecutor($agent, $this->createStubFactory($agent));
+        $step = new Step(Step::TYPE_SUBAGENT, 'website_researcher', ['task' => 'Recherchiere https://visiongastro.de'], id: 'research');
+        $this->expectException(\App\AI\Pipeline\Exception\UngroundedResearchException::class);
+        $this->expectExceptionMessage('Quell-URL');
+        $executor->execute($step, PipelineContext::create('x', 'u'), new ExecutionState());
+    }
+
+    public function testGroundingGateRejectsExplicitFetchError(): void
+    {
+        $agent = new StubAgent('{"type":"website_research_result","fehler":"URL nicht abrufbar"}');
+        $executor = $this->buildExecutor($agent, $this->createStubFactory($agent));
+        $step = new Step(Step::TYPE_SUBAGENT, 'website_researcher', ['task' => 'Recherchiere https://visiongastro.de'], id: 'research');
+        $this->expectException(\App\AI\Pipeline\Exception\UngroundedResearchException::class);
+        $this->expectExceptionMessage('URL nicht abrufbar');
+        $executor->execute($step, PipelineContext::create('x', 'u'), new ExecutionState());
+    }
+
+    public function testGroundingGateAcceptsGroundedWebsiteResearch(): void
+    {
+        $payload = '{"type":"website_research_result","url":"https://visiongastro.de","geschaeftszweck":"Restaurantmanagement-Software","branche":"SaaS","quellen":["https://visiongastro.de"],"limitierungen":["Rechtsform nicht ersichtlich"]}';
+        $agent = new StubAgent($payload);
+        $executor = $this->buildExecutor($agent, $this->createStubFactory($agent));
+        $step = new Step(Step::TYPE_SUBAGENT, 'website_researcher', ['task' => 'Recherchiere https://visiongastro.de'], id: 'research');
+        $result = $executor->execute($step, PipelineContext::create('x', 'u'), new ExecutionState());
+        self::assertSame($payload, $result);
+    }
+
+    public function testGroundingGateIgnoresNonResearchAgents(): void
+    {
+        $agent = new StubAgent('ok');
+        $executor = $this->buildExecutor($agent, $this->createStubFactory($agent));
+        $step = new Step(Step::TYPE_SUBAGENT, 'data_analyst', ['task' => 'Analysiere'], id: 'a');
+        $result = $executor->execute($step, PipelineContext::create('x', 'u'), new ExecutionState());
+        self::assertSame('ok', $result);
     }
 
     private function buildExecutor(StubAgent $agent, SubAgentFactoryInterface $factory): SubAgentStepExecutor

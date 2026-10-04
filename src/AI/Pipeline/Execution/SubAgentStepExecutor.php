@@ -65,8 +65,90 @@ final class SubAgentStepExecutor implements StepExecutorInterface
                 $step->getId()
             ));
         }
+        $this->assertGrounded($name, $step, $content);
 
         return $content;
+    }
+
+    /**
+     * Grounding-Gate fuer den website_researcher: Das Ergebnis muss
+     * erkennbar auf einen echten Tool-Abruf der Ziel-URL zurueckgehen
+     * und darf nicht aus Modellwissen erzeugt sein. Geprueft wird das
+     * JSON-Ergebnis-Schema aus config/packages/ai.yaml:
+     *  - kein Abbruch-Signal (fehler-Feld),
+     *  - quellen/url enthaelt mindestens eine URL,
+     *  - geschaeftszweck oder branche ist nicht-leer.
+     * Ohne diese Pruefung floss im Log-Fall visiongastro ein frei
+     * erfundenes Research-JSON ungeprueft in Analyse und Synthese.
+     */
+    private function assertGrounded(string $name, Step $step, string $content): void
+    {
+        if ($name !== 'website_researcher') {
+            return;
+        }
+        $data = $this->decodeJsonResult($content);
+        if ($data === null) {
+            throw new \App\AI\Pipeline\Exception\UngroundedResearchException(sprintf(
+                'website_researcher (Schritt "%s") lieferte kein gueltiges JSON-Ergebnis. '
+                . 'Ohne maschinenlesbares Ergebnis kann der Abruf nicht gegen Halluzination '
+                . 'geprueft werden; die Ausfuehrung wird abgebrochen.',
+                $step->getId()
+            ));
+        }
+        if (is_string($data['fehler'] ?? null) && trim($data['fehler']) !== '') {
+            throw new \App\AI\Pipeline\Exception\UngroundedResearchException(sprintf(
+                'website_researcher (Schritt "%s") konnte die Website nicht abrufen: %s '
+                . 'Der Plan muss stoppen statt aus Modellwissen zu generieren; '
+                . 'gegebenenfalls muss der Nutzer per Rueckfrage fehlende Angaben ergaenzen.',
+                $step->getId(),
+                trim($data['fehler'])
+            ));
+        }
+        $sources = $data['quellen'] ?? $data['url'] ?? null;
+        $sourceList = is_array($sources) ? $sources : (is_string($sources) ? [$sources] : []);
+        $hasSource = false;
+        foreach ($sourceList as $source) {
+            if (is_string($source) && preg_match('~https?://~i', $source) === 1) {
+                $hasSource = true;
+                break;
+            }
+        }
+        if (!$hasSource) {
+            throw new \App\AI\Pipeline\Exception\UngroundedResearchException(sprintf(
+                'website_researcher (Schritt "%s") nannte keine Quell-URL (Feld "quellen"/"url" leer). '
+                . 'Ein Ergebnis ohne belegte Quelle ist nicht verifizierbar und wird als '
+                . 'halluziniert verworfen.',
+                $step->getId()
+            ));
+        }
+        foreach (['geschaeftszweck', 'geschäftszweck', 'branche'] as $field) {
+            $value = $data[$field] ?? null;
+            if (is_string($value) && trim($value) !== '') {
+                return;
+            }
+        }
+        throw new \App\AI\Pipeline\Exception\UngroundedResearchException(sprintf(
+            'website_researcher (Schritt "%s") lieferte weder geschaeftszweck noch branche. '
+            . 'Der Abruf war offenbar nicht erfolgreich; die Ausfuehrung wird abgebrochen, '
+            . 'statt ein Dokument auf Basis von Modellwissen zu erzeugen.',
+            $step->getId()
+        ));
+    }
+
+    /**
+     * Dekodiert die LLM-Antwort als JSON; akzeptiert einen JSON-Block
+     * in Markdown-Fences. Liefert null, wenn kein Objekt dekodierbar ist.
+     *
+     * @return array<string, mixed>|null
+     */
+    private function decodeJsonResult(string $content): ?array
+    {
+        $trimmed = trim($content);
+        if (preg_match('/```(?:json)?\s*\n(.*?)```/s', $trimmed, $m) === 1) {
+            $trimmed = trim($m[1]);
+        }
+        $data = json_decode($trimmed, true);
+        return is_array($data) ? $data : null;
     }
 
     /**

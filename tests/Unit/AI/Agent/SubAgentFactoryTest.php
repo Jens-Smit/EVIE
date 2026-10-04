@@ -47,6 +47,27 @@ final class SubAgentFactoryTest extends TestCase
         );
     }
 
+
+    public function testCreateByNameFailsWithoutResearchTool(): void
+    {
+        // Ausfuehrungspfad (createByName): website_researcher ohne Tavily/MCP
+        // muss fehlschlagen statt aus Modellwissen zu generieren.
+        $this->subAgentRepo->method('findOneByName')->willReturn(null);
+        $this->container->method('has')->willReturn(false);
+        $this->expectException(\App\AI\Pipeline\Exception\UngroundedResearchException::class);
+        $this->expectExceptionMessage('kein verfuegbares Recherche-Tool');
+        $this->factory->createByName('website_researcher');
+    }
+
+    public function testCreateWebsiteResearchAgentWithoutEnforcementStaysConstructible(): void
+    {
+        // Konstruktiver Pfad ohne Tavily/MCP liefert weiterhin einen Agenten
+        // (z.B. fuer die /subagents-Liste), nur mit Warnung im Log.
+        $this->container->method('has')->willReturn(false);
+        $agent = $this->factory->createWebsiteResearchAgent();
+        self::assertInstanceOf(AgentInterface::class, $agent);
+    }
+
     private function makeDefinition(string $name, ?string $className = null, array $config = []): SubAgentDefinition
     {
         $def = new SubAgentDefinition();

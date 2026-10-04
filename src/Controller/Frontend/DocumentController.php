@@ -41,4 +41,35 @@ class DocumentController extends AbstractController
             'documents' => $documents,
         ]);
     }
+
+    #[Route('/documents/{id}', name: 'app_document_show', requirements: ['id' => '\\d+'], methods: ['GET'])]
+    public function show(int $id, DocumentRepository $documentRepository): Response
+    {
+        $user = $this->getUser();
+        if (!$user instanceof User) {
+            throw $this->createAccessDeniedException('Authentifizierung erforderlich.');
+        }
+
+        $userProfile = $this->userProfileRepository->findOneBy([
+            'userIdentifier' => $user->getUserIdentifier(),
+        ]);
+        if (!$userProfile instanceof UserProfile) {
+            throw $this->createAccessDeniedException('Kein Benutzerprofil vorhanden.');
+        }
+
+        $document = null;
+        foreach ($documentRepository->findByUser($userProfile->getId()) as $candidate) {
+            if ($candidate->getId() === $id) {
+                $document = $candidate;
+                break;
+            }
+        }
+        if ($document === null) {
+            throw $this->createNotFoundException(sprintf('Dokument %d nicht gefunden.', $id));
+        }
+
+        return $this->render('documents/show.html.twig', [
+            'document' => $document,
+        ]);
+    }
 }

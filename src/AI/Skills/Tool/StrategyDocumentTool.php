@@ -38,7 +38,7 @@ final class StrategyDocumentTool
     public function __invoke(array $parameters = []): array
     {
         $name = $this->resolveName($parameters);
-        $content = $this->resolveContent($parameters);
+        $content = $this->normalizeMarkdown($this->resolveContent($parameters));
         $userIdentifier = $parameters['user_identifier'] ?? '';
 
         if ($name === '' || $content === '') {
@@ -80,6 +80,23 @@ final class StrategyDocumentTool
             'document_name' => $document->getName(),
             'message' => sprintf('Strategiedokument "%s" wurde gespeichert (ID: %d).', $name, $document->getId() ?? 0),
         ];
+    }
+
+    /**
+     * Normalisiert die Rohtextantwort vor dem Speichern: LLMs antworten
+     * gelegentlich mit einem Antwort-Wrapper (uebergeordnete Ueberschrift
+     * wie "Business Plan Content" und/oder der Inhalt liegt in einem
+     * Markdown-Code-Fence). Beides darf nicht in document.content landen
+     * (Log-Fall visiongastro: gespeicherter Plan begann mit "## Business
+     * Plan Content" gefolgt von ```markdown ... ```).
+     */
+    private function normalizeMarkdown(string $raw): string
+    {
+        if (preg_match('/```(?:markdown|md)?\s*\n(.*?)```/s', $raw, $m) === 1) {
+            $raw = $m[1];
+        }
+        $raw = preg_replace('/^#{1,2}\s*(?:Business Plan Content|Content)\s*$/im', '', $raw, 1) ?? $raw;
+        return trim($raw);
     }
 
     /**

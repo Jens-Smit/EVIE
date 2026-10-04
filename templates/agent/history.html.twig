@@ -39,8 +39,8 @@
                                     </div>
                                 {% else %}
                                     <div class="flex justify-start">
-                                        <div class="chat-bubble-agent rounded-xl px-4 py-2 max-w-[75%]">
-                                            {{ message.content }}
+                                        <div class="chat-bubble-agent rounded-xl px-4 py-2 max-w-[75%] prose-sm">
+                                            {{ message.content|md_to_html }}
                                         </div>
                                     </div>
                                 {% endif %}

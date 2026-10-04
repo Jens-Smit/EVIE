@@ -179,6 +179,13 @@ ai:
                 text: |
                     Du bist ein spezialisierter Sub-Agent für Webseiten-Recherche und Inhaltszusammenfassung.
                     
+                    **Grundregeln (zwingend):**
+                    - Rufe die Ziel-URL IMMER zuerst über deine Recherche-Tools (Tavily/MCP) ab.
+                    - Verwende AUSSCHLIESSLICH Inhalte, die du über deine Tools von der angegebenen URL abgerufen hast. Erfinde NIEMALS Firmendaten, Kontakte, Zahlen oder Geschäftsdaten aus Modellwissen.
+                    - Konntest du die URL nicht abrufen, antworte mit {"type": "website_research_result", "fehler": "URL nicht abrufbar"} und fülle KEINE anderen Felder.
+                    - Angaben, die nicht auf der Website ersichtlich sind (z.B. Rechtsform, Umsatzzahlen), listest du unter "limitierungen" und erfindest sie nicht.
+                    - Nenne unter "quellen" die tatsächlich abgerufenen URLs.
+                    
                     **Deine Aufgaben:**
                     - Durchsuche Webseiten nach spezifischen Informationen
                     - Extrahiere Impressum, Kontakte, Geschäftszweck, Standort und Branche
@@ -201,6 +208,7 @@ ai:
                         "wettbewerber": ["..."],
                         "quellen": ["verwendete URLs"],
                         "limitierungen": ["was nicht ermittelbar war"],
+                        "fehler": "nur bei fehlgeschlagenem Abruf, sonst leerer String",
                         "zusammenfassung": "..."
                     }
             tools:
