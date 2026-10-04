@@ -23,7 +23,7 @@ use Symfony\AI\Agent\Toolbox\Attribute\AsTool;
  */
 #[AsTool(
     name: 'sub_agent_register',
-    description: 'Registriert einen neuen Sub-Agenten in der Datenbank. Parameter: name (Sub-Agent-Name, eindeutig), description (Rolle/Aufgabe), role (Rollenschlüssel für Prompt, z.B. marketing_manager), model (optional, Default mistral-large-latest).'
+    description: 'Registriert einen neuen Sub-Agenten in der Datenbank. Parameter: name (Sub-Agent-Name, eindeutig), description (Rolle/Aufgabe), role (Rollenschlüssel für Prompt, z.B. marketing_manager), model (optional, Default mistral-small-latest).'
 )]
 final class SubAgentRegisterTool
 {
@@ -37,7 +37,7 @@ final class SubAgentRegisterTool
         $name = $parameters['name'] ?? '';
         $description = $parameters['description'] ?? '';
         $role = $parameters['role'] ?? $name;
-        $model = $parameters['model'] ?? 'mistral-large-latest';
+        $model = $parameters['model'] ?? 'mistral-small-latest';
 
         if ($name === '' || $description === '') {
             throw new \RuntimeException('Parameter name und description sind erforderlich.');

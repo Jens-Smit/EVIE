@@ -149,7 +149,7 @@ konkreten Aufgaben aus**, sondern plant und delegiert über Tool-Calling.
 // Vereinfacht: Orchestrator mit nativer Toolbox
 $toolbox = $evieToolboxFactory->createOrchestratorToolbox();
 $processor = new AgentProcessor($toolbox);
-$agent = new Agent($platform, 'mistral-large-latest', [$processor], [$processor]);
+$agent = new Agent($platform, 'mistral-small-latest', [$processor], [$processor]);
 $result = $agent->call($messages);
 ```
 
@@ -187,7 +187,7 @@ Sub-Agenten sind **keine** eigene Dispatcher-Klasse, sondern native
 in der Toolbox registriert werden.
 
 ```php
-$researchAgent = new Agent($platform, 'mistral-large-latest', [$researchPrompt]);
+$researchAgent = new Agent($platform, 'mistral-small-latest', [$researchPrompt]);
 $subagent = new Subagent($researchAgent, 'website_researcher', 'Webseiten-Recherche');
 // Subagent landet als ganz normales Tool in der Toolbox
 $toolbox = new Toolbox([$subagent]);

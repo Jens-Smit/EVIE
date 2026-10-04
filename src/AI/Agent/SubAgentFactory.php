@@ -94,7 +94,7 @@ class SubAgentFactory implements SubAgentFactoryInterface
             return $bundleAgent;
         }
         // 3. Falls nicht, erstelle einen generischen Agenten mit der Konfiguration
-        $model = $configuration['model'] ?? 'mistral-large-latest';
+        $model = $configuration['model'] ?? 'mistral-small-latest';
         $role = $configuration['role'] ?? $name;
 
         $subAgent = $this->buildAgent(
@@ -220,7 +220,7 @@ class SubAgentFactory implements SubAgentFactoryInterface
         }
         $subAgent = $this->buildAgent(
             $name,
-            'mistral-large-latest',
+            'mistral-small-latest',
             $this->generatePromptForRole($name),
             $this->resolveToolsForRole($name),
         );
@@ -248,7 +248,7 @@ class SubAgentFactory implements SubAgentFactoryInterface
     public function createSubAgent(
         string $name,
         string $role,
-        string $model = 'mistral-large-latest',
+        string $model = 'mistral-small-latest',
         array $tools = []
     ): AgentInterface {
         $this->logger->info('Erstelle neuen Sub-Agenten', ['name' => $name, 'role' => $role]);
@@ -265,7 +265,7 @@ class SubAgentFactory implements SubAgentFactoryInterface
     public function createSubAgentTool(
         string $name,
         string $role,
-        string $model = 'mistral-large-latest',
+        string $model = 'mistral-small-latest',
         array $tools = []
     ): \Symfony\AI\Agent\Toolbox\Tool\Subagent {
         $this->logger->info('Erstelle SubAgent-Tool für Orchestrator', ['name' => $name, 'role' => $role]);
@@ -513,7 +513,7 @@ class SubAgentFactory implements SubAgentFactoryInterface
     // Factory Methoden für spezifische Sub-Agenten
     public function createWebsiteResearchAgent(): AgentInterface { return $this->createSubAgent('website_researcher', 'website_researcher'); }
     public function createDataAnalysisAgent(): AgentInterface { return $this->createSubAgent('data_analyst', 'data_analyst'); }
-    public function createContentSynthesizerAgent(): AgentInterface { return $this->createSubAgent('content_synthesizer', 'content_synthesizer', 'mistral-large-latest'); }
+    public function createContentSynthesizerAgent(): AgentInterface { return $this->createSubAgent('content_synthesizer', 'content_synthesizer', 'mistral-small-latest'); }
     public function createCodeAssistantAgent(): AgentInterface { return $this->createSubAgent('code_assistant', 'code_assistant'); }
     public function createDocumentProcessorAgent(): AgentInterface { return $this->createSubAgent('document_processor', 'document_processor'); }
     public function createCommunicationManagerAgent(): AgentInterface { return $this->createSubAgent('communication_manager', 'communication_manager'); }

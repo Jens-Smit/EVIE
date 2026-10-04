@@ -122,7 +122,7 @@ final class SmartToolsUnitTest extends TestCase
         self::assertSame('marketing', $definition->getName());
         self::assertSame('Marketing-Agent', $definition->getDescription());
         self::assertTrue($definition->isActive());
-        self::assertSame('mistral-large-latest', $definition->getConfiguration()['model']);
+        self::assertSame('mistral-small-latest', $definition->getConfiguration()['model']);
         self::assertSame('marketing_manager', $definition->getConfiguration()['role']);
     }
 

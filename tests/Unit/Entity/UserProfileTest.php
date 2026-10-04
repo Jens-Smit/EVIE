@@ -72,11 +72,11 @@ final class UserProfileTest extends TestCase
         $profile->setPreferredLlmProvider('mistral');
         self::assertSame('mistral', $profile->getPreferredLlmProvider());
 
-        $profile->setPreferredLlmModel('mistral-large');
-        self::assertSame('mistral-large', $profile->getPreferredLlmModel());
+        $profile->setPreferredLlmModel('mistral-small');
+        self::assertSame('mistral-small', $profile->getPreferredLlmModel());
 
         self::assertSame('mistral', $profile->getPreferences()['llm_provider']);
-        self::assertSame('mistral-large', $profile->getPreferences()['llm_model']);
+        self::assertSame('mistral-small', $profile->getPreferences()['llm_model']);
 
         $profile->setPreferredLlmProvider(null);
         self::assertNull($profile->getPreferredLlmProvider());

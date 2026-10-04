@@ -45,7 +45,7 @@ interface SubAgentFactoryInterface
     public function createSubAgent(
         string $name,
         string $role,
-        string $model = 'mistral-large-latest',
+        string $model = 'mistral-small-latest',
         array $tools = []
     ): AgentInterface;
 
@@ -55,7 +55,7 @@ interface SubAgentFactoryInterface
     public function createSubAgentTool(
         string $name,
         string $role,
-        string $model = 'mistral-large-latest',
+        string $model = 'mistral-small-latest',
         array $tools = []
     ): Subagent;
 

@@ -94,7 +94,7 @@ final class SubAgentListController extends AbstractController
             $subAgent = $this->subAgentFactory->createSubAgent(
                 name: $subAgentName,
                 role: $subAgentRole,
-                model: 'mistral-large-latest'
+                model: 'mistral-small-latest'
             );
             
             // Erstelle Tool-Definition für den Sub-Agenten
