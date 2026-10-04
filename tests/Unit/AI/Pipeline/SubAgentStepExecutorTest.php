@@ -65,14 +65,15 @@ final class SubAgentStepExecutorTest extends TestCase
 
     public function testExecuteUsesReasonAsTaskFallback(): void
     {
-        $agent = new StubAgent('ok');
+        $payload = '{"url":"https://visiongastro.de","geschaeftszweck":"Gastro-Software","quellen":["https://visiongastro.de"]}';
+        $agent = new StubAgent($payload);
         $executor = $this->buildExecutor($agent, $this->createStubFactory($agent));
 
         $step = new Step(Step::TYPE_SUBAGENT, 'website_researcher', [], false, 'Recherchiere visiongastro.de', 'research');
 
         $result = $executor->execute($step, PipelineContext::create('x', 'u'), new ExecutionState());
 
-        self::assertSame('ok', $result);
+        self::assertSame($payload, $result);
         $content = $this->getFirstUserMessageText($agent);
         self::assertStringContainsString('Recherchiere visiongastro.de', $content);
     }
