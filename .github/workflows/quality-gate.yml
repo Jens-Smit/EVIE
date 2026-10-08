@@ -1,0 +1,81 @@
+name: EVIE Quality Gate
+
+# Dedizierte, schlanke Quality-Gate-Pipeline (Ergaenzung zu ci.yml):
+#   - PHPStan Level 5 (streng, blockierend) gegen src
+#   - Application-Testsuite (Unit + Integration + Functional) gegen PostgreSQL 15
+#     mit pgvector, identisch zur Haupt-CI
+# Laeuft auf jedem Push und jedem PR; PHP 8.4 (kompatibel mit ^8.2-Range).
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  quality-gate:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: pgvector/pgvector:pg15
+        env:
+          POSTGRES_DB: evie_test
+          POSTGRES_USER: evie
+          POSTGRES_PASSWORD: evie
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup PHP 8.4
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql, pdo_sqlite, mbstring, ctype, iconv
+          coverage: none
+
+      - name: Copy .env.dist to .env
+        run: cp .env.dist .env
+
+      - name: Install dependencies
+        run: composer install --prefer-dist --no-progress --no-scripts
+
+      - name: Wait for PostgreSQL
+        run: |
+          while ! pg_isready -h localhost -p 5432 -U evie; do
+            sleep 1
+          done
+
+      # ---------------------------------------------------------------
+      # PHPStan Level 5: statisches Analyse-Gate, blockierend.
+      # Nutzt phpstan.neon (inkl. Baseline und dokumentierte Ignores).
+      # ---------------------------------------------------------------
+      - name: PHPStan (level 5, src)
+        run: vendor/bin/phpstan analyse src --level=5 --no-progress
+
+      # ---------------------------------------------------------------
+      # Tests gegen die PostgreSQL-Service-Instanz (pgvector/pgvector:pg15),
+      # identisch zur Haupt-CI: PostgreSQL-eigenes Verhalten (Strict-Typen,
+      # SERIAL, pgvector) wird genauso geprueft wie in Produktion.
+      # ---------------------------------------------------------------
+      - name: Application test suite
+        env:
+          APP_SECRET: test-secret-for-evie-1234567890abcdef
+          DATABASE_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_test?serverVersion=15&charset=utf8'
+          MISTRAL_API_KEY: test
+          GEMINI_API_KEY: test
+          TAVILY_API_KEY: test
+        run: vendor/bin/phpunit --testsuite="Application Test Suite"
+
+      - name: E2E Smoke tests
+        env:
+          E2E_TESTING: '1'
+          APP_SECRET: test-secret-for-evie-1234567890abcdef
+          DATABASE_URL: 'postgresql://evie:evie@127.0.0.1:5432/evie_test?serverVersion=15&charset=utf8'
+          MISTRAL_API_KEY: test
+          GEMINI_API_KEY: test
+        run: vendor/bin/phpunit --testsuite="E2E Smoke Tests"
