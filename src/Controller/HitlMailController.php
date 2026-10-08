@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\AI\Workflow\MailDraftAiService;
 use App\AI\Workflow\MailDraftHitlService;
 use App\Entity\MailDraft;
 use App\Repository\MailDraftRepository;
@@ -29,6 +30,7 @@ final class HitlMailController extends AbstractController
     public function __construct(
         private MailDraftRepository $mailDraftRepository,
         private MailDraftHitlService $hitlService,
+        private MailDraftAiService $aiService,
         private LoggerInterface $logger,
     ) {
     }
@@ -58,6 +60,89 @@ final class HitlMailController extends AbstractController
                 'created_at' => $draft->getCreatedAt()->format(DATE_ATOM),
             ], $drafts),
         ]);
+    }
+
+    /**
+     * Erzeugt aus einer gelesenen E-Mail einen KI-Antwort-Entwurf (HITL:
+     * der Entwurf landet mit status=pending_approval in der Freigabe-
+     * Warteschlange, nichts wird automatisch versendet).
+     */
+    #[Route('/reply', name: 'app_mail_draft_ai_reply', methods: ['POST'])]
+    public function generateAiReply(Request $request): JsonResponse
+    {
+        try {
+            $userIdentifier = $this->requireUserIdentifier();
+            $content = (string) $request->getContent();
+            $data = [];
+            if ($content !== '' && str_contains((string) $request->headers->get('Content-Type', ''), 'application/json')) {
+                $data = $request->toArray();
+            } else {
+                foreach (['subject', 'body', 'from'] as $field) {
+                    $data[$field] = (string) $request->request->get($field, '');
+                }
+            }
+            $reply = $this->aiService->generateReply($userIdentifier, [
+                'subject' => (string) ($data['subject'] ?? ''),
+                'body' => (string) ($data['body'] ?? ''),
+                'from' => (string) ($data['from'] ?? ''),
+            ]);
+            return $this->json([
+                'status' => 'success',
+                'message' => 'KI-Antwort-Entwurf erstellt und zur Freigabe vorgelegt',
+                'reply' => $reply,
+            ]);
+        } catch (AccessDeniedException $e) {
+            throw $e;
+        } catch (\LogicException|\InvalidArgumentException $e) {
+            return $this->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], Response::HTTP_BAD_REQUEST);
+        } catch (\Exception $e) {
+            $this->logger->error('Fehler beim Erstellen des KI-Antwort-Entwurfs: ' . $e->getMessage());
+            return $this->json([
+                'status' => 'error',
+                'message' => 'Fehler beim Erstellen des KI-Antwort-Entwurfs',
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
+
+    /**
+     * Korrigiert einen ausstehenden Entwurf auf Ausdruck, Rechtschreibung
+     * und Tonart (eine einmalige Korrektur, keine Neuformulierung).
+     */
+    #[Route('/{id}/improve', name: 'app_mail_draft_ai_improve', methods: ['POST'])]
+    public function improveDraft(MailDraft $draft): JsonResponse
+    {
+        try {
+            $this->assertOwnership($draft);
+            $result = $this->aiService->improveDraft($this->requireUserIdentifier(), $draft);
+            return $this->json([
+                'status' => 'success',
+                'message' => $result['improved']
+                    ? 'Entwurf korrigiert'
+                    : 'Keine Korrektur moeglich, Entwurf unveraendert',
+                'draft' => [
+                    'id' => $draft->getId(),
+                    'subject' => $result['subject'],
+                    'body' => $result['body'],
+                    'improved' => $result['improved'],
+                ],
+            ]);
+        } catch (AccessDeniedException $e) {
+            throw $e;
+        } catch (\LogicException|\InvalidArgumentException $e) {
+            return $this->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], Response::HTTP_BAD_REQUEST);
+        } catch (\Exception $e) {
+            $this->logger->error('Fehler beim Korrigieren des E-Mail-Entwurfs: ' . $e->getMessage());
+            return $this->json([
+                'status' => 'error',
+                'message' => 'Fehler beim Korrigieren des E-Mail-Entwurfs',
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
     /**

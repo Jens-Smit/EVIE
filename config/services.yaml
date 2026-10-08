@@ -252,6 +252,12 @@ services:
     App\AI\Workflow\EmailIngestionService:
         arguments:
             $documentAgent: '@ai.agent.document_processor'
+    # MailDraftAiService: KI-Antwort auf gelesene E-Mails und Korrektur
+    # ausstehender Entwuerfe (Ausdruck, Rechtschreibung, Tonart). Nutzt den
+    # communication_manager-Sub-Agenten (ai.yaml) mit heuristischem Fallback.
+    App\AI\Workflow\MailDraftAiService:
+        arguments:
+            $communicationAgent: '@ai.agent.communication_manager'
 
 
     # LLM Platform/Provider Choice (Issue #11)

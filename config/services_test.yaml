@@ -50,3 +50,7 @@ services:
         public: true
         arguments:
             $documentAgent: '@ai.agent.document_processor'
+    App\AI\Workflow\MailDraftAiService:
+        public: true
+        arguments:
+            $communicationAgent: '@ai.agent.communication_manager'
